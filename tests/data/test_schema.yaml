@@ -1,0 +1,40 @@
+id: https://example.org/test-schema
+name: test-schema
+description: Test schema for reference validation
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  test: https://example.org/test/
+
+default_prefix: test
+
+classes:
+  Evidence:
+    description: Evidence for a statement
+    attributes:
+      reference:
+        range: Reference
+        implements:
+          - linkml:authoritative_reference
+      supporting_text:
+        range: string
+        implements:
+          - linkml:excerpt
+
+  Reference:
+    description: A reference to a publication
+    attributes:
+      id:
+        identifier: true
+        range: string
+      title:
+        range: string
+
+  Statement:
+    description: A scientific statement with evidence
+    attributes:
+      text:
+        range: string
+      has_evidence:
+        range: Evidence
+        multivalued: true

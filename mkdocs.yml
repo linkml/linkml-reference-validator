@@ -1,0 +1,45 @@
+---
+site_name: "linkml-reference-validator"
+theme:
+  name: material
+  # palette:
+  #  scheme: slate
+  #  primary: cyan
+  features:
+    - content.tabs.link
+
+# for adding extra css/js see https://www.mkdocs.org/user-guide/customizing-your-theme/
+
+plugins:
+  - search
+  - mermaid2:
+      version: 11.4.1
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
+      allow_errors: false
+
+#watch:
+#  - src/linkml_reference_validator/schema
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Tutorials:
+      - Getting Started (CLI): notebooks/01_getting_started.ipynb
+      - Advanced Usage (CLI): notebooks/02_advanced_usage.ipynb
+      - Validating OBO Files (CLI): notebooks/04_obo_validation.ipynb
+      - Python API: notebooks/03_python_api.ipynb
+  - How-To Guides:
+      - Validating OBO Files: how-to/validate-obo-files.md
+  - Concepts:
+      - How It Works: concepts/how-it-works.md
+      - Editorial Conventions: concepts/editorial-conventions.md
+  - Reference:
+      - CLI Reference: reference/cli.md
+
+exclude_docs: |
+  /templates-linkml/
+
+site_url: https://linkml.github.io/linkml-reference-validator
+repo_url: https://github.com/linkml/linkml-reference-validator

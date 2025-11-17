@@ -1,0 +1,6 @@
+text: "Protein X functions in cell cycle regulation"
+has_evidence:
+  - reference:
+      id: "PMID:TEST123"
+      title: "Study of Protein X"
+    supporting_text: "protein functions in cell cycle regulation"

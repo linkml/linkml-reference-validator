@@ -1,0 +1,21 @@
+format-version: 1.2
+idspace: ex https://example.org/
+
+[Term]
+id: GO:0043263
+name: cellulosome
+namespace: cellular_component
+alt_id: GO:1990296
+def: "An extracellular multi-enzyme complex containing up to 11 different enzymes aligned on a non-catalytic scaffolding glycoprotein. Functions to hydrolyze cellulose." [PMID:11601609] {ex:supporting_text="a unique extracellular multi-enzyme complex, called cellulosome [containing] up to 11 different enzymes [which] are aligned on the non-catalytic scaffolding protein[PMID:11601609]"}
+synonym: "scaffoldin complex" NARROW []
+xref: Wikipedia:Cellulosome
+
+[Term]
+id: GO:0000001
+name: example term
+def: "This is an example definition without supporting text." [PMID:12345678]
+
+[Term]
+id: GO:0000002
+name: another example
+def: "Another definition with supporting text." [PMID:23456789] {ex:supporting_text="supporting evidence for this definition[PMID:23456789]"}

@@ -1,0 +1,14 @@
+# Changes here will be overwritten by Copier
+_commit: 34d23a0
+_src_path: monarch-project-copier
+copyright_year: '2025'
+email: cjmungall@lbl.gov
+full_name: Chris Mungall
+gh_action_docs_preview: false
+github_handle: cmungall
+github_org: linkml
+license: Apache-2.0
+project_description: Validation of supporting text from references and publications
+project_name: linkml-reference-validator
+project_slug: linkml_reference_validator
+

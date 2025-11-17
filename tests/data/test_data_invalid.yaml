@@ -1,0 +1,6 @@
+text: "Protein Y inhibits apoptosis"
+has_evidence:
+  - reference:
+      id: "PMID:TEST456"
+      title: "Study of Protein Y"
+    supporting_text: "this text is not in the reference"

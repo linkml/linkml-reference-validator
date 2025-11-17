@@ -1,0 +1,9 @@
+ID: PMID:TEST001
+Title: Protein X functions in cell cycle regulation
+Authors: Smith J, Doe A, Johnson K
+Journal: Nature Cell Biology
+Year: 2024
+DOI: 10.1038/test001
+ContentType: abstract_only
+
+Protein X functions in cell cycle regulation and plays a critical role in DNA repair mechanisms. Our studies demonstrate that this protein is essential for maintaining genomic stability during mitosis. The protein localizes to the nucleus during S phase and interacts with key checkpoint proteins to ensure proper chromosome segregation.

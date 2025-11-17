@@ -1,0 +1,42 @@
+ID: PMC:TEST001
+Title: Molecular mechanisms of BRCA1 in DNA repair
+Authors: Zhang L, Williams T, Anderson P, Martinez S, Thompson R
+Journal: Cell
+Year: 2023
+DOI: 10.1016/j.cell.2023.001
+ContentType: full_text_xml
+
+Abstract
+
+BRCA1 is a critical tumor suppressor gene that plays an essential role in maintaining genomic stability through DNA repair. Loss of BRCA1 function predisposes individuals to breast and ovarian cancers.
+
+Introduction
+
+The BRCA1 gene encodes a multifunctional protein involved in DNA damage response pathways. BRCA1 participates in homologous recombination repair of double-strand breaks. Studies have shown that BRCA1 interacts with multiple proteins in the DNA repair machinery, including RAD51 and PALB2.
+
+Materials and Methods
+
+We performed biochemical assays to characterize BRCA1 protein interactions. Immunoprecipitation experiments were conducted to identify binding partners. Cell lines with BRCA1 mutations were generated using CRISPR-Cas9 technology.
+
+Results
+
+Our results demonstrate that BRCA1 forms a complex with RAD51 at sites of DNA damage. The BRCA1-RAD51 complex facilitates strand invasion during homologous recombination. We observed that cells lacking functional BRCA1 exhibit increased sensitivity to DNA damaging agents such as cisplatin and PARP inhibitors.
+
+BRCA1 mutations disrupt the normal DNA repair process, leading to accumulation of chromosomal aberrations. Specifically, we found that truncating mutations in the RING domain abolish E3 ubiquitin ligase activity. The C-terminal BRCT domains are required for phosphopeptide binding and recruitment of repair factors.
+
+Discussion
+
+These findings highlight the importance of BRCA1 in genome maintenance and cancer prevention. The interaction between BRCA1 and RAD51 is crucial for effective DNA repair through homologous recombination. Therapeutic strategies targeting BRCA1-deficient tumors have shown promise in clinical trials.
+
+Conclusion
+
+BRCA1 functions as a central coordinator of the DNA damage response pathway. Understanding BRCA1 mechanisms provides insights into cancer susceptibility and therapeutic opportunities.
+
+Acknowledgments
+
+This work was supported by the National Cancer Institute grant CA123456.
+
+References
+
+1. Venkitaraman AR. Cancer susceptibility and the functions of BRCA1 and BRCA2. Cell. 2002.
+2. Moynahan ME, Jasin M. Mitotic homologous recombination maintains genomic stability. Nat Rev Mol Cell Biol. 2010.

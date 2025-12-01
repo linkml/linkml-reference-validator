@@ -178,7 +178,7 @@ class SupportingTextValidator:
                 error_message="Query is empty after removing brackets and splitting",
             )
 
-        return self._substring_match(query_parts, reference.content)
+        return self._substring_match(query_parts, reference.content, supporting_text)
 
     def _split_query(self, text: str) -> list[str]:
         """Split query into parts separated by ... removing [...] editorial notes.
@@ -208,17 +208,20 @@ class SupportingTextValidator:
         self,
         query_parts: list[str],
         content: str,
+        original_query: Optional[str] = None,
     ) -> SupportingTextMatch:
         """Deterministic substring matching after normalization.
 
         All query parts must appear as substrings in the content (order independent).
+        When validation fails, generates fuzzy matching suggestions to help users.
 
         Args:
             query_parts: List of query text parts
             content: Reference content to search
+            original_query: Original query text for fuzzy suggestion generation
 
         Returns:
-            SupportingTextMatch
+            SupportingTextMatch with optional suggestions when validation fails
 
         Examples:
             >>> config = ReferenceValidationConfig()
@@ -239,10 +242,18 @@ class SupportingTextValidator:
             normalized_part = self.normalize_text(part)
 
             if normalized_part not in normalized_content:
+                # Generate fuzzy suggestion for the failed part
+                query_for_suggestion = original_query if original_query else part
+                suggested_fix, best_match, similarity = self.generate_suggested_fix(
+                    query_for_suggestion, content
+                )
+
                 return SupportingTextMatch(
                     found=False,
-                    similarity_score=0.0,
+                    similarity_score=similarity / 100.0,  # Convert to 0-1 scale
                     error_message=f"Text part not found as substring: '{part}'",
+                    suggested_fix=suggested_fix,
+                    best_match=best_match,
                 )
 
             matched_parts.append(part)
@@ -252,6 +263,67 @@ class SupportingTextValidator:
             similarity_score=1.0,
             matched_text=" ... ".join(matched_parts),
         )
+
+    def generate_suggested_fix(
+        self,
+        supporting_text: str,
+        reference_content: str,
+    ) -> tuple[Optional[str], Optional[str], float]:
+        """Generate actionable fix suggestion when validation fails.
+
+        Uses fuzzy matching ONLY for suggestions, NOT for validation.
+        This helps users find the correct text when there are minor differences
+        like capitalization changes or typos.
+
+        Args:
+            supporting_text: The text that failed strict validation
+            reference_content: Full reference content to search
+
+        Returns:
+            Tuple of (suggested_fix, best_match, similarity_score 0-100)
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> # With exact case mismatch
+            >>> fix, match, score = validator.generate_suggested_fix(
+            ...     "jak1 protein is a tyrosine kinase",
+            ...     "The JAK1 protein is a tyrosine kinase that activates STAT."
+            ... )
+            >>> score >= 90
+            True
+        """
+        from linkml_reference_validator.validation.fuzzy_text_utils import (
+            find_fuzzy_match_in_text,
+        )
+
+        found, similarity, best_match = find_fuzzy_match_in_text(
+            supporting_text, reference_content, threshold=70.0
+        )
+
+        if best_match and similarity > 70:
+            if similarity > 90:
+                # Check if it's just a capitalization difference
+                if supporting_text.lower() == best_match.lower():
+                    return (
+                        f'Capitalization differs - try: "{best_match}"',
+                        best_match,
+                        similarity,
+                    )
+                else:
+                    return (
+                        f'Very close match ({similarity:.0f}%) - try: "{best_match}"',
+                        best_match,
+                        similarity,
+                    )
+            else:
+                return (
+                    f'Partial match found ({similarity:.0f}%): "{best_match}"',
+                    best_match,
+                    similarity,
+                )
+
+        return (None, best_match, similarity)
 
     @staticmethod
     def normalize_text(text: str) -> str:

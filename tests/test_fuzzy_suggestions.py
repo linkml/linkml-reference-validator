@@ -135,7 +135,7 @@ class TestFindFuzzyMatchInText:
         assert found is True
         assert "JAK1" in match or "protein" in match
 
-    def test_false_positive_prevention_bug_case(self):
+    def test_prevents_false_positive_on_unrelated_medical_texts(self):
         """Test the specific bug case: unrelated texts should NOT match.
 
         This tests the reported bug where completely unrelated medical texts

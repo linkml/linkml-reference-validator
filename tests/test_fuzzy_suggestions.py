@@ -241,13 +241,19 @@ class TestGenerateSuggestedFix:
     """Tests for suggestion generation."""
 
     def test_suggests_capitalization_fix(self, validator):
-        """Should detect capitalization differences."""
+        """Should detect capitalization differences.
+
+        Uses a pure case difference test case where the query text matches
+        exactly except for capitalization. Verifies that the fix message
+        indicates "Capitalization differs".
+        """
         fix, match, score = validator.generate_suggested_fix(
             "jak1 protein is a tyrosine kinase",
-            "The JAK1 protein is a tyrosine kinase that activates STAT.",
+            "JAK1 protein is a tyrosine kinase",
         )
         assert score >= 90
-        # May or may not detect as exact capitalization difference due to surrounding text
+        assert fix is not None
+        assert "Capitalization differs" in fix
 
     def test_suggests_close_match(self, validator):
         """Should suggest close matches."""

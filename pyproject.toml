@@ -23,6 +23,7 @@ dependencies = [
   "requests >= 2.28.0",
   "pydantic >= 2.0.0",
   "ruamel-yaml >= 0.18.0",
+  "rapidfuzz >= 3.14.3",
 ]
 
 [dependency-groups]

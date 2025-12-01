@@ -64,8 +64,13 @@ def text_command(
     typer.echo(f"  Valid: {result.is_valid}")
     typer.echo(f"  Message: {result.message}")
 
-    if result.match_result and result.match_result.matched_text:
-        typer.echo(f"  Matched text: {result.match_result.matched_text[:100]}...")
+    if result.match_result:
+        if result.match_result.matched_text:
+            typer.echo(f"  Matched text: {result.match_result.matched_text[:100]}...")
+        if result.match_result.suggested_fix:
+            typer.echo(f"  Suggestion: {result.match_result.suggested_fix}")
+        if verbose and result.match_result.best_match:
+            typer.echo(f"  Best match: {result.match_result.best_match[:100]}...")
 
     if result.is_valid:
         raise typer.Exit(0)
@@ -171,8 +176,13 @@ def text_file_command(
         if not summary:
             status = "✓ VALID" if result.is_valid else "✗ INVALID"
             typer.echo(f"  {status}: {result.message}")
-            if verbose and result.match_result and result.match_result.matched_text:
-                typer.echo(f"    Matched: {result.match_result.matched_text[:100]}...")
+            if result.match_result:
+                if result.match_result.suggested_fix:
+                    typer.echo(f"    Suggestion: {result.match_result.suggested_fix}")
+                if verbose and result.match_result.matched_text:
+                    typer.echo(f"    Matched: {result.match_result.matched_text[:100]}...")
+                if verbose and result.match_result.best_match:
+                    typer.echo(f"    Best match: {result.match_result.best_match[:100]}...")
             typer.echo()
 
     # Print summary

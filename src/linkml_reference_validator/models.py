@@ -116,6 +116,17 @@ class SupportingTextMatch:
         True
         >>> match.similarity_score
         0.95
+
+        >>> # With fuzzy matching suggestion
+        >>> match = SupportingTextMatch(
+        ...     found=False,
+        ...     similarity_score=0.0,
+        ...     error_message="Text not found",
+        ...     suggested_fix="Capitalization differs - try: 'JAK1 protein'",
+        ...     best_match="JAK1 protein is a tyrosine kinase"
+        ... )
+        >>> match.suggested_fix
+        "Capitalization differs - try: 'JAK1 protein'"
     """
 
     found: bool
@@ -123,6 +134,8 @@ class SupportingTextMatch:
     matched_text: Optional[str] = None
     match_location: Optional[str] = None  # abstract, full_text, etc.
     error_message: Optional[str] = None
+    suggested_fix: Optional[str] = None  # Actionable suggestion when validation fails
+    best_match: Optional[str] = None  # Closest matching text found via fuzzy matching
 
 
 @dataclass

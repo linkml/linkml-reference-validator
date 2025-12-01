@@ -304,7 +304,9 @@ class SupportingTextValidator:
         if best_match and similarity > 70:
             if similarity > 90:
                 # Check if it's just a capitalization difference
-                if supporting_text.lower() == best_match.lower():
+                supporting_text_lower = supporting_text.lower()
+                best_match_lower = best_match.lower()
+                if supporting_text_lower == best_match_lower:
                     return (
                         f'Capitalization differs - try: "{best_match}"',
                         best_match,

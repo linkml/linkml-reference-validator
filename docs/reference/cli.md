@@ -15,6 +15,7 @@ linkml-reference-validator [OPTIONS] COMMAND [ARGS]...
 ### Commands
 
 - `validate` - Validate supporting text against references
+- `repair` - Repair supporting text validation errors
 - `cache` - Manage reference cache
 
 ## validate
@@ -195,6 +196,239 @@ Validation Issues (2):
 Validation Summary:
   Total checks: 3
   Issues found: 2
+```
+
+---
+
+## repair
+
+Repair supporting text validation errors.
+
+```bash
+linkml-reference-validator repair COMMAND [ARGS]...
+```
+
+### Subcommands
+
+- `text` - Repair a single text quote
+- `data` - Repair supporting text in data files
+
+---
+
+## repair text
+
+Attempt to repair a single supporting text quote.
+
+### Usage
+
+```bash
+linkml-reference-validator repair text [OPTIONS] TEXT REFERENCE_ID
+```
+
+### Arguments
+
+- **TEXT** (required) - The supporting text to repair
+- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678)
+
+### Options
+
+- `--cache-dir PATH, -c PATH` - Directory for caching references
+- `--verbose, -v` - Verbose output with detailed logging
+- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--help` - Show help message
+
+### Examples
+
+**Repair character normalization:**
+```bash
+linkml-reference-validator repair text \
+  "CO2 levels were measured" \
+  PMID:12345678
+```
+
+**With verbose output:**
+```bash
+linkml-reference-validator repair text \
+  "protein functions in cells" \
+  PMID:12345678 \
+  --verbose
+```
+
+### Exit Codes
+
+- `0` - Repair successful or already valid
+- `1` - Could not repair
+
+### Output Format
+
+**Successful repair:**
+```
+Attempting repair for PMID:12345678...
+  Text: CO2 levels were measured
+
+Result:
+  ✓ Repaired successfully
+    Original: CO2 levels were measured
+    Repaired: CO₂ levels were measured
+    Action: CHARACTER_NORMALIZATION (Character normalization fix)
+    Confidence: HIGH
+```
+
+**Already valid:**
+```
+Result:
+  ✓ Text already valid - no repair needed
+```
+
+**Could not repair:**
+```
+Result:
+  ✗ Could not repair: Flagged for removal - text not found in reference
+    Suggestion: REMOVAL
+    Confidence: VERY_LOW (12%)
+```
+
+---
+
+## repair data
+
+Repair supporting text in data files.
+
+### Usage
+
+```bash
+linkml-reference-validator repair data [OPTIONS] DATA_FILE
+```
+
+### Arguments
+
+- **DATA_FILE** (required) - Path to data file (YAML)
+
+### Options
+
+- `--schema PATH, -s PATH` (required) - Path to LinkML schema file
+- `--target-class TEXT, -t TEXT` - Target class to validate
+- `--dry-run / --no-dry-run, -n / -N` - Show changes without applying (default: dry-run)
+- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--output PATH, -o PATH` - Output file path (default: overwrite with backup)
+- `--config PATH` - Path to repair configuration file
+- `--cache-dir PATH, -c PATH` - Directory for caching references
+- `--verbose, -v` - Verbose output with detailed logging
+- `--help` - Show help message
+
+### Examples
+
+**Dry run (default):**
+```bash
+linkml-reference-validator repair data \
+  disease.yaml \
+  --schema schema.yaml \
+  --dry-run
+```
+
+**Apply repairs:**
+```bash
+linkml-reference-validator repair data \
+  disease.yaml \
+  --schema schema.yaml \
+  --no-dry-run
+```
+
+**Output to new file:**
+```bash
+linkml-reference-validator repair data \
+  disease.yaml \
+  --schema schema.yaml \
+  --no-dry-run \
+  --output repaired.yaml
+```
+
+**With configuration file:**
+```bash
+linkml-reference-validator repair data \
+  disease.yaml \
+  --schema schema.yaml \
+  --config .linkml-reference-validator.yaml
+```
+
+**Custom threshold:**
+```bash
+linkml-reference-validator repair data \
+  disease.yaml \
+  --schema schema.yaml \
+  --auto-fix-threshold 0.98 \
+  --no-dry-run
+```
+
+### Exit Codes
+
+- `0` - Repair completed (may have suggestions)
+- `1` - Repair completed but has removals or unverifiable items
+
+### Output Format
+
+```
+[DRY RUN] Repairing disease.yaml
+  Schema: schema.yaml
+  Auto-fix threshold: 0.95
+  Cache directory: references_cache
+
+Found 5 evidence item(s) to process
+
+============================================================
+Repair Report
+============================================================
+
+HIGH CONFIDENCE FIXES (auto-applicable):
+  PMID:12345678 at evidence[0]:
+    Character normalization fix
+    'CO2 levels...' → 'CO₂ levels...'
+
+SUGGESTED FIXES (review recommended):
+  PMID:23456789 at evidence[1]:
+    Inserted ellipsis between non-contiguous parts
+
+RECOMMENDED REMOVALS (low confidence):
+  PMID:34567890 at evidence[2]:
+    Similarity: 8%
+    Snippet: 'Fabricated text...'
+
+------------------------------------------------------------
+Summary:
+  Total items: 5
+  Already valid: 2
+  Auto-fixes: 1
+  Suggestions: 1
+  Removals: 1
+  Unverifiable: 0
+```
+
+---
+
+## Repair Configuration File
+
+Create `.linkml-reference-validator.yaml` for project-specific settings:
+
+```yaml
+repair:
+  # Confidence thresholds
+  auto_fix_threshold: 0.95
+  suggest_threshold: 0.80
+  removal_threshold: 0.50
+
+  # Character mappings
+  character_mappings:
+    "+/-": "±"
+    "CO2": "CO₂"
+    "H2O": "H₂O"
+
+  # References to skip
+  skip_references:
+    - "PMID:12345678"
+
+  # References trusted despite low similarity
+  trusted_low_similarity:
+    - "PMID:98765432"
 ```
 
 ---

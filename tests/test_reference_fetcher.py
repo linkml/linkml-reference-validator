@@ -89,6 +89,53 @@ def test_load_from_disk_not_found(fetcher):
     assert result is None
 
 
+def test_save_and_load_with_brackets_in_title(fetcher, tmp_path):
+    """Test saving and loading reference with brackets in title.
+
+    This tests the fix for YAML parsing errors when titles contain
+    brackets (e.g., [Cholera]. for articles in other languages).
+    """
+    ref = ReferenceContent(
+        reference_id="PMID:30512613",
+        title="[Cholera].",
+        content="Article content about cholera.",
+        content_type="abstract_only",
+        authors=["García A", "López B"],
+        journal="Rev Med",
+        year="2018",
+    )
+
+    fetcher._save_to_disk(ref)
+
+    loaded = fetcher._load_from_disk("PMID:30512613")
+
+    assert loaded is not None
+    assert loaded.reference_id == "PMID:30512613"
+    assert loaded.title == "[Cholera]."
+    assert loaded.content == "Article content about cholera."
+
+
+def test_yaml_value_quoting(fetcher):
+    """Test that special characters are properly quoted in YAML values."""
+    # Brackets should be quoted
+    assert fetcher._quote_yaml_value("[Cholera].") == '"[Cholera]."'
+    assert fetcher._quote_yaml_value("{Test}") == '"{Test}"'
+
+    # Colons should be quoted
+    assert fetcher._quote_yaml_value("Title: Subtitle") == '"Title: Subtitle"'
+
+    # Normal values should not be quoted
+    assert fetcher._quote_yaml_value("Normal Title") == "Normal Title"
+
+    # Boolean-like values should be quoted
+    assert fetcher._quote_yaml_value("true") == '"true"'
+    assert fetcher._quote_yaml_value("Yes") == '"Yes"'
+
+    # Values with quotes inside should be escaped
+    result = fetcher._quote_yaml_value('Title "quoted"')
+    assert result == '"Title \\"quoted\\""'
+
+
 def test_fetch_with_cache(fetcher):
     """Test that fetch uses cache."""
     cached_ref = ReferenceContent(

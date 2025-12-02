@@ -182,7 +182,100 @@ Cache directory: references_cache
 
 ---
 
-### 3. `cache reference` - Pre-cache References
+### 3. `repair` - Automated Repair of Validation Errors
+
+Automatically fix or flag supporting text validation errors based on confidence thresholds.
+
+```bash
+# Repair a single quote
+linkml-reference-validator repair text <TEXT> <REFERENCE_ID> [OPTIONS]
+
+# Repair a data file (dry run by default)
+linkml-reference-validator repair data <DATA_FILE> --schema <SCHEMA> [OPTIONS]
+```
+
+**Example - Single Quote:**
+```bash
+# Try to repair a quote with ASCII subscript
+linkml-reference-validator repair text "CO2 levels were measured" PMID:12345678
+
+# Output:
+# ✓ Repaired successfully
+#   Original: CO2 levels were measured
+#   Repaired: CO₂ levels were measured
+#   Action: CHARACTER_NORMALIZATION
+#   Confidence: HIGH
+```
+
+**Example - Data File:**
+```bash
+# Dry run - show what would be changed
+linkml-reference-validator repair data disease.yaml \
+  --schema schema.yaml \
+  --dry-run
+
+# Apply auto-fixes (creates backup)
+linkml-reference-validator repair data disease.yaml \
+  --schema schema.yaml \
+  --no-dry-run
+
+# Custom output file
+linkml-reference-validator repair data disease.yaml \
+  --schema schema.yaml \
+  --no-dry-run \
+  --output repaired.yaml
+```
+
+**Repair Report Output:**
+```
+============================================================
+Repair Report
+============================================================
+
+HIGH CONFIDENCE FIXES (auto-applicable):
+  PMID:12345678 at evidence[0]:
+    Character normalization fix
+    'CO2 levels...' → 'CO₂ levels...'
+
+SUGGESTED FIXES (review recommended):
+  PMID:23456789 at evidence[1]:
+    Inserted ellipsis between non-contiguous parts
+
+RECOMMENDED REMOVALS (low confidence):
+  PMID:34567890 at evidence[2]:
+    Similarity: 8%
+    Snippet: 'Fabricated text that...'
+
+------------------------------------------------------------
+Summary:
+  Total items: 5
+  Already valid: 2
+  Auto-fixes: 1
+  Suggestions: 1
+  Removals: 1
+  Unverifiable: 0
+```
+
+**Repair Strategies:**
+
+| Strategy | Confidence | Description |
+|----------|------------|-------------|
+| Character Normalization | HIGH | Fix Unicode/symbol differences (CO2→CO₂, +/-→±) |
+| Ellipsis Insertion | MEDIUM | Insert `...` between non-contiguous text parts |
+| Fuzzy Correction | VARIES | Suggest closest matching text from reference |
+| Removal | VERY_LOW | Flag fabricated/not-found text for manual removal |
+
+**Options:**
+- `--dry-run / --no-dry-run` - Show changes without applying (default: dry-run)
+- `--auto-fix-threshold FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--output PATH` - Output file path (default: overwrite with backup)
+- `--config PATH` - Path to repair configuration file
+- `--cache-dir PATH` - Directory for caching references
+- `--verbose` - Show detailed output
+
+---
+
+### 4. `cache reference` - Pre-cache References
 
 Download and cache references for offline use.
 

@@ -16,6 +16,313 @@ class ValidationSeverity(str, Enum):
     INFO = "INFO"
 
 
+class RepairActionType(str, Enum):
+    """Types of repair actions.
+
+    Examples:
+        >>> RepairActionType.CHARACTER_NORMALIZATION.value
+        'CHARACTER_NORMALIZATION'
+        >>> RepairActionType.ELLIPSIS_INSERTION.value
+        'ELLIPSIS_INSERTION'
+    """
+
+    CHARACTER_NORMALIZATION = "CHARACTER_NORMALIZATION"  # Unicode/symbol fixes
+    ELLIPSIS_INSERTION = "ELLIPSIS_INSERTION"  # Insert ... between non-contiguous parts
+    FUZZY_CORRECTION = "FUZZY_CORRECTION"  # Replace with closest matching text
+    REMOVAL = "REMOVAL"  # Flag for removal (fabricated/not found)
+    UNVERIFIABLE = "UNVERIFIABLE"  # No abstract available
+
+
+class RepairConfidence(str, Enum):
+    """Confidence levels for repair actions.
+
+    Examples:
+        >>> RepairConfidence.HIGH.value
+        'HIGH'
+        >>> RepairConfidence.from_score(0.98) == RepairConfidence.HIGH
+        True
+        >>> RepairConfidence.from_score(0.88) == RepairConfidence.MEDIUM
+        True
+        >>> RepairConfidence.from_score(0.65) == RepairConfidence.LOW
+        True
+        >>> RepairConfidence.from_score(0.30) == RepairConfidence.VERY_LOW
+        True
+    """
+
+    HIGH = "HIGH"  # 0.95-1.00 - Auto-fix safe
+    MEDIUM = "MEDIUM"  # 0.80-0.95 - Suggest fix
+    LOW = "LOW"  # 0.50-0.80 - Flag for review
+    VERY_LOW = "VERY_LOW"  # 0.00-0.50 - Recommend removal
+
+    @classmethod
+    def from_score(cls, score: float) -> "RepairConfidence":
+        """Determine confidence level from similarity score.
+
+        Args:
+            score: Similarity score between 0.0 and 1.0
+
+        Returns:
+            Appropriate confidence level
+
+        Examples:
+            >>> RepairConfidence.from_score(1.0) == RepairConfidence.HIGH
+            True
+            >>> RepairConfidence.from_score(0.95) == RepairConfidence.HIGH
+            True
+            >>> RepairConfidence.from_score(0.90) == RepairConfidence.MEDIUM
+            True
+            >>> RepairConfidence.from_score(0.70) == RepairConfidence.LOW
+            True
+            >>> RepairConfidence.from_score(0.40) == RepairConfidence.VERY_LOW
+            True
+        """
+        if score >= 0.95:
+            return cls.HIGH
+        elif score >= 0.80:
+            return cls.MEDIUM
+        elif score >= 0.50:
+            return cls.LOW
+        else:
+            return cls.VERY_LOW
+
+
+@dataclass
+class RepairAction:
+    """A single repair action to apply.
+
+    Examples:
+        >>> action = RepairAction(
+        ...     action_type=RepairActionType.CHARACTER_NORMALIZATION,
+        ...     original_text="CO2 levels",
+        ...     repaired_text="CO₂ levels",
+        ...     confidence=RepairConfidence.HIGH,
+        ...     similarity_score=0.98,
+        ...     description="Replaced ASCII subscript"
+        ... )
+        >>> action.action_type.value
+        'CHARACTER_NORMALIZATION'
+        >>> action.can_auto_fix
+        True
+    """
+
+    action_type: RepairActionType
+    original_text: str
+    repaired_text: Optional[str] = None
+    confidence: RepairConfidence = RepairConfidence.LOW
+    similarity_score: float = 0.0
+    description: str = ""
+    reference_id: Optional[str] = None
+    path: Optional[str] = None  # Location in data structure
+
+    @property
+    def can_auto_fix(self) -> bool:
+        """Whether this action can be automatically applied.
+
+        Examples:
+            >>> action = RepairAction(
+            ...     action_type=RepairActionType.CHARACTER_NORMALIZATION,
+            ...     original_text="test",
+            ...     repaired_text="TEST",
+            ...     confidence=RepairConfidence.HIGH
+            ... )
+            >>> action.can_auto_fix
+            True
+            >>> action2 = RepairAction(
+            ...     action_type=RepairActionType.REMOVAL,
+            ...     original_text="test",
+            ...     confidence=RepairConfidence.VERY_LOW
+            ... )
+            >>> action2.can_auto_fix
+            False
+        """
+        # Never auto-remove, always require review
+        if self.action_type == RepairActionType.REMOVAL:
+            return False
+        if self.action_type == RepairActionType.UNVERIFIABLE:
+            return False
+        return self.confidence == RepairConfidence.HIGH and self.repaired_text is not None
+
+
+@dataclass
+class RepairResult:
+    """Result of attempting to repair a single validation error.
+
+    Examples:
+        >>> result = RepairResult(
+        ...     reference_id="PMID:12345678",
+        ...     original_text="CO2 levels",
+        ...     was_valid=False,
+        ...     is_repaired=True,
+        ...     repaired_text="CO₂ levels",
+        ...     actions=[RepairAction(
+        ...         action_type=RepairActionType.CHARACTER_NORMALIZATION,
+        ...         original_text="CO2",
+        ...         repaired_text="CO₂",
+        ...         confidence=RepairConfidence.HIGH
+        ...     )]
+        ... )
+        >>> result.is_repaired
+        True
+    """
+
+    reference_id: str
+    original_text: str
+    was_valid: bool = False
+    is_repaired: bool = False
+    repaired_text: Optional[str] = None
+    actions: list[RepairAction] = field(default_factory=list)
+    message: str = ""
+    path: Optional[str] = None
+
+
+@dataclass
+class RepairReport:
+    """Summary report of all repair results.
+
+    Examples:
+        >>> report = RepairReport()
+        >>> report.add_result(RepairResult(
+        ...     reference_id="PMID:1",
+        ...     original_text="test",
+        ...     was_valid=False,
+        ...     is_repaired=True,
+        ...     repaired_text="TEST"
+        ... ))
+        >>> report.total_items
+        1
+        >>> report.repaired_count
+        1
+    """
+
+    results: list[RepairResult] = field(default_factory=list)
+
+    def add_result(self, result: RepairResult) -> None:
+        """Add a repair result to the report."""
+        self.results.append(result)
+
+    @property
+    def total_items(self) -> int:
+        """Total number of items processed."""
+        return len(self.results)
+
+    @property
+    def already_valid_count(self) -> int:
+        """Number of items that were already valid."""
+        return sum(1 for r in self.results if r.was_valid)
+
+    @property
+    def repaired_count(self) -> int:
+        """Number of items that were repaired."""
+        return sum(1 for r in self.results if r.is_repaired)
+
+    @property
+    def auto_fixed_count(self) -> int:
+        """Number of items with high-confidence auto-fixes."""
+        count = 0
+        for r in self.results:
+            if r.is_repaired and any(a.can_auto_fix for a in r.actions):
+                count += 1
+        return count
+
+    @property
+    def suggested_count(self) -> int:
+        """Number of items with medium-confidence suggestions."""
+        count = 0
+        for r in self.results:
+            if not r.was_valid:
+                has_medium = any(
+                    a.confidence == RepairConfidence.MEDIUM for a in r.actions
+                )
+                if has_medium:
+                    count += 1
+        return count
+
+    @property
+    def removal_count(self) -> int:
+        """Number of items flagged for removal."""
+        count = 0
+        for r in self.results:
+            has_removal = any(
+                a.action_type == RepairActionType.REMOVAL for a in r.actions
+            )
+            if has_removal:
+                count += 1
+        return count
+
+    @property
+    def unverifiable_count(self) -> int:
+        """Number of items that cannot be verified (no abstract)."""
+        count = 0
+        for r in self.results:
+            has_unverifiable = any(
+                a.action_type == RepairActionType.UNVERIFIABLE for a in r.actions
+            )
+            if has_unverifiable:
+                count += 1
+        return count
+
+
+class RepairConfig(BaseModel):
+    """Configuration for repair operations.
+
+    Examples:
+        >>> config = RepairConfig()
+        >>> config.auto_fix_threshold
+        0.95
+        >>> config.suggest_threshold
+        0.8
+        >>> config = RepairConfig(auto_fix_threshold=0.98)
+        >>> config.auto_fix_threshold
+        0.98
+    """
+
+    auto_fix_threshold: float = Field(
+        default=0.95,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score for automatic fixes (0.95-1.00)",
+    )
+    suggest_threshold: float = Field(
+        default=0.80,
+        ge=0.0,
+        le=1.0,
+        description="Minimum similarity score for suggestions (0.80-0.95)",
+    )
+    removal_threshold: float = Field(
+        default=0.50,
+        ge=0.0,
+        le=1.0,
+        description="Below this threshold, recommend removal (0.00-0.50)",
+    )
+    dry_run: bool = Field(
+        default=True,
+        description="If True, only show what would be changed without modifying files",
+    )
+    create_backup: bool = Field(
+        default=True,
+        description="Create backup of original file before modifying",
+    )
+    character_mappings: dict[str, str] = Field(
+        default_factory=lambda: {
+            "+/-": "±",
+            "+-": "±",
+            "CO2": "CO₂",
+            "H2O": "H₂O",
+            "O2": "O₂",
+            "N2": "N₂",
+        },
+        description="Character substitution mappings for normalization",
+    )
+    skip_references: list[str] = Field(
+        default_factory=list,
+        description="Reference IDs to skip during repair (known issues)",
+    )
+    trusted_low_similarity: list[str] = Field(
+        default_factory=list,
+        description="Reference IDs that are trusted despite low similarity scores",
+    )
+
+
 class ReferenceValidationConfig(BaseModel):
     r"""Configuration for reference validation.
 

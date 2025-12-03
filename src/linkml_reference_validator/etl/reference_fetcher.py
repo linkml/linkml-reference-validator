@@ -334,6 +334,56 @@ class ReferenceFetcher:
         cache_dir = self.config.get_cache_dir()
         return cache_dir / f"{safe_id}.md"
 
+    def _quote_yaml_value(self, value: str) -> str:
+        """Quote a YAML value if it contains special characters.
+
+        YAML has many special characters that need quoting, including:
+        - [ ] { } : , # & * ? | - < > = ! % @ `
+        - Leading/trailing spaces
+        - Values that look like booleans, nulls, or numbers
+
+        Args:
+            value: The string value to potentially quote
+
+        Returns:
+            The value, quoted if necessary
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> fetcher._quote_yaml_value("[Cholera].")
+            '"[Cholera]."'
+            >>> fetcher._quote_yaml_value("Normal title")
+            'Normal title'
+            >>> fetcher._quote_yaml_value("Title: with colon")
+            '"Title: with colon"'
+        """
+        # Characters that require quoting in YAML values
+        special_chars = '[]{}:,#&*?|<>=!%@`"\'\\'
+        needs_quote = False
+
+        # Check for special characters
+        for char in special_chars:
+            if char in value:
+                needs_quote = True
+                break
+
+        # Check for leading/trailing whitespace
+        if value != value.strip():
+            needs_quote = True
+
+        # Check for values that YAML might misinterpret
+        lower_value = value.lower()
+        if lower_value in ('true', 'false', 'yes', 'no', 'on', 'off', 'null', '~'):
+            needs_quote = True
+
+        if needs_quote:
+            # Escape any existing double quotes and wrap in double quotes
+            escaped = value.replace('\\', '\\\\').replace('"', '\\"')
+            return f'"{escaped}"'
+
+        return value
+
     def _save_to_disk(self, reference: ReferenceContent) -> None:
         """Save reference content to disk cache as markdown with YAML frontmatter.
 
@@ -346,13 +396,13 @@ class ReferenceFetcher:
         lines.append("---")
         lines.append(f"reference_id: {reference.reference_id}")
         if reference.title:
-            lines.append(f"title: {reference.title}")
+            lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
             lines.append("authors:")
             for author in reference.authors:
-                lines.append(f"- {author}")
+                lines.append(f"- {self._quote_yaml_value(author)}")
         if reference.journal:
-            lines.append(f"journal: {reference.journal}")
+            lines.append(f"journal: {self._quote_yaml_value(reference.journal)}")
         if reference.year:
             lines.append(f"year: '{reference.year}'")
         if reference.doi:

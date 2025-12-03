@@ -4,6 +4,7 @@ import typer
 
 # Import subcommand modules
 from .cache import cache_app, reference_command
+from .repair import repair_app
 from .validate import data_command, text_command, validate_app
 
 # Main app
@@ -18,6 +19,12 @@ app.add_typer(
     validate_app,
     name="validate",
     help="Validate supporting text against references",
+)
+
+app.add_typer(
+    repair_app,
+    name="repair",
+    help="Repair supporting text validation errors",
 )
 
 app.add_typer(
@@ -38,4 +45,4 @@ def main():
     app()
 
 
-__all__ = ["validate_app", "cache_app", "main", "app"]
+__all__ = ["validate_app", "repair_app", "cache_app", "main", "app"]

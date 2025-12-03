@@ -18,4 +18,4 @@ content_type: abstract_only
 
 ## Content
 
-Protein X functions in cell cycle regulation and plays a critical role in DNA repair mechanisms. Our studies demonstrate that this protein is essential for maintaining genomic stability during mitosis. The protein localizes to the nucleus during S phase and interacts with key checkpoint proteins to ensure proper chromosome segregation.
+Protein X functions in cell cycle regulation and plays a critical role in DNA repair mechanisms. Our studies demonstrate that this protein is essential for maintaining genomic stability during mitosis. The protein localizes to the nucleus during S phase and interacts with key checkpoint proteins to ensure proper chromosome segregation. CO₂ levels were measured at various time points. The α-catenin protein was also observed in the study.

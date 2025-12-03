@@ -266,6 +266,10 @@ def data_command(
             typer.echo(f"  [{severity}] {result.message}")
             if hasattr(result, "instantiates") and result.instantiates:
                 typer.echo(f"    Location: {result.instantiates}")
+            # Show reference ID if available in instance data
+            if hasattr(result, "instance") and result.instance:
+                if isinstance(result.instance, dict) and "reference_id" in result.instance:
+                    typer.echo(f"    Reference: {result.instance['reference_id']}")
 
     typer.echo("\nValidation Summary:")
     typer.echo(f"  Total checks: {len(all_results)}")

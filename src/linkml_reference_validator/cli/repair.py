@@ -194,7 +194,7 @@ def data_command(
 @repair_app.command(name="text")
 def text_command(
     text: Annotated[str, typer.Argument(help="Supporting text to repair")],
-    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678)")],
+    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
     auto_fix_threshold: AutoFixThresholdOption = 0.95,
@@ -208,6 +208,9 @@ def text_command(
 
         # With verbose output
         linkml-reference-validator repair text "protein functions" PMID:12345678 --verbose
+
+        # Repair quote from a DOI
+        linkml-reference-validator repair text "some text" DOI:10.1038/nature12373
     """
     setup_logging(verbose)
 

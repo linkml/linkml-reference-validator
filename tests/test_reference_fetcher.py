@@ -205,3 +205,106 @@ def test_fetch_pmid_mock(mock_entrez, fetcher):
     assert result is not None
     assert result.reference_id == "PMID:12345678"
     assert result.title == "Test Article"
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_doi_mock(mock_get, fetcher):
+    """Test fetching DOI with mocked requests."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "ok",
+        "message": {
+            "title": ["Test DOI Article"],
+            "author": [
+                {"given": "John", "family": "Smith"},
+                {"given": "Alice", "family": "Doe"},
+            ],
+            "container-title": ["Nature"],
+            "published-print": {"date-parts": [[2024, 1, 15]]},
+            "abstract": "<jats:p>This is the abstract of the test article.</jats:p>",
+            "DOI": "10.1234/test.article",
+        },
+    }
+    mock_get.return_value = mock_response
+
+    result = fetcher._fetch_doi("10.1234/test.article")
+
+    assert result is not None
+    assert result.reference_id == "DOI:10.1234/test.article"
+    assert result.title == "Test DOI Article"
+    assert result.authors == ["John Smith", "Alice Doe"]
+    assert result.journal == "Nature"
+    assert result.year == "2024"
+    assert result.doi == "10.1234/test.article"
+    assert "This is the abstract" in result.content
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_doi_not_found(mock_get, fetcher):
+    """Test fetching DOI that doesn't exist."""
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_get.return_value = mock_response
+
+    result = fetcher._fetch_doi("10.1234/nonexistent")
+
+    assert result is None
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_doi_via_fetch_method(mock_get, fetcher):
+    """Test that fetch() correctly routes DOI requests to _fetch_doi."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "ok",
+        "message": {
+            "title": ["DOI Article via fetch()"],
+            "author": [{"given": "Jane", "family": "Doe"}],
+            "container-title": ["Science"],
+            "published-print": {"date-parts": [[2023]]},
+            "DOI": "10.5678/another.article",
+        },
+    }
+    mock_get.return_value = mock_response
+
+    result = fetcher.fetch("DOI:10.5678/another.article")
+
+    assert result is not None
+    assert result.reference_id == "DOI:10.5678/another.article"
+    assert result.title == "DOI Article via fetch()"
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_save_and_load_doi_from_disk(mock_get, fetcher, tmp_path):
+    """Test saving and loading DOI reference from disk cache."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {
+        "status": "ok",
+        "message": {
+            "title": ["Cached DOI Article"],
+            "author": [{"given": "Bob", "family": "Jones"}],
+            "container-title": ["Cell"],
+            "published-print": {"date-parts": [[2022, 6]]},
+            "abstract": "Abstract content here.",
+            "DOI": "10.9999/cached.doi",
+        },
+    }
+    mock_get.return_value = mock_response
+
+    # First fetch - this should save to disk
+    result1 = fetcher.fetch("DOI:10.9999/cached.doi")
+    assert result1 is not None
+
+    # Clear memory cache
+    fetcher._cache.clear()
+
+    # Second fetch - should load from disk
+    result2 = fetcher.fetch("DOI:10.9999/cached.doi")
+
+    assert result2 is not None
+    assert result2.reference_id == "DOI:10.9999/cached.doi"
+    assert result2.title == "Cached DOI Article"
+    assert result2.doi == "10.9999/cached.doi"

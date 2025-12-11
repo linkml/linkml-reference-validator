@@ -21,7 +21,7 @@ cache_app = typer.Typer(
 
 @cache_app.command(name="reference")
 def reference_command(
-    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678)")],
+    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
     cache_dir: CacheDirOption = None,
     force: ForceOption = False,
     verbose: VerboseOption = False,
@@ -36,6 +36,8 @@ def reference_command(
         linkml-reference-validator cache reference PMID:12345678
 
         linkml-reference-validator cache reference PMID:12345678 --force --verbose
+
+        linkml-reference-validator cache reference DOI:10.1038/nature12373
     """
     setup_logging(verbose)
 

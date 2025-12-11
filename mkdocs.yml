@@ -32,6 +32,7 @@ nav:
       - Python API: notebooks/03_python_api.ipynb
   - How-To Guides:
       - Validating OBO Files: how-to/validate-obo-files.md
+      - Validating DOIs: how-to/validate-dois.md
   - Concepts:
       - How It Works: concepts/how-it-works.md
       - Editorial Conventions: concepts/editorial-conventions.md

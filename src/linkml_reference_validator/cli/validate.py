@@ -32,7 +32,7 @@ validate_app = typer.Typer(
 @validate_app.command(name="text")
 def text_command(
     text: Annotated[str, typer.Argument(help="Supporting text to validate")],
-    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678)")],
+    reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
 ):
@@ -46,6 +46,8 @@ def text_command(
         linkml-reference-validator validate text "protein functions in cells" PMID:12345678
 
         linkml-reference-validator validate text "protein [X] functions ... cells" PMID:12345678 --verbose
+
+        linkml-reference-validator validate text "some text from article" DOI:10.1038/nature12373
     """
     setup_logging(verbose)
 

@@ -46,7 +46,7 @@ linkml-reference-validator validate text [OPTIONS] TEXT REFERENCE_ID
 ### Arguments
 
 - **TEXT** (required) - The supporting text to validate
-- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678)
+- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)
 
 ### Options
 
@@ -91,6 +91,13 @@ linkml-reference-validator validate text \
 linkml-reference-validator validate text \
   "MUC1 oncoprotein ... nuclear targeting" \
   PMID:16888623
+```
+
+**With DOI:**
+```bash
+linkml-reference-validator validate text \
+  "Nanometre-scale thermometry" \
+  DOI:10.1038/nature12373
 ```
 
 ### Exit Codes
@@ -228,7 +235,7 @@ linkml-reference-validator repair text [OPTIONS] TEXT REFERENCE_ID
 ### Arguments
 
 - **TEXT** (required) - The supporting text to repair
-- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678)
+- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)
 
 ### Options
 
@@ -459,7 +466,7 @@ linkml-reference-validator cache reference [OPTIONS] REFERENCE_ID
 
 ### Arguments
 
-- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678)
+- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)
 
 ### Options
 
@@ -489,6 +496,11 @@ linkml-reference-validator cache reference \
   --cache-dir /path/to/cache
 ```
 
+**Cache a DOI:**
+```bash
+linkml-reference-validator cache reference DOI:10.1038/nature12373
+```
+
 ### Output Format
 
 ```
@@ -512,7 +524,7 @@ PMID:9876543
 ```
 
 - Numeric identifier only
-- Fetches abstract and metadata
+- Fetches abstract and metadata from NCBI
 
 ### PubMed Central (PMC)
 
@@ -523,6 +535,17 @@ PMC:7654321
 
 - Numeric identifier only
 - Fetches full-text when available
+
+### DOI (Digital Object Identifier)
+
+```
+DOI:10.1038/nature12373
+DOI:10.1126/science.1234567
+```
+
+- Standard DOI format (10.prefix/suffix)
+- Fetches metadata from Crossref API
+- Abstract availability depends on publisher
 
 ---
 

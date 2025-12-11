@@ -74,6 +74,18 @@ linkml-reference-validator validate data \
   --target-class Statement
 ```
 
+## Validate Against a DOI
+
+You can also validate text against DOIs using the Crossref API:
+
+```bash
+linkml-reference-validator validate text \
+  "Nanometre-scale thermometry" \
+  DOI:10.1038/nature12373
+```
+
+This works the same way as PMID validation - the reference is fetched and cached locally.
+
 ## Key Features
 
 - **Automatic Caching**: References cached locally after first fetch
@@ -81,6 +93,7 @@ linkml-reference-validator validate data \
 - **Ellipsis**: Use `...` for omitted text: `"MUC1 ... nuclear targeting"`
 - **Deterministic Matching**: Substring-based (not AI/fuzzy matching)
 - **PubMed & PMC**: Fetches from NCBI automatically
+- **DOI Support**: Fetches metadata from Crossref API
 
 ## Next Steps
 

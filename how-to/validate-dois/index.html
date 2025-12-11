@@ -8,22 +8,28 @@
       
       
       
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-dois/">
       
+      
+        <link rel="prev" href="../validate-obo-files/">
+      
+      
+        <link rel="next" href="../../concepts/how-it-works/">
       
       
         
       
       
-      <link rel="icon" href="/linkml-reference-validator/assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>linkml-reference-validator</title>
+        <title>Validating DOIs - linkml-reference-validator</title>
       
     
     
-      <link rel="stylesheet" href="/linkml-reference-validator/assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -42,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL("/linkml-reference-validator/",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -59,6 +65,11 @@
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
       
+        
+        <a href="#validating-text-against-dois" class="md-skip">
+          Skip to content
+        </a>
+      
     </div>
     <div data-md-component="announce">
       
@@ -71,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="/linkml-reference-validator/." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -91,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              
+              Validating DOIs
             
           </span>
         </div>
@@ -181,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="/linkml-reference-validator/." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -211,7 +222,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/." class="md-nav__link">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -238,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/quickstart/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
@@ -312,7 +323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/notebooks/01_getting_started.ipynb" class="md-nav__link">
+      <a href="../../notebooks/01_getting_started.ipynb" class="md-nav__link">
         
   
   
@@ -340,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/notebooks/02_advanced_usage.ipynb" class="md-nav__link">
+      <a href="../../notebooks/02_advanced_usage.ipynb" class="md-nav__link">
         
   
   
@@ -368,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/notebooks/04_obo_validation.ipynb" class="md-nav__link">
+      <a href="../../notebooks/04_obo_validation.ipynb" class="md-nav__link">
         
   
   
@@ -396,7 +407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/notebooks/03_python_api.ipynb" class="md-nav__link">
+      <a href="../../notebooks/03_python_api.ipynb" class="md-nav__link">
         
   
   
@@ -428,18 +439,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -460,7 +473,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -478,7 +491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/how-to/validate-obo-files/" class="md-nav__link">
+      <a href="../validate-obo-files/" class="md-nav__link">
         
   
   
@@ -503,10 +516,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="/linkml-reference-validator/how-to/validate-dois/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -522,6 +562,192 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validate-a-single-quote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate a Single Quote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doi-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-caching-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-caching DOIs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-dois-in-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using DOIs in Data Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repairing-doi-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repairing DOI References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doi-vs-pmid-when-to-use-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI vs PMID: When to Use Each
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#content-type-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Content type: unavailable"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failed-to-fetch-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Failed to fetch DOI"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Limiting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -588,7 +814,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/concepts/how-it-works/" class="md-nav__link">
+      <a href="../../concepts/how-it-works/" class="md-nav__link">
         
   
   
@@ -616,7 +842,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/concepts/editorial-conventions/" class="md-nav__link">
+      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -698,7 +924,7 @@
   
   
     <li class="md-nav__item">
-      <a href="/linkml-reference-validator/reference/cli/" class="md-nav__link">
+      <a href="../../reference/cli/" class="md-nav__link">
         
   
   
@@ -743,6 +969,182 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validate-a-single-quote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate a Single Quote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#doi-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI Format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-caching-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-caching DOIs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-dois-in-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using DOIs in Data Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repairing-doi-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repairing DOI References
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#doi-vs-pmid-when-to-use-each" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI vs PMID: When to Use Each
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#content-type-unavailable" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Content type: unavailable"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#failed-to-fetch-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Failed to fetch DOI"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Limiting
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -755,8 +1157,175 @@
               
               <article class="md-content__inner md-typeset">
                 
-  <h1>404 - Not found</h1>
+                  
 
+
+  
+  
+
+
+<h1 id="validating-text-against-dois">Validating Text Against DOIs</h1>
+<p>This guide shows how to validate supporting text against publications using Digital Object Identifiers (DOIs).</p>
+<h2 id="overview">Overview</h2>
+<p>DOIs are persistent identifiers for digital objects, commonly used for journal articles. The validator fetches publication metadata from the <a href="https://www.crossref.org/documentation/retrieve-metadata/rest-api/">Crossref API</a> when you provide a DOI reference.</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="validate-a-single-quote">Validate a Single Quote</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Nanometre-scale thermometry&quot; \
+  DOI:10.1038/nature12373
+</code></pre>
+<p><strong>Output:</strong></p>
+<pre><code>Validating text against DOI:10.1038/nature12373...
+  Text: Nanometre-scale thermometry
+
+Result:
+  Valid: True
+  Message: Supporting text validated successfully in DOI:10.1038/nature12373
+</code></pre>
+<h3 id="doi-format">DOI Format</h3>
+<p>DOIs should be prefixed with <code>DOI:</code>:</p>
+<pre><code>DOI:10.1038/nature12373
+DOI:10.1126/science.1234567
+DOI:10.1016/j.cell.2023.01.001
+</code></pre>
+<p>The DOI itself follows the standard format: <code>10.prefix/suffix</code></p>
+<h2 id="pre-caching-dois">Pre-caching DOIs</h2>
+<p>For offline validation or to speed up repeated validations:</p>
+<pre><code class="language-bash">linkml-reference-validator cache reference DOI:10.1038/nature12373
+</code></pre>
+<p><strong>Output:</strong></p>
+<pre><code>Fetching DOI:10.1038/nature12373...
+Successfully cached DOI:10.1038/nature12373
+  Title: Nanometre-scale thermometry in a living cell
+  Authors: G. Kucsko, P. C. Maurer, N. Y. Yao
+  Content type: abstract_only
+  Content length: 1234 characters
+</code></pre>
+<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
+<h2 id="using-dois-in-data-files">Using DOIs in Data Files</h2>
+<p>DOIs work the same as PMIDs in LinkML data files:</p>
+<p><strong>schema.yaml:</strong></p>
+<pre><code class="language-yaml">id: https://example.org/my-schema
+name: my-schema
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+classes:
+  Statement:
+    attributes:
+      id:
+        identifier: true
+      supporting_text:
+        slot_uri: linkml:excerpt
+      reference:
+        slot_uri: linkml:authoritative_reference
+</code></pre>
+<p><strong>data.yaml:</strong></p>
+<pre><code class="language-yaml">- id: stmt1
+  supporting_text: Nanometre-scale thermometry
+  reference: DOI:10.1038/nature12373
+- id: stmt2
+  supporting_text: MUC1 oncoprotein blocks nuclear targeting
+  reference: PMID:16888623
+</code></pre>
+<p><strong>Validate:</strong></p>
+<pre><code class="language-bash">linkml-reference-validator validate data \
+  data.yaml \
+  --schema schema.yaml \
+  --target-class Statement
+</code></pre>
+<p>You can mix DOIs and PMIDs in the same data file.</p>
+<h2 id="repairing-doi-references">Repairing DOI References</h2>
+<p>The repair command also works with DOIs:</p>
+<pre><code class="language-bash">linkml-reference-validator repair text \
+  &quot;Nanometre scale thermometry&quot; \
+  DOI:10.1038/nature12373
+</code></pre>
+<h2 id="doi-vs-pmid-when-to-use-each">DOI vs PMID: When to Use Each</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>PMID</th>
+<th>DOI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source</td>
+<td>NCBI PubMed</td>
+<td>Crossref</td>
+</tr>
+<tr>
+<td>Coverage</td>
+<td>Biomedical literature</td>
+<td>All scholarly content</td>
+</tr>
+<tr>
+<td>Full text</td>
+<td>Via PMC when available</td>
+<td>Metadata only</td>
+</tr>
+<tr>
+<td>Abstract</td>
+<td>Usually available</td>
+<td>Depends on publisher</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use PMID when:</strong>
+- Working with biomedical/life science literature
+- Full text access is important
+- The article is indexed in PubMed</p>
+<p><strong>Use DOI when:</strong>
+- The article is not in PubMed
+- Working with non-biomedical journals
+- The DOI is more readily available</p>
+<h2 id="content-availability">Content Availability</h2>
+<p>Unlike PMIDs which often provide abstracts, DOI metadata from Crossref may have limited content:</p>
+<ul>
+<li><strong>Title</strong>: Always available</li>
+<li><strong>Authors</strong>: Usually available</li>
+<li><strong>Abstract</strong>: Depends on publisher policy</li>
+<li><strong>Full text</strong>: Not available via Crossref</li>
+</ul>
+<p>If the abstract is not available, validation will be limited to matching against the title and other metadata.</p>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="content-type-unavailable">"Content type: unavailable"</h3>
+<p>This means Crossref returned metadata but no abstract. The DOI was fetched successfully, but validation may fail if your text doesn't match the title.</p>
+<p><strong>Solution:</strong> Consider using the PMID if the article is in PubMed.</p>
+<h3 id="failed-to-fetch-doi">"Failed to fetch DOI"</h3>
+<p>The DOI may be invalid or the Crossref API may be temporarily unavailable.</p>
+<p><strong>Check:</strong>
+1. Verify the DOI format (should be <code>10.prefix/suffix</code>)
+2. Test the DOI at https://doi.org/YOUR_DOI
+3. Try again later if Crossref is rate-limiting</p>
+<h3 id="rate-limiting">Rate Limiting</h3>
+<p>The validator automatically respects Crossref rate limits. For bulk operations, consider:</p>
+<ol>
+<li>Pre-caching references before validation</li>
+<li>Using a polite pool (add your email in config for higher limits)</li>
+</ol>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../../quickstart/">Quickstart</a> - Getting started with validation</li>
+<li><a href="../../reference/cli/">CLI Reference</a> - Complete command documentation</li>
+<li><a href="../validate-obo-files/">Validating OBO Files</a> - Working with ontology files</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
               </article>
             </div>
           
@@ -795,10 +1364,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "/linkml-reference-validator/", "features": ["content.tabs.link"], "search": "/linkml-reference-validator/assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="/linkml-reference-validator/assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

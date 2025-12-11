@@ -342,6 +342,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#validate-against-a-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against a DOI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -599,6 +610,34 @@
     
   
     Validating OBO Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
   
 
     
@@ -871,6 +910,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#validate-against-a-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against a DOI
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -965,6 +1015,13 @@ classes:
   --schema schema.yaml \
   --target-class Statement
 </code></pre>
+<h2 id="validate-against-a-doi">Validate Against a DOI</h2>
+<p>You can also validate text against DOIs using the Crossref API:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Nanometre-scale thermometry&quot; \
+  DOI:10.1038/nature12373
+</code></pre>
+<p>This works the same way as PMID validation - the reference is fetched and cached locally.</p>
 <h2 id="key-features">Key Features</h2>
 <ul>
 <li><strong>Automatic Caching</strong>: References cached locally after first fetch</li>
@@ -972,6 +1029,7 @@ classes:
 <li><strong>Ellipsis</strong>: Use <code>...</code> for omitted text: <code>"MUC1 ... nuclear targeting"</code></li>
 <li><strong>Deterministic Matching</strong>: Substring-based (not AI/fuzzy matching)</li>
 <li><strong>PubMed &amp; PMC</strong>: Fetches from NCBI automatically</li>
+<li><strong>DOI Support</strong>: Fetches metadata from Crossref API</li>
 </ul>
 <h2 id="next-steps">Next Steps</h2>
 <ul>

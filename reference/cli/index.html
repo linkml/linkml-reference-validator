@@ -508,6 +508,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/validate-dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1312,6 +1340,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#doi-digital-object-identifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI (Digital Object Identifier)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2042,6 +2081,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#doi-digital-object-identifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        DOI (Digital Object Identifier)
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2211,7 +2261,7 @@
 <h3 id="arguments">Arguments</h3>
 <ul>
 <li><strong>TEXT</strong> (required) - The supporting text to validate</li>
-<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678)</li>
+<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)</li>
 </ul>
 <h3 id="options_1">Options</h3>
 <ul>
@@ -2246,6 +2296,11 @@
 <pre><code class="language-bash">linkml-reference-validator validate text \
   &quot;MUC1 oncoprotein ... nuclear targeting&quot; \
   PMID:16888623
+</code></pre>
+<p><strong>With DOI:</strong></p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Nanometre-scale thermometry&quot; \
+  DOI:10.1038/nature12373
 </code></pre>
 <h3 id="exit-codes">Exit Codes</h3>
 <ul>
@@ -2348,7 +2403,7 @@ Validation Summary:
 <h3 id="arguments_2">Arguments</h3>
 <ul>
 <li><strong>TEXT</strong> (required) - The supporting text to repair</li>
-<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678)</li>
+<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)</li>
 </ul>
 <h3 id="options_3">Options</h3>
 <ul>
@@ -2531,7 +2586,7 @@ Summary:
 </code></pre>
 <h3 id="arguments_4">Arguments</h3>
 <ul>
-<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678)</li>
+<li><strong>REFERENCE_ID</strong> (required) - Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)</li>
 </ul>
 <h3 id="options_5">Options</h3>
 <ul>
@@ -2554,6 +2609,9 @@ Summary:
   PMID:16888623 \
   --cache-dir /path/to/cache
 </code></pre>
+<p><strong>Cache a DOI:</strong></p>
+<pre><code class="language-bash">linkml-reference-validator cache reference DOI:10.1038/nature12373
+</code></pre>
 <h3 id="output-format_4">Output Format</h3>
 <pre><code>Fetching PMID:16888623...
 Successfully cached PMID:16888623
@@ -2570,7 +2628,7 @@ PMID:9876543
 </code></pre>
 <ul>
 <li>Numeric identifier only</li>
-<li>Fetches abstract and metadata</li>
+<li>Fetches abstract and metadata from NCBI</li>
 </ul>
 <h3 id="pubmed-central-pmc">PubMed Central (PMC)</h3>
 <pre><code>PMC:3458566
@@ -2579,6 +2637,15 @@ PMC:7654321
 <ul>
 <li>Numeric identifier only</li>
 <li>Fetches full-text when available</li>
+</ul>
+<h3 id="doi-digital-object-identifier">DOI (Digital Object Identifier)</h3>
+<pre><code>DOI:10.1038/nature12373
+DOI:10.1126/science.1234567
+</code></pre>
+<ul>
+<li>Standard DOI format (10.prefix/suffix)</li>
+<li>Fetches metadata from Crossref API</li>
+<li>Abstract availability depends on publisher</li>
 </ul>
 <hr />
 <h2 id="environment-variables">Environment Variables</h2>

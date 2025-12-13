@@ -7,10 +7,13 @@ inputs:
     required: true
   anthropic_api_key:
     description: "Anthropic API key"
-    required: true
+    required: false
   cborg_api_key:
     description: "CBORG API key"
-    required: true
+    required: false
+  claude_code_oauth_token:
+    description: "Claude Code OAuth token"
+    required: false
   prompt:
     description: "The prompt to send to Claude Code"
     required: false
@@ -90,6 +93,7 @@ runs:
       shell: bash
       id: prepare_prompt
       run: |
+
         # Check if either prompt or prompt_file is provided
         if [ -z "${{ inputs.prompt }}" ] && [ -z "${{ inputs.prompt_file }}" ]; then
           echo "::error::Neither 'prompt' nor 'prompt_file' was provided. At least one is required."
@@ -125,6 +129,14 @@ runs:
       shell: bash
       id: run_claude
       run: |
+
+        if [ ! -z "${{ inputs.claude_code_oauth_token }}" ]; then
+          echo CLAUDE AUTH TOKEN IS NOT SET
+        else
+          echo CLAUDE AUTH TOKEN IS SET
+          export ANTHROPIC_API_KEY=
+        fi
+
         ALLOWED_TOOLS_ARG=""
         if [ ! -z "${{ inputs.allowed_tools }}" ]; then
           ALLOWED_TOOLS_ARG="--allowedTools ${{ inputs.allowed_tools }}"
@@ -135,7 +147,7 @@ runs:
 
         if [ -z "${{ inputs.output_file }}" ]; then
           # Run Claude Code and output to console
-          timeout $timeout_seconds claude \
+          claude \
             -p \
             --verbose \
             --output-format stream-json \
@@ -143,7 +155,7 @@ runs:
             ${{ inputs.allowed_tools != '' && format('--allowedTools "{0}"', inputs.allowed_tools) || '' }}
         else
           # Run Claude Code and tee output to console and file
-          timeout $timeout_seconds claude \
+          claude \
             -p \
             --verbose \
             --output-format stream-json \
@@ -160,8 +172,9 @@ runs:
         fi
       
       env:
-        ANTHROPIC_API_KEY: "."
-        ANTHROPIC_AUTH_TOKEN: ${{ inputs.cborg_api_key }}
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        # ANTHROPIC_AUTH_TOKEN: ${{ inputs.cborg_api_key }}
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude_code_oauth_token }}
         GITHUB_TOKEN: ${{ inputs.github_token }}
-        ANTHROPIC_BASE_URL: "https://api.cborg.lbl.gov"
-        DISABLE_NON_ESSENTIAL_MODEL_CALLS: "1"
+        # ANTHROPIC_BASE_URL: "https://api.cborg.lbl.gov"
+        # DISABLE_NON_ESSENTIAL_MODEL_CALLS: "1"

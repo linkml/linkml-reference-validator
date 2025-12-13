@@ -8,7 +8,10 @@ inputs:
     default: "5"
   anthropic_api_key:
     description: "Anthropic API key"
-    required: true
+    required: false
+  claude_code_oauth_token:
+    description: "Claude Code OAuth token"
+    required: false
   cborg_api_key:
     description: "CBORG API key"
     required: true
@@ -22,7 +25,7 @@ runs:
     - name: Checkout repository code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0
+        ref: ${{ github.ref }}
 
     - name: Create prompt file
       shell: bash
@@ -87,5 +90,6 @@ runs:
         install_github_mcp: "true"
         timeout_minutes: ${{ inputs.timeout_minutes }}
         anthropic_api_key: ${{ inputs.anthropic_api_key }}
+        claude_code_oauth_token: ${{ inputs.claude_code_oauth_token }}
         cborg_api_key: ${{ inputs.cborg_api_key }}
         github_token: ${{ inputs.github_token }}

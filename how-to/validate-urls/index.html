@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/concepts/how-it-works/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-urls/">
       
       
-        <link rel="prev" href="../../how-to/validate-urls/">
+        <link rel="prev" href="../validate-dois/">
       
       
-        <link rel="next" href="../editorial-conventions/">
+        <link rel="next" href="../../concepts/how-it-works/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>How It Works - linkml-reference-validator</title>
+        <title>Validating URLs - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#how-it-works" class="md-skip">
+        <a href="#validating-url-references" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              How It Works
+              Validating URLs
             
           </span>
         </div>
@@ -439,18 +439,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -471,7 +473,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -489,7 +491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../how-to/validate-obo-files/" class="md-nav__link">
+      <a href="../validate-obo-files/" class="md-nav__link">
         
   
   
@@ -517,7 +519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../how-to/validate-dois/" class="md-nav__link">
+      <a href="../validate-dois/" class="md-nav__link">
         
   
   
@@ -542,90 +544,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../../how-to/validate-urls/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating URLs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-    
-      
-      
-  
-  
-    
-  
-  
-  
-    
-    
-    
-    
-    
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
-        
-          
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
-            
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Concepts
-  
-
-    
-  </span>
-  
-  
-
-            <span class="md-nav__icon md-icon"></span>
-          </label>
-        
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
-          <label class="md-nav__title" for="__nav_5">
-            <span class="md-nav__icon md-icon"></span>
-            
-  
-    Concepts
-  
-
-          </label>
-          <ul class="md-nav__list" data-md-scrollfix>
-            
-              
-                
-  
-  
     
   
   
@@ -645,7 +563,7 @@
   <span class="md-ellipsis">
     
   
-    How It Works
+    Validating URLs
   
 
     
@@ -663,7 +581,7 @@
   <span class="md-ellipsis">
     
   
-    How It Works
+    Validating URLs
   
 
     
@@ -700,22 +618,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-validation-process" class="md-nav__link">
+  <a href="#url-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Validation Process
+        URL Format
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The Validation Process">
+    <nav class="md-nav" aria-label="URL Format">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-text-normalization" class="md-nav__link">
+  <a href="#explicit-url-prefix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Text Normalization
+        Explicit URL Prefix
       
     </span>
   </a>
@@ -723,21 +641,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-substring-matching" class="md-nav__link">
+  <a href="#direct-url" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Substring Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-ellipsis-handling" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Ellipsis Handling
+        Direct URL
       
     </span>
   </a>
@@ -750,22 +657,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-deterministic-matching" class="md-nav__link">
+  <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Deterministic Matching?
+        Example
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Why Deterministic Matching?">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-url-validation-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How URL Validation Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How URL Validation Works">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#not-fuzzy-matching" class="md-nav__link">
+  <a href="#1-content-fetching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not Fuzzy Matching
+        1. Content Fetching
       
     </span>
   </a>
@@ -773,10 +691,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#not-ai-based" class="md-nav__link">
+  <a href="#2-content-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not AI-Based
+        2. Content Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-content-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Content Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Caching
       
     </span>
   </a>
@@ -789,202 +729,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reference-fetching" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reference Fetching
+        Configuration
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Reference Fetching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pubmed-pmid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PubMed (PMID)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doi-digital-object-identifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DOI (Digital Object Identifier)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pubmed-central-pmc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PubMed Central (PMC)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Caching
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Caching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cache-benefits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cache Benefits
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#linkml-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LinkML Integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#editorial-conventions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Editorial Conventions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Editorial Conventions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#square-brackets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Square Brackets [...]
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ellipsis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ellipsis ...
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#design-principles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Design Principles
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Design Principles">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-conservative-by-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Conservative by Default
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-progressive-disclosure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Progressive Disclosure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cli-first" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. CLI-First
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-standards-based" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Standards-Based
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1001,10 +752,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-tool-does-not-do" class="md-nav__link">
+  <a href="#static-content-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Tool Does NOT Do
+        Static Content Only
       
     </span>
   </a>
@@ -1012,10 +763,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#known-limitations" class="md-nav__link">
+  <a href="#html-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known Limitations
+        HTML Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-rendering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Rendering
       
     </span>
   </a>
@@ -1028,22 +790,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-to-use-this-tool" class="md-nav__link">
+  <a href="#best-practices" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When to Use This Tool
+        Best Practices
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="When to Use This Tool">
+    <nav class="md-nav" aria-label="Best Practices">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#good-use-cases" class="md-nav__link">
+  <a href="#1-use-stable-urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Good Use Cases ✅
+        1. Use Stable URLs
       
     </span>
   </a>
@@ -1051,10 +813,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#not-recommended" class="md-nav__link">
+  <a href="#2-verify-content-quality" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not Recommended ❌
+        2. Verify Content Quality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Cache Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-mix-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Mix Reference Types
       
     </span>
   </a>
@@ -1063,6 +847,78 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#url-not-fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        URL Not Fetching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incorrect-content-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incorrect Content Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-failing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-other-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Other Reference Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1075,6 +931,60 @@
 
               
             
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
               
                 
   
@@ -1082,7 +992,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../editorial-conventions/" class="md-nav__link">
+      <a href="../../concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -1230,22 +1168,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#the-validation-process" class="md-nav__link">
+  <a href="#url-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The Validation Process
+        URL Format
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="The Validation Process">
+    <nav class="md-nav" aria-label="URL Format">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-text-normalization" class="md-nav__link">
+  <a href="#explicit-url-prefix" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Text Normalization
+        Explicit URL Prefix
       
     </span>
   </a>
@@ -1253,21 +1191,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-substring-matching" class="md-nav__link">
+  <a href="#direct-url" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Substring Matching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-ellipsis-handling" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Ellipsis Handling
+        Direct URL
       
     </span>
   </a>
@@ -1280,22 +1207,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#why-deterministic-matching" class="md-nav__link">
+  <a href="#example" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Why Deterministic Matching?
+        Example
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Why Deterministic Matching?">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-url-validation-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How URL Validation Works
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="How URL Validation Works">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#not-fuzzy-matching" class="md-nav__link">
+  <a href="#1-content-fetching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not Fuzzy Matching
+        1. Content Fetching
       
     </span>
   </a>
@@ -1303,10 +1241,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#not-ai-based" class="md-nav__link">
+  <a href="#2-content-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not AI-Based
+        2. Content Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-content-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Content Type
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-caching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Caching
       
     </span>
   </a>
@@ -1319,202 +1279,13 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#reference-fetching" class="md-nav__link">
+  <a href="#configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Reference Fetching
+        Configuration
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Reference Fetching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#pubmed-pmid" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PubMed (PMID)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doi-digital-object-identifier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DOI (Digital Object Identifier)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#pubmed-central-pmc" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        PubMed Central (PMC)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Caching
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Caching">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#cache-benefits" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Cache Benefits
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#linkml-integration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LinkML Integration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#editorial-conventions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Editorial Conventions
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Editorial Conventions">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#square-brackets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Square Brackets [...]
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#ellipsis" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ellipsis ...
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#design-principles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Design Principles
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Design Principles">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-conservative-by-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Conservative by Default
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-progressive-disclosure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Progressive Disclosure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cli-first" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. CLI-First
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-standards-based" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Standards-Based
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -1531,10 +1302,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#what-this-tool-does-not-do" class="md-nav__link">
+  <a href="#static-content-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What This Tool Does NOT Do
+        Static Content Only
       
     </span>
   </a>
@@ -1542,10 +1313,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#known-limitations" class="md-nav__link">
+  <a href="#html-structure" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Known Limitations
+        HTML Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-rendering" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No Rendering
       
     </span>
   </a>
@@ -1558,22 +1340,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#when-to-use-this-tool" class="md-nav__link">
+  <a href="#best-practices" class="md-nav__link">
     <span class="md-ellipsis">
       
-        When to Use This Tool
+        Best Practices
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="When to Use This Tool">
+    <nav class="md-nav" aria-label="Best Practices">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#good-use-cases" class="md-nav__link">
+  <a href="#1-use-stable-urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Good Use Cases ✅
+        1. Use Stable URLs
       
     </span>
   </a>
@@ -1581,10 +1363,32 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#not-recommended" class="md-nav__link">
+  <a href="#2-verify-content-quality" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Not Recommended ❌
+        2. Verify Content Quality
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-cache-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Cache Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-mix-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Mix Reference Types
       
     </span>
   </a>
@@ -1593,6 +1397,78 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#url-not-fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        URL Not Fetching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#incorrect-content-extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Incorrect Content Extraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-failing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failing
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#comparison-with-other-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Comparison with Other Reference Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1616,213 +1492,241 @@
   
 
 
-<h1 id="how-it-works">How It Works</h1>
-<p>Understanding the validation process and design decisions.</p>
+<h1 id="validating-url-references">Validating URL References</h1>
+<p>This guide explains how to validate references that use URLs instead of traditional identifiers like PMIDs or DOIs.</p>
 <h2 id="overview">Overview</h2>
-<p>linkml-reference-validator validates that quoted text (supporting text) actually appears in cited references. It uses <strong>deterministic substring matching</strong> rather than fuzzy or AI-based approaches.</p>
-<h2 id="the-validation-process">The Validation Process</h2>
-<h3 id="1-text-normalization">1. Text Normalization</h3>
-<p>Before matching, both the supporting text and reference content are normalized:</p>
+<p>The linkml-reference-validator supports validating references that point to web content, such as:</p>
 <ul>
-<li><strong>Lowercased</strong>: <code>"MUC1"</code> → <code>"muc1"</code></li>
-<li><strong>Punctuation removed</strong>: <code>"c-Abl"</code> → <code>"c abl"</code></li>
-<li><strong>Whitespace collapsed</strong>: Multiple spaces become single space</li>
-<li><strong>Editorial notes removed</strong>: <code>"[mucin 1]"</code> → <code>""</code></li>
+<li>Book chapters hosted online</li>
+<li>Educational resources</li>
+<li>Documentation pages</li>
+<li>Blog posts or articles</li>
+<li>Any static web content</li>
 </ul>
-<p><strong>Example:</strong></p>
-<pre><code>Original: &quot;MUC1 [mucin 1] oncoprotein blocks c-Abl!!!&quot;
-Normalized: &quot;muc1 oncoprotein blocks c abl&quot;
+<p>When a reference field contains a URL, the validator:</p>
+<ol>
+<li>Fetches the web page content</li>
+<li>Extracts the page title</li>
+<li>Converts HTML to plain text</li>
+<li>Validates the extracted content against your supporting text</li>
+</ol>
+<h2 id="url-format">URL Format</h2>
+<p>URLs can be specified in two ways:</p>
+<h3 id="explicit-url-prefix">Explicit URL Prefix</h3>
+<pre><code class="language-yaml">my_field:
+  value: &quot;Some text from the web page...&quot;
+  references:
+    - &quot;URL:https://example.com/book/chapter1&quot;
 </code></pre>
-<p>This allows matching despite formatting differences while maintaining exactness.</p>
-<h3 id="2-substring-matching">2. Substring Matching</h3>
-<p>After normalization, the validator checks if the supporting text appears as a substring in the reference content.</p>
-<p><strong>Simple case:</strong></p>
-<pre><code class="language-python">supporting_text = &quot;MUC1 oncoprotein&quot;
-reference_content = &quot;...The MUC1 oncoprotein blocks nuclear...&quot;
-# Match: &quot;muc1 oncoprotein&quot; found in normalized reference
+<h3 id="direct-url">Direct URL</h3>
+<pre><code class="language-yaml">my_field:
+  value: &quot;Some text from the web page...&quot;
+  references:
+    - &quot;https://example.com/book/chapter1&quot;
 </code></pre>
-<h3 id="3-ellipsis-handling">3. Ellipsis Handling</h3>
-<p>When supporting text contains <code>...</code>, each part is matched separately:</p>
-<pre><code>Supporting: &quot;MUC1 oncoprotein ... nuclear targeting&quot;
-Parts: [&quot;MUC1 oncoprotein&quot;, &quot;nuclear targeting&quot;]
-# Both parts must exist in the reference
+<p>Both formats are equivalent. If a reference starts with <code>http://</code> or <code>https://</code>, it's automatically recognized as a URL reference.</p>
+<h2 id="example">Example</h2>
+<p>Suppose you have an online textbook chapter at <code>https://example.com/biology/cell-structure</code> with the following content:</p>
+<pre><code class="language-html">&lt;html&gt;
+  &lt;head&gt;
+    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;h1&gt;Cell Structure and Function&lt;/h1&gt;
+    &lt;p&gt;The cell is the basic structural and functional unit of all living organisms.&lt;/p&gt;
+    &lt;p&gt;Cells contain various organelles that perform specific functions...&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
 </code></pre>
-<h2 id="why-deterministic-matching">Why Deterministic Matching?</h2>
-<h3 id="not-fuzzy-matching">Not Fuzzy Matching</h3>
-<p>We explicitly avoid fuzzy/similarity matching because:</p>
-<ol>
-<li><strong>Accuracy</strong>: No false positives from "close enough" matches</li>
-<li><strong>Reproducibility</strong>: Same input always gives same result</li>
-<li><strong>Explainability</strong>: Clear why something matched or didn't</li>
-<li><strong>Trust</strong>: Critical for scientific accuracy</li>
-</ol>
-<h3 id="not-ai-based">Not AI-Based</h3>
-<p>We don't use LLMs or semantic similarity because:</p>
-<ol>
-<li><strong>Determinism</strong>: Results must be reproducible</li>
-<li><strong>Verifiability</strong>: Humans can verify the match themselves</li>
-<li><strong>No hallucinations</strong>: The text either exists or doesn't</li>
-<li><strong>Simplicity</strong>: No model dependencies or API costs</li>
-</ol>
-<h2 id="reference-fetching">Reference Fetching</h2>
-<p>The validator supports multiple reference types:</p>
-<h3 id="pubmed-pmid">PubMed (PMID)</h3>
-<p>For <code>PMID:12345678</code>:</p>
-<ol>
-<li>Queries NCBI E-utilities API</li>
-<li>Fetches abstract and metadata</li>
-<li>Attempts to retrieve full-text from PMC if available</li>
-<li>Parses XML response with BeautifulSoup</li>
-<li>Caches as markdown with YAML frontmatter</li>
-</ol>
-<h3 id="doi-digital-object-identifier">DOI (Digital Object Identifier)</h3>
-<p>For <code>DOI:10.1234/journal.article</code>:</p>
-<ol>
-<li>Queries Crossref API for metadata</li>
-<li>Fetches abstract and bibliographic information</li>
-<li>Extracts title, authors, journal, year</li>
-<li>Caches abstract and metadata as markdown</li>
-</ol>
-<h3 id="urls">URLs</h3>
-<p>For <code>URL:https://example.com/page</code> or <code>https://example.com/page</code>:</p>
-<ol>
-<li>Makes HTTP GET request to fetch web page</li>
-<li>Extracts title from <code>&lt;title&gt;</code> tag</li>
-<li>Converts HTML to plain text (removes scripts, styles, navigation)</li>
-<li>Normalizes whitespace</li>
-<li>Caches as markdown with content type <code>html_converted</code></li>
-</ol>
-<p><strong>Use cases for URLs:</strong>
-- Online book chapters
-- Educational resources
-- Documentation pages
-- Any static web content</p>
-<p><strong>Limitations:</strong>
-- Works best with static HTML content
-- Does not execute JavaScript
-- Cannot access content behind authentication
-- Complex dynamic pages may not extract well</p>
-<h3 id="pubmed-central-pmc">PubMed Central (PMC)</h3>
-<p>For <code>PMC:12345</code>:</p>
-<ol>
-<li>Queries PMC API for full-text XML</li>
-<li>Extracts all sections (abstract, introduction, methods, results, discussion)</li>
-<li>Provides more content than abstracts alone</li>
-<li>Also cached as markdown</li>
-</ol>
-<h2 id="caching">Caching</h2>
-<p>References are cached in <code>references_cache/</code> as markdown files:</p>
-<pre><code>references_cache/
-  PMID_16888623.md
-  PMC_3458566.md
+<p>You can validate text extracted from this chapter:</p>
+<pre><code class="language-yaml">description:
+  value: &quot;The cell is the basic structural and functional unit of all living organisms&quot;
+  references:
+    - &quot;https://example.com/biology/cell-structure&quot;
 </code></pre>
-<p><strong>Cache file format:</strong></p>
+<h2 id="how-url-validation-works">How URL Validation Works</h2>
+<h3 id="1-content-fetching">1. Content Fetching</h3>
+<p>When the validator encounters a URL reference, it:</p>
+<ul>
+<li>Makes an HTTP GET request to fetch the page</li>
+<li>Uses a polite user agent header identifying the tool</li>
+<li>Respects rate limiting (configurable via <code>rate_limit_delay</code>)</li>
+<li>Handles timeouts (default 30 seconds)</li>
+</ul>
+<h3 id="2-content-extraction">2. Content Extraction</h3>
+<p>The fetcher extracts content from the HTML:</p>
+<ul>
+<li><strong>Title</strong>: Extracted from the <code>&lt;title&gt;</code> tag</li>
+<li><strong>Content</strong>: HTML is converted to plain text using BeautifulSoup</li>
+<li><strong>Cleanup</strong>: Removes scripts, styles, navigation, headers, and footers</li>
+<li><strong>Normalization</strong>: Whitespace is normalized for better matching</li>
+</ul>
+<h3 id="3-content-type">3. Content Type</h3>
+<p>URL references are marked with content type <code>html_converted</code> to distinguish them from other reference types like abstracts or full-text articles.</p>
+<h3 id="4-caching">4. Caching</h3>
+<p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
 <pre><code class="language-markdown">---
-reference_id: PMID:16888623
-title: MUC1 oncoprotein blocks nuclear targeting...
-authors:
-  - Raina D
-  - Ahmad R
-journal: Molecular Cell
-year: '2006'
-doi: 10.1016/j.molcel.2006.04.017
-content_type: abstract_only
+reference_id: URL:https://example.com/biology/cell-structure
+title: &quot;Chapter 3: Cell Structure and Function&quot;
+content_type: html_converted
 ---
 
-# MUC1 oncoprotein blocks nuclear targeting...
-
-**Authors:** Raina D, Ahmad R, ...
-**Journal:** Molecular Cell (2006)
+# Chapter 3: Cell Structure and Function
 
 ## Content
 
-The MUC1 oncoprotein blocks nuclear targeting...
+The cell is the basic structural and functional unit of all living organisms.
+Cells contain various organelles that perform specific functions...
 </code></pre>
-<h3 id="cache-benefits">Cache Benefits</h3>
-<ul>
-<li><strong>Offline usage</strong>: Work without network after initial fetch</li>
-<li><strong>Performance</strong>: Instant validation after first fetch</li>
-<li><strong>Reproducibility</strong>: Same reference version for all validations</li>
-<li><strong>Inspection</strong>: Human-readable cache files</li>
-</ul>
-<h2 id="linkml-integration">LinkML Integration</h2>
-<p>The validator is a LinkML plugin that uses special slot URIs:</p>
-<pre><code class="language-yaml">classes:
-  Statement:
-    attributes:
-      supporting_text:
-        slot_uri: linkml:excerpt  # Marks as quoted text
-      reference:
-        slot_uri: linkml:authoritative_reference  # Marks as reference ID
+<p>Cache files are stored in the configured cache directory (default: <code>.linkml-reference-validator-cache/</code>).</p>
+<h2 id="configuration">Configuration</h2>
+<p>URL fetching behavior can be configured:</p>
+<pre><code class="language-yaml"># config.yaml
+rate_limit_delay: 0.5  # Wait 0.5 seconds between requests
+email: &quot;your-email@example.com&quot;  # Used in user agent
+cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
 </code></pre>
-<p>When LinkML validates data, it calls our plugin for fields marked with these URIs.</p>
-<h2 id="editorial-conventions">Editorial Conventions</h2>
-<h3 id="square-brackets">Square Brackets <code>[...]</code></h3>
-<p>Used for editorial clarifications inserted into quotes:</p>
-<pre><code>Original reference: &quot;MUC1 oncoprotein blocks nuclear targeting&quot;
-Your quote: &quot;MUC1 [mucin 1] oncoprotein blocks nuclear targeting&quot;
+<p>Or via command-line:</p>
+<pre><code class="language-bash">linkml-reference-validator validate \
+  --cache-dir .cache \
+  --rate-limit-delay 0.5 \
+  my-data.yaml
 </code></pre>
-<p>The <code>[mucin 1]</code> is removed before matching.</p>
-<h3 id="ellipsis">Ellipsis <code>...</code></h3>
-<p>Used to indicate omitted text between parts:</p>
-<pre><code>Original: &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot;
-Your quote: &quot;MUC1 oncoprotein ... c-Abl&quot;
-</code></pre>
-<p>Both parts must exist in the reference.</p>
-<h2 id="design-principles">Design Principles</h2>
-<h3 id="1-conservative-by-default">1. Conservative by Default</h3>
-<ul>
-<li>Only exact substring matches count</li>
-<li>No approximations or suggestions</li>
-<li>Fail fast on mismatches</li>
-</ul>
-<h3 id="2-progressive-disclosure">2. Progressive Disclosure</h3>
-<ul>
-<li>Simple cases require minimal syntax</li>
-<li>Advanced features (editorial notes, ellipsis) available when needed</li>
-<li>Sensible defaults (cache location, etc.)</li>
-</ul>
-<h3 id="3-cli-first">3. CLI-First</h3>
-<ul>
-<li>Command-line is the primary interface</li>
-<li>Python API available for integration</li>
-<li>No GUI required</li>
-</ul>
-<h3 id="4-standards-based">4. Standards-Based</h3>
-<ul>
-<li>Uses LinkML schemas</li>
-<li>NCBI standard identifiers (PMID, PMC)</li>
-<li>Markdown for cache files</li>
-</ul>
 <h2 id="limitations">Limitations</h2>
-<h3 id="what-this-tool-does-not-do">What This Tool Does NOT Do</h3>
+<h3 id="static-content-only">Static Content Only</h3>
+<p>URL validation is designed for static web pages. It may not work well with:</p>
 <ul>
-<li><strong>Semantic matching</strong>: Won't match paraphrases</li>
-<li><strong>Citation formatting</strong>: Not a bibliography manager</li>
-<li><strong>Fact checking</strong>: Only verifies text existence</li>
-<li><strong>Plagiarism detection</strong>: Not designed for that purpose</li>
+<li>Dynamic content loaded via JavaScript</li>
+<li>Pages requiring authentication</li>
+<li>Content behind paywalls</li>
+<li>Frequently changing content</li>
 </ul>
-<h3 id="known-limitations">Known Limitations</h3>
+<h3 id="html-structure">HTML Structure</h3>
+<p>The content extraction works by:</p>
 <ul>
-<li><strong>Abstracts only for most PMIDs</strong>: Full text requires PMC</li>
-<li><strong>Network required</strong>: For initial reference fetch</li>
-<li><strong>English-focused</strong>: Normalization optimized for English text</li>
-<li><strong>No OCR</strong>: Can't extract text from images/PDFs in papers</li>
+<li>Removing navigation, headers, and footers</li>
+<li>Converting remaining HTML to text</li>
+<li>Normalizing whitespace</li>
 </ul>
-<h2 id="when-to-use-this-tool">When to Use This Tool</h2>
-<h3 id="good-use-cases">Good Use Cases ✅</h3>
+<p>This works well for simple HTML but may not capture content perfectly from complex layouts.</p>
+<h3 id="no-rendering">No Rendering</h3>
+<p>The fetcher downloads raw HTML and parses it directly. It does not:</p>
 <ul>
-<li>Validating gene function claims in databases</li>
-<li>Checking supporting text in knowledge graphs</li>
-<li>Verifying quotes in scientific documentation</li>
-<li>Batch validation of curated annotations</li>
+<li>Execute JavaScript</li>
+<li>Render the page in a browser</li>
+<li>Follow redirects automatically (may be added in future)</li>
+<li>Handle dynamic content</li>
 </ul>
-<h3 id="not-recommended">Not Recommended ❌</h3>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="1-use-stable-urls">1. Use Stable URLs</h3>
+<p>Choose URLs that are unlikely to change:</p>
 <ul>
-<li>Checking if ideas are supported (use human review)</li>
-<li>Finding similar papers (use search engines)</li>
-<li>Generating citations (use citation managers)</li>
-<li>Paraphrase detection (use plagiarism tools)</li>
+<li>✅ Versioned documentation: <code>https://docs.example.com/v1.0/chapter1</code></li>
+<li>✅ Archived content: <code>https://archive.example.com/2024/article</code></li>
+<li>❌ Blog posts with dates that might be reorganized</li>
+<li>❌ URLs with session parameters</li>
+</ul>
+<h3 id="2-verify-content-quality">2. Verify Content Quality</h3>
+<p>After adding a URL reference, verify the extracted content:</p>
+<pre><code class="language-bash"># Check what was extracted
+cat .linkml-reference-validator-cache/URL_https___example.com_page.md
+</code></pre>
+<p>Ensure the extracted text contains the relevant information you're referencing.</p>
+<h3 id="3-cache-management">3. Cache Management</h3>
+<ul>
+<li>Commit cache files to version control for reproducibility</li>
+<li>Use <code>--force-refresh</code> to update cached content</li>
+<li>Periodically review cached URLs to ensure they're still accessible</li>
+</ul>
+<h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
+<p>URL references work alongside PMIDs and DOIs:</p>
+<pre><code class="language-yaml">findings:
+  value: &quot;Multiple studies confirm this relationship&quot;
+  references:
+    - &quot;PMID:12345678&quot;  # Research paper
+    - &quot;DOI:10.1234/journal.article&quot;  # Another paper
+    - &quot;https://example.com/textbook/chapter5&quot;  # Textbook chapter
+</code></pre>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="url-not-fetching">URL Not Fetching</h3>
+<p>If URL content isn't being fetched:</p>
+<ol>
+<li>Check network connectivity</li>
+<li>Verify the URL is accessible in a browser</li>
+<li>Check for rate limiting or IP blocks</li>
+<li>Look for error messages in the logs</li>
+</ol>
+<h3 id="incorrect-content-extraction">Incorrect Content Extraction</h3>
+<p>If the wrong content is extracted:</p>
+<ol>
+<li>Inspect the cached markdown file</li>
+<li>Check if the page uses complex JavaScript</li>
+<li>Consider if the page structure requires custom parsing</li>
+<li>File an issue with the page URL for improvement</li>
+</ol>
+<h3 id="validation-failing">Validation Failing</h3>
+<p>If validation fails for URL references:</p>
+<ol>
+<li>Check the cached content to see what was extracted</li>
+<li>Verify your supporting text actually appears on the page</li>
+<li>Check for whitespace or formatting differences</li>
+<li>Consider if the page content has changed since caching</li>
+</ol>
+<h2 id="comparison-with-other-reference-types">Comparison with Other Reference Types</h2>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>PMID</th>
+<th>DOI</th>
+<th>URL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Source</td>
+<td>PubMed</td>
+<td>Crossref</td>
+<td>Any web page</td>
+</tr>
+<tr>
+<td>Content Type</td>
+<td>Abstract + Full Text</td>
+<td>Abstract</td>
+<td>HTML converted</td>
+</tr>
+<tr>
+<td>Metadata</td>
+<td>Rich (authors, journal, etc.)</td>
+<td>Rich</td>
+<td>Minimal (title only)</td>
+</tr>
+<tr>
+<td>Stability</td>
+<td>High</td>
+<td>High</td>
+<td>Variable</td>
+</tr>
+<tr>
+<td>Access</td>
+<td>Free for abstracts</td>
+<td>Varies</td>
+<td>Varies</td>
+</tr>
+<tr>
+<td>Caching</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../validate-dois/">Validating DOIs</a> - For journal articles with DOIs</li>
+<li><a href="../validate-obo-files/">Validating OBO Files</a> - For ontology-specific validation</li>
+<li><a href="../../concepts/how-it-works/">How It Works</a> - Core validation concepts</li>
+<li><a href="../../reference/cli/">CLI Reference</a> - Command-line options</li>
 </ul>
 
 

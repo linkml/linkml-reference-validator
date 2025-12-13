@@ -353,6 +353,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#validate-against-a-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against a URL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -651,6 +662,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -921,6 +960,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#validate-against-a-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against a URL
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#key-features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1022,6 +1072,24 @@ classes:
   DOI:10.1038/nature12373
 </code></pre>
 <p>This works the same way as PMID validation - the reference is fetched and cached locally.</p>
+<h2 id="validate-against-a-url">Validate Against a URL</h2>
+<p>For online resources like book chapters, documentation, or educational content:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;The cell is the basic structural and functional unit of all living organisms&quot; \
+  https://example.com/biology/cell-structure
+</code></pre>
+<p>Or with explicit URL prefix:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;The cell is the basic unit of life&quot; \
+  URL:https://example.com/biology/cells
+</code></pre>
+<p>The validator will:
+1. Fetch the web page content
+2. Extract the title from the <code>&lt;title&gt;</code> tag
+3. Convert HTML to plain text (removing scripts, styles, navigation)
+4. Cache the content locally
+5. Validate your text against the extracted content</p>
+<p><strong>Note:</strong> URL validation works best with static HTML pages and may not work well with JavaScript-heavy or dynamic content.</p>
 <h2 id="key-features">Key Features</h2>
 <ul>
 <li><strong>Automatic Caching</strong>: References cached locally after first fetch</li>
@@ -1030,6 +1098,7 @@ classes:
 <li><strong>Deterministic Matching</strong>: Substring-based (not AI/fuzzy matching)</li>
 <li><strong>PubMed &amp; PMC</strong>: Fetches from NCBI automatically</li>
 <li><strong>DOI Support</strong>: Fetches metadata from Crossref API</li>
+<li><strong>URL Support</strong>: Validates against web content (books, docs, educational resources)</li>
 </ul>
 <h2 id="next-steps">Next Steps</h2>
 <ul>

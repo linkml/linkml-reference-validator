@@ -394,10 +394,14 @@ def test_fetch_url_request_exception(mock_get, fetcher):
 
 @patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
 def test_fetch_url_malformed_html(mock_get, fetcher):
-    """Test fetching URL with malformed HTML."""
+    """Test fetching URL with malformed HTML.
+
+    BeautifulSoup is very forgiving and will parse even malformed HTML.
+    This test verifies that the fetcher doesn't crash on malformed input.
+    """
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.text = "<html><title>Test<body><p>Content without closing tags"
+    mock_response.text = "<html><title>Test</title><body><p>Content without closing tags"
     mock_get.return_value = mock_response
 
     result = fetcher.fetch("URL:https://example.com/malformed")

@@ -308,3 +308,140 @@ def test_save_and_load_doi_from_disk(mock_get, fetcher, tmp_path):
     assert result2.reference_id == "DOI:10.9999/cached.doi"
     assert result2.title == "Cached DOI Article"
     assert result2.doi == "10.9999/cached.doi"
+
+
+def test_parse_url_reference_id(fetcher):
+    """Test parsing URL reference IDs."""
+    assert fetcher._parse_reference_id("URL:https://example.com/book/chapter1") == ("URL", "https://example.com/book/chapter1")
+    assert fetcher._parse_reference_id("url:https://example.com/article") == ("URL", "https://example.com/article")
+    assert fetcher._parse_reference_id("https://example.com/direct") == ("URL", "https://example.com/direct")
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_url_success(mock_get, fetcher):
+    """Test fetching URL reference successfully."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = """
+    <html>
+        <head>
+            <title>Chapter 1: Introduction to Biology</title>
+        </head>
+        <body>
+            <h1>Chapter 1: Introduction to Biology</h1>
+            <p>Biology is the natural science that studies life and living organisms.</p>
+            <p>This chapter provides an overview of cellular structure and function.</p>
+            <div>The cell is the basic unit of life.</div>
+        </body>
+    </html>
+    """
+    mock_get.return_value = mock_response
+
+    result = fetcher.fetch("URL:https://example.com/biology-book/chapter1")
+
+    assert result is not None
+    assert result.reference_id == "URL:https://example.com/biology-book/chapter1"
+    assert result.title == "Chapter 1: Introduction to Biology"
+    assert result.content_type == "html_converted"
+    assert "Biology is the natural science" in result.content
+    assert "basic unit of life" in result.content
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_url_no_title(mock_get, fetcher):
+    """Test fetching URL with no title tag."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = """
+    <html>
+        <body>
+            <h1>Main Heading</h1>
+            <p>Content without title tag.</p>
+        </body>
+    </html>
+    """
+    mock_get.return_value = mock_response
+
+    result = fetcher.fetch("URL:https://example.com/no-title")
+
+    assert result is not None
+    assert result.reference_id == "URL:https://example.com/no-title"
+    assert result.title is None
+    assert "Main Heading" in result.content
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_url_http_error(mock_get, fetcher):
+    """Test fetching URL that returns HTTP error."""
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_get.return_value = mock_response
+
+    result = fetcher.fetch("URL:https://example.com/not-found")
+
+    assert result is None
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_url_request_exception(mock_get, fetcher):
+    """Test fetching URL that raises request exception."""
+    mock_get.side_effect = Exception("Network error")
+
+    result = fetcher.fetch("URL:https://example.com/error")
+
+    assert result is None
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_fetch_url_malformed_html(mock_get, fetcher):
+    """Test fetching URL with malformed HTML."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = "<html><title>Test<body><p>Content without closing tags"
+    mock_get.return_value = mock_response
+
+    result = fetcher.fetch("URL:https://example.com/malformed")
+
+    assert result is not None
+    assert result.title == "Test"
+    assert "Content without closing tags" in result.content
+
+
+def test_url_cache_path(fetcher):
+    """Test cache path generation for URLs."""
+    path = fetcher._get_cache_path("URL:https://example.com/book/chapter1")
+    assert path.name == "URL_https___example.com_book_chapter1.md"
+
+    path = fetcher._get_cache_path("URL:https://example.com/path?param=value")
+    assert path.name == "URL_https___example.com_path_param_value.md"
+
+
+@patch("linkml_reference_validator.etl.reference_fetcher.requests.get")
+def test_save_and_load_url_from_disk(mock_get, fetcher, tmp_path):
+    """Test saving and loading URL reference from disk cache."""
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.text = """
+    <html>
+        <head><title>Cached URL Content</title></head>
+        <body><p>This content should be cached.</p></body>
+    </html>
+    """
+    mock_get.return_value = mock_response
+
+    # First fetch - this should save to disk
+    result1 = fetcher.fetch("URL:https://example.com/cached")
+    assert result1 is not None
+
+    # Clear memory cache
+    fetcher._cache.clear()
+
+    # Second fetch - should load from disk without making HTTP request
+    with patch("linkml_reference_validator.etl.reference_fetcher.requests.get") as mock_no_request:
+        result2 = fetcher.fetch("URL:https://example.com/cached")
+        mock_no_request.assert_not_called()
+
+    assert result2 is not None
+    assert result2.reference_id == "URL:https://example.com/cached"
+    assert result2.title == "Cached URL Content"
+    assert "This content should be cached" in result2.content

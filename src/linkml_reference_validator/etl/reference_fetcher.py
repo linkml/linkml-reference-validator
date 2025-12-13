@@ -86,6 +86,8 @@ class ReferenceFetcher:
             content = self._fetch_pmid(identifier)
         elif prefix == "DOI":
             content = self._fetch_doi(identifier)
+        elif prefix == "URL":
+            content = self._fetch_url(identifier)
         else:
             logger.warning(f"Unsupported reference type: {prefix}")
             return None
@@ -100,7 +102,7 @@ class ReferenceFetcher:
         """Parse a reference ID into prefix and identifier.
 
         Args:
-            reference_id: Reference ID like "PMID:12345678"
+            reference_id: Reference ID like "PMID:12345678" or URL
 
         Returns:
             Tuple of (prefix, identifier)
@@ -114,13 +116,27 @@ class ReferenceFetcher:
             ('PMID', '12345678')
             >>> fetcher._parse_reference_id("12345678")
             ('PMID', '12345678')
+            >>> fetcher._parse_reference_id("URL:https://example.com/book/chapter1")
+            ('URL', 'https://example.com/book/chapter1')
+            >>> fetcher._parse_reference_id("https://example.com/direct")
+            ('URL', 'https://example.com/direct')
         """
-        match = re.match(r"^([A-Za-z_]+)[:\s]+(.+)$", reference_id.strip())
+        stripped = reference_id.strip()
+        
+        # Check if it's a direct URL (starts with http or https)
+        if stripped.startswith(('http://', 'https://')):
+            return "URL", stripped
+            
+        # Standard prefix:identifier format
+        match = re.match(r"^([A-Za-z_]+)[:\s]+(.+)$", stripped)
         if match:
             return match.group(1).upper(), match.group(2).strip()
-        if reference_id.strip().isdigit():
-            return "PMID", reference_id.strip()
-        return "UNKNOWN", reference_id
+            
+        # Plain numeric ID defaults to PMID
+        if stripped.isdigit():
+            return "PMID", stripped
+            
+        return "UNKNOWN", stripped
 
     def _fetch_pmid(self, pmid: str) -> Optional[ReferenceContent]:
         """Fetch a publication from PubMed by PMID.
@@ -233,6 +249,65 @@ class ReferenceFetcher:
             year=year,
             doi=doi,
         )
+
+    def _fetch_url(self, url: str) -> Optional[ReferenceContent]:
+        """Fetch content from a URL.
+
+        Fetches web content, extracts title and converts HTML to text.
+        Intended for static pages like book chapters.
+
+        Args:
+            url: The URL to fetch
+
+        Returns:
+            ReferenceContent if successful, None otherwise
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> # Would fetch in real usage:
+            >>> # ref = fetcher._fetch_url("https://example.com/book/chapter1")
+        """
+        time.sleep(self.config.rate_limit_delay)
+
+        headers = {
+            "User-Agent": f"linkml-reference-validator/1.0 (mailto:{self.config.email})",
+        }
+
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            if response.status_code != 200:
+                logger.warning(f"Failed to fetch URL:{url} - status {response.status_code}")
+                return None
+
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Extract title
+            title_tag = soup.find("title")
+            title = title_tag.get_text().strip() if title_tag else None
+
+            # Convert HTML to text
+            # Remove script and style elements
+            for script in soup(["script", "style", "nav", "header", "footer"]):
+                script.decompose()
+
+            # Get text content
+            content = soup.get_text()
+
+            # Clean up text - normalize whitespace
+            lines = (line.strip() for line in content.splitlines())
+            content = "\n".join(line for line in lines if line)
+
+            return ReferenceContent(
+                reference_id=f"URL:{url}",
+                title=title,
+                content=content if content else None,
+                content_type="html_converted",
+            )
+
+        except Exception as e:
+            logger.error(f"Error fetching URL:{url}: {e}")
+            return None
 
     def _parse_crossref_authors(self, authors: list) -> list[str]:
         """Parse author list from Crossref response.
@@ -466,8 +541,11 @@ class ReferenceFetcher:
             >>> path = fetcher._get_cache_path("PMID:12345678")
             >>> path.name
             'PMID_12345678.md'
+            >>> path = fetcher._get_cache_path("URL:https://example.com/book/chapter1")
+            >>> path.name
+            'URL_https___example.com_book_chapter1.md'
         """
-        safe_id = reference_id.replace(":", "_").replace("/", "_")
+        safe_id = reference_id.replace(":", "_").replace("/", "_").replace("?", "_").replace("=", "_")
         cache_dir = self.config.get_cache_dir()
         return cache_dir / f"{safe_id}.md"
 

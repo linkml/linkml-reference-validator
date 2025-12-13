@@ -68,14 +68,48 @@ We don't use LLMs or semantic similarity because:
 
 ## Reference Fetching
 
+The validator supports multiple reference types:
+
 ### PubMed (PMID)
 
 For `PMID:12345678`:
 
 1. Queries NCBI E-utilities API
 2. Fetches abstract and metadata
-3. Parses XML response with BeautifulSoup
-4. Caches as markdown with YAML frontmatter
+3. Attempts to retrieve full-text from PMC if available
+4. Parses XML response with BeautifulSoup
+5. Caches as markdown with YAML frontmatter
+
+### DOI (Digital Object Identifier)
+
+For `DOI:10.1234/journal.article`:
+
+1. Queries Crossref API for metadata
+2. Fetches abstract and bibliographic information
+3. Extracts title, authors, journal, year
+4. Caches abstract and metadata as markdown
+
+### URLs
+
+For `URL:https://example.com/page` or `https://example.com/page`:
+
+1. Makes HTTP GET request to fetch web page
+2. Extracts title from `<title>` tag
+3. Converts HTML to plain text (removes scripts, styles, navigation)
+4. Normalizes whitespace
+5. Caches as markdown with content type `html_converted`
+
+**Use cases for URLs:**
+- Online book chapters
+- Educational resources
+- Documentation pages
+- Any static web content
+
+**Limitations:**
+- Works best with static HTML content
+- Does not execute JavaScript
+- Cannot access content behind authentication
+- Complex dynamic pages may not extract well
 
 ### PubMed Central (PMC)
 

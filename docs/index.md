@@ -2,7 +2,7 @@
 
 **Validate quotes and excerpts against their source publications**
 
-linkml-reference-validator ensures that text excerpts in your data accurately match their cited sources. It fetches references from PubMed/PMC and performs deterministic substring matching with support for editorial conventions like brackets `[...]` and ellipsis `...`.
+linkml-reference-validator ensures that text excerpts in your data accurately match their cited sources. It fetches references from PubMed/PMC, DOIs via Crossref, and URLs, then performs deterministic substring matching with support for editorial conventions like brackets `[...]` and ellipsis `...`.
 
 ## Key Features
 

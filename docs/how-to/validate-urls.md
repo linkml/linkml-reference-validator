@@ -15,33 +15,28 @@ The linkml-reference-validator supports validating references that point to web 
 When a reference field contains a URL, the validator:
 
 1. Fetches the web page content
-2. Extracts the page title
-3. Converts HTML to plain text
-4. Validates the extracted content against your supporting text
+2. Extracts the page title from `<title>` tag (for HTML)
+3. Caches the content for future validations
+4. Validates your supporting text against the page content
 
 ## URL Format
 
-URLs can be specified in two ways:
-
-### Explicit URL Prefix
+Use the `url:` prefix to specify URL references:
 
 ```yaml
 my_field:
   value: "Some text from the web page..."
   references:
-    - "URL:https://example.com/book/chapter1"
+    - "url:https://example.com/book/chapter1"
 ```
 
-### Direct URL
+Or via CLI:
 
-```yaml
-my_field:
-  value: "Some text from the web page..."
-  references:
-    - "https://example.com/book/chapter1"
+```bash
+linkml-reference-validator validate text \
+  "Some text from the web page" \
+  url:https://example.com/book/chapter1
 ```
-
-Both formats are equivalent. If a reference starts with `http://` or `https://`, it's automatically recognized as a URL reference.
 
 ## Example
 
@@ -62,11 +57,10 @@ Suppose you have an online textbook chapter at `https://example.com/biology/cell
 
 You can validate text extracted from this chapter:
 
-```yaml
-description:
-  value: "The cell is the basic structural and functional unit of all living organisms"
-  references:
-    - "https://example.com/biology/cell-structure"
+```bash
+linkml-reference-validator validate text \
+  "The cell is the basic structural and functional unit of all living organisms" \
+  url:https://example.com/biology/cell-structure
 ```
 
 ## How URL Validation Works
@@ -80,39 +74,39 @@ When the validator encounters a URL reference, it:
 - Respects rate limiting (configurable via `rate_limit_delay`)
 - Handles timeouts (default 30 seconds)
 
-### 2. Content Extraction
+### 2. Content Storage
 
-The fetcher extracts content from the HTML:
+The fetcher stores:
 
-- **Title**: Extracted from the `<title>` tag
-- **Content**: HTML is converted to plain text using BeautifulSoup
-- **Cleanup**: Removes scripts, styles, navigation, headers, and footers
-- **Normalization**: Whitespace is normalized for better matching
+- **Title**: Extracted from the `<title>` tag (for HTML pages)
+- **Content**: The raw page content as received
+- **Content type**: Marked as `url` to distinguish from other reference types
 
-### 3. Content Type
+Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.
 
-URL references are marked with content type `html_converted` to distinguish them from other reference types like abstracts or full-text articles.
-
-### 4. Caching
+### 3. Caching
 
 Fetched URL content is cached to disk in markdown format with YAML frontmatter:
 
 ```markdown
 ---
-reference_id: URL:https://example.com/biology/cell-structure
+reference_id: url:https://example.com/biology/cell-structure
 title: "Chapter 3: Cell Structure and Function"
-content_type: html_converted
+content_type: url
 ---
 
 # Chapter 3: Cell Structure and Function
 
 ## Content
 
-The cell is the basic structural and functional unit of all living organisms.
-Cells contain various organelles that perform specific functions...
+<html>
+  <head>
+    <title>Chapter 3: Cell Structure and Function</title>
+  </head>
+  ...
 ```
 
-Cache files are stored in the configured cache directory (default: `.linkml-reference-validator-cache/`).
+Cache files are stored in the configured cache directory (default: `references_cache/`).
 
 ## Configuration
 
@@ -145,15 +139,13 @@ URL validation is designed for static web pages. It may not work well with:
 - Content behind paywalls
 - Frequently changing content
 
-### HTML Structure
+### Raw Content
 
-The content extraction works by:
+The validator stores raw page content. For HTML pages:
 
-- Removing navigation, headers, and footers
-- Converting remaining HTML to text
-- Normalizing whitespace
-
-This works well for simple HTML but may not capture content perfectly from complex layouts.
+- HTML tags are preserved in the cache
+- The text normalization during validation handles most cases
+- Complex HTML layouts may require careful text extraction
 
 ### No Rendering
 
@@ -161,7 +153,6 @@ The fetcher downloads raw HTML and parses it directly. It does not:
 
 - Execute JavaScript
 - Render the page in a browser
-- Follow redirects automatically (may be added in future)
 - Handle dynamic content
 
 ## Best Practices
@@ -170,10 +161,9 @@ The fetcher downloads raw HTML and parses it directly. It does not:
 
 Choose URLs that are unlikely to change:
 
-- ✅ Versioned documentation: `https://docs.example.com/v1.0/chapter1`
-- ✅ Archived content: `https://archive.example.com/2024/article`
-- ❌ Blog posts with dates that might be reorganized
-- ❌ URLs with session parameters
+- Versioned documentation: `https://docs.example.com/v1.0/chapter1`
+- Archived content: `https://archive.example.com/2024/article`
+- Avoid URLs with session parameters
 
 ### 2. Verify Content Quality
 
@@ -181,15 +171,15 @@ After adding a URL reference, verify the extracted content:
 
 ```bash
 # Check what was extracted
-cat .linkml-reference-validator-cache/URL_https___example.com_page.md
+cat references_cache/url_https___example.com_page.md
 ```
 
-Ensure the extracted text contains the relevant information you're referencing.
+Ensure the cached content contains the text you're referencing.
 
 ### 3. Cache Management
 
 - Commit cache files to version control for reproducibility
-- Use `--force-refresh` to update cached content
+- Use `--force-refresh` to update cached content when pages change
 - Periodically review cached URLs to ensure they're still accessible
 
 ### 4. Mix Reference Types
@@ -202,7 +192,7 @@ findings:
   references:
     - "PMID:12345678"  # Research paper
     - "DOI:10.1234/journal.article"  # Another paper
-    - "https://example.com/textbook/chapter5"  # Textbook chapter
+    - "url:https://example.com/textbook/chapter5"  # Textbook chapter
 ```
 
 ## Troubleshooting
@@ -216,15 +206,6 @@ If URL content isn't being fetched:
 3. Check for rate limiting or IP blocks
 4. Look for error messages in the logs
 
-### Incorrect Content Extraction
-
-If the wrong content is extracted:
-
-1. Inspect the cached markdown file
-2. Check if the page uses complex JavaScript
-3. Consider if the page structure requires custom parsing
-4. File an issue with the page URL for improvement
-
 ### Validation Failing
 
 If validation fails for URL references:
@@ -234,19 +215,31 @@ If validation fails for URL references:
 3. Check for whitespace or formatting differences
 4. Consider if the page content has changed since caching
 
+### Force Refresh
+
+To re-fetch content for a URL that may have changed:
+
+```bash
+linkml-reference-validator validate text \
+  "Updated content" \
+  url:https://example.com/page \
+  --force-refresh
+```
+
 ## Comparison with Other Reference Types
 
-| Feature | PMID | DOI | URL |
-|---------|------|-----|-----|
-| Source | PubMed | Crossref | Any web page |
-| Content Type | Abstract + Full Text | Abstract | HTML converted |
-| Metadata | Rich (authors, journal, etc.) | Rich | Minimal (title only) |
-| Stability | High | High | Variable |
-| Access | Free for abstracts | Varies | Varies |
-| Caching | Yes | Yes | Yes |
+| Feature | PMID | DOI | URL | file |
+|---------|------|-----|-----|------|
+| Source | PubMed | Crossref | Any web page | Local filesystem |
+| Content Type | Abstract + Full Text | Abstract | Raw HTML/text | Raw file content |
+| Metadata | Rich (authors, journal, etc.) | Rich | Minimal (title only) | Minimal (title from heading) |
+| Stability | High | High | Variable | High (local control) |
+| Access | Free for abstracts | Varies | Varies | Always available |
+| Caching | Yes | Yes | Yes | Yes |
 
 ## See Also
 
+- [Using Local Files and URLs](use-local-files-and-urls.md) - Quick reference for file and URL sources
 - [Validating DOIs](validate-dois.md) - For journal articles with DOIs
 - [Validating OBO Files](validate-obo-files.md) - For ontology-specific validation
 - [How It Works](../concepts/how-it-works.md) - Core validation concepts

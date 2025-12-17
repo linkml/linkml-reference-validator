@@ -345,6 +345,10 @@ class ReferenceValidationConfig(BaseModel):
         default=Path("references_cache"),
         description="Directory for caching downloaded references",
     )
+    reference_base_dir: Optional[Path] = Field(
+        default=None,
+        description="Base directory for resolving relative file: references. If None, uses CWD.",
+    )
     rate_limit_delay: float = Field(
         default=0.5,
         ge=0.0,

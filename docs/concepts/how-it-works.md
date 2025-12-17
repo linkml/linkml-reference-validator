@@ -68,7 +68,7 @@ We don't use LLMs or semantic similarity because:
 
 ## Reference Fetching
 
-The validator supports multiple reference types:
+The validator uses a **plugin architecture** to support multiple reference sources. Each source type is handled by a dedicated plugin that knows how to fetch and parse content from that source.
 
 ### PubMed (PMID)
 
@@ -76,40 +76,8 @@ For `PMID:12345678`:
 
 1. Queries NCBI E-utilities API
 2. Fetches abstract and metadata
-3. Attempts to retrieve full-text from PMC if available
-4. Parses XML response with BeautifulSoup
-5. Caches as markdown with YAML frontmatter
-
-### DOI (Digital Object Identifier)
-
-For `DOI:10.1234/journal.article`:
-
-1. Queries Crossref API for metadata
-2. Fetches abstract and bibliographic information
-3. Extracts title, authors, journal, year
-4. Caches abstract and metadata as markdown
-
-### URLs
-
-For `URL:https://example.com/page` or `https://example.com/page`:
-
-1. Makes HTTP GET request to fetch web page
-2. Extracts title from `<title>` tag
-3. Converts HTML to plain text (removes scripts, styles, navigation)
-4. Normalizes whitespace
-5. Caches as markdown with content type `html_converted`
-
-**Use cases for URLs:**
-- Online book chapters
-- Educational resources
-- Documentation pages
-- Any static web content
-
-**Limitations:**
-- Works best with static HTML content
-- Does not execute JavaScript
-- Cannot access content behind authentication
-- Complex dynamic pages may not extract well
+3. Parses XML response
+4. Caches as markdown with YAML frontmatter
 
 ### PubMed Central (PMC)
 
@@ -119,6 +87,36 @@ For `PMC:12345`:
 2. Extracts all sections (abstract, introduction, methods, results, discussion)
 3. Provides more content than abstracts alone
 4. Also cached as markdown
+
+### DOI (Digital Object Identifier)
+
+For `DOI:10.1234/example`:
+
+1. Queries Crossref API
+2. Fetches metadata and abstract (when available)
+3. Caches as markdown
+
+### Local Files
+
+For `file:./path/to/document.md`:
+
+1. Reads file from local filesystem
+2. Extracts title from first markdown heading (or uses filename)
+3. Content used as-is (no parsing for HTML files)
+4. Caches to allow consistent validation
+
+Path resolution:
+- Absolute paths work directly
+- Relative paths use `reference_base_dir` config if set, otherwise current directory
+
+### URLs
+
+For `url:https://example.com/page`:
+
+1. Fetches page via HTTP GET
+2. Extracts title from `<title>` tag (for HTML)
+3. Content preserved as-is
+4. Cached like other sources
 
 ## Caching
 

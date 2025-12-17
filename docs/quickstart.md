@@ -86,32 +86,25 @@ linkml-reference-validator validate text \
 
 This works the same way as PMID validation - the reference is fetched and cached locally.
 
-## Validate Against a URL
+## Validate Against Local Files
 
-For online resources like book chapters, documentation, or educational content:
-
-```bash
-linkml-reference-validator validate text \
-  "The cell is the basic structural and functional unit of all living organisms" \
-  https://example.com/biology/cell-structure
-```
-
-Or with explicit URL prefix:
+You can also validate against local markdown, text, or HTML files:
 
 ```bash
 linkml-reference-validator validate text \
-  "The cell is the basic unit of life" \
-  URL:https://example.com/biology/cells
+  "JAK1 binds to the receptor complex" \
+  file:./research/jak-notes.md
 ```
 
-The validator will:
-1. Fetch the web page content
-2. Extract the title from the `<title>` tag
-3. Convert HTML to plain text (removing scripts, styles, navigation)
-4. Cache the content locally
-5. Validate your text against the extracted content
+## Validate Against URLs
 
-**Note:** URL validation works best with static HTML pages and may not work well with JavaScript-heavy or dynamic content.
+Web pages can also be used as references:
+
+```bash
+linkml-reference-validator validate text \
+  "Climate change affects biodiversity" \
+  url:https://example.org/climate-report.html
+```
 
 ## Key Features
 
@@ -121,7 +114,8 @@ The validator will:
 - **Deterministic Matching**: Substring-based (not AI/fuzzy matching)
 - **PubMed & PMC**: Fetches from NCBI automatically
 - **DOI Support**: Fetches metadata from Crossref API
-- **URL Support**: Validates against web content (books, docs, educational resources)
+- **Local Files**: Validate against markdown, text, or HTML files
+- **URL Support**: Validate against web pages
 
 ## Next Steps
 

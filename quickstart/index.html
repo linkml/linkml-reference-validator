@@ -353,10 +353,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#validate-against-a-url" class="md-nav__link">
+  <a href="#validate-against-local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate Against a URL
+        Validate Against Local Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-against-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against URLs
       
     </span>
   </a>
@@ -690,6 +701,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/use-local-files-and-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/add-reference-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -960,10 +1027,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#validate-against-a-url" class="md-nav__link">
+  <a href="#validate-against-local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate Against a URL
+        Validate Against Local Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-against-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate Against URLs
       
     </span>
   </a>
@@ -1072,24 +1150,18 @@ classes:
   DOI:10.1038/nature12373
 </code></pre>
 <p>This works the same way as PMID validation - the reference is fetched and cached locally.</p>
-<h2 id="validate-against-a-url">Validate Against a URL</h2>
-<p>For online resources like book chapters, documentation, or educational content:</p>
+<h2 id="validate-against-local-files">Validate Against Local Files</h2>
+<p>You can also validate against local markdown, text, or HTML files:</p>
 <pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;The cell is the basic structural and functional unit of all living organisms&quot; \
-  https://example.com/biology/cell-structure
+  &quot;JAK1 binds to the receptor complex&quot; \
+  file:./research/jak-notes.md
 </code></pre>
-<p>Or with explicit URL prefix:</p>
+<h2 id="validate-against-urls">Validate Against URLs</h2>
+<p>Web pages can also be used as references:</p>
 <pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;The cell is the basic unit of life&quot; \
-  URL:https://example.com/biology/cells
+  &quot;Climate change affects biodiversity&quot; \
+  url:https://example.org/climate-report.html
 </code></pre>
-<p>The validator will:
-1. Fetch the web page content
-2. Extract the title from the <code>&lt;title&gt;</code> tag
-3. Convert HTML to plain text (removing scripts, styles, navigation)
-4. Cache the content locally
-5. Validate your text against the extracted content</p>
-<p><strong>Note:</strong> URL validation works best with static HTML pages and may not work well with JavaScript-heavy or dynamic content.</p>
 <h2 id="key-features">Key Features</h2>
 <ul>
 <li><strong>Automatic Caching</strong>: References cached locally after first fetch</li>
@@ -1098,7 +1170,8 @@ classes:
 <li><strong>Deterministic Matching</strong>: Substring-based (not AI/fuzzy matching)</li>
 <li><strong>PubMed &amp; PMC</strong>: Fetches from NCBI automatically</li>
 <li><strong>DOI Support</strong>: Fetches metadata from Crossref API</li>
-<li><strong>URL Support</strong>: Validates against web content (books, docs, educational resources)</li>
+<li><strong>Local Files</strong>: Validate against markdown, text, or HTML files</li>
+<li><strong>URL Support</strong>: Validate against web pages</li>
 </ul>
 <h2 id="next-steps">Next Steps</h2>
 <ul>

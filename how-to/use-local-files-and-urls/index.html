@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-urls/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/use-local-files-and-urls/">
       
       
-        <link rel="prev" href="../validate-dois/">
+        <link rel="prev" href="../validate-urls/">
       
       
-        <link rel="next" href="../use-local-files-and-urls/">
+        <link rel="next" href="../add-reference-source/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Validating URLs - linkml-reference-validator</title>
+        <title>Using Local Files and URLs - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-url-references" class="md-skip">
+        <a href="#using-local-files-and-urls-as-references" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating URLs
+              Using Local Files and URLs
             
           </span>
         </div>
@@ -544,6 +544,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../validate-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -563,7 +591,7 @@
   <span class="md-ellipsis">
     
   
-    Validating URLs
+    Using Local Files and URLs
   
 
     
@@ -581,7 +609,7 @@
   <span class="md-ellipsis">
     
   
-    Validating URLs
+    Using Local Files and URLs
   
 
     
@@ -607,55 +635,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#local-file-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Local File References
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Format
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
+    <nav class="md-nav" aria-label="Local File References">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
+  <a href="#supported-file-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Content Fetching
+        Supported File Types
       
     </span>
   </a>
@@ -663,10 +658,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
+  <a href="#path-resolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Content Storage
+        Path Resolution
       
     </span>
   </a>
@@ -674,10 +669,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
+  <a href="#configuring-a-base-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Caching
+        Configuring a Base Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-validating-against-research-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Validating Against Research Notes
       
     </span>
   </a>
@@ -690,33 +696,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#url-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        URL References
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Limitations">
+    <nav class="md-nav" aria-label="URL References">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
+  <a href="#caching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Static Content Only
+        Caching
       
     </span>
   </a>
@@ -724,10 +719,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
+  <a href="#title-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Raw Content
+        Title Extraction
       
     </span>
   </a>
@@ -735,10 +730,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
+  <a href="#example-validating-against-a-web-page" class="md-nav__link">
     <span class="md-ellipsis">
       
-        No Rendering
+        Example: Validating Against a Web Page
       
     </span>
   </a>
@@ -747,6 +742,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-in-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using in Data Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-type-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Type Summary
+      
+    </span>
+  </a>
   
 </li>
       
@@ -763,10 +780,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
+  <a href="#for-local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Use Stable URLs
+        For Local Files
       
     </span>
   </a>
@@ -774,32 +791,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
+  <a href="#for-urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
+        For URLs
       
     </span>
   </a>
@@ -812,71 +807,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#limitations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
+        Limitations
       
     </span>
   </a>
@@ -887,34 +821,6 @@
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../use-local-files-and-urls/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Using Local Files and URLs
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1174,55 +1080,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#local-file-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Local File References
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Format
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
+    <nav class="md-nav" aria-label="Local File References">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
+  <a href="#supported-file-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Content Fetching
+        Supported File Types
       
     </span>
   </a>
@@ -1230,10 +1103,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
+  <a href="#path-resolution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Content Storage
+        Path Resolution
       
     </span>
   </a>
@@ -1241,10 +1114,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
+  <a href="#configuring-a-base-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Caching
+        Configuring a Base Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-validating-against-research-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Validating Against Research Notes
       
     </span>
   </a>
@@ -1257,33 +1141,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#url-references" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        URL References
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Limitations">
+    <nav class="md-nav" aria-label="URL References">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
+  <a href="#caching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Static Content Only
+        Caching
       
     </span>
   </a>
@@ -1291,10 +1164,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
+  <a href="#title-extraction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Raw Content
+        Title Extraction
       
     </span>
   </a>
@@ -1302,10 +1175,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
+  <a href="#example-validating-against-a-web-page" class="md-nav__link">
     <span class="md-ellipsis">
       
-        No Rendering
+        Example: Validating Against a Web Page
       
     </span>
   </a>
@@ -1314,6 +1187,28 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#using-in-data-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using in Data Files
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-type-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Type Summary
+      
+    </span>
+  </a>
   
 </li>
       
@@ -1330,10 +1225,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
+  <a href="#for-local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Use Stable URLs
+        For Local Files
       
     </span>
   </a>
@@ -1341,32 +1236,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
+  <a href="#for-urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
+        For URLs
       
     </span>
   </a>
@@ -1379,71 +1252,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#limitations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
+        Limitations
       
     </span>
   </a>
@@ -1470,242 +1282,138 @@
   
 
 
-<h1 id="validating-url-references">Validating URL References</h1>
-<p>This guide explains how to validate references that use URLs instead of traditional identifiers like PMIDs or DOIs.</p>
-<h2 id="overview">Overview</h2>
-<p>The linkml-reference-validator supports validating references that point to web content, such as:</p>
-<ul>
-<li>Book chapters hosted online</li>
-<li>Educational resources</li>
-<li>Documentation pages</li>
-<li>Blog posts or articles</li>
-<li>Any static web content</li>
-</ul>
-<p>When a reference field contains a URL, the validator:</p>
-<ol>
-<li>Fetches the web page content</li>
-<li>Extracts the page title from <code>&lt;title&gt;</code> tag (for HTML)</li>
-<li>Caches the content for future validations</li>
-<li>Validates your supporting text against the page content</li>
-</ol>
-<h2 id="url-format">URL Format</h2>
-<p>Use the <code>url:</code> prefix to specify URL references:</p>
-<pre><code class="language-yaml">my_field:
-  value: &quot;Some text from the web page...&quot;
-  references:
-    - &quot;url:https://example.com/book/chapter1&quot;
-</code></pre>
-<p>Or via CLI:</p>
+<h1 id="using-local-files-and-urls-as-references">Using Local Files and URLs as References</h1>
+<p>In addition to PubMed IDs and DOIs, the validator supports local files and web URLs as reference sources. This is useful when your supporting text comes from internal documentation, research notes, or web pages.</p>
+<h2 id="local-file-references">Local File References</h2>
+<p>Use the <code>file:</code> prefix to reference local files:</p>
 <pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text from the web page&quot; \
-  url:https://example.com/book/chapter1
+  &quot;JAK1 binds to the receptor complex&quot; \
+  file:./research/jak-signaling-notes.md
 </code></pre>
-<h2 id="example">Example</h2>
-<p>Suppose you have an online textbook chapter at <code>https://example.com/biology/cell-structure</code> with the following content:</p>
-<pre><code class="language-html">&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  &lt;body&gt;
-    &lt;h1&gt;Cell Structure and Function&lt;/h1&gt;
-    &lt;p&gt;The cell is the basic structural and functional unit of all living organisms.&lt;/p&gt;
-    &lt;p&gt;Cells contain various organelles that perform specific functions...&lt;/p&gt;
-  &lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
-<p>You can validate text extracted from this chapter:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;The cell is the basic structural and functional unit of all living organisms&quot; \
-  url:https://example.com/biology/cell-structure
-</code></pre>
-<h2 id="how-url-validation-works">How URL Validation Works</h2>
-<h3 id="1-content-fetching">1. Content Fetching</h3>
-<p>When the validator encounters a URL reference, it:</p>
+<h3 id="supported-file-types">Supported File Types</h3>
 <ul>
-<li>Makes an HTTP GET request to fetch the page</li>
-<li>Uses a polite user agent header identifying the tool</li>
-<li>Respects rate limiting (configurable via <code>rate_limit_delay</code>)</li>
-<li>Handles timeouts (default 30 seconds)</li>
+<li><strong>Markdown</strong> (<code>.md</code>) - Title extracted from first <code># heading</code></li>
+<li><strong>Plain text</strong> (<code>.txt</code>) - Content used as-is</li>
+<li><strong>HTML</strong> (<code>.html</code>) - Content preserved including HTML entities</li>
 </ul>
-<h3 id="2-content-storage">2. Content Storage</h3>
-<p>The fetcher stores:</p>
-<ul>
-<li><strong>Title</strong>: Extracted from the <code>&lt;title&gt;</code> tag (for HTML pages)</li>
-<li><strong>Content</strong>: The raw page content as received</li>
-<li><strong>Content type</strong>: Marked as <code>url</code> to distinguish from other reference types</li>
-</ul>
-<p>Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.</p>
-<h3 id="3-caching">3. Caching</h3>
-<p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
-<pre><code class="language-markdown">---
-reference_id: url:https://example.com/biology/cell-structure
-title: &quot;Chapter 3: Cell Structure and Function&quot;
-content_type: url
----
-
-# Chapter 3: Cell Structure and Function
-
-## Content
-
-&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  ...
+<h3 id="path-resolution">Path Resolution</h3>
+<p><strong>Absolute paths</strong> always work:</p>
+<pre><code class="language-bash">file:/Users/me/research/notes.md
 </code></pre>
-<p>Cache files are stored in the configured cache directory (default: <code>references_cache/</code>).</p>
-<h2 id="configuration">Configuration</h2>
-<p>URL fetching behavior can be configured:</p>
-<pre><code class="language-yaml"># config.yaml
-rate_limit_delay: 0.5  # Wait 0.5 seconds between requests
-email: &quot;your-email@example.com&quot;  # Used in user agent
-cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
-</code></pre>
-<p>Or via command-line:</p>
-<pre><code class="language-bash">linkml-reference-validator validate \
-  --cache-dir .cache \
-  --rate-limit-delay 0.5 \
-  my-data.yaml
-</code></pre>
-<h2 id="limitations">Limitations</h2>
-<h3 id="static-content-only">Static Content Only</h3>
-<p>URL validation is designed for static web pages. It may not work well with:</p>
-<ul>
-<li>Dynamic content loaded via JavaScript</li>
-<li>Pages requiring authentication</li>
-<li>Content behind paywalls</li>
-<li>Frequently changing content</li>
-</ul>
-<h3 id="raw-content">Raw Content</h3>
-<p>The validator stores raw page content. For HTML pages:</p>
-<ul>
-<li>HTML tags are preserved in the cache</li>
-<li>The text normalization during validation handles most cases</li>
-<li>Complex HTML layouts may require careful text extraction</li>
-</ul>
-<h3 id="no-rendering">No Rendering</h3>
-<p>The fetcher downloads raw HTML and parses it directly. It does not:</p>
-<ul>
-<li>Execute JavaScript</li>
-<li>Render the page in a browser</li>
-<li>Handle dynamic content</li>
-</ul>
-<h2 id="best-practices">Best Practices</h2>
-<h3 id="1-use-stable-urls">1. Use Stable URLs</h3>
-<p>Choose URLs that are unlikely to change:</p>
-<ul>
-<li>Versioned documentation: <code>https://docs.example.com/v1.0/chapter1</code></li>
-<li>Archived content: <code>https://archive.example.com/2024/article</code></li>
-<li>Avoid URLs with session parameters</li>
-</ul>
-<h3 id="2-verify-content-quality">2. Verify Content Quality</h3>
-<p>After adding a URL reference, verify the extracted content:</p>
-<pre><code class="language-bash"># Check what was extracted
-cat references_cache/url_https___example.com_page.md
-</code></pre>
-<p>Ensure the cached content contains the text you're referencing.</p>
-<h3 id="3-cache-management">3. Cache Management</h3>
-<ul>
-<li>Commit cache files to version control for reproducibility</li>
-<li>Use <code>--force-refresh</code> to update cached content when pages change</li>
-<li>Periodically review cached URLs to ensure they're still accessible</li>
-</ul>
-<h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
-<p>URL references work alongside PMIDs and DOIs:</p>
-<pre><code class="language-yaml">findings:
-  value: &quot;Multiple studies confirm this relationship&quot;
-  references:
-    - &quot;PMID:12345678&quot;  # Research paper
-    - &quot;DOI:10.1234/journal.article&quot;  # Another paper
-    - &quot;url:https://example.com/textbook/chapter5&quot;  # Textbook chapter
-</code></pre>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="url-not-fetching">URL Not Fetching</h3>
-<p>If URL content isn't being fetched:</p>
+<p><strong>Relative paths</strong> are resolved in order:</p>
 <ol>
-<li>Check network connectivity</li>
-<li>Verify the URL is accessible in a browser</li>
-<li>Check for rate limiting or IP blocks</li>
-<li>Look for error messages in the logs</li>
+<li>If <code>reference_base_dir</code> is configured, paths resolve relative to it</li>
+<li>Otherwise, paths resolve relative to the current working directory</li>
 </ol>
-<h3 id="validation-failing">Validation Failing</h3>
-<p>If validation fails for URL references:</p>
-<ol>
-<li>Check the cached content to see what was extracted</li>
-<li>Verify your supporting text actually appears on the page</li>
-<li>Check for whitespace or formatting differences</li>
-<li>Consider if the page content has changed since caching</li>
-</ol>
-<h3 id="force-refresh">Force Refresh</h3>
-<p>To re-fetch content for a URL that may have changed:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Updated content&quot; \
-  url:https://example.com/page \
-  --force-refresh
+<h3 id="configuring-a-base-directory">Configuring a Base Directory</h3>
+<p>Set a base directory for all relative file references:</p>
+<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
+from pathlib import Path
+
+config = ReferenceValidationConfig(
+    reference_base_dir=Path(&quot;./references&quot;),
+)
 </code></pre>
-<h2 id="comparison-with-other-reference-types">Comparison with Other Reference Types</h2>
+<p>Then <code>file:notes.md</code> resolves to <code>./references/notes.md</code>.</p>
+<h3 id="example-validating-against-research-notes">Example: Validating Against Research Notes</h3>
+<p>Create a research file:</p>
+<pre><code class="language-markdown"># JAK-STAT Signaling Pathway
+
+JAK1 binds to the receptor complex and initiates downstream signaling.
+This leads to STAT phosphorylation and nuclear translocation.
+</code></pre>
+<p>Validate:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;JAK1 binds to the receptor complex&quot; \
+  file:./jak-signaling.md
+</code></pre>
+<h2 id="url-references">URL References</h2>
+<p>Use the <code>url:</code> prefix to reference web pages:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Climate change affects biodiversity&quot; \
+  url:https://example.org/climate-report.html
+</code></pre>
+<h3 id="caching">Caching</h3>
+<p>URLs are cached the same way as PMID and DOI references:</p>
+<ul>
+<li>First fetch downloads and caches the content</li>
+<li>Subsequent validations use the cached version</li>
+<li>Use <code>--force-refresh</code> to re-fetch</li>
+</ul>
+<h3 id="title-extraction">Title Extraction</h3>
+<p>For HTML pages, the title is extracted from the <code>&lt;title&gt;</code> tag. For other content types, the URL itself is used as the title.</p>
+<h3 id="example-validating-against-a-web-page">Example: Validating Against a Web Page</h3>
+<pre><code class="language-bash"># First validation fetches and caches
+linkml-reference-validator validate text \
+  &quot;The quick brown fox jumps over the lazy dog&quot; \
+  url:https://example.com/pangram-examples.html
+
+# Subsequent validations use cache
+linkml-reference-validator validate text \
+  &quot;A quick brown fox&quot; \
+  url:https://example.com/pangram-examples.html
+</code></pre>
+<h2 id="using-in-data-files">Using in Data Files</h2>
+<p>Both file and URL references work in LinkML data files:</p>
+<pre><code class="language-yaml"># data.yaml
+- id: local-evidence
+  supporting_text: JAK1 binds to the receptor complex
+  reference: file:./research/jak-notes.md
+
+- id: web-evidence
+  supporting_text: Climate impacts are accelerating
+  reference: url:https://example.org/climate-report.html
+</code></pre>
+<h2 id="reference-type-summary">Reference Type Summary</h2>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>PMID</th>
-<th>DOI</th>
-<th>URL</th>
-<th>file</th>
+<th>Prefix</th>
+<th>Example</th>
+<th>Source</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Source</td>
-<td>PubMed</td>
-<td>Crossref</td>
-<td>Any web page</td>
+<td><code>PMID:</code></td>
+<td><code>PMID:16888623</code></td>
+<td>PubMed via NCBI Entrez</td>
+</tr>
+<tr>
+<td><code>DOI:</code></td>
+<td><code>DOI:10.1038/nature12373</code></td>
+<td>Crossref API</td>
+</tr>
+<tr>
+<td><code>file:</code></td>
+<td><code>file:./notes.md</code></td>
 <td>Local filesystem</td>
 </tr>
 <tr>
-<td>Content Type</td>
-<td>Abstract + Full Text</td>
-<td>Abstract</td>
-<td>Raw HTML/text</td>
-<td>Raw file content</td>
-</tr>
-<tr>
-<td>Metadata</td>
-<td>Rich (authors, journal, etc.)</td>
-<td>Rich</td>
-<td>Minimal (title only)</td>
-<td>Minimal (title from heading)</td>
-</tr>
-<tr>
-<td>Stability</td>
-<td>High</td>
-<td>High</td>
-<td>Variable</td>
-<td>High (local control)</td>
-</tr>
-<tr>
-<td>Access</td>
-<td>Free for abstracts</td>
-<td>Varies</td>
-<td>Varies</td>
-<td>Always available</td>
-</tr>
-<tr>
-<td>Caching</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
+<td><code>url:</code></td>
+<td><code>url:https://example.com</code></td>
+<td>Web (HTTP/HTTPS)</td>
 </tr>
 </tbody>
 </table>
-<h2 id="see-also">See Also</h2>
+<h2 id="best-practices">Best Practices</h2>
+<h3 id="for-local-files">For Local Files</h3>
 <ul>
-<li><a href="../use-local-files-and-urls/">Using Local Files and URLs</a> - Quick reference for file and URL sources</li>
-<li><a href="../validate-dois/">Validating DOIs</a> - For journal articles with DOIs</li>
-<li><a href="../validate-obo-files/">Validating OBO Files</a> - For ontology-specific validation</li>
-<li><a href="../../concepts/how-it-works/">How It Works</a> - Core validation concepts</li>
-<li><a href="../../reference/cli/">CLI Reference</a> - Command-line options</li>
+<li>Keep reference files in a dedicated directory</li>
+<li>Use <code>reference_base_dir</code> for consistent path resolution</li>
+<li>Use markdown for structured content with clear headings</li>
+</ul>
+<h3 id="for-urls">For URLs</h3>
+<ul>
+<li>Prefer stable URLs (avoid query parameters that change)</li>
+<li>Be aware that web content may change (cache helps with reproducibility)</li>
+<li>Consider downloading important pages as local files for long-term stability</li>
+</ul>
+<h2 id="limitations">Limitations</h2>
+<ul>
+<li><strong>PDF files</strong>: Not yet supported (planned for future)</li>
+<li><strong>Authentication</strong>: URLs requiring login are not supported</li>
+<li><strong>Dynamic content</strong>: JavaScript-rendered pages may not work</li>
 </ul>
 
 

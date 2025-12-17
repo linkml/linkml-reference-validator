@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-urls/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/add-reference-source/">
       
       
-        <link rel="prev" href="../validate-dois/">
+        <link rel="prev" href="../use-local-files-and-urls/">
       
       
-        <link rel="next" href="../use-local-files-and-urls/">
+        <link rel="next" href="../../concepts/how-it-works/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Validating URLs - linkml-reference-validator</title>
+        <title>Adding a New Reference Source - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-url-references" class="md-skip">
+        <a href="#adding-a-new-reference-source" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating URLs
+              Adding a New Reference Source
             
           </span>
         </div>
@@ -544,37 +544,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating URLs
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../validate-urls/" class="md-nav__link">
         
   
   
@@ -590,303 +563,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Format
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Content Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Content Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Caching
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Limitations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Static Content Only
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Raw Content
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No Rendering
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Best Practices">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Stable URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -924,10 +600,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../add-reference-source/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -943,6 +646,136 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-1-create-the-source-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Create the Source Class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Implement the fetch() Method
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Handle Errors Gracefully
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-4-register-the-source" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Register the Source
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-5-write-tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Write Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-custom-can_handle-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional: Custom can_handle() Method
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-referencecontent-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: ReferenceContent Fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1185,10 +1018,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
+  <a href="#step-1-create-the-source-class" class="md-nav__link">
     <span class="md-ellipsis">
       
-        URL Format
+        Step 1: Create the Source Class
       
     </span>
   </a>
@@ -1196,10 +1029,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
+  <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Example
+        Step 2: Implement the fetch() Method
       
     </span>
   </a>
@@ -1207,60 +1040,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
+  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Content Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Content Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Caching
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
+        Step 3: Handle Errors Gracefully
       
     </span>
   </a>
@@ -1268,171 +1051,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
+  <a href="#step-4-register-the-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Limitations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Limitations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Static Content Only
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Raw Content
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No Rendering
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Best Practices">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Stable URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
+        Step 4: Register the Source
       
     </span>
   </a>
@@ -1440,10 +1062,54 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
+  <a href="#step-5-write-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Also
+        Step 5: Write Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optional-custom-can_handle-method" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional: Custom can_handle() Method
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#complete-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-referencecontent-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference: ReferenceContent Fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips
       
     </span>
   </a>
@@ -1470,242 +1136,276 @@
   
 
 
-<h1 id="validating-url-references">Validating URL References</h1>
-<p>This guide explains how to validate references that use URLs instead of traditional identifiers like PMIDs or DOIs.</p>
+<h1 id="adding-a-new-reference-source">Adding a New Reference Source</h1>
+<p>The validator uses a plugin architecture that makes it easy to add support for new reference types. This guide shows how to create a custom reference source.</p>
 <h2 id="overview">Overview</h2>
-<p>The linkml-reference-validator supports validating references that point to web content, such as:</p>
-<ul>
-<li>Book chapters hosted online</li>
-<li>Educational resources</li>
-<li>Documentation pages</li>
-<li>Blog posts or articles</li>
-<li>Any static web content</li>
-</ul>
-<p>When a reference field contains a URL, the validator:</p>
+<p>Each reference source is a Python class that:</p>
 <ol>
-<li>Fetches the web page content</li>
-<li>Extracts the page title from <code>&lt;title&gt;</code> tag (for HTML)</li>
-<li>Caches the content for future validations</li>
-<li>Validates your supporting text against the page content</li>
+<li>Inherits from <code>ReferenceSource</code></li>
+<li>Implements <code>prefix()</code> and <code>fetch()</code> methods</li>
+<li>Registers itself with the <code>ReferenceSourceRegistry</code></li>
 </ol>
-<h2 id="url-format">URL Format</h2>
-<p>Use the <code>url:</code> prefix to specify URL references:</p>
-<pre><code class="language-yaml">my_field:
-  value: &quot;Some text from the web page...&quot;
-  references:
-    - &quot;url:https://example.com/book/chapter1&quot;
-</code></pre>
-<p>Or via CLI:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text from the web page&quot; \
-  url:https://example.com/book/chapter1
-</code></pre>
-<h2 id="example">Example</h2>
-<p>Suppose you have an online textbook chapter at <code>https://example.com/biology/cell-structure</code> with the following content:</p>
-<pre><code class="language-html">&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  &lt;body&gt;
-    &lt;h1&gt;Cell Structure and Function&lt;/h1&gt;
-    &lt;p&gt;The cell is the basic structural and functional unit of all living organisms.&lt;/p&gt;
-    &lt;p&gt;Cells contain various organelles that perform specific functions...&lt;/p&gt;
-  &lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
-<p>You can validate text extracted from this chapter:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;The cell is the basic structural and functional unit of all living organisms&quot; \
-  url:https://example.com/biology/cell-structure
-</code></pre>
-<h2 id="how-url-validation-works">How URL Validation Works</h2>
-<h3 id="1-content-fetching">1. Content Fetching</h3>
-<p>When the validator encounters a URL reference, it:</p>
-<ul>
-<li>Makes an HTTP GET request to fetch the page</li>
-<li>Uses a polite user agent header identifying the tool</li>
-<li>Respects rate limiting (configurable via <code>rate_limit_delay</code>)</li>
-<li>Handles timeouts (default 30 seconds)</li>
-</ul>
-<h3 id="2-content-storage">2. Content Storage</h3>
-<p>The fetcher stores:</p>
-<ul>
-<li><strong>Title</strong>: Extracted from the <code>&lt;title&gt;</code> tag (for HTML pages)</li>
-<li><strong>Content</strong>: The raw page content as received</li>
-<li><strong>Content type</strong>: Marked as <code>url</code> to distinguish from other reference types</li>
-</ul>
-<p>Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.</p>
-<h3 id="3-caching">3. Caching</h3>
-<p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
-<pre><code class="language-markdown">---
-reference_id: url:https://example.com/biology/cell-structure
-title: &quot;Chapter 3: Cell Structure and Function&quot;
-content_type: url
----
+<h2 id="step-1-create-the-source-class">Step 1: Create the Source Class</h2>
+<p>Create a new file in <code>src/linkml_reference_validator/etl/sources/</code>:</p>
+<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/arxiv.py
+&quot;&quot;&quot;arXiv reference source.&quot;&quot;&quot;
 
-# Chapter 3: Cell Structure and Function
+import logging
+from typing import Optional
 
-## Content
+from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 
-&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  ...
+logger = logging.getLogger(__name__)
+
+
+@ReferenceSourceRegistry.register
+class ArxivSource(ReferenceSource):
+    &quot;&quot;&quot;Fetch references from arXiv.&quot;&quot;&quot;
+
+    @classmethod
+    def prefix(cls) -&gt; str:
+        &quot;&quot;&quot;Return the prefix this source handles.&quot;&quot;&quot;
+        return &quot;arxiv&quot;
+
+    def fetch(
+        self, identifier: str, config: ReferenceValidationConfig
+    ) -&gt; Optional[ReferenceContent]:
+        &quot;&quot;&quot;Fetch a paper from arXiv.
+
+        Args:
+            identifier: arXiv ID (e.g., '2301.07041')
+            config: Configuration for fetching
+
+        Returns:
+            ReferenceContent if successful, None otherwise
+        &quot;&quot;&quot;
+        # Your implementation here
+        # Fetch from arXiv API, parse response, return ReferenceContent
+        ...
 </code></pre>
-<p>Cache files are stored in the configured cache directory (default: <code>references_cache/</code>).</p>
-<h2 id="configuration">Configuration</h2>
-<p>URL fetching behavior can be configured:</p>
-<pre><code class="language-yaml"># config.yaml
-rate_limit_delay: 0.5  # Wait 0.5 seconds between requests
-email: &quot;your-email@example.com&quot;  # Used in user agent
-cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
-</code></pre>
-<p>Or via command-line:</p>
-<pre><code class="language-bash">linkml-reference-validator validate \
-  --cache-dir .cache \
-  --rate-limit-delay 0.5 \
-  my-data.yaml
-</code></pre>
-<h2 id="limitations">Limitations</h2>
-<h3 id="static-content-only">Static Content Only</h3>
-<p>URL validation is designed for static web pages. It may not work well with:</p>
-<ul>
-<li>Dynamic content loaded via JavaScript</li>
-<li>Pages requiring authentication</li>
-<li>Content behind paywalls</li>
-<li>Frequently changing content</li>
-</ul>
-<h3 id="raw-content">Raw Content</h3>
-<p>The validator stores raw page content. For HTML pages:</p>
-<ul>
-<li>HTML tags are preserved in the cache</li>
-<li>The text normalization during validation handles most cases</li>
-<li>Complex HTML layouts may require careful text extraction</li>
-</ul>
-<h3 id="no-rendering">No Rendering</h3>
-<p>The fetcher downloads raw HTML and parses it directly. It does not:</p>
-<ul>
-<li>Execute JavaScript</li>
-<li>Render the page in a browser</li>
-<li>Handle dynamic content</li>
-</ul>
-<h2 id="best-practices">Best Practices</h2>
-<h3 id="1-use-stable-urls">1. Use Stable URLs</h3>
-<p>Choose URLs that are unlikely to change:</p>
-<ul>
-<li>Versioned documentation: <code>https://docs.example.com/v1.0/chapter1</code></li>
-<li>Archived content: <code>https://archive.example.com/2024/article</code></li>
-<li>Avoid URLs with session parameters</li>
-</ul>
-<h3 id="2-verify-content-quality">2. Verify Content Quality</h3>
-<p>After adding a URL reference, verify the extracted content:</p>
-<pre><code class="language-bash"># Check what was extracted
-cat references_cache/url_https___example.com_page.md
-</code></pre>
-<p>Ensure the cached content contains the text you're referencing.</p>
-<h3 id="3-cache-management">3. Cache Management</h3>
-<ul>
-<li>Commit cache files to version control for reproducibility</li>
-<li>Use <code>--force-refresh</code> to update cached content when pages change</li>
-<li>Periodically review cached URLs to ensure they're still accessible</li>
-</ul>
-<h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
-<p>URL references work alongside PMIDs and DOIs:</p>
-<pre><code class="language-yaml">findings:
-  value: &quot;Multiple studies confirm this relationship&quot;
-  references:
-    - &quot;PMID:12345678&quot;  # Research paper
-    - &quot;DOI:10.1234/journal.article&quot;  # Another paper
-    - &quot;url:https://example.com/textbook/chapter5&quot;  # Textbook chapter
-</code></pre>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="url-not-fetching">URL Not Fetching</h3>
-<p>If URL content isn't being fetched:</p>
+<h2 id="step-2-implement-the-fetch-method">Step 2: Implement the <code>fetch()</code> Method</h2>
+<p>The <code>fetch()</code> method should:</p>
 <ol>
-<li>Check network connectivity</li>
-<li>Verify the URL is accessible in a browser</li>
-<li>Check for rate limiting or IP blocks</li>
-<li>Look for error messages in the logs</li>
+<li>Accept an identifier (without the prefix)</li>
+<li>Fetch content from the external source</li>
+<li>Return a <code>ReferenceContent</code> object or <code>None</code> on failure</li>
 </ol>
-<h3 id="validation-failing">Validation Failing</h3>
-<p>If validation fails for URL references:</p>
-<ol>
-<li>Check the cached content to see what was extracted</li>
-<li>Verify your supporting text actually appears on the page</li>
-<li>Check for whitespace or formatting differences</li>
-<li>Consider if the page content has changed since caching</li>
-</ol>
-<h3 id="force-refresh">Force Refresh</h3>
-<p>To re-fetch content for a URL that may have changed:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Updated content&quot; \
-  url:https://example.com/page \
-  --force-refresh
+<pre><code class="language-python">def fetch(
+    self, identifier: str, config: ReferenceValidationConfig
+) -&gt; Optional[ReferenceContent]:
+    &quot;&quot;&quot;Fetch a paper from arXiv.&quot;&quot;&quot;
+    import requests
+    import time
+
+    arxiv_id = identifier.strip()
+
+    # Respect rate limiting
+    time.sleep(config.rate_limit_delay)
+
+    # Fetch from arXiv API
+    url = f&quot;http://export.arxiv.org/api/query?id_list={arxiv_id}&quot;
+    response = requests.get(url, timeout=30)
+
+    if response.status_code != 200:
+        logger.warning(f&quot;Failed to fetch arxiv:{arxiv_id}&quot;)
+        return None
+
+    # Parse the response (arXiv returns Atom XML)
+    title, authors, abstract = self._parse_arxiv_response(response.text)
+
+    return ReferenceContent(
+        reference_id=f&quot;arxiv:{arxiv_id}&quot;,
+        title=title,
+        content=abstract,
+        content_type=&quot;abstract_only&quot;,
+        authors=authors,
+    )
 </code></pre>
-<h2 id="comparison-with-other-reference-types">Comparison with Other Reference Types</h2>
+<h2 id="step-3-handle-errors-gracefully">Step 3: Handle Errors Gracefully</h2>
+<p>Since you're interfacing with external systems, wrap API calls in try/except:</p>
+<pre><code class="language-python">def fetch(self, identifier: str, config: ReferenceValidationConfig) -&gt; Optional[ReferenceContent]:
+    try:
+        response = requests.get(url, timeout=30)
+        # ... process response
+    except Exception as e:
+        logger.warning(f&quot;Failed to fetch arxiv:{identifier}: {e}&quot;)
+        return None
+</code></pre>
+<h2 id="step-4-register-the-source">Step 4: Register the Source</h2>
+<p>The <code>@ReferenceSourceRegistry.register</code> decorator automatically registers your source when the module is imported.</p>
+<p>Add the import to <code>src/linkml_reference_validator/etl/sources/__init__.py</code>:</p>
+<pre><code class="language-python">from linkml_reference_validator.etl.sources.arxiv import ArxivSource
+
+__all__ = [
+    # ... existing exports
+    &quot;ArxivSource&quot;,
+]
+</code></pre>
+<h2 id="step-5-write-tests">Step 5: Write Tests</h2>
+<p>Create tests in <code>tests/test_sources.py</code>:</p>
+<pre><code class="language-python">class TestArxivSource:
+    &quot;&quot;&quot;Tests for ArxivSource.&quot;&quot;&quot;
+
+    @pytest.fixture
+    def source(self):
+        return ArxivSource()
+
+    def test_prefix(self, source):
+        assert source.prefix() == &quot;arxiv&quot;
+
+    def test_can_handle(self, source):
+        assert source.can_handle(&quot;arxiv:2301.07041&quot;)
+        assert not source.can_handle(&quot;PMID:12345&quot;)
+
+    @patch(&quot;linkml_reference_validator.etl.sources.arxiv.requests.get&quot;)
+    def test_fetch(self, mock_get, source, config):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = &quot;&quot;&quot;...&quot;&quot;&quot;  # Mock arXiv XML
+        mock_get.return_value = mock_response
+
+        result = source.fetch(&quot;2301.07041&quot;, config)
+
+        assert result is not None
+        assert result.reference_id == &quot;arxiv:2301.07041&quot;
+</code></pre>
+<h2 id="optional-custom-can_handle-method">Optional: Custom <code>can_handle()</code> Method</h2>
+<p>The default <code>can_handle()</code> checks if the reference starts with your prefix. Override it for custom matching:</p>
+<pre><code class="language-python">@classmethod
+def can_handle(cls, reference_id: str) -&gt; bool:
+    &quot;&quot;&quot;Handle arxiv: references and bare arXiv IDs.&quot;&quot;&quot;
+    ref = reference_id.strip()
+    # Match prefix
+    if ref.lower().startswith(&quot;arxiv:&quot;):
+        return True
+    # Match bare arXiv ID pattern (e.g., 2301.07041)
+    import re
+    return bool(re.match(r&quot;^\d{4}\.\d{4,5}(v\d+)?$&quot;, ref))
+</code></pre>
+<h2 id="complete-example">Complete Example</h2>
+<p>Here's a complete implementation for a hypothetical "WikiData" source:</p>
+<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/wikidata.py
+&quot;&quot;&quot;WikiData reference source.&quot;&quot;&quot;
+
+import logging
+import time
+from typing import Optional
+
+import requests
+
+from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+
+logger = logging.getLogger(__name__)
+
+
+@ReferenceSourceRegistry.register
+class WikidataSource(ReferenceSource):
+    &quot;&quot;&quot;Fetch reference content from WikiData items.&quot;&quot;&quot;
+
+    @classmethod
+    def prefix(cls) -&gt; str:
+        return &quot;wikidata&quot;
+
+    def fetch(
+        self, identifier: str, config: ReferenceValidationConfig
+    ) -&gt; Optional[ReferenceContent]:
+        qid = identifier.strip().upper()
+        if not qid.startswith(&quot;Q&quot;):
+            qid = f&quot;Q{qid}&quot;
+
+        time.sleep(config.rate_limit_delay)
+
+        url = f&quot;https://www.wikidata.org/wiki/Special:EntityData/{qid}.json&quot;
+
+        try:
+            response = requests.get(url, timeout=30)
+            if response.status_code != 200:
+                logger.warning(f&quot;Failed to fetch wikidata:{qid}&quot;)
+                return None
+
+            data = response.json()
+            entity = data[&quot;entities&quot;].get(qid, {})
+
+            # Extract label and description
+            labels = entity.get(&quot;labels&quot;, {})
+            descriptions = entity.get(&quot;descriptions&quot;, {})
+
+            title = labels.get(&quot;en&quot;, {}).get(&quot;value&quot;, qid)
+            description = descriptions.get(&quot;en&quot;, {}).get(&quot;value&quot;, &quot;&quot;)
+
+            return ReferenceContent(
+                reference_id=f&quot;wikidata:{qid}&quot;,
+                title=title,
+                content=description,
+                content_type=&quot;wikidata_description&quot;,
+            )
+
+        except Exception as e:
+            logger.warning(f&quot;Error fetching wikidata:{qid}: {e}&quot;)
+            return None
+</code></pre>
+<h2 id="reference-referencecontent-fields">Reference: ReferenceContent Fields</h2>
+<p>The <code>ReferenceContent</code> model has these fields:</p>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>PMID</th>
-<th>DOI</th>
-<th>URL</th>
-<th>file</th>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Source</td>
-<td>PubMed</td>
-<td>Crossref</td>
-<td>Any web page</td>
-<td>Local filesystem</td>
+<td><code>reference_id</code></td>
+<td><code>str</code></td>
+<td>Full reference ID with prefix (e.g., <code>arxiv:2301.07041</code>)</td>
 </tr>
 <tr>
-<td>Content Type</td>
-<td>Abstract + Full Text</td>
-<td>Abstract</td>
-<td>Raw HTML/text</td>
-<td>Raw file content</td>
+<td><code>title</code></td>
+<td><code>Optional[str]</code></td>
+<td>Title of the reference</td>
 </tr>
 <tr>
-<td>Metadata</td>
-<td>Rich (authors, journal, etc.)</td>
-<td>Rich</td>
-<td>Minimal (title only)</td>
-<td>Minimal (title from heading)</td>
+<td><code>content</code></td>
+<td><code>Optional[str]</code></td>
+<td>Main text content for validation</td>
 </tr>
 <tr>
-<td>Stability</td>
-<td>High</td>
-<td>High</td>
-<td>Variable</td>
-<td>High (local control)</td>
+<td><code>content_type</code></td>
+<td><code>str</code></td>
+<td>Type indicator (e.g., <code>abstract_only</code>, <code>full_text</code>)</td>
 </tr>
 <tr>
-<td>Access</td>
-<td>Free for abstracts</td>
-<td>Varies</td>
-<td>Varies</td>
-<td>Always available</td>
+<td><code>authors</code></td>
+<td><code>Optional[list[str]]</code></td>
+<td>List of author names</td>
 </tr>
 <tr>
-<td>Caching</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
+<td><code>journal</code></td>
+<td><code>Optional[str]</code></td>
+<td>Journal/venue name</td>
+</tr>
+<tr>
+<td><code>year</code></td>
+<td><code>Optional[str]</code></td>
+<td>Publication year</td>
+</tr>
+<tr>
+<td><code>doi</code></td>
+<td><code>Optional[str]</code></td>
+<td>DOI if available</td>
 </tr>
 </tbody>
 </table>
-<h2 id="see-also">See Also</h2>
+<h2 id="tips">Tips</h2>
 <ul>
-<li><a href="../use-local-files-and-urls/">Using Local Files and URLs</a> - Quick reference for file and URL sources</li>
-<li><a href="../validate-dois/">Validating DOIs</a> - For journal articles with DOIs</li>
-<li><a href="../validate-obo-files/">Validating OBO Files</a> - For ontology-specific validation</li>
-<li><a href="../../concepts/how-it-works/">How It Works</a> - Core validation concepts</li>
-<li><a href="../../reference/cli/">CLI Reference</a> - Command-line options</li>
+<li><strong>Rate limiting</strong>: Always respect <code>config.rate_limit_delay</code> between API calls</li>
+<li><strong>Error handling</strong>: Return <code>None</code> on failures, don't raise exceptions</li>
+<li><strong>Logging</strong>: Use <code>logger.warning()</code> for failures to aid debugging</li>
+<li><strong>Caching</strong>: The <code>ReferenceFetcher</code> handles caching automatically - your source just needs to fetch</li>
+<li><strong>Testing</strong>: Mock external API calls in tests to avoid network dependencies</li>
 </ul>
 
 

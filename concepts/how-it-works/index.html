@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/concepts/how-it-works/">
       
       
-        <link rel="prev" href="../../how-to/validate-urls/">
+        <link rel="prev" href="../../how-to/add-reference-source/">
       
       
         <link rel="next" href="../editorial-conventions/">
@@ -566,6 +566,62 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/use-local-files-and-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to/add-reference-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -812,6 +868,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pubmed-central-pmc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed Central (PMC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#doi-digital-object-identifier" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -823,10 +890,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#urls" class="md-nav__link">
+  <a href="#local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        URLs
+        Local Files
       
     </span>
   </a>
@@ -834,10 +901,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pubmed-central-pmc" class="md-nav__link">
+  <a href="#urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        PubMed Central (PMC)
+        URLs
       
     </span>
   </a>
@@ -1342,6 +1409,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#pubmed-central-pmc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed Central (PMC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#doi-digital-object-identifier" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1353,10 +1431,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#urls" class="md-nav__link">
+  <a href="#local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        URLs
+        Local Files
       
     </span>
   </a>
@@ -1364,10 +1442,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#pubmed-central-pmc" class="md-nav__link">
+  <a href="#urls" class="md-nav__link">
     <span class="md-ellipsis">
       
-        PubMed Central (PMC)
+        URLs
       
     </span>
   </a>
@@ -1665,43 +1743,15 @@ Parts: [&quot;MUC1 oncoprotein&quot;, &quot;nuclear targeting&quot;]
 <li><strong>Simplicity</strong>: No model dependencies or API costs</li>
 </ol>
 <h2 id="reference-fetching">Reference Fetching</h2>
-<p>The validator supports multiple reference types:</p>
+<p>The validator uses a <strong>plugin architecture</strong> to support multiple reference sources. Each source type is handled by a dedicated plugin that knows how to fetch and parse content from that source.</p>
 <h3 id="pubmed-pmid">PubMed (PMID)</h3>
 <p>For <code>PMID:12345678</code>:</p>
 <ol>
 <li>Queries NCBI E-utilities API</li>
 <li>Fetches abstract and metadata</li>
-<li>Attempts to retrieve full-text from PMC if available</li>
-<li>Parses XML response with BeautifulSoup</li>
+<li>Parses XML response</li>
 <li>Caches as markdown with YAML frontmatter</li>
 </ol>
-<h3 id="doi-digital-object-identifier">DOI (Digital Object Identifier)</h3>
-<p>For <code>DOI:10.1234/journal.article</code>:</p>
-<ol>
-<li>Queries Crossref API for metadata</li>
-<li>Fetches abstract and bibliographic information</li>
-<li>Extracts title, authors, journal, year</li>
-<li>Caches abstract and metadata as markdown</li>
-</ol>
-<h3 id="urls">URLs</h3>
-<p>For <code>URL:https://example.com/page</code> or <code>https://example.com/page</code>:</p>
-<ol>
-<li>Makes HTTP GET request to fetch web page</li>
-<li>Extracts title from <code>&lt;title&gt;</code> tag</li>
-<li>Converts HTML to plain text (removes scripts, styles, navigation)</li>
-<li>Normalizes whitespace</li>
-<li>Caches as markdown with content type <code>html_converted</code></li>
-</ol>
-<p><strong>Use cases for URLs:</strong>
-- Online book chapters
-- Educational resources
-- Documentation pages
-- Any static web content</p>
-<p><strong>Limitations:</strong>
-- Works best with static HTML content
-- Does not execute JavaScript
-- Cannot access content behind authentication
-- Complex dynamic pages may not extract well</p>
 <h3 id="pubmed-central-pmc">PubMed Central (PMC)</h3>
 <p>For <code>PMC:12345</code>:</p>
 <ol>
@@ -1709,6 +1759,32 @@ Parts: [&quot;MUC1 oncoprotein&quot;, &quot;nuclear targeting&quot;]
 <li>Extracts all sections (abstract, introduction, methods, results, discussion)</li>
 <li>Provides more content than abstracts alone</li>
 <li>Also cached as markdown</li>
+</ol>
+<h3 id="doi-digital-object-identifier">DOI (Digital Object Identifier)</h3>
+<p>For <code>DOI:10.1234/example</code>:</p>
+<ol>
+<li>Queries Crossref API</li>
+<li>Fetches metadata and abstract (when available)</li>
+<li>Caches as markdown</li>
+</ol>
+<h3 id="local-files">Local Files</h3>
+<p>For <code>file:./path/to/document.md</code>:</p>
+<ol>
+<li>Reads file from local filesystem</li>
+<li>Extracts title from first markdown heading (or uses filename)</li>
+<li>Content used as-is (no parsing for HTML files)</li>
+<li>Caches to allow consistent validation</li>
+</ol>
+<p>Path resolution:
+- Absolute paths work directly
+- Relative paths use <code>reference_base_dir</code> config if set, otherwise current directory</p>
+<h3 id="urls">URLs</h3>
+<p>For <code>url:https://example.com/page</code>:</p>
+<ol>
+<li>Fetches page via HTTP GET</li>
+<li>Extracts title from <code>&lt;title&gt;</code> tag (for HTML)</li>
+<li>Content preserved as-is</li>
+<li>Cached like other sources</li>
 </ol>
 <h2 id="caching">Caching</h2>
 <p>References are cached in <code>references_cache/</code> as markdown files:</p>

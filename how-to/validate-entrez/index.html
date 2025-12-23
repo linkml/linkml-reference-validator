@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/add-reference-source/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-entrez/">
       
       
-        <link rel="prev" href="../use-local-files-and-urls/">
+        <link rel="prev" href="../validate-obo-files/">
       
       
-        <link rel="next" href="../../concepts/how-it-works/">
+        <link rel="next" href="../validate-dois/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Adding a New Reference Source - linkml-reference-validator</title>
+        <title>Validating Entrez Accessions - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adding-a-new-reference-source" class="md-skip">
+        <a href="#validating-entrez-accessions" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Adding a New Reference Source
+              Validating Entrez Accessions
             
           </span>
         </div>
@@ -516,10 +516,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../validate-entrez/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -535,6 +562,153 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geo-gse-or-gds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GEO (GSE or GDS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bioproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BioProject
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#biosample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BioSample
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accepted-identifier-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accepted Identifier Formats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prefix Aliases and Normalization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-caching-entrez-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-caching Entrez Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rate-limiting-and-email" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Limiting and Email
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -628,37 +802,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Adding a New Reference Source
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../add-reference-source/" class="md-nav__link">
         
   
   
@@ -674,147 +821,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#entrez-summary-sources-recommended-for-ncbi-ids" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Entrez Summary Sources (Recommended for NCBI IDs)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-create-the-source-class" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 1: Create the Source Class
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 2: Implement the fetch() Method
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 3: Handle Errors Gracefully
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-register-the-source" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 4: Register the Source
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-write-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Write Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-custom-can_handle-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional: Custom can_handle() Method
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Complete Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference-referencecontent-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference: ReferenceContent Fields
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1057,10 +1063,60 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#entrez-summary-sources-recommended-for-ncbi-ids" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Entrez Summary Sources (Recommended for NCBI IDs)
+        Basic Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Basic Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#geo-gse-or-gds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GEO (GSE or GDS)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#bioproject" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BioProject
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#biosample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        BioSample
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accepted-identifier-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accepted Identifier Formats
       
     </span>
   </a>
@@ -1068,10 +1124,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-1-create-the-source-class" class="md-nav__link">
+  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Create the Source Class
+        Prefix Aliases and Normalization
       
     </span>
   </a>
@@ -1079,10 +1135,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
+  <a href="#pre-caching-entrez-records" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Implement the fetch() Method
+        Pre-caching Entrez Records
       
     </span>
   </a>
@@ -1090,10 +1146,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
+  <a href="#rate-limiting-and-email" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Handle Errors Gracefully
+        Rate Limiting and Email
       
     </span>
   </a>
@@ -1101,10 +1157,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-register-the-source" class="md-nav__link">
+  <a href="#content-availability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Register the Source
+        Content Availability
       
     </span>
   </a>
@@ -1112,54 +1168,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-5-write-tests" class="md-nav__link">
+  <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 5: Write Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-custom-can_handle-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional: Custom can_handle() Method
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Complete Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#reference-referencecontent-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference: ReferenceContent Fields
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tips" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tips
+        See Also
       
     </span>
   </a>
@@ -1186,298 +1198,84 @@
   
 
 
-<h1 id="adding-a-new-reference-source">Adding a New Reference Source</h1>
-<p>The validator uses a plugin architecture that makes it easy to add support for new reference types. This guide shows how to create a custom reference source.</p>
+<h1 id="validating-entrez-accessions">Validating Entrez Accessions</h1>
+<p>This guide shows how to validate supporting text against NCBI Entrez records for GEO, BioProject, and BioSample.</p>
 <h2 id="overview">Overview</h2>
-<p>Each reference source is a Python class that:</p>
-<ol>
-<li>Inherits from <code>ReferenceSource</code></li>
-<li>Implements <code>prefix()</code> and <code>fetch()</code> methods</li>
-<li>Registers itself with the <code>ReferenceSourceRegistry</code></li>
-</ol>
-<h2 id="entrez-summary-sources-recommended-for-ncbi-ids">Entrez Summary Sources (Recommended for NCBI IDs)</h2>
-<p>If your source is backed by NCBI Entrez, prefer the built-in <code>EntrezSummarySource</code>
-base class. It provides shared rate limiting, email configuration, and summary parsing.</p>
-<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/my_entrez.py
-&quot;&quot;&quot;Entrez summary source example.&quot;&quot;&quot;
-
-from linkml_reference_validator.etl.sources.entrez import EntrezSummarySource
-from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
-
-
-@ReferenceSourceRegistry.register
-class ExampleEntrezSource(EntrezSummarySource):
-    &quot;&quot;&quot;Fetch summaries from an Entrez database.&quot;&quot;&quot;
-
-    PREFIX = &quot;EXAMPLE&quot;
-    ENTREZ_DB = &quot;example_db&quot;
-    TITLE_FIELDS = (&quot;title&quot;, &quot;name&quot;)
-    CONTENT_FIELDS = (&quot;summary&quot;, &quot;description&quot;)
-    ID_PATTERNS = (r&quot;^EX\\d+$&quot;,)
-</code></pre>
-<p><code>TITLE_FIELDS</code> and <code>CONTENT_FIELDS</code> are checked in order, and the first non-empty value
-is used for the <code>ReferenceContent</code>.</p>
-<h2 id="step-1-create-the-source-class">Step 1: Create the Source Class</h2>
-<p>Create a new file in <code>src/linkml_reference_validator/etl/sources/</code>:</p>
-<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/arxiv.py
-&quot;&quot;&quot;arXiv reference source.&quot;&quot;&quot;
-
-import logging
-from typing import Optional
-
-from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
-from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
-
-logger = logging.getLogger(__name__)
-
-
-@ReferenceSourceRegistry.register
-class ArxivSource(ReferenceSource):
-    &quot;&quot;&quot;Fetch references from arXiv.&quot;&quot;&quot;
-
-    @classmethod
-    def prefix(cls) -&gt; str:
-        &quot;&quot;&quot;Return the prefix this source handles.&quot;&quot;&quot;
-        return &quot;arxiv&quot;
-
-    def fetch(
-        self, identifier: str, config: ReferenceValidationConfig
-    ) -&gt; Optional[ReferenceContent]:
-        &quot;&quot;&quot;Fetch a paper from arXiv.
-
-        Args:
-            identifier: arXiv ID (e.g., '2301.07041')
-            config: Configuration for fetching
-
-        Returns:
-            ReferenceContent if successful, None otherwise
-        &quot;&quot;&quot;
-        # Your implementation here
-        # Fetch from arXiv API, parse response, return ReferenceContent
-        ...
-</code></pre>
-<h2 id="step-2-implement-the-fetch-method">Step 2: Implement the <code>fetch()</code> Method</h2>
-<p>The <code>fetch()</code> method should:</p>
-<ol>
-<li>Accept an identifier (without the prefix)</li>
-<li>Fetch content from the external source</li>
-<li>Return a <code>ReferenceContent</code> object or <code>None</code> on failure</li>
-</ol>
-<pre><code class="language-python">def fetch(
-    self, identifier: str, config: ReferenceValidationConfig
-) -&gt; Optional[ReferenceContent]:
-    &quot;&quot;&quot;Fetch a paper from arXiv.&quot;&quot;&quot;
-    import requests
-    import time
-
-    arxiv_id = identifier.strip()
-
-    # Respect rate limiting
-    time.sleep(config.rate_limit_delay)
-
-    # Fetch from arXiv API
-    url = f&quot;http://export.arxiv.org/api/query?id_list={arxiv_id}&quot;
-    response = requests.get(url, timeout=30)
-
-    if response.status_code != 200:
-        logger.warning(f&quot;Failed to fetch arxiv:{arxiv_id}&quot;)
-        return None
-
-    # Parse the response (arXiv returns Atom XML)
-    title, authors, abstract = self._parse_arxiv_response(response.text)
-
-    return ReferenceContent(
-        reference_id=f&quot;arxiv:{arxiv_id}&quot;,
-        title=title,
-        content=abstract,
-        content_type=&quot;abstract_only&quot;,
-        authors=authors,
-    )
-</code></pre>
-<h2 id="step-3-handle-errors-gracefully">Step 3: Handle Errors Gracefully</h2>
-<p>Since you're interfacing with external systems, wrap API calls in try/except:</p>
-<pre><code class="language-python">def fetch(self, identifier: str, config: ReferenceValidationConfig) -&gt; Optional[ReferenceContent]:
-    try:
-        response = requests.get(url, timeout=30)
-        # ... process response
-    except Exception as e:
-        logger.warning(f&quot;Failed to fetch arxiv:{identifier}: {e}&quot;)
-        return None
-</code></pre>
-<h2 id="step-4-register-the-source">Step 4: Register the Source</h2>
-<p>The <code>@ReferenceSourceRegistry.register</code> decorator automatically registers your source when the module is imported.</p>
-<p>Add the import to <code>src/linkml_reference_validator/etl/sources/__init__.py</code>:</p>
-<pre><code class="language-python">from linkml_reference_validator.etl.sources.arxiv import ArxivSource
-
-__all__ = [
-    # ... existing exports
-    &quot;ArxivSource&quot;,
-]
-</code></pre>
-<h2 id="step-5-write-tests">Step 5: Write Tests</h2>
-<p>Create tests in <code>tests/test_sources.py</code>:</p>
-<pre><code class="language-python">class TestArxivSource:
-    &quot;&quot;&quot;Tests for ArxivSource.&quot;&quot;&quot;
-
-    @pytest.fixture
-    def source(self):
-        return ArxivSource()
-
-    def test_prefix(self, source):
-        assert source.prefix() == &quot;arxiv&quot;
-
-    def test_can_handle(self, source):
-        assert source.can_handle(&quot;arxiv:2301.07041&quot;)
-        assert not source.can_handle(&quot;PMID:12345&quot;)
-
-    @patch(&quot;linkml_reference_validator.etl.sources.arxiv.requests.get&quot;)
-    def test_fetch(self, mock_get, source, config):
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = &quot;&quot;&quot;...&quot;&quot;&quot;  # Mock arXiv XML
-        mock_get.return_value = mock_response
-
-        result = source.fetch(&quot;2301.07041&quot;, config)
-
-        assert result is not None
-        assert result.reference_id == &quot;arxiv:2301.07041&quot;
-</code></pre>
-<h2 id="optional-custom-can_handle-method">Optional: Custom <code>can_handle()</code> Method</h2>
-<p>The default <code>can_handle()</code> checks if the reference starts with your prefix. Override it for custom matching:</p>
-<pre><code class="language-python">@classmethod
-def can_handle(cls, reference_id: str) -&gt; bool:
-    &quot;&quot;&quot;Handle arxiv: references and bare arXiv IDs.&quot;&quot;&quot;
-    ref = reference_id.strip()
-    # Match prefix
-    if ref.lower().startswith(&quot;arxiv:&quot;):
-        return True
-    # Match bare arXiv ID pattern (e.g., 2301.07041)
-    import re
-    return bool(re.match(r&quot;^\d{4}\.\d{4,5}(v\d+)?$&quot;, ref))
-</code></pre>
-<h2 id="complete-example">Complete Example</h2>
-<p>Here's a complete implementation for a hypothetical "WikiData" source:</p>
-<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/wikidata.py
-&quot;&quot;&quot;WikiData reference source.&quot;&quot;&quot;
-
-import logging
-import time
-from typing import Optional
-
-import requests
-
-from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
-from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
-
-logger = logging.getLogger(__name__)
-
-
-@ReferenceSourceRegistry.register
-class WikidataSource(ReferenceSource):
-    &quot;&quot;&quot;Fetch reference content from WikiData items.&quot;&quot;&quot;
-
-    @classmethod
-    def prefix(cls) -&gt; str:
-        return &quot;wikidata&quot;
-
-    def fetch(
-        self, identifier: str, config: ReferenceValidationConfig
-    ) -&gt; Optional[ReferenceContent]:
-        qid = identifier.strip().upper()
-        if not qid.startswith(&quot;Q&quot;):
-            qid = f&quot;Q{qid}&quot;
-
-        time.sleep(config.rate_limit_delay)
-
-        url = f&quot;https://www.wikidata.org/wiki/Special:EntityData/{qid}.json&quot;
-
-        try:
-            response = requests.get(url, timeout=30)
-            if response.status_code != 200:
-                logger.warning(f&quot;Failed to fetch wikidata:{qid}&quot;)
-                return None
-
-            data = response.json()
-            entity = data[&quot;entities&quot;].get(qid, {})
-
-            # Extract label and description
-            labels = entity.get(&quot;labels&quot;, {})
-            descriptions = entity.get(&quot;descriptions&quot;, {})
-
-            title = labels.get(&quot;en&quot;, {}).get(&quot;value&quot;, qid)
-            description = descriptions.get(&quot;en&quot;, {}).get(&quot;value&quot;, &quot;&quot;)
-
-            return ReferenceContent(
-                reference_id=f&quot;wikidata:{qid}&quot;,
-                title=title,
-                content=description,
-                content_type=&quot;wikidata_description&quot;,
-            )
-
-        except Exception as e:
-            logger.warning(f&quot;Error fetching wikidata:{qid}: {e}&quot;)
-            return None
-</code></pre>
-<h2 id="reference-referencecontent-fields">Reference: ReferenceContent Fields</h2>
-<p>The <code>ReferenceContent</code> model has these fields:</p>
-<table>
-<thead>
-<tr>
-<th>Field</th>
-<th>Type</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>reference_id</code></td>
-<td><code>str</code></td>
-<td>Full reference ID with prefix (e.g., <code>arxiv:2301.07041</code>)</td>
-</tr>
-<tr>
-<td><code>title</code></td>
-<td><code>Optional[str]</code></td>
-<td>Title of the reference</td>
-</tr>
-<tr>
-<td><code>content</code></td>
-<td><code>Optional[str]</code></td>
-<td>Main text content for validation</td>
-</tr>
-<tr>
-<td><code>content_type</code></td>
-<td><code>str</code></td>
-<td>Type indicator (e.g., <code>abstract_only</code>, <code>full_text</code>)</td>
-</tr>
-<tr>
-<td><code>authors</code></td>
-<td><code>Optional[list[str]]</code></td>
-<td>List of author names</td>
-</tr>
-<tr>
-<td><code>journal</code></td>
-<td><code>Optional[str]</code></td>
-<td>Journal/venue name</td>
-</tr>
-<tr>
-<td><code>year</code></td>
-<td><code>Optional[str]</code></td>
-<td>Publication year</td>
-</tr>
-<tr>
-<td><code>doi</code></td>
-<td><code>Optional[str]</code></td>
-<td>DOI if available</td>
-</tr>
-</tbody>
-</table>
-<h2 id="tips">Tips</h2>
+<p>These sources use the NCBI Entrez E-utilities <code>esummary</code> endpoint:</p>
 <ul>
-<li><strong>Rate limiting</strong>: Always respect <code>config.rate_limit_delay</code> between API calls</li>
-<li><strong>Error handling</strong>: Return <code>None</code> on failures, don't raise exceptions</li>
-<li><strong>Logging</strong>: Use <code>logger.warning()</code> for failures to aid debugging</li>
-<li><strong>Caching</strong>: The <code>ReferenceFetcher</code> handles caching automatically - your source just needs to fetch</li>
-<li><strong>Testing</strong>: Mock external API calls in tests to avoid network dependencies</li>
+<li><strong>GEO</strong> (GSE/GDS): summaries from the <code>gds</code> database</li>
+<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): summaries from the <code>bioproject</code> database</li>
+<li><strong>BioSample</strong> (SAMN/SAME/SAMD): summaries from the <code>biosample</code> database</li>
+</ul>
+<p>The validator uses the returned summary/description fields as the content for matching.</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<h3 id="geo-gse-or-gds">GEO (GSE or GDS)</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;RNA-seq analysis of cardiac tissue&quot; \
+  GEO:GSE12345
+</code></pre>
+<h3 id="bioproject">BioProject</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Whole genome sequencing project for strain X&quot; \
+  BioProject:PRJNA12345
+</code></pre>
+<h3 id="biosample">BioSample</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Human liver biopsy sample description&quot; \
+  BioSample:SAMN12345678
+</code></pre>
+<h2 id="accepted-identifier-formats">Accepted Identifier Formats</h2>
+<p>You can use either prefixed or bare accessions:</p>
+<pre><code>GEO:GSE12345
+GDS12345
+BioProject:PRJNA12345
+PRJEB12345
+BioSample:SAMN12345678
+SAME1234567
+</code></pre>
+<h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
+<p>Prefixes are case-insensitive and can be normalized with a configuration map. This
+is useful when data uses alternate prefix styles such as <code>geo:</code> or <code>NCBIGeo:</code>.</p>
+<p>Create <code>.linkml-reference-validator.yaml</code> with a <code>validation</code> section:</p>
+<pre><code class="language-yaml">validation:
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+    NCBIBioProject: BIOPROJECT
+    NCBIBioSample: BIOSAMPLE
+</code></pre>
+<p>You can also configure this programmatically:</p>
+<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
+
+config = ReferenceValidationConfig(
+    reference_prefix_map={&quot;geo&quot;: &quot;GEO&quot;, &quot;NCBIGeo&quot;: &quot;GEO&quot;}
+)
+</code></pre>
+<p>Pass the config file to CLI commands with <code>--config .linkml-reference-validator.yaml</code>.</p>
+<h2 id="pre-caching-entrez-records">Pre-caching Entrez Records</h2>
+<p>For offline validation or to speed up repeated validations:</p>
+<pre><code class="language-bash">linkml-reference-validator cache reference GEO:GSE12345
+linkml-reference-validator cache reference BioProject:PRJNA12345
+linkml-reference-validator cache reference BioSample:SAMN12345678
+</code></pre>
+<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
+<h2 id="rate-limiting-and-email">Rate Limiting and Email</h2>
+<p>NCBI requires a valid contact email for Entrez API usage. Configure it in your settings:</p>
+<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
+
+config = ReferenceValidationConfig(
+    email=&quot;you@example.org&quot;,
+    rate_limit_delay=0.5,
+)
+</code></pre>
+<h2 id="content-availability">Content Availability</h2>
+<p>Entrez summaries vary by record. If a summary field is missing, the validator will return
+<code>content_type: unavailable</code> and matching may fail.</p>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../add-reference-source/">Adding a New Reference Source</a></li>
+<li><a href="../../quickstart/">Quickstart</a></li>
+<li><a href="../../reference/cli/">CLI Reference</a></li>
 </ul>
 
 

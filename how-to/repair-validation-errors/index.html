@@ -513,6 +513,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../validate-entrez/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../validate-dois/" class="md-nav__link">
         
   
@@ -1282,8 +1310,14 @@
 </code></pre>
 <p><strong>Never auto-removed</strong> - always requires manual review.</p>
 <h2 id="configuration-file">Configuration File</h2>
-<p>Create <code>.linkml-reference-validator.yaml</code> for project-specific settings:</p>
-<pre><code class="language-yaml">repair:
+<p>Create <code>.linkml-reference-validator.yaml</code> for project-specific settings. You can
+include both validation and repair settings:</p>
+<pre><code class="language-yaml">validation:
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+
+repair:
   # Confidence thresholds
   auto_fix_threshold: 0.95
   suggest_threshold: 0.80

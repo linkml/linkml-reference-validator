@@ -515,6 +515,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../how-to/validate-entrez/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../how-to/validate-dois/" class="md-nav__link">
         
   
@@ -1280,10 +1308,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#repair-configuration-file" class="md-nav__link">
+  <a href="#configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Repair Configuration File
+        Configuration File
       
     </span>
   </a>
@@ -2021,10 +2049,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#repair-configuration-file" class="md-nav__link">
+  <a href="#configuration-file" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Repair Configuration File
+        Configuration File
       
     </span>
   </a>
@@ -2350,6 +2378,7 @@
 <h3 id="options_1">Options</h3>
 <ul>
 <li><code>--cache-dir PATH</code> - Directory for caching references (default: <code>references_cache</code>)</li>
+<li><code>--config PATH</code> - Path to validation configuration file (.yaml)</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>
 <li><code>--help</code> - Show help message</li>
 </ul>
@@ -2415,6 +2444,7 @@ Result:
 <li><code>--schema PATH, -s PATH</code> (required) - Path to LinkML schema file</li>
 <li><code>--target-class TEXT, -t TEXT</code> - Target class to validate (optional)</li>
 <li><code>--cache-dir PATH, -c PATH</code> - Directory for caching references (default: <code>references_cache</code>)</li>
+<li><code>--config PATH</code> - Path to validation configuration file (.yaml)</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>
 <li><code>--help</code> - Show help message</li>
 </ul>
@@ -2492,6 +2522,7 @@ Validation Summary:
 <h3 id="options_3">Options</h3>
 <ul>
 <li><code>--cache-dir PATH, -c PATH</code> - Directory for caching references</li>
+<li><code>--config PATH</code> - Path to configuration file (.yaml)</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>
 <li><code>--auto-fix-threshold FLOAT, -a FLOAT</code> - Minimum similarity for auto-fixes (default: 0.95)</li>
 <li><code>--help</code> - Show help message</li>
@@ -2552,7 +2583,7 @@ Result:
 <li><code>--dry-run / --no-dry-run, -n / -N</code> - Show changes without applying (default: dry-run)</li>
 <li><code>--auto-fix-threshold FLOAT, -a FLOAT</code> - Minimum similarity for auto-fixes (default: 0.95)</li>
 <li><code>--output PATH, -o PATH</code> - Output file path (default: overwrite with backup)</li>
-<li><code>--config PATH</code> - Path to repair configuration file</li>
+<li><code>--config PATH</code> - Path to configuration file (.yaml)</li>
 <li><code>--cache-dir PATH, -c PATH</code> - Directory for caching references</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>
 <li><code>--help</code> - Show help message</li>
@@ -2631,9 +2662,16 @@ Summary:
   Unverifiable: 0
 </code></pre>
 <hr />
-<h2 id="repair-configuration-file">Repair Configuration File</h2>
-<p>Create <code>.linkml-reference-validator.yaml</code> for project-specific settings:</p>
-<pre><code class="language-yaml">repair:
+<h2 id="configuration-file">Configuration File</h2>
+<p>Create <code>.linkml-reference-validator.yaml</code> for project-specific settings. Use
+the <code>validation</code> section for reference fetching behavior and <code>repair</code> for
+auto-fix settings.</p>
+<pre><code class="language-yaml">validation:
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+
+repair:
   # Confidence thresholds
   auto_fix_threshold: 0.95
   suggest_threshold: 0.80
@@ -2675,6 +2713,7 @@ Summary:
 <h3 id="options_5">Options</h3>
 <ul>
 <li><code>--cache-dir PATH, -c PATH</code> - Directory for caching references (default: <code>references_cache</code>)</li>
+<li><code>--config PATH</code> - Path to validation configuration file (.yaml)</li>
 <li><code>--force, -f</code> - Force re-fetch even if cached</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>
 <li><code>--help</code> - Show help message</li>

@@ -51,6 +51,7 @@ linkml-reference-validator validate text [OPTIONS] TEXT REFERENCE_ID
 ### Options
 
 - `--cache-dir PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
 - `--verbose, -v` - Verbose output with detailed logging
 - `--help` - Show help message
 
@@ -138,6 +139,7 @@ linkml-reference-validator validate data [OPTIONS] DATA_FILE
 - `--schema PATH, -s PATH` (required) - Path to LinkML schema file
 - `--target-class TEXT, -t TEXT` - Target class to validate (optional)
 - `--cache-dir PATH, -c PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
 - `--verbose, -v` - Verbose output with detailed logging
 - `--help` - Show help message
 
@@ -240,6 +242,7 @@ linkml-reference-validator repair text [OPTIONS] TEXT REFERENCE_ID
 ### Options
 
 - `--cache-dir PATH, -c PATH` - Directory for caching references
+- `--config PATH` - Path to configuration file (.yaml)
 - `--verbose, -v` - Verbose output with detailed logging
 - `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
 - `--help` - Show help message
@@ -318,7 +321,7 @@ linkml-reference-validator repair data [OPTIONS] DATA_FILE
 - `--dry-run / --no-dry-run, -n / -N` - Show changes without applying (default: dry-run)
 - `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
 - `--output PATH, -o PATH` - Output file path (default: overwrite with backup)
-- `--config PATH` - Path to repair configuration file
+- `--config PATH` - Path to configuration file (.yaml)
 - `--cache-dir PATH, -c PATH` - Directory for caching references
 - `--verbose, -v` - Verbose output with detailed logging
 - `--help` - Show help message
@@ -412,11 +415,18 @@ Summary:
 
 ---
 
-## Repair Configuration File
+## Configuration File
 
-Create `.linkml-reference-validator.yaml` for project-specific settings:
+Create `.linkml-reference-validator.yaml` for project-specific settings. Use
+the `validation` section for reference fetching behavior and `repair` for
+auto-fix settings.
 
 ```yaml
+validation:
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+
 repair:
   # Confidence thresholds
   auto_fix_threshold: 0.95
@@ -471,6 +481,7 @@ linkml-reference-validator cache reference [OPTIONS] REFERENCE_ID
 ### Options
 
 - `--cache-dir PATH, -c PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
 - `--force, -f` - Force re-fetch even if cached
 - `--verbose, -v` - Verbose output with detailed logging
 - `--help` - Show help message

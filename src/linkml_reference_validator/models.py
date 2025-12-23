@@ -339,6 +339,11 @@ class ReferenceValidationConfig(BaseModel):
         ... )
         >>> config.supporting_text_regex
         'ex:supporting_text="([^"]*)\\[(\\S+:\\S+)\\]"'
+        >>> config = ReferenceValidationConfig(
+        ...     reference_prefix_map={"geo": "GEO", "NCBIGeo": "GEO"}
+        ... )
+        >>> config.reference_prefix_map["geo"]
+        'GEO'
     """
 
     cache_dir: Path = Field(
@@ -371,6 +376,13 @@ class ReferenceValidationConfig(BaseModel):
         default=2,
         ge=1,
         description="Regex capture group number containing the reference ID",
+    )
+    reference_prefix_map: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Optional mapping of alternate prefixes to canonical prefixes, "
+            "e.g. {'geo': 'GEO', 'NCBIGeo': 'GEO'}"
+        ),
     )
 
     def get_cache_dir(self) -> Path:

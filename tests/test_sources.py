@@ -9,6 +9,11 @@ from linkml_reference_validator.etl.sources.file import FileSource
 from linkml_reference_validator.etl.sources.url import URLSource
 from linkml_reference_validator.etl.sources.pmid import PMIDSource
 from linkml_reference_validator.etl.sources.doi import DOISource
+from linkml_reference_validator.etl.sources.entrez import (
+    GEOSource,
+    BioProjectSource,
+    BioSampleSource,
+)
 
 
 class TestReferenceSourceRegistry:
@@ -22,6 +27,9 @@ class TestReferenceSourceRegistry:
         assert "DOI" in prefixes
         assert "file" in prefixes
         assert "url" in prefixes
+        assert "GEO" in prefixes
+        assert "BIOPROJECT" in prefixes
+        assert "BIOSAMPLE" in prefixes
 
     def test_get_source_for_pmid(self):
         """Should return PMIDSource for PMID references."""
@@ -296,3 +304,77 @@ class TestDOISource:
         """Should handle DOI references."""
         assert source.can_handle("DOI:10.1234/test")
         assert not source.can_handle("PMID:12345678")
+
+
+class TestEntrezSummarySources:
+    """Tests for Entrez summary-based sources."""
+
+    @pytest.fixture
+    def config(self, tmp_path):
+        """Create test config."""
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / "cache",
+            rate_limit_delay=0.0,
+        )
+
+    @pytest.mark.parametrize(
+        ("source_cls", "reference_id", "title_key", "content_key", "db_name"),
+        [
+            (GEOSource, "GEO:GSE12345", "title", "summary", "gds"),
+            (
+                BioProjectSource,
+                "BioProject:PRJNA000001",
+                "Project_Title",
+                "Project_Description",
+                "bioproject",
+            ),
+            (BioSampleSource, "biosample:SAMN00000001", "Title", "Description", "biosample"),
+        ],
+    )
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esummary")
+    def test_fetch_entrez_summary(
+        self,
+        mock_esummary,
+        mock_read,
+        source_cls,
+        reference_id,
+        title_key,
+        content_key,
+        db_name,
+        config,
+    ):
+        """Should fetch summary records for Entrez-backed sources."""
+        mock_handle = MagicMock()
+        mock_esummary.return_value = mock_handle
+        mock_read.return_value = [
+            {
+                title_key: "Example Title",
+                content_key: "Example content summary.",
+            }
+        ]
+
+        source = source_cls()
+        result = source.fetch(reference_id.split(":", 1)[1], config)
+
+        assert result is not None
+        assert result.reference_id == f"{source.prefix()}:{reference_id.split(':', 1)[1]}"
+        assert result.title == "Example Title"
+        assert result.content == "Example content summary."
+        assert result.content_type == "summary"
+        assert result.metadata["entrez_db"] == db_name
+        mock_esummary.assert_called_once_with(db=db_name, id=reference_id.split(":", 1)[1])
+        mock_handle.close.assert_called_once()
+
+    @pytest.mark.parametrize(
+        ("source", "valid_id", "invalid_id"),
+        [
+            (GEOSource(), "geo:GSE12345", "DOI:10.1000/test"),
+            (BioProjectSource(), "bioproject:PRJNA12345", "PMID:123"),
+            (BioSampleSource(), "biosample:SAMN12345", "url:https://example.com"),
+        ],
+    )
+    def test_can_handle_entrez_sources(self, source, valid_id, invalid_id):
+        """Should handle prefixed Entrez references and reject others."""
+        assert source.can_handle(valid_id)
+        assert not source.can_handle(invalid_id)

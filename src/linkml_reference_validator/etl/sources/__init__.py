@@ -6,7 +6,7 @@ from various origins (PubMed, Crossref, local files, URLs).
 Examples:
     >>> from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
     >>> sources = ReferenceSourceRegistry.list_sources()
-    >>> len(sources) >= 4
+    >>> len(sources) >= 7
     True
 """
 
@@ -20,6 +20,11 @@ from linkml_reference_validator.etl.sources.pmid import PMIDSource
 from linkml_reference_validator.etl.sources.doi import DOISource
 from linkml_reference_validator.etl.sources.file import FileSource
 from linkml_reference_validator.etl.sources.url import URLSource
+from linkml_reference_validator.etl.sources.entrez import (
+    GEOSource,
+    BioProjectSource,
+    BioSampleSource,
+)
 
 __all__ = [
     "ReferenceSource",
@@ -28,4 +33,7 @@ __all__ = [
     "DOISource",
     "FileSource",
     "URLSource",
+    "GEOSource",
+    "BioProjectSource",
+    "BioSampleSource",
 ]

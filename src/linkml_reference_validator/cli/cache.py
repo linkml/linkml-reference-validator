@@ -6,9 +6,14 @@ import typer
 from typing_extensions import Annotated
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
-from linkml_reference_validator.models import ReferenceValidationConfig
-
-from .shared import CacheDirOption, VerboseOption, ForceOption, setup_logging
+from .shared import (
+    CacheDirOption,
+    VerboseOption,
+    ForceOption,
+    ConfigFileOption,
+    setup_logging,
+    load_validation_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +27,7 @@ cache_app = typer.Typer(
 @cache_app.command(name="reference")
 def reference_command(
     reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
+    config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     force: ForceOption = False,
     verbose: VerboseOption = False,
@@ -41,7 +47,7 @@ def reference_command(
     """
     setup_logging(verbose)
 
-    config = ReferenceValidationConfig()
+    config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
 

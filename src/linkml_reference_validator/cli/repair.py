@@ -13,13 +13,16 @@ import typer
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
-from linkml_reference_validator.models import (
-    ReferenceValidationConfig,
-    RepairConfig,
-)
+from linkml_reference_validator.models import RepairConfig
 from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 
-from .shared import CacheDirOption, VerboseOption, setup_logging
+from .shared import (
+    CacheDirOption,
+    VerboseOption,
+    ConfigFileOption,
+    setup_logging,
+    load_validation_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +78,7 @@ def data_command(
     output: OutputOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
-    config_file: Annotated[
-        Optional[Path],
-        typer.Option(
-            "--config",
-            help="Path to repair configuration file (.yaml)",
-        ),
-    ] = None,
+    config_file: ConfigFileOption = None,
 ):
     """Repair supporting text in a data file.
 
@@ -120,7 +117,7 @@ def data_command(
     repair_config.dry_run = dry_run
 
     # Set up validation config
-    val_config = ReferenceValidationConfig()
+    val_config = load_validation_config(config_file)
     if cache_dir:
         val_config.cache_dir = cache_dir
 
@@ -198,6 +195,7 @@ def text_command(
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
     auto_fix_threshold: AutoFixThresholdOption = 0.95,
+    config_file: ConfigFileOption = None,
 ):
     """Attempt to repair a single supporting text quote.
 
@@ -214,7 +212,7 @@ def text_command(
     """
     setup_logging(verbose)
 
-    val_config = ReferenceValidationConfig()
+    val_config = load_validation_config(config_file)
     if cache_dir:
         val_config.cache_dir = cache_dir
 
@@ -283,10 +281,21 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     if config_data is None:
         return RepairConfig()
 
-    # Extract repair section if present
-    repair_data = config_data.get("repair", config_data)
+    if not isinstance(config_data, dict):
+        return RepairConfig()
 
-    return RepairConfig(**repair_data)
+    # Extract repair section if present
+    if "repair" in config_data:
+        repair_data = config_data.get("repair")
+        if isinstance(repair_data, dict):
+            return RepairConfig(**repair_data)
+        return RepairConfig()
+
+    repair_keys = set(RepairConfig.model_fields.keys())
+    if repair_keys.intersection(config_data.keys()):
+        return RepairConfig(**config_data)
+
+    return RepairConfig()
 
 
 def _extract_evidence_items(

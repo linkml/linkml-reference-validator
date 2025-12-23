@@ -121,9 +121,15 @@ RECOMMENDED REMOVALS:
 
 ## Configuration File
 
-Create `.linkml-reference-validator.yaml` for project-specific settings:
+Create `.linkml-reference-validator.yaml` for project-specific settings. You can
+include both validation and repair settings:
 
 ```yaml
+validation:
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+
 repair:
   # Confidence thresholds
   auto_fix_threshold: 0.95

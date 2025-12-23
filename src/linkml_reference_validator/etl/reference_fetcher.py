@@ -79,30 +79,32 @@ class ReferenceFetcher:
             >>> # ref = fetcher.fetch("PMID:12345678")
             >>> # ref = fetcher.fetch("file:./notes.md")
         """
+        normalized_reference_id = self._normalize_reference_id(reference_id)
+
         # Check memory cache
-        if not force_refresh and reference_id in self._cache:
-            return self._cache[reference_id]
+        if not force_refresh and normalized_reference_id in self._cache:
+            return self._cache[normalized_reference_id]
 
         # Check disk cache
         if not force_refresh:
-            cached = self._load_from_disk(reference_id)
+            cached = self._load_from_disk(normalized_reference_id)
             if cached:
-                self._cache[reference_id] = cached
+                self._cache[normalized_reference_id] = cached
                 return cached
 
         # Find appropriate source using registry
-        source_class = ReferenceSourceRegistry.get_source(reference_id)
+        source_class = ReferenceSourceRegistry.get_source(normalized_reference_id)
         if not source_class:
-            logger.warning(f"No source found for reference type: {reference_id}")
+            logger.warning(f"No source found for reference type: {normalized_reference_id}")
             return None
 
         # Parse identifier and fetch
-        _, identifier = self._parse_reference_id(reference_id)
+        _, identifier = self._parse_reference_id(normalized_reference_id)
         source = source_class()
         content = source.fetch(identifier, self.config)
 
         if content:
-            self._cache[reference_id] = content
+            self._cache[normalized_reference_id] = content
             self._save_to_disk(content)
 
         return content
@@ -129,6 +131,9 @@ class ReferenceFetcher:
             ('file', './test.md')
             >>> fetcher._parse_reference_id("url:https://example.com/page")
             ('url', 'https://example.com/page')
+            >>> config = ReferenceValidationConfig(reference_prefix_map={"geo": "GEO"})
+            >>> ReferenceFetcher(config)._parse_reference_id("geo:GSE12345")
+            ('GEO', 'GSE12345')
         """
         stripped = reference_id.strip()
 
@@ -137,12 +142,37 @@ class ReferenceFetcher:
         if match:
             prefix = match.group(1)
             # Preserve case for file/url, uppercase for others
-            if prefix.lower() not in ("file", "url"):
-                prefix = prefix.upper()
+            prefix = self._normalize_prefix(prefix)
+            prefix = self._apply_prefix_map(prefix)
             return prefix, match.group(2).strip()
         if reference_id.strip().isdigit():
             return "PMID", reference_id.strip()
         return "UNKNOWN", reference_id
+
+    def _normalize_reference_id(self, reference_id: str) -> str:
+        """Normalize reference IDs using configured prefix aliases."""
+        prefix, identifier = self._parse_reference_id(reference_id)
+        if prefix == "UNKNOWN":
+            return reference_id.strip()
+        return f"{prefix}:{identifier}"
+
+    def _normalize_prefix(self, prefix: str) -> str:
+        """Normalize prefix casing with special handling for file/url."""
+        if prefix.lower() in ("file", "url"):
+            return prefix.lower()
+        return prefix.upper()
+
+    def _apply_prefix_map(self, prefix: str) -> str:
+        """Apply configured prefix aliases."""
+        prefix_map = self._normalized_prefix_map()
+        return prefix_map.get(prefix, prefix)
+
+    def _normalized_prefix_map(self) -> dict[str, str]:
+        """Return a case-normalized prefix map."""
+        normalized: dict[str, str] = {}
+        for key, value in self.config.reference_prefix_map.items():
+            normalized[self._normalize_prefix(key)] = self._normalize_prefix(value)
+        return normalized
 
     def _get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.

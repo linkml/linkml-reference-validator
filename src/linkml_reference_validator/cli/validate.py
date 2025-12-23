@@ -10,7 +10,7 @@ from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
 from linkml_reference_validator.etl.text_extractor import TextExtractor
-from linkml_reference_validator.models import ReferenceValidationConfig, ValidationReport
+from linkml_reference_validator.models import ValidationReport
 from linkml_reference_validator.plugins.reference_validation_plugin import (
     ReferenceValidationPlugin,
 )
@@ -18,7 +18,13 @@ from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
 
-from .shared import CacheDirOption, VerboseOption, setup_logging
+from .shared import (
+    CacheDirOption,
+    VerboseOption,
+    ConfigFileOption,
+    setup_logging,
+    load_validation_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +39,7 @@ validate_app = typer.Typer(
 def text_command(
     text: Annotated[str, typer.Argument(help="Supporting text to validate")],
     reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
+    config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
 ):
@@ -51,7 +58,7 @@ def text_command(
     """
     setup_logging(verbose)
 
-    config = ReferenceValidationConfig()
+    config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
 
@@ -115,6 +122,7 @@ def text_file_command(
             help="Show only summary statistics, not individual results",
         ),
     ] = False,
+    config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
 ):
@@ -142,7 +150,7 @@ def text_file_command(
         typer.echo(f"Error: File not found: {file_path}", err=True)
         raise typer.Exit(1)
 
-    config = ReferenceValidationConfig()
+    config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
 
@@ -214,6 +222,7 @@ def data_command(
         Optional[str],
         typer.Option("--target-class", "-t", help="Target class to validate"),
     ] = None,
+    config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
 ):
@@ -230,7 +239,7 @@ def data_command(
     """
     setup_logging(verbose)
 
-    config = ReferenceValidationConfig()
+    config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
 

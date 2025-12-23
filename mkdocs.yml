@@ -32,6 +32,7 @@ nav:
       - Python API: notebooks/03_python_api.ipynb
   - How-To Guides:
       - Validating OBO Files: how-to/validate-obo-files.md
+      - Validating Entrez Accessions: how-to/validate-entrez.md
       - Validating DOIs: how-to/validate-dois.md
       - Validating URLs: how-to/validate-urls.md
       - Using Local Files and URLs: how-to/use-local-files-and-urls.md

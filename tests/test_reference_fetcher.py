@@ -39,6 +39,24 @@ def test_parse_reference_id(fetcher):
     assert fetcher._parse_reference_id("url:https://example.com") == ("url", "https://example.com")
 
 
+def test_parse_reference_id_with_prefix_map(tmp_path):
+    """Test parsing with configurable prefix aliases."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        reference_prefix_map={
+            "geo": "GEO",
+            "NCBIGeo": "GEO",
+            "bioproject": "BIOPROJECT",
+        },
+    )
+    fetcher = ReferenceFetcher(config)
+
+    assert fetcher._parse_reference_id("geo:GSE12345") == ("GEO", "GSE12345")
+    assert fetcher._parse_reference_id("NCBIGeo:GSE12345") == ("GEO", "GSE12345")
+    assert fetcher._parse_reference_id("bioproject:PRJNA12345") == ("BIOPROJECT", "PRJNA12345")
+
+
 def test_get_cache_path(fetcher):
     """Test cache path generation."""
     path = fetcher._get_cache_path("PMID:12345678")

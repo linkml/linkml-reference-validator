@@ -10,6 +10,33 @@ Each reference source is a Python class that:
 2. Implements `prefix()` and `fetch()` methods
 3. Registers itself with the `ReferenceSourceRegistry`
 
+## Entrez Summary Sources (Recommended for NCBI IDs)
+
+If your source is backed by NCBI Entrez, prefer the built-in `EntrezSummarySource`
+base class. It provides shared rate limiting, email configuration, and summary parsing.
+
+```python
+# src/linkml_reference_validator/etl/sources/my_entrez.py
+"""Entrez summary source example."""
+
+from linkml_reference_validator.etl.sources.entrez import EntrezSummarySource
+from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
+
+
+@ReferenceSourceRegistry.register
+class ExampleEntrezSource(EntrezSummarySource):
+    """Fetch summaries from an Entrez database."""
+
+    PREFIX = "EXAMPLE"
+    ENTREZ_DB = "example_db"
+    TITLE_FIELDS = ("title", "name")
+    CONTENT_FIELDS = ("summary", "description")
+    ID_PATTERNS = (r"^EX\\d+$",)
+```
+
+`TITLE_FIELDS` and `CONTENT_FIELDS` are checked in order, and the first non-empty value
+is used for the `ReferenceContent`.
+
 ## Step 1: Create the Source Class
 
 Create a new file in `src/linkml_reference_validator/etl/sources/`:

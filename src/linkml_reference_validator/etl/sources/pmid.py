@@ -1,6 +1,10 @@
 """PMID (PubMed ID) reference source.
 
 Fetches publication content from PubMed/NCBI using the Entrez API.
+Supports multiple fulltext retrieval strategies:
+- BioC XML API (NCBI BioNLP)
+- Europe PMC
+- PMC XML/HTML (traditional approach)
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.pmid import PMIDSource
@@ -21,6 +25,11 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.fulltext_strategies import (
+    BioCStrategy,
+    EuropePMCStrategy,
+    FulltextFetcher,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +195,13 @@ class PMIDSource(ReferenceSource):
     def _fetch_pmc_fulltext(
         self, pmid: str, config: ReferenceValidationConfig
     ) -> tuple[Optional[str], str]:
-        """Attempt to fetch full text from PMC.
+        """Attempt to fetch full text using multiple strategies.
+
+        Tries strategies in order:
+        1. BioC XML API (cleanest structured text)
+        2. Europe PMC (wider coverage)
+        3. PMC XML (traditional approach)
+        4. PMC HTML (fallback)
 
         Args:
             pmid: PubMed ID
@@ -195,6 +210,21 @@ class PMIDSource(ReferenceSource):
         Returns:
             Tuple of (full_text, content_type)
         """
+        # Strategy 1: Try BioC XML API (cleanest fulltext)
+        bioc = BioCStrategy()
+        bioc_result = bioc.fetch(pmid, config.rate_limit_delay)
+        if bioc_result.success and bioc_result.content:
+            logger.info(f"Fetched fulltext for PMID:{pmid} via BioC API")
+            return bioc_result.content, "full_text_bioc"
+
+        # Strategy 2: Try Europe PMC
+        europepmc = EuropePMCStrategy()
+        europepmc_result = europepmc.fetch(pmid, config.rate_limit_delay)
+        if europepmc_result.success and europepmc_result.content:
+            logger.info(f"Fetched fulltext for PMID:{pmid} via Europe PMC")
+            return europepmc_result.content, "full_text_europepmc"
+
+        # Strategy 3 & 4: Traditional PMC approach
         pmcid = self._get_pmcid(pmid, config)
         if not pmcid:
             return None, "no_pmc"

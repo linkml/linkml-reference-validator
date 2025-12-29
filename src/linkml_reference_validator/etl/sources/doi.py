@@ -1,6 +1,9 @@
 """DOI (Digital Object Identifier) reference source.
 
-Fetches publication metadata from Crossref API.
+Fetches publication metadata from Crossref API and attempts fulltext
+retrieval via:
+- Unpaywall (open access papers)
+- Identifier conversion to PMID for PMC access
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.doi import DOISource
@@ -19,6 +22,11 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.fulltext_strategies import (
+    UnpaywallStrategy,
+    IdentifierConverter,
+    FulltextFetcher,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +58,11 @@ class DOISource(ReferenceSource):
     def fetch(
         self, identifier: str, config: ReferenceValidationConfig
     ) -> Optional[ReferenceContent]:
-        """Fetch a publication from Crossref by DOI.
+        """Fetch a publication from Crossref by DOI with fulltext strategies.
+
+        Tries to get fulltext via:
+        1. Convert DOI to PMID, then use PMC strategies
+        2. Unpaywall for open access versions
 
         Args:
             identifier: DOI (without prefix)
@@ -98,16 +110,75 @@ class DOISource(ReferenceSource):
 
         abstract = self._clean_abstract(message.get("abstract", ""))
 
+        # Try to get fulltext via enhanced strategies
+        fulltext, content_type = self._fetch_fulltext(doi, config)
+
+        if fulltext:
+            content = f"{abstract}\n\n{fulltext}" if abstract else fulltext
+        else:
+            content = abstract if abstract else None
+            content_type = "abstract_only" if abstract else "unavailable"
+
         return ReferenceContent(
             reference_id=f"DOI:{doi}",
             title=title,
-            content=abstract if abstract else None,
-            content_type="abstract_only" if abstract else "unavailable",
+            content=content,
+            content_type=content_type,
             authors=authors,
             journal=journal,
             year=year,
             doi=doi,
         )
+
+    def _fetch_fulltext(
+        self, doi: str, config: ReferenceValidationConfig
+    ) -> tuple[Optional[str], str]:
+        """Attempt to fetch fulltext for a DOI.
+
+        Tries:
+        1. Convert DOI to PMID and use FulltextFetcher
+        2. Check Unpaywall for OA location info
+
+        Args:
+            doi: The DOI
+            config: Configuration for rate limiting
+
+        Returns:
+            Tuple of (fulltext, content_type)
+        """
+        converter = IdentifierConverter(email=config.email)
+
+        # Try to convert DOI to PMID
+        pmid = converter.doi_to_pmid(doi, config.rate_limit_delay)
+        if pmid:
+            fetcher = FulltextFetcher(
+                email=config.email,
+                rate_limit_delay=config.rate_limit_delay,
+            )
+            result = fetcher.fetch_fulltext_for_pmid(pmid)
+            if result.success and result.content:
+                logger.info(f"Fetched fulltext for DOI:{doi} via PMID:{pmid}")
+                return result.content, result.content_type
+
+        # Try Unpaywall - it may provide PMCID even without direct PMID
+        unpaywall = UnpaywallStrategy(email=config.email)
+        oa_result = unpaywall.fetch(doi, config.rate_limit_delay)
+        if oa_result.success:
+            pmcid = oa_result.metadata.get("pmcid")
+            if pmcid:
+                # Try to get PMID from PMCID
+                pmid_from_pmc = converter.pmcid_to_pmid(pmcid, config.rate_limit_delay)
+                if pmid_from_pmc:
+                    fetcher = FulltextFetcher(
+                        email=config.email,
+                        rate_limit_delay=config.rate_limit_delay,
+                    )
+                    result = fetcher.fetch_fulltext_for_pmid(pmid_from_pmc)
+                    if result.success and result.content:
+                        logger.info(f"Fetched fulltext for DOI:{doi} via Unpaywall PMCID")
+                        return result.content, result.content_type
+
+        return None, "abstract_only"
 
     def _parse_crossref_authors(self, authors: list) -> list[str]:
         """Parse author list from Crossref response.

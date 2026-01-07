@@ -30,6 +30,7 @@ class TestReferenceSourceRegistry:
         assert "GEO" in prefixes
         assert "BIOPROJECT" in prefixes
         assert "BIOSAMPLE" in prefixes
+        assert "NCT" in prefixes
 
     def test_get_source_for_pmid(self):
         """Should return PMIDSource for PMID references."""
@@ -304,6 +305,148 @@ class TestDOISource:
         """Should handle DOI references."""
         assert source.can_handle("DOI:10.1234/test")
         assert not source.can_handle("PMID:12345678")
+
+
+class TestClinicalTrialsSource:
+    """Tests for ClinicalTrials.gov source."""
+
+    @pytest.fixture
+    def config(self, tmp_path):
+        """Create test config."""
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / "cache",
+            rate_limit_delay=0.0,
+        )
+
+    @pytest.fixture
+    def source(self):
+        """Create ClinicalTrialsSource instance."""
+        from linkml_reference_validator.etl.sources.clinicaltrials import (
+            ClinicalTrialsSource,
+        )
+
+        return ClinicalTrialsSource()
+
+    def test_prefix(self, source):
+        """ClinicalTrialsSource should have 'NCT' prefix."""
+        assert source.prefix() == "NCT"
+
+    def test_can_handle_nct_prefix(self, source):
+        """Should handle NCT: prefixed references."""
+        assert source.can_handle("NCT:NCT00000001")
+        assert source.can_handle("nct:NCT12345678")
+        assert not source.can_handle("PMID:12345")
+
+    def test_can_handle_bare_nct_id(self, source):
+        """Should handle bare NCT IDs without prefix."""
+        assert source.can_handle("NCT00000001")
+        assert source.can_handle("NCT12345678")
+        assert not source.can_handle("GSE12345")
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_clinical_trial(self, mock_get, source, config):
+        """Should fetch clinical trial data from ClinicalTrials.gov API."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000001",
+                    "officialTitle": "A Study of Something Important",
+                    "briefTitle": "Important Study",
+                },
+                "descriptionModule": {
+                    "briefSummary": "This is a brief summary of the trial.",
+                    "detailedDescription": "This is the detailed description.",
+                },
+                "statusModule": {
+                    "overallStatus": "Completed",
+                },
+                "sponsorCollaboratorsModule": {
+                    "leadSponsor": {"name": "Test Sponsor"},
+                },
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is not None
+        assert result.reference_id == "NCT:NCT00000001"
+        assert result.title == "A Study of Something Important"
+        assert result.content == "This is a brief summary of the trial."
+        assert result.content_type == "summary"
+        assert result.metadata["status"] == "Completed"
+        assert result.metadata["sponsor"] == "Test Sponsor"
+        mock_get.assert_called_once()
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_uses_brief_title_fallback(self, mock_get, source, config):
+        """Should use briefTitle when officialTitle is missing."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000002",
+                    "briefTitle": "Brief Title Only",
+                },
+                "descriptionModule": {
+                    "briefSummary": "Summary text.",
+                },
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000002", config)
+
+        assert result is not None
+        assert result.title == "Brief Title Only"
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_uses_detailed_description_fallback(self, mock_get, source, config):
+        """Should use detailedDescription when briefSummary is missing."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000003",
+                    "officialTitle": "Test Title",
+                },
+                "descriptionModule": {
+                    "detailedDescription": "Detailed description only.",
+                },
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000003", config)
+
+        assert result is not None
+        assert result.content == "Detailed description only."
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_not_found(self, mock_get, source, config):
+        """Should return None for 404 responses."""
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT99999999", config)
+
+        assert result is None
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_network_error(self, mock_get, source, config):
+        """Should return None on network errors."""
+        import requests
+
+        mock_get.side_effect = requests.RequestException("Network error")
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is None
 
 
 class TestEntrezSummarySources:

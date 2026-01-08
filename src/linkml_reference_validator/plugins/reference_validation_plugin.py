@@ -32,15 +32,17 @@ if _LINKML_AVAILABLE:
     from linkml_runtime.utils.schemaview import SchemaView  # type: ignore  # noqa: E402
 
     class ReferenceValidationPlugin(ValidationPlugin):
-        """LinkML validation plugin for supporting text validation.
+        """LinkML validation plugin for supporting text and title validation.
 
         This plugin integrates with the LinkML validation framework to validate
-        that supporting text quotes actually appear in their referenced publications.
+        that supporting text quotes actually appear in their referenced publications
+        and that reference titles match expected values.
 
-        The plugin discovers reference and excerpt fields using LinkML's interface
-        mechanism. It looks for:
+        The plugin discovers reference, excerpt, and title fields using LinkML's
+        interface mechanism. It looks for:
         - Slots implementing linkml:authoritative_reference
         - Slots implementing linkml:excerpt
+        - Slots implementing dcterms:title or having slot_uri dcterms:title
 
         Examples:
             >>> config = ReferenceValidationConfig()
@@ -179,24 +181,37 @@ if _LINKML_AVAILABLE:
                                 expected_title,
                                 f"{path}.{excerpt_field}" if path else excerpt_field,
                             )
+                            # Break after first successful reference match to avoid duplicates
+                            break
 
             # If no excerpt validation was done, validate title independently
             if not validated_with_excerpt and title_fields:
+                # Validate only the first available title against the first available reference
+                first_title_field: Optional[str] = None
+                first_title_value: Optional[str] = None
                 for title_field in title_fields:
                     title_value = instance.get(title_field)
-                    if not title_value:
-                        continue
+                    if title_value:
+                        first_title_field = title_field
+                        first_title_value = title_value
+                        break
 
+                if first_title_field and first_title_value:
                     for ref_field in reference_fields:
                         ref_value = instance.get(ref_field)
                         if ref_value:
                             reference_id = self._extract_reference_id(ref_value)
                             if reference_id:
                                 yield from self._validate_title(
-                                    title_value,
+                                    first_title_value,
                                     reference_id,
-                                    f"{path}.{title_field}" if path else title_field,
+                                    f"{path}.{first_title_field}"
+                                    if path
+                                    else first_title_field,
                                 )
+                            # Break after processing first reference field with a value
+                            break
+
 
             for slot_name, value in instance.items():
                 if value is None:
@@ -331,7 +346,8 @@ if _LINKML_AVAILABLE:
                 # Check implements for dcterms:title
                 if slot.implements:
                     for interface in slot.implements:
-                        if "dcterms:title" in interface or "title" in interface.lower():
+                        interface_lower = interface.lower()
+                        if "dcterms:title" in interface or interface_lower == "title":
                             fields.append(slot_name)
                             break
                     if slot_name in fields:

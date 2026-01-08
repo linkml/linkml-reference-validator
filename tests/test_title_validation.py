@@ -234,6 +234,20 @@ class TestTitleValidationStandalone:
         assert result.is_valid is False
         assert "no title" in result.message.lower()
 
+    def test_validate_title_only_fetch_fails(self, validator, mocker):
+        """Test title validation when reference fetching fails."""
+        mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+        mock_fetch.return_value = None
+
+        result = validator.validate_title(
+            "PMID:123",
+            expected_title="Some Title",
+        )
+
+        assert result.is_valid is False
+        assert result.severity == ValidationSeverity.ERROR
+        assert "Could not fetch reference" in result.message
+
 
 class TestPluginTitleFieldDiscovery:
     """Tests for title field discovery in the plugin."""

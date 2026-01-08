@@ -2,338 +2,495 @@
 
 import logging
 from collections.abc import Iterator
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Optional
-
-from linkml.validator.plugins import ValidationPlugin  # type: ignore
-from linkml.validator.report import ValidationResult as LinkMLValidationResult  # type: ignore
-from linkml.validator.report import Severity  # type: ignore
-from linkml.validator.validation_context import ValidationContext  # type: ignore
-from linkml_runtime.utils.schemaview import SchemaView  # type: ignore
 
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
 
+_LINKML_AVAILABLE = (
+    find_spec("linkml") is not None and find_spec("linkml.validator") is not None
+)
+
 logger = logging.getLogger(__name__)
 
 
-class ReferenceValidationPlugin(ValidationPlugin):
-    """LinkML validation plugin for supporting text validation.
+if _LINKML_AVAILABLE:
+    # NOTE: `linkml` is optional. We only import LinkML modules when available.
+    # Ruff's E402 doesn't like imports in blocks, so we silence it per-import.
+    from linkml.validator.plugins import ValidationPlugin  # type: ignore  # noqa: E402
+    from linkml.validator.report import (  # type: ignore  # noqa: E402
+        Severity,
+        ValidationResult as LinkMLValidationResult,
+    )
+    from linkml.validator.validation_context import (  # type: ignore  # noqa: E402
+        ValidationContext,
+    )
+    from linkml_runtime.utils.schemaview import SchemaView  # type: ignore  # noqa: E402
 
-    This plugin integrates with the LinkML validation framework to validate
-    that supporting text quotes actually appear in their referenced publications.
+    class ReferenceValidationPlugin(ValidationPlugin):
+        """LinkML validation plugin for supporting text validation.
 
-    The plugin discovers reference and excerpt fields using LinkML's interface
-    mechanism. It looks for:
-    - Slots implementing linkml:authoritative_reference
-    - Slots implementing linkml:excerpt
+        This plugin integrates with the LinkML validation framework to validate
+        that supporting text quotes actually appear in their referenced publications.
 
-    Examples:
-        >>> config = ReferenceValidationConfig()
-        >>> plugin = ReferenceValidationPlugin(config=config)
-        >>> plugin.config.cache_dir
-        PosixPath('references_cache')
-    """
-
-    def __init__(
-        self,
-        config: Optional[ReferenceValidationConfig] = None,
-        cache_dir: Optional[str] = None,
-    ):
-        """Initialize the validation plugin.
-
-        Args:
-            config: Full configuration object (if provided, other args ignored)
-            cache_dir: Directory for caching references
+        The plugin discovers reference and excerpt fields using LinkML's interface
+        mechanism. It looks for:
+        - Slots implementing linkml:authoritative_reference
+        - Slots implementing linkml:excerpt
 
         Examples:
-            >>> plugin = ReferenceValidationPlugin(cache_dir="/tmp/cache")
+            >>> config = ReferenceValidationConfig()
+            >>> plugin = ReferenceValidationPlugin(config=config)
             >>> plugin.config.cache_dir
-            PosixPath('/tmp/cache')
+            PosixPath('references_cache')
         """
-        if config is None:
-            config = ReferenceValidationConfig()
-            if cache_dir is not None:
-                config.cache_dir = Path(cache_dir)
 
-        self.config = config
-        self.validator = SupportingTextValidator(config)
-        self.schema_view: Optional[SchemaView] = None
+        def __init__(
+            self,
+            config: Optional[ReferenceValidationConfig] = None,
+            cache_dir: Optional[str] = None,
+        ):
+            """Initialize the validation plugin.
 
-    def pre_process(self, context: ValidationContext) -> None:
-        """Pre-process hook called before validation.
+            Args:
+                config: Full configuration object (if provided, other args ignored)
+                cache_dir: Directory for caching references
 
-        Args:
-            context: Validation context from LinkML
+            Examples:
+                >>> plugin = ReferenceValidationPlugin(cache_dir="/tmp/cache")
+                >>> plugin.config.cache_dir
+                PosixPath('/tmp/cache')
+            """
+            if config is None:
+                config = ReferenceValidationConfig()
+                if cache_dir is not None:
+                    config.cache_dir = Path(cache_dir)
 
-        Examples:
-            >>> from linkml.validator.validation_context import ValidationContext
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> # Would be called by LinkML validator
-        """
-        if hasattr(context, "schema_view") and context.schema_view:
-            self.schema_view = context.schema_view
-        logger.info("ReferenceValidationPlugin initialized")
+            self.config = config
+            self.validator = SupportingTextValidator(config)
+            self.schema_view: Optional[SchemaView] = None
 
-    def process(
-        self,
-        instance: dict[str, Any],
-        context: ValidationContext,
-    ) -> Iterator[LinkMLValidationResult]:
-        """Validate an instance.
+        def pre_process(self, context: ValidationContext) -> None:
+            """Pre-process hook called before validation.
 
-        Args:
-            instance: Data instance to validate
-            context: Validation context
+            Args:
+                context: Validation context from LinkML
 
-        Yields:
-            ValidationResult objects for any issues found
+            Examples:
+                >>> from linkml.validator.validation_context import ValidationContext
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would be called by LinkML validator
+            """
+            if hasattr(context, "schema_view") and context.schema_view:
+                self.schema_view = context.schema_view
+            logger.info("ReferenceValidationPlugin initialized")
 
-        Examples:
-            >>> from linkml.validator.validation_context import ValidationContext
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> # Would be called by LinkML validator:
-            >>> # results = list(plugin.process(instance, context))
-        """
-        if not self.schema_view:
-            logger.warning("No schema view available for validation")
-            return
+        def process(
+            self,
+            instance: dict[str, Any],
+            context: ValidationContext,
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate an instance.
 
-        target_class = context.target_class if hasattr(context, "target_class") else None
-        if not target_class:
-            logger.warning("No target class specified")
-            return
+            Args:
+                instance: Data instance to validate
+                context: Validation context
 
-        yield from self._validate_instance(instance, target_class, path="")
+            Yields:
+                ValidationResult objects for any issues found
 
-    def _validate_instance(  # type: ignore
-        self,
-        instance: dict[str, Any],
-        class_name: str,
-        path: str,
-    ) -> Iterator[LinkMLValidationResult]:
-        """Recursively validate an instance and nested objects.
+            Examples:
+                >>> from linkml.validator.validation_context import ValidationContext
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would be called by LinkML validator:
+                >>> # results = list(plugin.process(instance, context))
+            """
+            if not self.schema_view:
+                logger.warning("No schema view available for validation")
+                return
 
-        Args:
-            instance: Instance data
-            class_name: Class name from schema
-            path: Current path in data structure
+            target_class = (
+                context.target_class if hasattr(context, "target_class") else None
+            )
+            if not target_class:
+                logger.warning("No target class specified")
+                return
 
-        Yields:
-            ValidationResult objects
-        """
-        if not self.schema_view:
-            return
-        class_def = self.schema_view.get_class(class_name)
-        if not class_def:
-            return
+            yield from self._validate_instance(instance, target_class, path="")
 
-        reference_fields = self._find_reference_fields(class_name)
-        excerpt_fields = self._find_excerpt_fields(class_name)
+        def _validate_instance(  # type: ignore
+            self,
+            instance: dict[str, Any],
+            class_name: str,
+            path: str,
+        ) -> Iterator[LinkMLValidationResult]:
+            """Recursively validate an instance and nested objects.
 
-        for excerpt_field in excerpt_fields:
-            excerpt_value = instance.get(excerpt_field)
-            if not excerpt_value:
-                continue
+            Args:
+                instance: Instance data
+                class_name: Class name from schema
+                path: Current path in data structure
 
-            for ref_field in reference_fields:
-                ref_value = instance.get(ref_field)
-                if ref_value:
-                    reference_id = self._extract_reference_id(ref_value)
-                    expected_title = self._extract_title(ref_value)
-                    if reference_id:
-                        yield from self._validate_excerpt(
-                            excerpt_value,
-                            reference_id,
-                            expected_title,
-                            f"{path}.{excerpt_field}" if path else excerpt_field,
-                        )
+            Yields:
+                ValidationResult objects
+            """
+            if not self.schema_view:
+                return
+            class_def = self.schema_view.get_class(class_name)
+            if not class_def:
+                return
 
-        for slot_name, value in instance.items():
-            if value is None:
-                continue
+            reference_fields = self._find_reference_fields(class_name)
+            excerpt_fields = self._find_excerpt_fields(class_name)
+            title_fields = self._find_title_fields(class_name)
 
-            slot = self.schema_view.induced_slot(slot_name, class_name)
-            if not slot:
-                continue
+            # Track whether we've validated with excerpt (which includes title validation)
+            validated_with_excerpt = False
 
-            slot_path = f"{path}.{slot_name}" if path else slot_name
+            for excerpt_field in excerpt_fields:
+                excerpt_value = instance.get(excerpt_field)
+                if not excerpt_value:
+                    continue
 
-            if isinstance(value, dict):
-                range_class = slot.range
-                if range_class and self.schema_view.get_class(range_class):
-                    yield from self._validate_instance(value, range_class, slot_path)
+                for ref_field in reference_fields:
+                    ref_value = instance.get(ref_field)
+                    if ref_value:
+                        reference_id = self._extract_reference_id(ref_value)
+                        # Get title from title field or from reference dict
+                        expected_title = None
+                        for title_field in title_fields:
+                            title_value = instance.get(title_field)
+                            if title_value:
+                                expected_title = title_value
+                                break
+                        if not expected_title:
+                            expected_title = self._extract_title(ref_value)
+                        if reference_id:
+                            validated_with_excerpt = True
+                            yield from self._validate_excerpt(
+                                excerpt_value,
+                                reference_id,
+                                expected_title,
+                                f"{path}.{excerpt_field}" if path else excerpt_field,
+                            )
 
-            elif isinstance(value, list):
-                for i, item in enumerate(value):
-                    item_path = f"{slot_path}[{i}]"
-                    if isinstance(item, dict):
-                        range_class = slot.range
-                        if range_class and self.schema_view.get_class(range_class):
-                            yield from self._validate_instance(item, range_class, item_path)
+            # If no excerpt validation was done, validate title independently
+            if not validated_with_excerpt and title_fields:
+                for title_field in title_fields:
+                    title_value = instance.get(title_field)
+                    if not title_value:
+                        continue
 
-    def _find_reference_fields(self, class_name: str) -> list[str]:  # type: ignore
-        """Find slots that implement linkml:authoritative_reference.
+                    for ref_field in reference_fields:
+                        ref_value = instance.get(ref_field)
+                        if ref_value:
+                            reference_id = self._extract_reference_id(ref_value)
+                            if reference_id:
+                                yield from self._validate_title(
+                                    title_value,
+                                    reference_id,
+                                    f"{path}.{title_field}" if path else title_field,
+                                )
 
-        Args:
-            class_name: Class to search
+            for slot_name, value in instance.items():
+                if value is None:
+                    continue
 
-        Returns:
-            List of slot names
+                slot = self.schema_view.induced_slot(slot_name, class_name)
+                if not slot:
+                    continue
 
-        Examples:
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> # Would need schema_view to actually work
-        """
-        fields: list[str] = []
-        if not self.schema_view:
+                slot_path = f"{path}.{slot_name}" if path else slot_name
+
+                if isinstance(value, dict):
+                    range_class = slot.range
+                    if range_class and self.schema_view.get_class(range_class):
+                        yield from self._validate_instance(value, range_class, slot_path)
+
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        item_path = f"{slot_path}[{i}]"
+                        if isinstance(item, dict):
+                            range_class = slot.range
+                            if range_class and self.schema_view.get_class(range_class):
+                                yield from self._validate_instance(
+                                    item, range_class, item_path
+                                )
+
+        def _find_reference_fields(self, class_name: str) -> list[str]:  # type: ignore
+            """Find slots that implement linkml:authoritative_reference.
+
+            Args:
+                class_name: Class to search
+
+            Returns:
+                List of slot names
+
+            Examples:
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would need schema_view to actually work
+            """
+            fields: list[str] = []
+            if not self.schema_view:
+                return fields
+            class_def = self.schema_view.get_class(class_name)
+            if not class_def:
+                return fields
+
+            for slot_name in self.schema_view.class_slots(class_name):
+                slot = self.schema_view.induced_slot(slot_name, class_name)
+                if slot and slot.implements:
+                    for interface in slot.implements:
+                        if (
+                            "authoritative_reference" in interface
+                            or "reference" in interface.lower()
+                        ):
+                            fields.append(slot_name)
+                            break
+
+            if "reference" in [s for s in self.schema_view.class_slots(class_name)]:
+                if "reference" not in fields:
+                    fields.append("reference")
+            if "reference_id" in [s for s in self.schema_view.class_slots(class_name)]:
+                if "reference_id" not in fields:
+                    fields.append("reference_id")
+
             return fields
-        class_def = self.schema_view.get_class(class_name)
-        if not class_def:
+
+        def _find_excerpt_fields(self, class_name: str) -> list[str]:  # type: ignore
+            """Find slots that implement linkml:excerpt.
+
+            Args:
+                class_name: Class to search
+
+            Returns:
+                List of slot names
+
+            Examples:
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would need schema_view to actually work
+            """
+            fields: list[str] = []
+            if not self.schema_view:
+                return fields
+            class_def = self.schema_view.get_class(class_name)
+            if not class_def:
+                return fields
+
+            for slot_name in self.schema_view.class_slots(class_name):
+                slot = self.schema_view.induced_slot(slot_name, class_name)
+                if slot and slot.implements:
+                    for interface in slot.implements:
+                        if (
+                            "excerpt" in interface
+                            or "supporting_text" in interface.lower()
+                        ):
+                            fields.append(slot_name)
+                            break
+
+            if "supporting_text" in [s for s in self.schema_view.class_slots(class_name)]:
+                if "supporting_text" not in fields:
+                    fields.append("supporting_text")
+
             return fields
 
-        for slot_name in self.schema_view.class_slots(class_name):
-            slot = self.schema_view.induced_slot(slot_name, class_name)
-            if slot and slot.implements:
-                for interface in slot.implements:
-                    if "authoritative_reference" in interface or "reference" in interface.lower():
-                        fields.append(slot_name)
-                        break
+        def _find_title_fields(self, class_name: str) -> list[str]:  # type: ignore
+            """Find slots that implement dcterms:title or have slot_uri dcterms:title.
 
-        if "reference" in [s for s in self.schema_view.class_slots(class_name)]:
-            if "reference" not in fields:
-                fields.append("reference")
-        if "reference_id" in [s for s in self.schema_view.class_slots(class_name)]:
-            if "reference_id" not in fields:
-                fields.append("reference_id")
+            Args:
+                class_name: Class to search
 
-        return fields
+            Returns:
+                List of slot names
 
-    def _find_excerpt_fields(self, class_name: str) -> list[str]:  # type: ignore
-        """Find slots that implement linkml:excerpt.
+            Examples:
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would need schema_view to actually work
+            """
+            fields: list[str] = []
+            if not self.schema_view:
+                return fields
+            class_def = self.schema_view.get_class(class_name)
+            if not class_def:
+                return fields
 
-        Args:
-            class_name: Class to search
+            for slot_name in self.schema_view.class_slots(class_name):
+                slot = self.schema_view.induced_slot(slot_name, class_name)
+                if not slot:
+                    continue
 
-        Returns:
-            List of slot names
+                # Check implements for dcterms:title
+                if slot.implements:
+                    for interface in slot.implements:
+                        if "dcterms:title" in interface or "title" in interface.lower():
+                            fields.append(slot_name)
+                            break
+                    if slot_name in fields:
+                        continue
 
-        Examples:
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> # Would need schema_view to actually work
-        """
-        fields: list[str] = []
-        if not self.schema_view:
+                # Check slot_uri for dcterms:title
+                if slot.slot_uri and "dcterms:title" in slot.slot_uri:
+                    fields.append(slot_name)
+
+            # Fallback: check for common title slot names
+            if "title" in [s for s in self.schema_view.class_slots(class_name)]:
+                if "title" not in fields:
+                    fields.append("title")
+
             return fields
-        class_def = self.schema_view.get_class(class_name)
-        if not class_def:
-            return fields
 
-        for slot_name in self.schema_view.class_slots(class_name):
-            slot = self.schema_view.induced_slot(slot_name, class_name)
-            if slot and slot.implements:
-                for interface in slot.implements:
-                    if "excerpt" in interface or "supporting_text" in interface.lower():
-                        fields.append(slot_name)
-                        break
+        def _extract_reference_id(self, reference_value: Any) -> Optional[str]:
+            """Extract reference ID from various value formats.
 
-        if "supporting_text" in [s for s in self.schema_view.class_slots(class_name)]:
-            if "supporting_text" not in fields:
-                fields.append("supporting_text")
+            Supports:
+            - String: "PMID:12345678"
+            - Dict with 'id': {"id": "PMID:12345678", "title": "..."}
 
-        return fields
+            Args:
+                reference_value: Reference value from data
 
-    def _extract_reference_id(self, reference_value: Any) -> Optional[str]:
-        """Extract reference ID from various value formats.
+            Returns:
+                Reference ID string or None
 
-        Supports:
-        - String: "PMID:12345678"
-        - Dict with 'id': {"id": "PMID:12345678", "title": "..."}
+            Examples:
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> plugin._extract_reference_id("PMID:12345678")
+                'PMID:12345678'
+                >>> plugin._extract_reference_id({"id": "PMID:12345678"})
+                'PMID:12345678'
+            """
+            if isinstance(reference_value, str):
+                return reference_value
+            elif isinstance(reference_value, dict):
+                return reference_value.get("id") or reference_value.get("reference_id")
+            return None
 
-        Args:
-            reference_value: Reference value from data
+        def _extract_title(self, reference_value: Any) -> Optional[str]:
+            """Extract title from reference value.
 
-        Returns:
-            Reference ID string or None
+            Args:
+                reference_value: Reference value from data
 
-        Examples:
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> plugin._extract_reference_id("PMID:12345678")
-            'PMID:12345678'
-            >>> plugin._extract_reference_id({"id": "PMID:12345678"})
-            'PMID:12345678'
-        """
-        if isinstance(reference_value, str):
-            return reference_value
-        elif isinstance(reference_value, dict):
-            return reference_value.get("id") or reference_value.get("reference_id")
-        return None
+            Returns:
+                Title string or None
 
-    def _extract_title(self, reference_value: Any) -> Optional[str]:
-        """Extract title from reference value.
+            Examples:
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> plugin._extract_title({"id": "PMID:12345678", "title": "Test"})
+                'Test'
+            """
+            if isinstance(reference_value, dict):
+                return reference_value.get("title") or reference_value.get(
+                    "reference_title"
+                )
+            return None
 
-        Args:
-            reference_value: Reference value from data
+        def _validate_excerpt(
+            self,
+            excerpt: str,
+            reference_id: str,
+            expected_title: Optional[str],
+            path: str,
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate an excerpt against a reference.
 
-        Returns:
-            Title string or None
+            Args:
+                excerpt: Supporting text to validate
+                reference_id: Reference identifier
+                expected_title: Optional expected title
+                path: Path in data structure
 
-        Examples:
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> plugin._extract_title({"id": "PMID:12345678", "title": "Test"})
-            'Test'
-        """
-        if isinstance(reference_value, dict):
-            return reference_value.get("title") or reference_value.get("reference_title")
-        return None
-
-    def _validate_excerpt(
-        self,
-        excerpt: str,
-        reference_id: str,
-        expected_title: Optional[str],
-        path: str,
-    ) -> Iterator[LinkMLValidationResult]:
-        """Validate an excerpt against a reference.
-
-        Args:
-            excerpt: Supporting text to validate
-            reference_id: Reference identifier
-            expected_title: Optional expected title
-            path: Path in data structure
-
-        Yields:
-            ValidationResult if validation fails
-        """
-        result = self.validator.validate(excerpt, reference_id, expected_title=expected_title, path=path)
-
-        if not result.is_valid:
-            yield LinkMLValidationResult(
-                type="reference_validation",
-                severity=Severity.ERROR if result.severity.value == "ERROR" else Severity.WARNING,
-                message=result.message or "Supporting text validation failed",
-                instance={"supporting_text": excerpt, "reference_id": reference_id},
-                instantiates=path,
+            Yields:
+                ValidationResult if validation fails
+            """
+            result = self.validator.validate(
+                excerpt, reference_id, expected_title=expected_title, path=path
             )
 
-    def post_process(self, context: ValidationContext) -> None:
-        """Post-process hook called after validation.
+            if not result.is_valid:
+                yield LinkMLValidationResult(
+                    type="reference_validation",
+                    severity=Severity.ERROR
+                    if result.severity.value == "ERROR"
+                    else Severity.WARNING,
+                    message=result.message or "Supporting text validation failed",
+                    instance={"supporting_text": excerpt, "reference_id": reference_id},
+                    instantiates=path,
+                )
 
-        Args:
-            context: Validation context
+        def _validate_title(
+            self,
+            title: str,
+            reference_id: str,
+            path: str,
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate a title against a reference.
 
-        Examples:
-            >>> from linkml.validator.validation_context import ValidationContext
-            >>> config = ReferenceValidationConfig()
-            >>> plugin = ReferenceValidationPlugin(config=config)
-            >>> # Would be called by LinkML validator
+            Uses exact matching after normalization (case, whitespace, punctuation).
+
+            Args:
+                title: Expected title to validate
+                reference_id: Reference identifier
+                path: Path in data structure
+
+            Yields:
+                ValidationResult if validation fails
+            """
+            result = self.validator.validate_title(
+                reference_id, expected_title=title, path=path
+            )
+
+            if not result.is_valid:
+                yield LinkMLValidationResult(
+                    type="reference_validation",
+                    severity=Severity.ERROR
+                    if result.severity.value == "ERROR"
+                    else Severity.WARNING,
+                    message=result.message or "Title validation failed",
+                    instance={"title": title, "reference_id": reference_id},
+                    instantiates=path,
+                )
+
+        def post_process(self, context: ValidationContext) -> None:
+            """Post-process hook called after validation.
+
+            Args:
+                context: Validation context
+
+            Examples:
+                >>> from linkml.validator.validation_context import ValidationContext
+                >>> config = ReferenceValidationConfig()
+                >>> plugin = ReferenceValidationPlugin(config=config)
+                >>> # Would be called by LinkML validator
+            """
+            logger.info("ReferenceValidationPlugin validation complete")
+
+else:
+
+    class ReferenceValidationPlugin:  # type: ignore[no-redef]
+        """Placeholder when `linkml` is not installed.
+
+        This module is intentionally importable without LinkML installed (so plugin
+        discovery / module scanning won't crash). Attempting to *use* this plugin
+        without LinkML will fail fast.
         """
-        logger.info("ReferenceValidationPlugin validation complete")
+
+        def __init__(
+            self,
+            config: Optional[ReferenceValidationConfig] = None,
+            cache_dir: Optional[str] = None,
+        ):
+            raise ImportError(
+                "`linkml` is not installed; `ReferenceValidationPlugin` is unavailable."
+            )

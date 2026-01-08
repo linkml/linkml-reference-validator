@@ -209,6 +209,7 @@ if _LINKML_AVAILABLE:
                                     if path
                                     else first_title_field,
                                 )
+                            # Break after processing first reference field with a value
                             break
 
 

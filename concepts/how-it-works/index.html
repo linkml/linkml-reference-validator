@@ -601,6 +601,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../how-to/validate-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Reference Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../how-to/use-local-files-and-urls/" class="md-nav__link">
         
   
@@ -822,6 +850,17 @@
     <span class="md-ellipsis">
       
         3. Ellipsis Handling
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-title-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Title Validation
       
     </span>
   </a>
@@ -1369,6 +1408,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#4-title-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Title Validation
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1753,6 +1803,26 @@ reference_content = &quot;...The MUC1 oncoprotein blocks nuclear...&quot;
 Parts: [&quot;MUC1 oncoprotein&quot;, &quot;nuclear targeting&quot;]
 # Both parts must exist in the reference
 </code></pre>
+<h3 id="4-title-validation">4. Title Validation</h3>
+<p>In addition to excerpt/quote validation, the validator can verify reference titles using <strong>exact matching</strong> (not substring). Titles are validated when:</p>
+<ul>
+<li>A slot implements <code>dcterms:title</code> or has <code>slot_uri: dcterms:title</code></li>
+<li>A slot is named <code>title</code> (fallback)</li>
+</ul>
+<p><strong>Example:</strong></p>
+<pre><code class="language-yaml">reference_title: &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot;
+</code></pre>
+<p>Title matching uses the same normalization as excerpts (case, whitespace, punctuation, Greek letters) but requires the <strong>entire title to match</strong>, not just a substring.</p>
+<pre><code class="language-python"># These match after normalization:
+expected = &quot;Role of JAK1 in Cell-Signaling&quot;
+actual = &quot;Role of JAK1 in Cell Signaling&quot;
+# Both normalize to: &quot;role of jak1 in cell signaling&quot;
+
+# These do NOT match (partial title):
+expected = &quot;Role of JAK1&quot;  # Missing &quot;in Cell Signaling&quot;
+actual = &quot;Role of JAK1 in Cell Signaling&quot;
+</code></pre>
+<p>See <a href="../../how-to/validate-titles/">Validating Reference Titles</a> for detailed usage.</p>
 <h2 id="why-deterministic-matching">Why Deterministic Matching?</h2>
 <h3 id="not-fuzzy-matching">Not Fuzzy Matching</h3>
 <p>We explicitly avoid fuzzy/similarity matching because:</p>
@@ -1858,8 +1928,14 @@ The MUC1 oncoprotein blocks nuclear targeting...
         slot_uri: linkml:excerpt  # Marks as quoted text
       reference:
         slot_uri: linkml:authoritative_reference  # Marks as reference ID
+      reference_title:
+        slot_uri: dcterms:title  # Marks as reference title (optional)
 </code></pre>
 <p>When LinkML validates data, it calls our plugin for fields marked with these URIs.</p>
+<p>The plugin discovers fields via:
+- <code>implements</code> attribute (e.g., <code>implements: [dcterms:title]</code>)
+- <code>slot_uri</code> attribute (e.g., <code>slot_uri: dcterms:title</code>)
+- Fallback slot names (<code>reference</code>, <code>supporting_text</code>, <code>title</code>)</p>
 <h2 id="editorial-conventions">Editorial Conventions</h2>
 <h3 id="square-brackets">Square Brackets <code>[...]</code></h3>
 <p>Used for editorial clarifications inserted into quotes:</p>

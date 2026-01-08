@@ -2,11 +2,14 @@
 
 Provides access to clinical trial data via the ClinicalTrials.gov API.
 
+Uses the bioregistry standard prefix 'clinicaltrials' with pattern NCT followed by 8 digits.
+See: https://bioregistry.io/registry/clinicaltrials
+
 Examples:
     >>> from linkml_reference_validator.etl.sources.clinicaltrials import ClinicalTrialsSource
     >>> ClinicalTrialsSource.prefix()
-    'NCT'
-    >>> ClinicalTrialsSource.can_handle("NCT:NCT00000001")
+    'clinicaltrials'
+    >>> ClinicalTrialsSource.can_handle("clinicaltrials:NCT00000001")
     True
     >>> ClinicalTrialsSource.can_handle("NCT00000001")
     True
@@ -27,17 +30,21 @@ logger = logging.getLogger(__name__)
 # ClinicalTrials.gov API v2 endpoint
 CLINICALTRIALS_API_URL = "https://clinicaltrials.gov/api/v2/studies/{nct_id}"
 
+# NCT ID pattern: NCT followed by 8 digits (bioregistry standard)
+NCT_ID_PATTERN = re.compile(r"^NCT\d{8}$", re.IGNORECASE)
+
 
 @ReferenceSourceRegistry.register
 class ClinicalTrialsSource(ReferenceSource):
     """Fetch clinical trial data from ClinicalTrials.gov.
 
+    Uses the bioregistry standard prefix 'clinicaltrials'.
     Supports NCT identifiers (e.g., NCT00000001) with or without prefix.
 
     Examples:
         >>> ClinicalTrialsSource.prefix()
-        'NCT'
-        >>> ClinicalTrialsSource.can_handle("NCT:NCT00000001")
+        'clinicaltrials'
+        >>> ClinicalTrialsSource.can_handle("clinicaltrials:NCT00000001")
         True
         >>> ClinicalTrialsSource.can_handle("NCT00000001")
         True
@@ -49,33 +56,37 @@ class ClinicalTrialsSource(ReferenceSource):
     def prefix(cls) -> str:
         """Return the prefix this source handles.
 
+        Uses bioregistry standard prefix 'clinicaltrials'.
+
         Examples:
             >>> ClinicalTrialsSource.prefix()
-            'NCT'
+            'clinicaltrials'
         """
-        return "NCT"
+        return "clinicaltrials"
 
     @classmethod
     def can_handle(cls, reference_id: str) -> bool:
         """Check if this source can handle the given reference ID.
 
-        Supports both prefixed (NCT:NCT00000001) and bare (NCT00000001) identifiers.
+        Supports:
+        - clinicaltrials:NCT00000001 (bioregistry standard)
+        - NCT00000001 (bare NCT ID)
 
         Examples:
-            >>> ClinicalTrialsSource.can_handle("NCT:NCT00000001")
+            >>> ClinicalTrialsSource.can_handle("clinicaltrials:NCT00000001")
             True
-            >>> ClinicalTrialsSource.can_handle("nct:NCT12345678")
+            >>> ClinicalTrialsSource.can_handle("clinicaltrials:NCT12345678")
             True
             >>> ClinicalTrialsSource.can_handle("NCT00000001")
             True
             >>> ClinicalTrialsSource.can_handle("PMID:12345")
             False
         """
-        # Check for prefix (NCT:...)
+        # Check for prefix (clinicaltrials:...)
         if super().can_handle(reference_id):
             return True
         # Check for bare NCT ID (NCT followed by 8 digits)
-        return bool(re.match(r"^NCT\d{8}$", reference_id, re.IGNORECASE))
+        return bool(NCT_ID_PATTERN.match(reference_id))
 
     def fetch(
         self, identifier: str, config: ReferenceValidationConfig
@@ -93,7 +104,7 @@ class ClinicalTrialsSource(ReferenceSource):
             >>> source = ClinicalTrialsSource()
             >>> # This would require network access in real usage
             >>> source.prefix()
-            'NCT'
+            'clinicaltrials'
         """
         time.sleep(config.rate_limit_delay)
 
@@ -161,7 +172,7 @@ class ClinicalTrialsSource(ReferenceSource):
         content_type = "summary" if content else "unavailable"
 
         return ReferenceContent(
-            reference_id=f"NCT:{nct_id}",
+            reference_id=f"{self.prefix()}:{nct_id}",
             title=title,
             content=content,
             content_type=content_type,

@@ -10,6 +10,8 @@ The ClinicalTrials.gov source fetches trial data from the [ClinicalTrials.gov AP
 - **Content**: Brief summary (falls back to detailed description)
 - **Metadata**: Trial status and lead sponsor
 
+The source uses the [bioregistry standard prefix](https://bioregistry.io/registry/clinicaltrials) `clinicaltrials` with identifiers following the pattern `NCT` followed by 8 digits (e.g., `NCT00000001`).
+
 ## Basic Usage
 
 Validate text against a clinical trial using its NCT identifier:
@@ -17,16 +19,16 @@ Validate text against a clinical trial using its NCT identifier:
 ```bash
 linkml-reference-validator validate text \
   "A randomized controlled trial investigating..." \
-  NCT:NCT00000001
+  clinicaltrials:NCT00000001
 ```
 
 ## Accepted Identifier Formats
 
-You can use either prefixed or bare NCT identifiers:
+You can use the bioregistry standard prefix or bare NCT identifiers:
 
 ```
-NCT:NCT00000001
-NCT:NCT12345678
+clinicaltrials:NCT00000001
+clinicaltrials:NCT12345678
 NCT00000001
 NCT12345678
 ```
@@ -34,20 +36,21 @@ NCT12345678
 The prefix is case-insensitive:
 
 ```
-nct:NCT00000001
-NCT:nct00000001
+clinicaltrials:NCT00000001
+CLINICALTRIALS:NCT00000001
 ```
 
 ## Prefix Aliases and Normalization
 
-If your data uses alternate prefix styles, configure normalization in `.linkml-reference-validator.yaml`:
+If your data uses alternate prefix styles (e.g., the legacy `NCT:` prefix), configure normalization in `.linkml-reference-validator.yaml`:
 
 ```yaml
 validation:
   reference_prefix_map:
-    clinicaltrials: NCT
-    ClinicalTrials: NCT
-    ct: NCT
+    NCT: clinicaltrials
+    nct: clinicaltrials
+    ct: clinicaltrials
+    ClinicalTrials: clinicaltrials
 ```
 
 Or programmatically:
@@ -56,7 +59,10 @@ Or programmatically:
 from linkml_reference_validator.models import ReferenceValidationConfig
 
 config = ReferenceValidationConfig(
-    reference_prefix_map={"clinicaltrials": "NCT", "ct": "NCT"}
+    reference_prefix_map={
+        "NCT": "clinicaltrials",
+        "ct": "clinicaltrials",
+    }
 )
 ```
 
@@ -65,7 +71,7 @@ config = ReferenceValidationConfig(
 To cache trial data for offline validation or faster repeated access:
 
 ```bash
-linkml-reference-validator cache reference NCT:NCT00000001
+linkml-reference-validator cache reference clinicaltrials:NCT00000001
 ```
 
 Cached references are stored in `references_cache/` as markdown files with YAML frontmatter containing metadata like trial status and sponsor.
@@ -99,11 +105,22 @@ source = ClinicalTrialsSource()
 content = source.fetch("NCT00000001", config)
 
 if content:
+    print(f"Reference ID: {content.reference_id}")  # clinicaltrials:NCT00000001
     print(f"Title: {content.title}")
     print(f"Summary: {content.content}")
     print(f"Status: {content.metadata.get('status')}")
     print(f"Sponsor: {content.metadata.get('sponsor')}")
 ```
+
+## Bioregistry Standard
+
+This source follows the [bioregistry standard](https://bioregistry.io/registry/clinicaltrials) for ClinicalTrials.gov identifiers:
+
+- **Prefix**: `clinicaltrials`
+- **Pattern**: `^NCT\d{8}$`
+- **Example CURIE**: `clinicaltrials:NCT00222573`
+
+Alternative prefixes recognized by bioregistry include `clinicaltrial`, `NCT`, and `ctgov`. Use the `reference_prefix_map` configuration to normalize these to the standard prefix.
 
 ## See Also
 

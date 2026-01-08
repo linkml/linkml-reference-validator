@@ -30,7 +30,7 @@ class TestReferenceSourceRegistry:
         assert "GEO" in prefixes
         assert "BIOPROJECT" in prefixes
         assert "BIOSAMPLE" in prefixes
-        assert "NCT" in prefixes
+        assert "clinicaltrials" in prefixes
 
     def test_get_source_for_pmid(self):
         """Should return PMIDSource for PMID references."""
@@ -328,13 +328,13 @@ class TestClinicalTrialsSource:
         return ClinicalTrialsSource()
 
     def test_prefix(self, source):
-        """ClinicalTrialsSource should have 'NCT' prefix."""
-        assert source.prefix() == "NCT"
+        """ClinicalTrialsSource should have 'clinicaltrials' prefix (bioregistry standard)."""
+        assert source.prefix() == "clinicaltrials"
 
-    def test_can_handle_nct_prefix(self, source):
-        """Should handle NCT: prefixed references."""
-        assert source.can_handle("NCT:NCT00000001")
-        assert source.can_handle("nct:NCT12345678")
+    def test_can_handle_clinicaltrials_prefix(self, source):
+        """Should handle clinicaltrials: prefixed references."""
+        assert source.can_handle("clinicaltrials:NCT00000001")
+        assert source.can_handle("clinicaltrials:NCT12345678")
         assert not source.can_handle("PMID:12345")
 
     def test_can_handle_bare_nct_id(self, source):
@@ -372,7 +372,7 @@ class TestClinicalTrialsSource:
         result = source.fetch("NCT00000001", config)
 
         assert result is not None
-        assert result.reference_id == "NCT:NCT00000001"
+        assert result.reference_id == "clinicaltrials:NCT00000001"
         assert result.title == "A Study of Something Important"
         assert result.content == "This is a brief summary of the trial."
         assert result.content_type == "summary"

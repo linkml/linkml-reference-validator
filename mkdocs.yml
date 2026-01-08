@@ -35,6 +35,7 @@ nav:
       - Validating Entrez Accessions: how-to/validate-entrez.md
       - Validating DOIs: how-to/validate-dois.md
       - Validating URLs: how-to/validate-urls.md
+      - Validating Reference Titles: how-to/validate-titles.md
       - Using Local Files and URLs: how-to/use-local-files-and-urls.md
       - Adding a New Reference Source: how-to/add-reference-source.md
   - Concepts:

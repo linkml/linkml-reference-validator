@@ -9,6 +9,7 @@ linkml-reference-validator ensures that text excerpts in your data accurately ma
 - **Deterministic validation** - No fuzzy matching or AI hallucinations
 - **Multiple reference sources** - PubMed, DOIs, local files, and URLs
 - **Editorial convention support** - Handles `[clarifications]` and `...` ellipsis
+- **Title validation** - Verify reference titles with `dcterms:title`
 - **Multiple interfaces** - CLI for quick checks, Python API for integration
 - **LinkML integration** - Validates data files with `linkml:excerpt` annotations
 - **Smart caching** - Stores references locally to avoid repeated API calls

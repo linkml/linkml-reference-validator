@@ -111,6 +111,7 @@ linkml-reference-validator validate text \
 - **Automatic Caching**: References cached locally after first fetch
 - **Editorial Notes**: Use `[...]` for clarifications: `"MUC1 [mucin 1] oncoprotein"`
 - **Ellipsis**: Use `...` for omitted text: `"MUC1 ... nuclear targeting"`
+- **Title Validation**: Verify reference titles with `dcterms:title`
 - **Deterministic Matching**: Substring-based (not AI/fuzzy matching)
 - **PubMed & PMC**: Fetches from NCBI automatically
 - **DOI Support**: Fetches metadata from Crossref API
@@ -121,5 +122,6 @@ linkml-reference-validator validate text \
 
 - **[Tutorial 1: Getting Started](notebooks/01_getting_started.ipynb)** - CLI basics with real examples
 - **[Tutorial 2: Advanced Usage](notebooks/02_advanced_usage.ipynb)** - Data validation with LinkML schemas
+- **[Validating Reference Titles](how-to/validate-titles.md)** - Verify titles with `dcterms:title`
 - **[Concepts](concepts/how-it-works.md)** - Understanding the validation process
 - **[CLI Reference](reference/cli.md)** - Complete command documentation

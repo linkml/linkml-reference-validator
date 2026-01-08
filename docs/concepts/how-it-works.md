@@ -46,6 +46,33 @@ Parts: ["MUC1 oncoprotein", "nuclear targeting"]
 # Both parts must exist in the reference
 ```
 
+### 4. Title Validation
+
+In addition to excerpt/quote validation, the validator can verify reference titles using **exact matching** (not substring). Titles are validated when:
+
+- A slot implements `dcterms:title` or has `slot_uri: dcterms:title`
+- A slot is named `title` (fallback)
+
+**Example:**
+```yaml
+reference_title: "MUC1 oncoprotein blocks nuclear targeting of c-Abl"
+```
+
+Title matching uses the same normalization as excerpts (case, whitespace, punctuation, Greek letters) but requires the **entire title to match**, not just a substring.
+
+```python
+# These match after normalization:
+expected = "Role of JAK1 in Cell-Signaling"
+actual = "Role of JAK1 in Cell Signaling"
+# Both normalize to: "role of jak1 in cell signaling"
+
+# These do NOT match (partial title):
+expected = "Role of JAK1"  # Missing "in Cell Signaling"
+actual = "Role of JAK1 in Cell Signaling"
+```
+
+See [Validating Reference Titles](../how-to/validate-titles.md) for detailed usage.
+
 ## Why Deterministic Matching?
 
 ### Not Fuzzy Matching
@@ -171,9 +198,16 @@ classes:
         slot_uri: linkml:excerpt  # Marks as quoted text
       reference:
         slot_uri: linkml:authoritative_reference  # Marks as reference ID
+      reference_title:
+        slot_uri: dcterms:title  # Marks as reference title (optional)
 ```
 
 When LinkML validates data, it calls our plugin for fields marked with these URIs.
+
+The plugin discovers fields via:
+- `implements` attribute (e.g., `implements: [dcterms:title]`)
+- `slot_uri` attribute (e.g., `slot_uri: dcterms:title`)
+- Fallback slot names (`reference`, `supporting_text`, `title`)
 
 ## Editorial Conventions
 

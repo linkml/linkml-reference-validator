@@ -47,6 +47,78 @@ class SupportingTextValidator:
         self.config = config
         self.fetcher = ReferenceFetcher(config)
 
+    def validate_title(
+        self,
+        reference_id: str,
+        expected_title: str,
+        path: Optional[str] = None,
+    ) -> ValidationResult:
+        """Validate title against a reference.
+
+        Performs exact matching after normalization (case, whitespace, punctuation).
+        Unlike excerpt validation, this is NOT substring matching.
+
+        Args:
+            reference_id: The reference identifier (e.g., "PMID:12345678")
+            expected_title: The title to validate against reference
+            path: Optional path in data structure for error reporting
+
+        Returns:
+            ValidationResult with match details
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> # Would validate in real usage:
+            >>> # result = validator.validate_title("PMID:12345678", "Study Title")
+        """
+        reference = self.fetcher.fetch(reference_id)
+
+        if not reference:
+            return ValidationResult(
+                is_valid=False,
+                reference_id=reference_id,
+                supporting_text="",
+                severity=ValidationSeverity.ERROR,
+                message=f"Could not fetch reference: {reference_id}",
+                path=path,
+            )
+
+        if not reference.title:
+            return ValidationResult(
+                is_valid=False,
+                reference_id=reference_id,
+                supporting_text="",
+                severity=ValidationSeverity.ERROR,
+                message=f"Reference {reference_id} has no title to validate against",
+                path=path,
+            )
+
+        normalized_expected = self.normalize_text(expected_title)
+        normalized_actual = self.normalize_text(reference.title)
+
+        if normalized_expected == normalized_actual:
+            return ValidationResult(
+                is_valid=True,
+                reference_id=reference_id,
+                supporting_text="",
+                severity=ValidationSeverity.INFO,
+                message=f"Title validated successfully for {reference_id}",
+                path=path,
+            )
+        else:
+            return ValidationResult(
+                is_valid=False,
+                reference_id=reference_id,
+                supporting_text="",
+                severity=ValidationSeverity.ERROR,
+                message=(
+                    f"Title mismatch for {reference_id}: "
+                    f"expected '{expected_title}' but got '{reference.title}'"
+                ),
+                path=path,
+            )
+
     def validate(
         self,
         supporting_text: str,

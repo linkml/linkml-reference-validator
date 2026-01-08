@@ -33,6 +33,7 @@ nav:
   - How-To Guides:
       - Validating OBO Files: how-to/validate-obo-files.md
       - Validating Entrez Accessions: how-to/validate-entrez.md
+      - Validating Clinical Trials: how-to/validate-clinical-trials.md
       - Validating DOIs: how-to/validate-dois.md
       - Validating URLs: how-to/validate-urls.md
       - Validating Reference Titles: how-to/validate-titles.md

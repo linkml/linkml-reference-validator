@@ -25,8 +25,10 @@ def test_config(tmp_path, fixtures_dir):
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
 
-    # Copy test fixtures to cache
+    # Copy test fixtures to cache (both .txt and .md formats)
     for fixture_file in fixtures_dir.glob("*.txt"):
+        (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
+    for fixture_file in fixtures_dir.glob("*.md"):
         (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
 
     return ReferenceValidationConfig(

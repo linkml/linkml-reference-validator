@@ -1,12 +1,12 @@
 """Reference source plugins.
 
 This package provides pluggable reference sources for fetching content
-from various origins (PubMed, Crossref, local files, URLs).
+from various origins (PubMed, Crossref, local files, URLs, ClinicalTrials.gov).
 
 Examples:
     >>> from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
     >>> sources = ReferenceSourceRegistry.list_sources()
-    >>> len(sources) >= 7
+    >>> len(sources) >= 8
     True
 """
 
@@ -25,6 +25,7 @@ from linkml_reference_validator.etl.sources.entrez import (
     BioProjectSource,
     BioSampleSource,
 )
+from linkml_reference_validator.etl.sources.clinicaltrials import ClinicalTrialsSource
 
 __all__ = [
     "ReferenceSource",
@@ -36,4 +37,5 @@ __all__ = [
     "GEOSource",
     "BioProjectSource",
     "BioSampleSource",
+    "ClinicalTrialsSource",
 ]

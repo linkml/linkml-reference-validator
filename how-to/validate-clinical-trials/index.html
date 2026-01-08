@@ -8,26 +8,28 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-clinical-trials/">
       
       
+        <link rel="prev" href="../validate-entrez/">
       
-        <link rel="next" href="quickstart/">
+      
+        <link rel="next" href="../validate-dois/">
       
       
         
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>linkml-reference-validator</title>
+        <title>Validating Clinical Trials - linkml-reference-validator</title>
       
     
     
-      <link rel="stylesheet" href="assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -46,7 +48,7 @@
       
     
     
-    <script>__md_scope=new URL(".",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -64,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#linkml-reference-validator" class="md-skip">
+        <a href="#validating-clinicaltrialsgov-references" class="md-skip">
           Skip to content
         </a>
       
@@ -80,7 +82,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -100,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              Validating Clinical Trials
             
           </span>
         </div>
@@ -190,7 +192,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -217,37 +219,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Home
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="." class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
         
   
   
@@ -263,59 +238,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Key Features
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#quick-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Quick Links
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tutorials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tutorials
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -327,7 +249,7 @@
   
   
     <li class="md-nav__item">
-      <a href="quickstart/" class="md-nav__link">
+      <a href="../../quickstart/" class="md-nav__link">
         
   
   
@@ -401,7 +323,7 @@
   
   
     <li class="md-nav__item">
-      <a href="notebooks/01_getting_started.ipynb" class="md-nav__link">
+      <a href="../../notebooks/01_getting_started.ipynb" class="md-nav__link">
         
   
   
@@ -429,7 +351,7 @@
   
   
     <li class="md-nav__item">
-      <a href="notebooks/02_advanced_usage.ipynb" class="md-nav__link">
+      <a href="../../notebooks/02_advanced_usage.ipynb" class="md-nav__link">
         
   
   
@@ -457,7 +379,7 @@
   
   
     <li class="md-nav__item">
-      <a href="notebooks/04_obo_validation.ipynb" class="md-nav__link">
+      <a href="../../notebooks/04_obo_validation.ipynb" class="md-nav__link">
         
   
   
@@ -485,7 +407,7 @@
   
   
     <li class="md-nav__item">
-      <a href="notebooks/03_python_api.ipynb" class="md-nav__link">
+      <a href="../../notebooks/03_python_api.ipynb" class="md-nav__link">
         
   
   
@@ -517,18 +439,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -549,7 +473,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -567,7 +491,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/validate-obo-files/" class="md-nav__link">
+      <a href="../validate-obo-files/" class="md-nav__link">
         
   
   
@@ -595,7 +519,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/validate-entrez/" class="md-nav__link">
+      <a href="../validate-entrez/" class="md-nav__link">
         
   
   
@@ -620,10 +544,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="how-to/validate-clinical-trials/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Clinical Trials
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -639,6 +590,136 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#basic-usage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Basic Usage
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#accepted-identifier-formats" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Accepted Identifier Formats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prefix Aliases and Normalization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-caching-clinical-trial-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-caching Clinical Trial Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Limiting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-validating-trial-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Validating Trial Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bioregistry-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bioregistry Standard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -651,7 +732,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/validate-dois/" class="md-nav__link">
+      <a href="../validate-dois/" class="md-nav__link">
         
   
   
@@ -679,7 +760,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/validate-urls/" class="md-nav__link">
+      <a href="../validate-urls/" class="md-nav__link">
         
   
   
@@ -707,7 +788,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/validate-titles/" class="md-nav__link">
+      <a href="../validate-titles/" class="md-nav__link">
         
   
   
@@ -735,7 +816,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/use-local-files-and-urls/" class="md-nav__link">
+      <a href="../use-local-files-and-urls/" class="md-nav__link">
         
   
   
@@ -763,7 +844,7 @@
   
   
     <li class="md-nav__item">
-      <a href="how-to/add-reference-source/" class="md-nav__link">
+      <a href="../add-reference-source/" class="md-nav__link">
         
   
   
@@ -845,7 +926,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/how-it-works/" class="md-nav__link">
+      <a href="../../concepts/how-it-works/" class="md-nav__link">
         
   
   
@@ -873,7 +954,7 @@
   
   
     <li class="md-nav__item">
-      <a href="concepts/editorial-conventions/" class="md-nav__link">
+      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -955,7 +1036,7 @@
   
   
     <li class="md-nav__item">
-      <a href="reference/cli/" class="md-nav__link">
+      <a href="../../reference/cli/" class="md-nav__link">
         
   
   
@@ -1010,10 +1091,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#key-features" class="md-nav__link">
+  <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Key Features
+        Overview
       
     </span>
   </a>
@@ -1021,10 +1102,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#quick-links" class="md-nav__link">
+  <a href="#basic-usage" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Links
+        Basic Usage
       
     </span>
   </a>
@@ -1032,10 +1113,87 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tutorials" class="md-nav__link">
+  <a href="#accepted-identifier-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tutorials
+        Accepted Identifier Formats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prefix Aliases and Normalization
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#pre-caching-clinical-trial-records" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-caching Clinical Trial Records
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#rate-limiting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate Limiting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#content-availability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-validating-trial-descriptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example: Validating Trial Descriptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bioregistry-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bioregistry Standard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
       
     </span>
   </a>
@@ -1062,31 +1220,98 @@
   
 
 
-<h1 id="linkml-reference-validator">linkml-reference-validator</h1>
-<p><strong>Validate quotes and excerpts against their source publications</strong></p>
-<p>linkml-reference-validator ensures that text excerpts in your data accurately match their cited sources. It fetches references from PubMed/PMC, DOIs, local files, and URLs, then performs deterministic substring matching with support for editorial conventions like brackets <code>[...]</code> and ellipsis <code>...</code>.</p>
-<h2 id="key-features">Key Features</h2>
+<h1 id="validating-clinicaltrialsgov-references">Validating ClinicalTrials.gov References</h1>
+<p>This guide shows how to validate supporting text against clinical trial records from ClinicalTrials.gov.</p>
+<h2 id="overview">Overview</h2>
+<p>The ClinicalTrials.gov source fetches trial data from the <a href="https://clinicaltrials.gov/data-api/api">ClinicalTrials.gov API v2</a>. It extracts:</p>
 <ul>
-<li><strong>Deterministic validation</strong> - No fuzzy matching or AI hallucinations</li>
-<li><strong>Multiple reference sources</strong> - PubMed, DOIs, local files, and URLs</li>
-<li><strong>Editorial convention support</strong> - Handles <code>[clarifications]</code> and <code>...</code> ellipsis</li>
-<li><strong>Title validation</strong> - Verify reference titles with <code>dcterms:title</code></li>
-<li><strong>Multiple interfaces</strong> - CLI for quick checks, Python API for integration</li>
-<li><strong>LinkML integration</strong> - Validates data files with <code>linkml:excerpt</code> annotations</li>
-<li><strong>Smart caching</strong> - Stores references locally to avoid repeated API calls</li>
+<li><strong>Title</strong>: Official title (falls back to brief title)</li>
+<li><strong>Content</strong>: Brief summary (falls back to detailed description)</li>
+<li><strong>Metadata</strong>: Trial status and lead sponsor</li>
 </ul>
-<h2 id="quick-links">Quick Links</h2>
+<p>The source uses the <a href="https://bioregistry.io/registry/clinicaltrials">bioregistry standard prefix</a> <code>clinicaltrials</code> with identifiers following the pattern <code>NCT</code> followed by 8 digits (e.g., <code>NCT00000001</code>).</p>
+<h2 id="basic-usage">Basic Usage</h2>
+<p>Validate text against a clinical trial using its NCT identifier:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;A randomized controlled trial investigating...&quot; \
+  clinicaltrials:NCT00000001
+</code></pre>
+<h2 id="accepted-identifier-formats">Accepted Identifier Formats</h2>
+<p>You can use the bioregistry standard prefix or bare NCT identifiers:</p>
+<pre><code>clinicaltrials:NCT00000001
+clinicaltrials:NCT12345678
+NCT00000001
+NCT12345678
+</code></pre>
+<p>The prefix is case-insensitive:</p>
+<pre><code>clinicaltrials:NCT00000001
+CLINICALTRIALS:NCT00000001
+</code></pre>
+<h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
+<p>If your data uses alternate prefix styles (e.g., the legacy <code>NCT:</code> prefix), configure normalization in <code>.linkml-reference-validator.yaml</code>:</p>
+<pre><code class="language-yaml">validation:
+  reference_prefix_map:
+    NCT: clinicaltrials
+    nct: clinicaltrials
+    ct: clinicaltrials
+    ClinicalTrials: clinicaltrials
+</code></pre>
+<p>Or programmatically:</p>
+<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
+
+config = ReferenceValidationConfig(
+    reference_prefix_map={
+        &quot;NCT&quot;: &quot;clinicaltrials&quot;,
+        &quot;ct&quot;: &quot;clinicaltrials&quot;,
+    }
+)
+</code></pre>
+<h2 id="pre-caching-clinical-trial-records">Pre-caching Clinical Trial Records</h2>
+<p>To cache trial data for offline validation or faster repeated access:</p>
+<pre><code class="language-bash">linkml-reference-validator cache reference clinicaltrials:NCT00000001
+</code></pre>
+<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter containing metadata like trial status and sponsor.</p>
+<h2 id="rate-limiting">Rate Limiting</h2>
+<p>The ClinicalTrials.gov API has rate limits. The default <code>rate_limit_delay</code> of 0.5 seconds between requests should be sufficient for most use cases:</p>
+<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
+
+config = ReferenceValidationConfig(
+    rate_limit_delay=0.5,  # default
+)
+</code></pre>
+<h2 id="content-availability">Content Availability</h2>
+<p>Not all trials have detailed descriptions. If only a brief summary is available, that will be used for validation. Trials without any description will return <code>content_type: unavailable</code>.</p>
+<h2 id="example-validating-trial-descriptions">Example: Validating Trial Descriptions</h2>
+<pre><code class="language-python">from linkml_reference_validator.etl.sources import ClinicalTrialsSource
+from linkml_reference_validator.models import ReferenceValidationConfig
+
+config = ReferenceValidationConfig()
+source = ClinicalTrialsSource()
+
+# Fetch trial content
+content = source.fetch(&quot;NCT00000001&quot;, config)
+
+if content:
+    print(f&quot;Reference ID: {content.reference_id}&quot;)  # clinicaltrials:NCT00000001
+    print(f&quot;Title: {content.title}&quot;)
+    print(f&quot;Summary: {content.content}&quot;)
+    print(f&quot;Status: {content.metadata.get('status')}&quot;)
+    print(f&quot;Sponsor: {content.metadata.get('sponsor')}&quot;)
+</code></pre>
+<h2 id="bioregistry-standard">Bioregistry Standard</h2>
+<p>This source follows the <a href="https://bioregistry.io/registry/clinicaltrials">bioregistry standard</a> for ClinicalTrials.gov identifiers:</p>
 <ul>
-<li><strong><a href="quickstart/">Quickstart</a></strong> - Get started in 5 minutes</li>
-<li><strong><a href="reference/cli/">CLI Reference</a></strong> - Complete command documentation</li>
-<li><strong><a href="concepts/how-it-works/">How It Works</a></strong> - Understanding the validation process</li>
-<li><strong><a href="concepts/editorial-conventions/">Editorial Conventions</a></strong> - Using brackets and ellipsis</li>
+<li><strong>Prefix</strong>: <code>clinicaltrials</code></li>
+<li><strong>Pattern</strong>: <code>^NCT\d{8}$</code></li>
+<li><strong>Example CURIE</strong>: <code>clinicaltrials:NCT00222573</code></li>
 </ul>
-<h2 id="tutorials">Tutorials</h2>
+<p>Alternative prefixes recognized by bioregistry include <code>clinicaltrial</code>, <code>NCT</code>, and <code>ctgov</code>. Use the <code>reference_prefix_map</code> configuration to normalize these to the standard prefix.</p>
+<h2 id="see-also">See Also</h2>
 <ul>
-<li><a href="notebooks/01_getting_started.ipynb">Getting Started (CLI)</a> - Validate quotes from the command line</li>
-<li><a href="notebooks/02_advanced_usage.ipynb">Advanced Usage (CLI)</a> - Batch processing with LinkML schemas</li>
-<li><a href="notebooks/03_python_api.ipynb">Python API</a> - Programmatic usage for custom applications</li>
+<li><a href="../validate-entrez/">Validating Entrez Accessions</a> - Similar pattern for NCBI databases</li>
+<li><a href="../add-reference-source/">Adding a New Reference Source</a> - How the plugin system works</li>
+<li><a href="../../quickstart/">Quickstart</a> - Getting started guide</li>
+<li><a href="../../reference/cli/">CLI Reference</a> - Complete command documentation</li>
 </ul>
 
 
@@ -1139,10 +1364,10 @@
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": ".", "features": ["content.tabs.link"], "search": "assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

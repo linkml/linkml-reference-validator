@@ -440,7 +440,7 @@ class TestClinicalTrialsSource:
     @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
     def test_fetch_network_error(self, mock_get, source, config):
         """Should return None on network errors."""
-        import requests
+        import requests  # type: ignore
 
         mock_get.side_effect = requests.RequestException("Network error")
 

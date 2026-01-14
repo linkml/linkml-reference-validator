@@ -787,6 +787,90 @@ supporting_text: "correct quote"
 
 ## Configuration
 
+### Configuration File
+
+You can create a `.linkml-reference-validator.yaml` file in your project root to configure validation behavior:
+
+```yaml
+validation:
+  cache_dir: references_cache
+  rate_limit_delay: 0.5
+
+  # Skip validation for specific prefixes (useful for unsupported reference types)
+  skip_prefixes:
+    - SRA           # Sequence Read Archive
+    - MGNIFY        # MGnify database
+    - BIOPROJECT    # NCBI BioProject (currently has API issues)
+
+  # Control severity for unfetchable references
+  unknown_prefix_severity: WARNING  # Options: ERROR, WARNING, INFO
+
+  # Map alternate prefixes to canonical ones
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+```
+
+### Configuration Options
+
+#### `skip_prefixes` (list of strings)
+
+List of reference prefixes to skip during validation. References with these prefixes will return `is_valid=True` with `INFO` severity, allowing validation to pass without blocking your workflow.
+
+**Use cases:**
+- Unsupported reference types (SRA, MGnify, etc.)
+- References that are temporarily unavailable
+- Third-party databases without registered handlers
+
+**Example:**
+```yaml
+validation:
+  skip_prefixes:
+    - SRA
+    - MGNIFY
+    - BIOPROJECT
+```
+
+With this configuration:
+```bash
+# These will pass validation with INFO severity
+linkml-reference-validator validate text "some text" SRA:PRJNA290729
+# ✓ Valid: True (INFO) - Skipping validation for reference with prefix 'SRA'
+
+linkml-reference-validator validate text "some text" MGNIFY:MGYS00000596
+# ✓ Valid: True (INFO) - Skipping validation for reference with prefix 'MGNIFY'
+```
+
+#### `unknown_prefix_severity` (ERROR | WARNING | INFO)
+
+Control the severity level for references that cannot be fetched (unsupported prefix, network error, etc.). Default: `ERROR`
+
+**Options:**
+- `ERROR` (default) - Validation fails, blocking workflow
+- `WARNING` - Validation fails but with lower severity
+- `INFO` - Validation fails but logged as informational
+
+**Note:** `skip_prefixes` takes precedence over `unknown_prefix_severity`. If a prefix is in `skip_prefixes`, it will return `is_valid=True` with `INFO` severity regardless of this setting.
+
+**Example:**
+```yaml
+validation:
+  skip_prefixes:
+    - SRA              # These will be skipped (is_valid=True, INFO)
+  unknown_prefix_severity: WARNING  # Other unfetchable refs get WARNING
+```
+
+With this configuration:
+```bash
+# SRA is skipped (from skip_prefixes)
+linkml-reference-validator validate text "text" SRA:PRJNA290729
+# ✓ Valid: True (INFO) - Skipping validation
+
+# UNKNOWN prefix gets WARNING severity
+linkml-reference-validator validate text "text" UNKNOWN:12345
+# ✗ Valid: False (WARNING) - Could not fetch reference
+```
+
 ### Cache Directory
 
 Default: `references_cache/` in current directory

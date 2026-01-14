@@ -317,3 +317,226 @@ def test_validate_full_text_no_abstract_context_in_failure_message(validator, mo
 
     assert result.is_valid is False
     assert "only abstract available" not in result.message
+
+
+def test_skip_prefixes_single_prefix(tmp_path, mocker):
+    """Test that references with skipped prefixes return INFO severity.
+
+    When a reference prefix is in the skip_prefixes list, validation should
+    return is_valid=True with INFO severity instead of ERROR.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None  # Simulate unfetchable reference
+
+    result = validator.validate(
+        "some supporting text",
+        "SRA:PRJNA290729",
+    )
+
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+    assert "Skipping validation" in result.message
+    assert "SRA:PRJNA290729" in result.message
+
+
+def test_skip_prefixes_multiple_prefixes(tmp_path, mocker):
+    """Test that multiple prefixes can be skipped."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA", "MGNIFY", "BIOPROJECT"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # Test SRA
+    result_sra = validator.validate("text", "SRA:PRJNA290729")
+    assert result_sra.is_valid is True
+    assert result_sra.severity == ValidationSeverity.INFO
+
+    # Test MGNIFY
+    result_mgnify = validator.validate("text", "MGNIFY:MGYS00000596")
+    assert result_mgnify.is_valid is True
+    assert result_mgnify.severity == ValidationSeverity.INFO
+
+    # Test BIOPROJECT
+    result_bioproject = validator.validate("text", "BIOPROJECT:PRJNA566284")
+    assert result_bioproject.is_valid is True
+    assert result_bioproject.severity == ValidationSeverity.INFO
+
+
+def test_skip_prefixes_case_insensitive(tmp_path, mocker):
+    """Test that prefix matching is case-insensitive."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["sra"],  # lowercase in config
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # Test with uppercase prefix in reference
+    result = validator.validate("text", "SRA:PRJNA290729")
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+
+
+def test_skip_prefixes_not_skipped(tmp_path, mocker):
+    """Test that references NOT in skip list still get ERROR."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # MGNIFY is not in skip list, should get ERROR
+    result = validator.validate("text", "MGNIFY:MGYS00000596")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+
+
+def test_unknown_prefix_severity_warning(tmp_path, mocker):
+    """Test that unknown_prefix_severity=WARNING downgrades unfetchable references.
+
+    When a reference cannot be fetched and unknown_prefix_severity is WARNING,
+    the validation should return is_valid=False with WARNING severity.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        unknown_prefix_severity=ValidationSeverity.WARNING,
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate("text", "UNKNOWN:12345")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.WARNING
+    assert "Could not fetch reference" in result.message
+
+
+def test_unknown_prefix_severity_info(tmp_path, mocker):
+    """Test that unknown_prefix_severity=INFO further downgrades unfetchable references."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        unknown_prefix_severity=ValidationSeverity.INFO,
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate("text", "BIOPROJECT:PRJNA566284")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.INFO
+
+
+def test_unknown_prefix_severity_default_error(tmp_path, mocker):
+    """Test that default behavior is ERROR for unfetchable references."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        # No unknown_prefix_severity specified, should default to ERROR
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate("text", "UNKNOWN:12345")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+
+
+def test_skip_prefixes_takes_precedence_over_unknown_severity(tmp_path, mocker):
+    """Test that skip_prefixes takes precedence over unknown_prefix_severity.
+
+    When a prefix is in skip_prefixes, it should return INFO with is_valid=True,
+    regardless of the unknown_prefix_severity setting.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+        unknown_prefix_severity=ValidationSeverity.ERROR,  # This should be ignored for SRA
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate("text", "SRA:PRJNA290729")
+    assert result.is_valid is True  # skip_prefixes makes it valid
+    assert result.severity == ValidationSeverity.INFO
+
+
+def test_combined_skip_and_severity_config(tmp_path, mocker):
+    """Test that skip_prefixes and unknown_prefix_severity work together.
+
+    Skipped prefixes get INFO with is_valid=True.
+    Non-skipped unfetchable references get the configured severity.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+        unknown_prefix_severity=ValidationSeverity.WARNING,
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # SRA is skipped
+    result_sra = validator.validate("text", "SRA:PRJNA290729")
+    assert result_sra.is_valid is True
+    assert result_sra.severity == ValidationSeverity.INFO
+
+    # MGNIFY is not skipped, gets WARNING
+    result_mgnify = validator.validate("text", "MGNIFY:MGYS00000596")
+    assert result_mgnify.is_valid is False
+    assert result_mgnify.severity == ValidationSeverity.WARNING
+
+
+def test_skip_prefixes_with_fetchable_reference(tmp_path, mocker):
+    """Test that skip_prefixes is checked before attempting fetch.
+
+    Even if a source exists for a skipped prefix, it should be skipped.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["PMID"],  # Skip even valid PMID references
+    )
+    validator = SupportingTextValidator(config)
+
+    # Mock should not be called since we skip before fetching
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = ReferenceContent(
+        reference_id="PMID:123",
+        content="Some content",
+    )
+
+    result = validator.validate("text", "PMID:123")
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+    # Note: fetch should still be called, but the result is ignored
+    assert "Skipping validation" in result.message

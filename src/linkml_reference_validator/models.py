@@ -344,6 +344,14 @@ class ReferenceValidationConfig(BaseModel):
         ... )
         >>> config.reference_prefix_map["geo"]
         'GEO'
+        >>> config = ReferenceValidationConfig(
+        ...     skip_prefixes=["SRA", "MGNIFY"],
+        ...     unknown_prefix_severity=ValidationSeverity.WARNING
+        ... )
+        >>> config.skip_prefixes
+        ['SRA', 'MGNIFY']
+        >>> config.unknown_prefix_severity
+        <ValidationSeverity.WARNING: 'WARNING'>
     """
 
     cache_dir: Path = Field(
@@ -382,6 +390,24 @@ class ReferenceValidationConfig(BaseModel):
         description=(
             "Optional mapping of alternate prefixes to canonical prefixes, "
             "e.g. {'geo': 'GEO', 'NCBIGeo': 'GEO'}"
+        ),
+    )
+    skip_prefixes: list[str] = Field(
+        default_factory=list,
+        description=(
+            "List of reference prefixes to skip during validation. "
+            "References with these prefixes will return is_valid=True with INFO severity. "
+            "Useful for unsupported or unfetchable reference types. "
+            "Case-insensitive. e.g. ['SRA', 'MGNIFY', 'BIOPROJECT']"
+        ),
+    )
+    unknown_prefix_severity: ValidationSeverity = Field(
+        default=ValidationSeverity.ERROR,
+        description=(
+            "Severity level for references that cannot be fetched "
+            "(e.g., unsupported prefix or network error). "
+            "Options: ERROR (default), WARNING, INFO. "
+            "Does not apply to prefixes in skip_prefixes list."
         ),
     )
 

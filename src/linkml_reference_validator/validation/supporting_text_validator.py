@@ -145,6 +145,20 @@ class SupportingTextValidator:
             >>> # With title validation:
             >>> # result = validator.validate("quote", "PMID:12345678", expected_title="Study Title")
         """
+        # Check if this prefix should be skipped
+        prefix = reference_id.split(":")[0].upper() if ":" in reference_id else ""
+        skip_prefixes_upper = [p.upper() for p in self.config.skip_prefixes]
+
+        if prefix and prefix in skip_prefixes_upper:
+            return ValidationResult(
+                is_valid=True,
+                reference_id=reference_id,
+                supporting_text=supporting_text,
+                severity=ValidationSeverity.INFO,
+                message=f"Skipping validation for reference with prefix '{prefix}': {reference_id}",
+                path=path,
+            )
+
         reference = self.fetcher.fetch(reference_id)
 
         if not reference:
@@ -152,7 +166,7 @@ class SupportingTextValidator:
                 is_valid=False,
                 reference_id=reference_id,
                 supporting_text=supporting_text,
-                severity=ValidationSeverity.ERROR,
+                severity=self.config.unknown_prefix_severity,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )

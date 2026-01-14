@@ -463,7 +463,6 @@ class TestEntrezSummarySources:
     @pytest.mark.parametrize(
         ("source_cls", "reference_id", "title_key", "content_key", "db_name"),
         [
-            (GEOSource, "GEO:GSE12345", "title", "summary", "gds"),
             (
                 BioProjectSource,
                 "BioProject:PRJNA000001",
@@ -521,3 +520,136 @@ class TestEntrezSummarySources:
         """Should handle prefixed Entrez references and reject others."""
         assert source.can_handle(valid_id)
         assert not source.can_handle(invalid_id)
+
+
+class TestGEOSource:
+    """Tests for GEOSource with accession-to-UID conversion."""
+
+    @pytest.fixture
+    def config(self, tmp_path):
+        """Create test config."""
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / "cache",
+            rate_limit_delay=0.0,
+        )
+
+    @pytest.fixture
+    def source(self):
+        """Create GEOSource instance."""
+        return GEOSource()
+
+    def test_prefix(self, source):
+        """GEOSource should have 'GEO' prefix."""
+        assert source.prefix() == "GEO"
+
+    def test_can_handle_geo_prefix(self, source):
+        """Should handle GEO: prefixed references."""
+        assert source.can_handle("GEO:GSE12345")
+        assert source.can_handle("geo:GSE12345")
+        assert source.can_handle("GEO:GDS1234")
+        assert not source.can_handle("PMID:12345")
+
+    def test_can_handle_bare_gse_gds(self, source):
+        """Should handle bare GSE/GDS accessions without prefix."""
+        assert source.can_handle("GSE12345")
+        assert source.can_handle("GDS1234")
+        assert not source.can_handle("NCT12345")
+
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esummary")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esearch")
+    def test_fetch_geo_converts_accession_to_uid(
+        self,
+        mock_esearch,
+        mock_esummary,
+        mock_read,
+        source,
+        config,
+    ):
+        """Should convert GSE accession to UID via esearch before esummary."""
+        # Mock esearch to return UID
+        mock_search_handle = MagicMock()
+        mock_esearch.return_value = mock_search_handle
+
+        # Mock esummary
+        mock_summary_handle = MagicMock()
+        mock_esummary.return_value = mock_summary_handle
+
+        # Configure mock_read to return different values for esearch vs esummary
+        mock_read.side_effect = [
+            {"IdList": ["200067472"]},  # esearch result
+            [{"title": "GEO Dataset Title", "summary": "GEO dataset summary."}],  # esummary result
+        ]
+
+        result = source.fetch("GSE67472", config)
+
+        assert result is not None
+        assert result.reference_id == "GEO:GSE67472"
+        assert result.title == "GEO Dataset Title"
+        assert result.content == "GEO dataset summary."
+        assert result.content_type == "summary"
+        assert result.metadata["entrez_db"] == "gds"
+        assert result.metadata["entrez_uid"] == "200067472"
+
+        # Verify esearch was called with accession
+        mock_esearch.assert_called_once_with(db="gds", term="GSE67472[Accession]")
+        # Verify esummary was called with UID, not accession
+        mock_esummary.assert_called_once_with(db="gds", id="200067472")
+
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esearch")
+    def test_fetch_geo_returns_none_when_uid_not_found(
+        self,
+        mock_esearch,
+        mock_read,
+        source,
+        config,
+    ):
+        """Should return None when esearch finds no UID for accession."""
+        mock_search_handle = MagicMock()
+        mock_esearch.return_value = mock_search_handle
+        mock_read.return_value = {"IdList": []}  # Empty result
+
+        result = source.fetch("GSE99999999", config)
+
+        assert result is None
+        mock_esearch.assert_called_once()
+
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esearch")
+    def test_fetch_geo_handles_esearch_error(
+        self,
+        mock_esearch,
+        source,
+        config,
+    ):
+        """Should return None when esearch fails."""
+        mock_esearch.side_effect = Exception("Network error")
+
+        result = source.fetch("GSE12345", config)
+
+        assert result is None
+
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esummary")
+    @patch("linkml_reference_validator.etl.sources.entrez.Entrez.esearch")
+    def test_fetch_geo_handles_esummary_error(
+        self,
+        mock_esearch,
+        mock_esummary,
+        mock_read,
+        source,
+        config,
+    ):
+        """Should return None when esummary fails after successful esearch."""
+        mock_search_handle = MagicMock()
+        mock_esearch.return_value = mock_search_handle
+
+        # esearch succeeds, esummary fails
+        mock_read.side_effect = [
+            {"IdList": ["200067472"]},  # esearch result
+        ]
+        mock_esummary.side_effect = Exception("esummary error")
+
+        result = source.fetch("GSE67472", config)
+
+        assert result is None

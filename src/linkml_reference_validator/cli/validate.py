@@ -1,19 +1,16 @@
 """Validate subcommands for linkml-reference-validator."""
 
 import logging
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Optional
 
 import typer
-from linkml.validator import Validator  # type: ignore
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
 from linkml_reference_validator.etl.text_extractor import TextExtractor
 from linkml_reference_validator.models import ValidationReport
-from linkml_reference_validator.plugins.reference_validation_plugin import (
-    ReferenceValidationPlugin,
-)
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
@@ -39,6 +36,14 @@ validate_app = typer.Typer(
 def text_command(
     text: Annotated[str, typer.Argument(help="Supporting text to validate")],
     reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
+    title: Annotated[
+        Optional[str],
+        typer.Option(
+            "--title",
+            "-t",
+            help="Expected title to validate against the reference title",
+        ),
+    ] = None,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
@@ -55,6 +60,8 @@ def text_command(
         linkml-reference-validator validate text "protein [X] functions ... cells" PMID:12345678 --verbose
 
         linkml-reference-validator validate text "some text from article" DOI:10.1038/nature12373
+
+        linkml-reference-validator validate text "Airway epithelial brushings" GEO:GSE67472 --title "Airway epithelial gene expression in asthma"
     """
     setup_logging(verbose)
 
@@ -66,8 +73,10 @@ def text_command(
 
     typer.echo(f"Validating text against {reference_id}...")
     typer.echo(f"  Text: {text}")
+    if title:
+        typer.echo(f"  Expected title: {title}")
 
-    result = validator.validate(text, reference_id)
+    result = validator.validate(text, reference_id, expected_title=title)
 
     typer.echo("\nResult:")
     typer.echo(f"  Valid: {result.is_valid}")
@@ -242,6 +251,24 @@ def data_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+
+    # NOTE: `linkml` is an optional dependency. Import it only when this command is invoked.
+    # We use `find_spec` rather than try/except so importing this module never fails when
+    # `linkml` is not installed.
+    if find_spec("linkml") is None or find_spec("linkml.validator") is None:
+        typer.echo(
+            "Error: `linkml` is required for `validate data`.\n"
+            "Install it (e.g. `uv pip install 'linkml>=1.9.3'`) or run the text-only commands.",
+            err=True,
+        )
+        raise typer.Exit(2)
+
+    # Local imports so `uvx linkml-reference-validator` works without `linkml`
+    from linkml.validator import Validator  # type: ignore
+
+    from linkml_reference_validator.plugins.reference_validation_plugin import (
+        ReferenceValidationPlugin,
+    )
 
     plugin = ReferenceValidationPlugin(config=config)
 

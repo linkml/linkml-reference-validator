@@ -177,9 +177,12 @@ class TestLookupCommand:
             ],
         )
 
-        # Should show error for missing but still output found ones
+        # Should succeed if at least one reference found
+        assert result.exit_code == 0
+        # Should show the found reference
         assert "PMID:TEST001" in result.stdout
-        assert "Could not fetch" in result.stdout or "NONEXISTENT" in result.stdout
+        # Error for missing reference should be in stderr
+        assert "Could not fetch" in result.output
 
     def test_lookup_with_no_cache(self, cli_cache_dir):
         """Test lookup with --no-cache bypasses cache."""

@@ -121,8 +121,8 @@ def lookup_command(
     fetcher = ReferenceFetcher(config)
 
     # Get the cache path for this reference
-    normalized_id = fetcher._normalize_reference_id(reference_id)
-    cache_path = fetcher._get_cache_path(normalized_id)
+    normalized_id = fetcher.normalize_reference_id(reference_id)
+    cache_path = fetcher.get_cache_path(normalized_id)
 
     if no_cache:
         # Fetch fresh from source
@@ -131,7 +131,7 @@ def lookup_command(
             typer.echo(f"Reference {reference_id} not found or could not be fetched", err=True)
             raise typer.Exit(1)
         # Re-get cache path after fetch (in case it was normalized differently)
-        cache_path = fetcher._get_cache_path(reference.reference_id)
+        cache_path = fetcher.get_cache_path(reference.reference_id)
 
     if not cache_path.exists():
         typer.echo(f"Reference {reference_id} is not cached", err=True)

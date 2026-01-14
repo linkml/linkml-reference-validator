@@ -66,30 +66,43 @@ def _reference_to_dict(reference: ReferenceContent) -> dict:
 
 
 def _format_as_markdown(reference: ReferenceContent, fetcher: ReferenceFetcher) -> str:
-    """Format reference as markdown with YAML frontmatter."""
-    cache_path = fetcher._get_cache_path(reference.reference_id)
+    """Format reference as markdown with YAML frontmatter.
+
+    Reads from the cache file which is created by fetch().
+
+    Args:
+        reference: The reference data (used for reference_id)
+        fetcher: Used to get the cache path
+
+    Returns:
+        Markdown content with YAML frontmatter
+    """
+    cache_path = fetcher.get_cache_path(reference.reference_id)
     if cache_path.exists():
         return cache_path.read_text(encoding="utf-8")
 
-    # Build markdown if not cached (shouldn't normally happen)
-    lines = []
-    lines.append("---")
-    lines.append(f"reference_id: {reference.reference_id}")
+    # Fallback: build from reference data using YAML for proper escaping
+    yaml_obj = YAML()
+    yaml_obj.default_flow_style = False
+    stream = StringIO()
+    frontmatter: dict[str, str | list[str] | None] = {
+        "reference_id": reference.reference_id,
+        "content_type": reference.content_type,
+    }
     if reference.title:
-        lines.append(f"title: {fetcher._quote_yaml_value(reference.title)}")
+        frontmatter["title"] = reference.title
     if reference.authors:
-        lines.append("authors:")
-        for author in reference.authors:
-            lines.append(f"- {fetcher._quote_yaml_value(author)}")
+        frontmatter["authors"] = reference.authors
     if reference.journal:
-        lines.append(f"journal: {fetcher._quote_yaml_value(reference.journal)}")
+        frontmatter["journal"] = reference.journal
     if reference.year:
-        lines.append(f"year: '{reference.year}'")
+        frontmatter["year"] = str(reference.year)
     if reference.doi:
-        lines.append(f"doi: {reference.doi}")
-    lines.append(f"content_type: {reference.content_type}")
-    lines.append("---")
-    lines.append("")
+        frontmatter["doi"] = reference.doi
+
+    yaml_obj.dump(frontmatter, stream)
+
+    lines = ["---", stream.getvalue().rstrip(), "---", ""]
     if reference.title:
         lines.append(f"# {reference.title}")
         if reference.authors:
@@ -202,7 +215,7 @@ def lookup_command(
             errors.append(ref_id)
             typer.echo(f"Could not fetch reference: {ref_id}", err=True)
 
-    # If no results, exit with error
+    # If no results at all, exit with error
     if not results:
         raise typer.Exit(1)
 
@@ -224,6 +237,5 @@ def lookup_command(
                 typer.echo("\n" + "=" * 60 + "\n")
             typer.echo(_format_as_markdown(ref, fetcher))
 
-    # Exit with error if any references failed
-    if errors:
-        raise typer.Exit(1)
+    # Exit success if at least one reference was found
+    # (errors already printed to stderr)

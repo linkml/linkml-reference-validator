@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#adding-a-new-reference-source" class="md-skip">
+        <a href="#adding-a-custom-reference-source" class="md-skip">
           Skip to content
         </a>
       
@@ -775,6 +775,178 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#yaml-configuration-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML Configuration (Recommended)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YAML Configuration (Recommended)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#understanding-the-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding the Config Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Mappings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jsonpath-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSONPath Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#id-pattern-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ID Pattern Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storing-raw-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storing Raw Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-example-mgnify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example: MGnify
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-example-biostudies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example: BioStudies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-setup-both-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Setup: Both Config Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-the-right-jsonpath" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding the Right JSONPath
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-plugin-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Plugin (Advanced)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python Plugin (Advanced)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -784,8 +956,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#entrez-summary-sources-recommended-for-ncbi-ids" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -795,8 +967,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#step-1-create-the-source-class" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -806,8 +978,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -817,59 +989,31 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-3-register-the-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Handle Errors Gracefully
+        Step 3: Register the Source
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-register-the-source" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-4-write-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Register the Source
+        Step 4: Write Tests
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-write-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Write Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-custom-can_handle-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional: Custom can_handle() Method
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Complete Example
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1213,6 +1357,178 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#yaml-configuration-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML Configuration (Recommended)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="YAML Configuration (Recommended)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#understanding-the-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding the Config Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-file-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Locations
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#source-configuration-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Source Configuration Fields
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#field-mappings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Field Mappings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#jsonpath-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JSONPath Examples
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#id-pattern-matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ID Pattern Matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authentication" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authentication
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#storing-raw-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Storing Raw Response
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-example-mgnify" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example: MGnify
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-example-biostudies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Example: BioStudies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#complete-setup-both-config-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Complete Setup: Both Config Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#finding-the-right-jsonpath" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Finding the Right JSONPath
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-plugin-advanced" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python Plugin (Advanced)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Python Plugin (Advanced)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#overview" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1222,8 +1538,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#entrez-summary-sources-recommended-for-ncbi-ids" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1233,8 +1549,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#step-1-create-the-source-class" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1244,8 +1560,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#step-2-implement-the-fetch-method" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1255,59 +1571,31 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-handle-errors-gracefully" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-3-register-the-source" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Handle Errors Gracefully
+        Step 3: Register the Source
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-register-the-source" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#step-4-write-tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 4: Register the Source
+        Step 4: Write Tests
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#step-5-write-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Step 5: Write Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-custom-can_handle-method" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional: Custom can_handle() Method
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#complete-example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Complete Example
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1353,16 +1641,283 @@
   
 
 
-<h1 id="adding-a-new-reference-source">Adding a New Reference Source</h1>
-<p>The validator uses a plugin architecture that makes it easy to add support for new reference types. This guide shows how to create a custom reference source.</p>
-<h2 id="overview">Overview</h2>
+<h1 id="adding-a-custom-reference-source">Adding a Custom Reference Source</h1>
+<p>This guide shows how to add support for new reference types. There are two approaches:</p>
+<ol>
+<li><strong>YAML Configuration</strong> (recommended) - Define sources via config files, no Python required</li>
+<li><strong>Python Plugin</strong> - Create a custom Python class for complex sources</li>
+</ol>
+<h2 id="yaml-configuration-recommended">YAML Configuration (Recommended)</h2>
+<p>For sources that expose a JSON API, you can define them entirely through YAML configuration.
+No Python code required, no pull requests needed.</p>
+<h3 id="understanding-the-config-files">Understanding the Config Files</h3>
+<p>The validator uses <strong>two separate config files</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.linkml-reference-validator.yaml</code></td>
+<td>Main config: cache settings, skip_prefixes, rate limiting</td>
+</tr>
+<tr>
+<td><code>.linkml-reference-validator-sources.yaml</code></td>
+<td>Custom sources: JSON API definitions</td>
+</tr>
+</tbody>
+</table>
+<h3 id="quick-start">Quick Start</h3>
+<p>Create a file named <code>.linkml-reference-validator-sources.yaml</code> in your project root:</p>
+<pre><code class="language-yaml">sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+    id_patterns:
+      - &quot;^MGYS\\d+$&quot;
+</code></pre>
+<p>Now you can validate MGnify references:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;The American Gut Project&quot; \
+  MGNIFY:MGYS00000596
+</code></pre>
+<h3 id="configuration-file-locations">Configuration File Locations</h3>
+<p>Sources are loaded from these locations (in order of priority):</p>
+<ol>
+<li><code>~/.config/linkml-reference-validator/sources/*.yaml</code> (user-level)</li>
+<li><code>.linkml-reference-validator-sources.yaml</code> (project-level)</li>
+<li><code>sources:</code> section in your main config file</li>
+</ol>
+<h3 id="source-configuration-fields">Source Configuration Fields</h3>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Required</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>url_template</code></td>
+<td>Yes</td>
+<td>API URL with <code>{id}</code> placeholder</td>
+</tr>
+<tr>
+<td><code>fields</code></td>
+<td>Yes</td>
+<td>JSONPath expressions mapping to title, content, etc.</td>
+</tr>
+<tr>
+<td><code>id_patterns</code></td>
+<td>No</td>
+<td>Regex patterns for bare ID matching</td>
+</tr>
+<tr>
+<td><code>headers</code></td>
+<td>No</td>
+<td>HTTP headers (supports <code>${ENV_VAR}</code> interpolation)</td>
+</tr>
+<tr>
+<td><code>store_raw_response</code></td>
+<td>No</td>
+<td>Store full API response in metadata</td>
+</tr>
+</tbody>
+</table>
+<h3 id="field-mappings">Field Mappings</h3>
+<p>Use JSONPath expressions (using <a href="https://github.com/h2non/jsonpath-ng">jsonpath-ng</a> syntax) to extract fields from the API response:</p>
+<pre><code class="language-yaml">sources:
+  EXAMPLE:
+    url_template: &quot;https://api.example.com/items/{id}&quot;
+    fields:
+      title: &quot;$.name&quot;           # Simple field
+      content: &quot;$.description&quot;   # Abstract/description
+      year: &quot;$.published_date&quot;   # Optional: publication year
+      authors: &quot;$.authors[0].name&quot;  # Optional: author info
+</code></pre>
+<p>Standard field names: <code>title</code>, <code>content</code>, <code>year</code>, <code>authors</code>, <code>journal</code>, <code>doi</code></p>
+<h3 id="jsonpath-examples">JSONPath Examples</h3>
+<p>Common JSONPath patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>$.title</code></td>
+<td>Top-level field</td>
+</tr>
+<tr>
+<td><code>$.data.attributes.name</code></td>
+<td>Nested field</td>
+</tr>
+<tr>
+<td><code>$.items[0]</code></td>
+<td>First array element</td>
+</tr>
+<tr>
+<td><code>$.results[*].name</code></td>
+<td>All names in array</td>
+</tr>
+</tbody>
+</table>
+<h3 id="id-pattern-matching">ID Pattern Matching</h3>
+<p>Use <code>id_patterns</code> to match bare IDs (without prefix):</p>
+<pre><code class="language-yaml">sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+    id_patterns:
+      - &quot;^MGYS\\d+$&quot;    # Matches MGYS00000596
+      - &quot;^MGY[A-Z]\\d+$&quot;  # Matches MGYA123456
+</code></pre>
+<p>With this config, both formats work:</p>
+<pre><code class="language-bash"># With prefix
+linkml-reference-validator validate text &quot;quote&quot; MGNIFY:MGYS00000596
+
+# Bare ID (matched by pattern)
+linkml-reference-validator validate text &quot;quote&quot; MGYS00000596
+</code></pre>
+<h3 id="authentication">Authentication</h3>
+<p>For APIs requiring authentication, use environment variables:</p>
+<pre><code class="language-yaml">sources:
+  PRIVATE_API:
+    url_template: &quot;https://api.example.com/records/{id}&quot;
+    fields:
+      title: &quot;$.title&quot;
+      content: &quot;$.body&quot;
+    headers:
+      Authorization: &quot;Bearer ${API_TOKEN}&quot;
+      X-API-Key: &quot;${API_KEY}&quot;
+</code></pre>
+<p>Set the environment variable before running:</p>
+<pre><code class="language-bash">export API_TOKEN=&quot;your-secret-token&quot;
+linkml-reference-validator validate text &quot;quote&quot; PRIVATE_API:123
+</code></pre>
+<h3 id="storing-raw-response">Storing Raw Response</h3>
+<p>Enable <code>store_raw_response</code> to capture the full API response in metadata:</p>
+<pre><code class="language-yaml">sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+    store_raw_response: true
+</code></pre>
+<p>The raw response is saved in the cache file's metadata for later inspection.</p>
+<h3 id="complete-example-mgnify">Complete Example: MGnify</h3>
+<p>Here's a complete configuration for MGnify (EBI Metagenomics):</p>
+<pre><code class="language-yaml"># .linkml-reference-validator-sources.yaml
+sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    id_patterns:
+      - &quot;^MGYS\\d+$&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+    headers:
+      Accept: &quot;application/json&quot;
+    store_raw_response: true
+</code></pre>
+<p>Test it:</p>
+<pre><code class="language-bash"># Cache the reference
+linkml-reference-validator cache reference MGNIFY:MGYS00000596
+
+# Validate a quote
+linkml-reference-validator validate text \
+  &quot;The American Gut project is the largest crowdsourced citizen science project&quot; \
+  MGNIFY:MGYS00000596
+</code></pre>
+<h3 id="complete-example-biostudies">Complete Example: BioStudies</h3>
+<pre><code class="language-yaml">sources:
+  BIOSTUDIES:
+    url_template: &quot;https://www.ebi.ac.uk/biostudies/api/v1/studies/{id}&quot;
+    id_patterns:
+      - &quot;^S-[A-Z]+\\d+$&quot;
+    fields:
+      title: &quot;$.title&quot;
+      content: &quot;$.description&quot;
+</code></pre>
+<h3 id="complete-setup-both-config-files">Complete Setup: Both Config Files</h3>
+<p>Here's a typical project setup showing both config files working together.
+The pattern is: <strong>skip what you can't support, configure what you can</strong>.</p>
+<p><strong><code>.linkml-reference-validator.yaml</code></strong> (main config):</p>
+<pre><code class="language-yaml"># Main validation settings
+cache_dir: references_cache
+rate_limit_delay: 0.5
+
+# Skip prefixes that have no API or aren't needed
+skip_prefixes:
+  - SRA        # No abstract API available
+  - ARRAYEXPRESS  # Deprecated, use BioStudies
+
+# Note: Once you add a custom source for a prefix (like MGNIFY below),
+# remove it from skip_prefixes - validation will now work properly.
+</code></pre>
+<p><strong><code>.linkml-reference-validator-sources.yaml</code></strong> (custom sources):</p>
+<pre><code class="language-yaml"># Custom JSON API sources
+sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    id_patterns:
+      - &quot;^MGYS\\d+$&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+
+  BIOSTUDIES:
+    url_template: &quot;https://www.ebi.ac.uk/biostudies/api/v1/studies/{id}&quot;
+    id_patterns:
+      - &quot;^S-[A-Z]+\\d+$&quot;
+    fields:
+      title: &quot;$.title&quot;
+      content: &quot;$.description&quot;
+</code></pre>
+<p>With this setup:
+- <code>PMID:12345</code> - Uses built-in PubMed source
+- <code>MGNIFY:MGYS00000596</code> - Uses your custom MGnify source
+- <code>SRA:SRP123456</code> - Skipped (returns valid with INFO message)</p>
+<h3 id="finding-the-right-jsonpath">Finding the Right JSONPath</h3>
+<p>To figure out the correct JSONPath for a new API:</p>
+<ol>
+<li>
+<p>Fetch the API response directly:
+   <code>bash
+   curl -s "https://api.example.com/items/123" | jq .</code></p>
+</li>
+<li>
+<p>Identify the fields you need (title, description/abstract)</p>
+</li>
+<li>
+<p>Write the JSONPath:</p>
+</li>
+<li><code>$.fieldname</code> for top-level fields</li>
+<li><code>$.parent.child</code> for nested fields</li>
+<li><code>$.array[0]</code> for array elements</li>
+</ol>
+<hr />
+<h2 id="python-plugin-advanced">Python Plugin (Advanced)</h2>
+<p>For sources requiring custom logic (XML parsing, multiple API calls, etc.), create a Python plugin.</p>
+<h3 id="overview">Overview</h3>
 <p>Each reference source is a Python class that:</p>
 <ol>
 <li>Inherits from <code>ReferenceSource</code></li>
 <li>Implements <code>prefix()</code> and <code>fetch()</code> methods</li>
 <li>Registers itself with the <code>ReferenceSourceRegistry</code></li>
 </ol>
-<h2 id="entrez-summary-sources-recommended-for-ncbi-ids">Entrez Summary Sources (Recommended for NCBI IDs)</h2>
+<h3 id="entrez-summary-sources-recommended-for-ncbi-ids">Entrez Summary Sources (Recommended for NCBI IDs)</h3>
 <p>If your source is backed by NCBI Entrez, prefer the built-in <code>EntrezSummarySource</code>
 base class. It provides shared rate limiting, email configuration, and summary parsing.</p>
 <pre><code class="language-python"># src/linkml_reference_validator/etl/sources/my_entrez.py
@@ -1384,7 +1939,7 @@ class ExampleEntrezSource(EntrezSummarySource):
 </code></pre>
 <p><code>TITLE_FIELDS</code> and <code>CONTENT_FIELDS</code> are checked in order, and the first non-empty value
 is used for the <code>ReferenceContent</code>.</p>
-<h2 id="step-1-create-the-source-class">Step 1: Create the Source Class</h2>
+<h3 id="step-1-create-the-source-class">Step 1: Create the Source Class</h3>
 <p>Create a new file in <code>src/linkml_reference_validator/etl/sources/</code>:</p>
 <pre><code class="language-python"># src/linkml_reference_validator/etl/sources/arxiv.py
 &quot;&quot;&quot;arXiv reference source.&quot;&quot;&quot;
@@ -1423,7 +1978,7 @@ class ArxivSource(ReferenceSource):
         # Fetch from arXiv API, parse response, return ReferenceContent
         ...
 </code></pre>
-<h2 id="step-2-implement-the-fetch-method">Step 2: Implement the <code>fetch()</code> Method</h2>
+<h3 id="step-2-implement-the-fetch-method">Step 2: Implement the <code>fetch()</code> Method</h3>
 <p>The <code>fetch()</code> method should:</p>
 <ol>
 <li>Accept an identifier (without the prefix)</li>
@@ -1461,18 +2016,7 @@ class ArxivSource(ReferenceSource):
         authors=authors,
     )
 </code></pre>
-<h2 id="step-3-handle-errors-gracefully">Step 3: Handle Errors Gracefully</h2>
-<p>Since you're interfacing with external systems, wrap API calls in try/except:</p>
-<pre><code class="language-python">def fetch(self, identifier: str, config: ReferenceValidationConfig) -&gt; Optional[ReferenceContent]:
-    try:
-        response = requests.get(url, timeout=30)
-        # ... process response
-    except Exception as e:
-        logger.warning(f&quot;Failed to fetch arxiv:{identifier}: {e}&quot;)
-        return None
-</code></pre>
-<h2 id="step-4-register-the-source">Step 4: Register the Source</h2>
-<p>The <code>@ReferenceSourceRegistry.register</code> decorator automatically registers your source when the module is imported.</p>
+<h3 id="step-3-register-the-source">Step 3: Register the Source</h3>
 <p>Add the import to <code>src/linkml_reference_validator/etl/sources/__init__.py</code>:</p>
 <pre><code class="language-python">from linkml_reference_validator.etl.sources.arxiv import ArxivSource
 
@@ -1481,7 +2025,7 @@ __all__ = [
     &quot;ArxivSource&quot;,
 ]
 </code></pre>
-<h2 id="step-5-write-tests">Step 5: Write Tests</h2>
+<h3 id="step-4-write-tests">Step 4: Write Tests</h3>
 <p>Create tests in <code>tests/test_sources.py</code>:</p>
 <pre><code class="language-python">class TestArxivSource:
     &quot;&quot;&quot;Tests for ArxivSource.&quot;&quot;&quot;
@@ -1509,82 +2053,7 @@ __all__ = [
         assert result is not None
         assert result.reference_id == &quot;arxiv:2301.07041&quot;
 </code></pre>
-<h2 id="optional-custom-can_handle-method">Optional: Custom <code>can_handle()</code> Method</h2>
-<p>The default <code>can_handle()</code> checks if the reference starts with your prefix. Override it for custom matching:</p>
-<pre><code class="language-python">@classmethod
-def can_handle(cls, reference_id: str) -&gt; bool:
-    &quot;&quot;&quot;Handle arxiv: references and bare arXiv IDs.&quot;&quot;&quot;
-    ref = reference_id.strip()
-    # Match prefix
-    if ref.lower().startswith(&quot;arxiv:&quot;):
-        return True
-    # Match bare arXiv ID pattern (e.g., 2301.07041)
-    import re
-    return bool(re.match(r&quot;^\d{4}\.\d{4,5}(v\d+)?$&quot;, ref))
-</code></pre>
-<h2 id="complete-example">Complete Example</h2>
-<p>Here's a complete implementation for a hypothetical "WikiData" source:</p>
-<pre><code class="language-python"># src/linkml_reference_validator/etl/sources/wikidata.py
-&quot;&quot;&quot;WikiData reference source.&quot;&quot;&quot;
-
-import logging
-import time
-from typing import Optional
-
-import requests
-
-from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
-from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
-
-logger = logging.getLogger(__name__)
-
-
-@ReferenceSourceRegistry.register
-class WikidataSource(ReferenceSource):
-    &quot;&quot;&quot;Fetch reference content from WikiData items.&quot;&quot;&quot;
-
-    @classmethod
-    def prefix(cls) -&gt; str:
-        return &quot;wikidata&quot;
-
-    def fetch(
-        self, identifier: str, config: ReferenceValidationConfig
-    ) -&gt; Optional[ReferenceContent]:
-        qid = identifier.strip().upper()
-        if not qid.startswith(&quot;Q&quot;):
-            qid = f&quot;Q{qid}&quot;
-
-        time.sleep(config.rate_limit_delay)
-
-        url = f&quot;https://www.wikidata.org/wiki/Special:EntityData/{qid}.json&quot;
-
-        try:
-            response = requests.get(url, timeout=30)
-            if response.status_code != 200:
-                logger.warning(f&quot;Failed to fetch wikidata:{qid}&quot;)
-                return None
-
-            data = response.json()
-            entity = data[&quot;entities&quot;].get(qid, {})
-
-            # Extract label and description
-            labels = entity.get(&quot;labels&quot;, {})
-            descriptions = entity.get(&quot;descriptions&quot;, {})
-
-            title = labels.get(&quot;en&quot;, {}).get(&quot;value&quot;, qid)
-            description = descriptions.get(&quot;en&quot;, {}).get(&quot;value&quot;, &quot;&quot;)
-
-            return ReferenceContent(
-                reference_id=f&quot;wikidata:{qid}&quot;,
-                title=title,
-                content=description,
-                content_type=&quot;wikidata_description&quot;,
-            )
-
-        except Exception as e:
-            logger.warning(f&quot;Error fetching wikidata:{qid}: {e}&quot;)
-            return None
-</code></pre>
+<hr />
 <h2 id="reference-referencecontent-fields">Reference: ReferenceContent Fields</h2>
 <p>The <code>ReferenceContent</code> model has these fields:</p>
 <table>
@@ -1635,6 +2104,11 @@ class WikidataSource(ReferenceSource):
 <td><code>doi</code></td>
 <td><code>Optional[str]</code></td>
 <td>DOI if available</td>
+</tr>
+<tr>
+<td><code>metadata</code></td>
+<td><code>dict</code></td>
+<td>Additional metadata (raw API response, etc.)</td>
 </tr>
 </tbody>
 </table>

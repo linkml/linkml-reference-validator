@@ -39,11 +39,14 @@ nav:
       - Validating Reference Titles: how-to/validate-titles.md
       - Using Local Files and URLs: how-to/use-local-files-and-urls.md
       - Adding a New Reference Source: how-to/add-reference-source.md
+      - Repairing Validation Errors: how-to/repair-validation-errors.md
   - Concepts:
       - How It Works: concepts/how-it-works.md
+      - Content Types: concepts/content-types.md
       - Editorial Conventions: concepts/editorial-conventions.md
   - Reference:
       - CLI Reference: reference/cli.md
+  - Roadmap: todo.md
 
 exclude_docs: |
   /templates-linkml/

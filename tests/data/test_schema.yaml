@@ -4,6 +4,8 @@ description: Test schema for reference validation
 
 prefixes:
   linkml: https://w3id.org/linkml/
+  oa: http://www.w3.org/ns/oa#
+  dcterms: http://purl.org/dc/terms/
   test: https://example.org/test/
 
 default_prefix: test
@@ -15,11 +17,11 @@ classes:
       reference:
         range: Reference
         implements:
-          - linkml:authoritative_reference
+          - dcterms:references
       supporting_text:
         range: string
         implements:
-          - linkml:excerpt
+          - oa:exact
 
   Reference:
     description: A reference to a publication

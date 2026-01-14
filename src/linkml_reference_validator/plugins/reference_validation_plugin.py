@@ -6,6 +6,14 @@ from importlib.util import find_spec
 from pathlib import Path
 from typing import Any, Optional
 
+from curies import Converter
+
+from linkml_reference_validator.field_detection import (
+    FallbackSlotNames,
+    is_excerpt_slot,
+    is_reference_slot,
+    is_title_slot,
+)
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
@@ -39,10 +47,19 @@ if _LINKML_AVAILABLE:
         and that reference titles match expected values.
 
         The plugin discovers reference, excerpt, and title fields using LinkML's
-        interface mechanism. It looks for:
-        - Slots implementing linkml:authoritative_reference
-        - Slots implementing linkml:excerpt
-        - Slots implementing dcterms:title or having slot_uri dcterms:title
+        interface mechanism (implements) or slot_uri. It supports:
+
+        Excerpt fields (canonical: oa:exact, legacy: linkml:excerpt):
+            - oa:exact (http://www.w3.org/ns/oa#exact) - W3C Web Annotation
+            - linkml:excerpt (https://w3id.org/linkml/excerpt) - legacy
+
+        Reference fields (canonical: dcterms:references, legacy: linkml:authoritative_reference):
+            - dcterms:references (http://purl.org/dc/terms/references) - Dublin Core
+            - dcterms:source (http://purl.org/dc/terms/source) - Dublin Core alt
+            - linkml:authoritative_reference - legacy
+
+        Title fields:
+            - dcterms:title (http://purl.org/dc/terms/title) - Dublin Core
 
         Examples:
             >>> config = ReferenceValidationConfig()
@@ -238,8 +255,35 @@ if _LINKML_AVAILABLE:
                                     item, range_class, item_path
                                 )
 
+        def _get_converter(self) -> Optional[Converter]:
+            """Get a curies Converter from the schema for CURIE expansion.
+
+            Returns:
+                Converter instance or None if unavailable
+            """
+            if not self.schema_view:
+                return None
+            schema = self.schema_view.schema
+            if schema and schema.prefixes:
+                # schema.prefixes is a dict of prefix name -> Prefix object
+                # The Prefix object has a prefix_reference attribute with the URI
+                prefix_map = {
+                    name: (
+                        prefix.prefix_reference
+                        if hasattr(prefix, "prefix_reference")
+                        else str(prefix)
+                    )
+                    for name, prefix in schema.prefixes.items()
+                }
+                return Converter.from_prefix_map(prefix_map)
+            return None
+
         def _find_reference_fields(self, class_name: str) -> list[str]:  # type: ignore
-            """Find slots that implement linkml:authoritative_reference.
+            """Find slots that represent authoritative references.
+
+            Supports canonical URIs (dcterms:references, dcterms:source) and
+            legacy URIs (linkml:authoritative_reference) via implements or slot_uri.
+            Custom prefixes are resolved using the schema's prefix map.
 
             Args:
                 class_name: Class to search
@@ -259,28 +303,27 @@ if _LINKML_AVAILABLE:
             if not class_def:
                 return fields
 
+            converter = self._get_converter()
+
             for slot_name in self.schema_view.class_slots(class_name):
                 slot = self.schema_view.induced_slot(slot_name, class_name)
-                if slot and slot.implements:
-                    for interface in slot.implements:
-                        if (
-                            "authoritative_reference" in interface
-                            or "reference" in interface.lower()
-                        ):
-                            fields.append(slot_name)
-                            break
+                if slot and is_reference_slot(slot, converter):
+                    fields.append(slot_name)
 
-            if "reference" in [s for s in self.schema_view.class_slots(class_name)]:
-                if "reference" not in fields:
-                    fields.append("reference")
-            if "reference_id" in [s for s in self.schema_view.class_slots(class_name)]:
-                if "reference_id" not in fields:
-                    fields.append("reference_id")
+            # Fallback: check for common reference slot names
+            class_slots = list(self.schema_view.class_slots(class_name))
+            for fallback_name in FallbackSlotNames.REFERENCE:
+                if fallback_name in class_slots and fallback_name not in fields:
+                    fields.append(fallback_name)
 
             return fields
 
         def _find_excerpt_fields(self, class_name: str) -> list[str]:  # type: ignore
-            """Find slots that implement linkml:excerpt.
+            """Find slots that represent excerpt/supporting text fields.
+
+            Supports canonical URI (oa:exact) and legacy URI (linkml:excerpt)
+            via implements or slot_uri. Custom prefixes are resolved using
+            the schema's prefix map.
 
             Args:
                 class_name: Class to search
@@ -300,25 +343,26 @@ if _LINKML_AVAILABLE:
             if not class_def:
                 return fields
 
+            converter = self._get_converter()
+
             for slot_name in self.schema_view.class_slots(class_name):
                 slot = self.schema_view.induced_slot(slot_name, class_name)
-                if slot and slot.implements:
-                    for interface in slot.implements:
-                        if (
-                            "excerpt" in interface
-                            or "supporting_text" in interface.lower()
-                        ):
-                            fields.append(slot_name)
-                            break
+                if slot and is_excerpt_slot(slot, converter):
+                    fields.append(slot_name)
 
-            if "supporting_text" in [s for s in self.schema_view.class_slots(class_name)]:
-                if "supporting_text" not in fields:
-                    fields.append("supporting_text")
+            # Fallback: check for common excerpt slot names
+            class_slots = list(self.schema_view.class_slots(class_name))
+            for fallback_name in FallbackSlotNames.EXCERPT:
+                if fallback_name in class_slots and fallback_name not in fields:
+                    fields.append(fallback_name)
 
             return fields
 
         def _find_title_fields(self, class_name: str) -> list[str]:  # type: ignore
-            """Find slots that implement dcterms:title or have slot_uri dcterms:title.
+            """Find slots that represent title fields.
+
+            Supports dcterms:title via implements or slot_uri. Custom prefixes
+            are resolved using the schema's prefix map.
 
             Args:
                 class_name: Class to search
@@ -338,29 +382,18 @@ if _LINKML_AVAILABLE:
             if not class_def:
                 return fields
 
+            converter = self._get_converter()
+
             for slot_name in self.schema_view.class_slots(class_name):
                 slot = self.schema_view.induced_slot(slot_name, class_name)
-                if not slot:
-                    continue
-
-                # Check implements for dcterms:title
-                if slot.implements:
-                    for interface in slot.implements:
-                        interface_lower = interface.lower()
-                        if "dcterms:title" in interface or interface_lower == "title":
-                            fields.append(slot_name)
-                            break
-                    if slot_name in fields:
-                        continue
-
-                # Check slot_uri for dcterms:title
-                if slot.slot_uri and "dcterms:title" in slot.slot_uri:
+                if slot and is_title_slot(slot, converter):
                     fields.append(slot_name)
 
             # Fallback: check for common title slot names
-            if "title" in [s for s in self.schema_view.class_slots(class_name)]:
-                if "title" not in fields:
-                    fields.append("title")
+            class_slots = list(self.schema_view.class_slots(class_name))
+            for fallback_name in FallbackSlotNames.TITLE:
+                if fallback_name in class_slots and fallback_name not in fields:
+                    fields.append(fallback_name)
 
             return fields
 

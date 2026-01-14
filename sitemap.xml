@@ -2,66 +2,70 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/about/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/quickstart/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/todo/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/concepts/content-types/</loc>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/concepts/editorial-conventions/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/concepts/how-it-works/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/add-reference-source/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/repair-validation-errors/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/use-local-files-and-urls/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-clinical-trials/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-dois/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-entrez/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-obo-files/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-titles/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/validate-urls/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/reference/cli/</loc>
-         <lastmod>2026-01-08</lastmod>
+         <lastmod>2026-01-14</lastmod>
     </url>
 </urlset>

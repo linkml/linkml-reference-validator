@@ -1,0 +1,944 @@
+
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<link href="https://linkml.github.io/linkml-reference-validator/concepts/content-types/" rel="canonical"/>
+<link href="../how-it-works/" rel="prev"/>
+<link href="../editorial-conventions/" rel="next"/>
+<link href="../../assets/images/favicon.png" rel="icon"/>
+<meta content="mkdocs-1.6.1, mkdocs-material-9.7.0" name="generator"/>
+<title>Content Types - linkml-reference-validator</title>
+<link href="../../assets/stylesheets/main.618322db.min.css" rel="stylesheet"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&amp;display=fallback" rel="stylesheet"/>
+<style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+<script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+</head>
+<body dir="ltr">
+<input autocomplete="off" class="md-toggle" data-md-toggle="drawer" id="__drawer" type="checkbox"/>
+<input autocomplete="off" class="md-toggle" data-md-toggle="search" id="__search" type="checkbox"/>
+<label class="md-overlay" for="__drawer"></label>
+<div data-md-component="skip">
+<a class="md-skip" href="#content-types">
+          Skip to content
+        </a>
+</div>
+<div data-md-component="announce">
+</div>
+<header class="md-header md-header--shadow" data-md-component="header">
+<nav aria-label="Header" class="md-header__inner md-grid">
+<a aria-label="linkml-reference-validator" class="md-header__button md-logo" data-md-component="logo" href="../.." title="linkml-reference-validator">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+<label class="md-header__button md-icon" for="__drawer">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"></path></svg>
+</label>
+<div class="md-header__title" data-md-component="header-title">
+<div class="md-header__ellipsis">
+<div class="md-header__topic">
+<span class="md-ellipsis">
+            linkml-reference-validator
+          </span>
+</div>
+<div class="md-header__topic" data-md-component="header-topic">
+<span class="md-ellipsis">
+            
+              Content Types
+            
+          </span>
+</div>
+</div>
+</div>
+<script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+<label class="md-header__button md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+</label>
+<div class="md-search" data-md-component="search" role="dialog">
+<label class="md-search__overlay" for="__search"></label>
+<div class="md-search__inner" role="search">
+<form class="md-search__form" name="search">
+<input aria-label="Search" autocapitalize="off" autocomplete="off" autocorrect="off" class="md-search__input" data-md-component="search-query" name="query" placeholder="Search" required="" spellcheck="false" type="text"/>
+<label class="md-search__icon md-icon" for="__search">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"></path></svg>
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"></path></svg>
+</label>
+<nav aria-label="Search" class="md-search__options">
+<button aria-label="Clear" class="md-search__icon md-icon" tabindex="-1" title="Clear" type="reset">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"></path></svg>
+</button>
+</nav>
+</form>
+<div class="md-search__output">
+<div class="md-search__scrollwrap" data-md-scrollfix="" tabindex="0">
+<div class="md-search-result" data-md-component="search-result">
+<div class="md-search-result__meta">
+            Initializing search
+          </div>
+<ol class="md-search-result__list" role="presentation"></ol>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="md-header__source">
+<a class="md-source" data-md-component="source" href="https://github.com/linkml/linkml-reference-validator" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+</nav>
+</header>
+<div class="md-container" data-md-component="container">
+<main class="md-main" data-md-component="main">
+<div class="md-main__inner md-grid">
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Navigation" class="md-nav md-nav--primary" data-md-level="0">
+<label class="md-nav__title" for="__drawer">
+<a aria-label="linkml-reference-validator" class="md-nav__button md-logo" data-md-component="logo" href="../.." title="linkml-reference-validator">
+<svg viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"></path></svg>
+</a>
+    linkml-reference-validator
+  </label>
+<div class="md-nav__source">
+<a class="md-source" data-md-component="source" href="https://github.com/linkml/linkml-reference-validator" title="Go to repository">
+<div class="md-source__icon md-icon">
+<svg viewbox="0 0 448 512" xmlns="http://www.w3.org/2000/svg"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"></path></svg>
+</div>
+<div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+</div>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../..">
+<span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../quickstart/">
+<span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_3" type="checkbox"/>
+<label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_3_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_3">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../notebooks/01_getting_started.ipynb">
+<span class="md-ellipsis">
+    
+  
+    Getting Started (CLI)
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../notebooks/02_advanced_usage.ipynb">
+<span class="md-ellipsis">
+    
+  
+    Advanced Usage (CLI)
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../notebooks/04_obo_validation.ipynb">
+<span class="md-ellipsis">
+    
+  
+    Validating OBO Files (CLI)
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../notebooks/03_python_api.ipynb">
+<span class="md-ellipsis">
+    
+  
+    Python API
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_4" type="checkbox"/>
+<label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    How-To Guides
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_4_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_4">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    How-To Guides
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-obo-files/">
+<span class="md-ellipsis">
+    
+  
+    Validating OBO Files
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-entrez/">
+<span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-clinical-trials/">
+<span class="md-ellipsis">
+    
+  
+    Validating Clinical Trials
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-dois/">
+<span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-urls/">
+<span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/validate-titles/">
+<span class="md-ellipsis">
+    
+  
+    Validating Reference Titles
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/use-local-files-and-urls/">
+<span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/add-reference-source/">
+<span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../how-to/repair-validation-errors/">
+<span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--active md-nav__item--nested">
+<input checked="" class="md-nav__toggle md-toggle" id="__nav_5" type="checkbox"/>
+<label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="true" aria-labelledby="__nav_5_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_5">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../how-it-works/">
+<span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+</a>
+</li>
+<li class="md-nav__item md-nav__item--active">
+<input class="md-nav__toggle md-toggle" id="__toc" type="checkbox"/>
+<label class="md-nav__link md-nav__link--active" for="__toc">
+<span class="md-ellipsis">
+    
+  
+    Content Types
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<a class="md-nav__link md-nav__link--active" href="./">
+<span class="md-ellipsis">
+    
+  
+    Content Types
+  
+
+    
+  </span>
+</a>
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#content-type-values">
+<span class="md-ellipsis">
+      
+        Content Type Values
+      
+    </span>
+</a>
+<nav aria-label="Content Type Values" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#internal-values-not-typically-seen-by-users">
+<span class="md-ellipsis">
+      
+        Internal Values (not typically seen by users)
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-content-type-affects-validation">
+<span class="md-ellipsis">
+      
+        How Content Type Affects Validation
+      
+    </span>
+</a>
+<nav aria-label="How Content Type Affects Validation" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#full-text-available-full_text_xml-full_text_html">
+<span class="md-ellipsis">
+      
+        Full Text Available (full_text_xml, full_text_html)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#abstract-only-abstract_only">
+<span class="md-ellipsis">
+      
+        Abstract Only (abstract_only)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#summary-summary">
+<span class="md-ellipsis">
+      
+        Summary (summary)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#unavailable-unavailable">
+<span class="md-ellipsis">
+      
+        Unavailable (unavailable)
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#pmid-full-text-cascade">
+<span class="md-ellipsis">
+      
+        PMID Full Text Cascade
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#checking-content-type">
+<span class="md-ellipsis">
+      
+        Checking Content Type
+      
+    </span>
+</a>
+<nav aria-label="Checking Content Type" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#in-cache-files">
+<span class="md-ellipsis">
+      
+        In Cache Files
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#via-cli">
+<span class="md-ellipsis">
+      
+        Via CLI
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#in-validation-results">
+<span class="md-ellipsis">
+      
+        In Validation Results
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#strategies-when-full-text-unavailable">
+<span class="md-ellipsis">
+      
+        Strategies When Full Text Unavailable
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../editorial-conventions/">
+<span class="md-ellipsis">
+    
+  
+    Editorial Conventions
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item md-nav__item--nested">
+<input class="md-nav__toggle md-toggle" id="__nav_6" type="checkbox"/>
+<label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+<span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+<span class="md-nav__icon md-icon"></span>
+</label>
+<nav aria-expanded="false" aria-labelledby="__nav_6_label" class="md-nav" data-md-level="1">
+<label class="md-nav__title" for="__nav_6">
+<span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+<ul class="md-nav__list" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../reference/cli/">
+<span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="../../todo/">
+<span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc">
+<div class="md-sidebar__scrollwrap">
+<div class="md-sidebar__inner">
+<nav aria-label="Table of contents" class="md-nav md-nav--secondary">
+<label class="md-nav__title" for="__toc">
+<span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+<ul class="md-nav__list" data-md-component="toc" data-md-scrollfix="">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#content-type-values">
+<span class="md-ellipsis">
+      
+        Content Type Values
+      
+    </span>
+</a>
+<nav aria-label="Content Type Values" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#internal-values-not-typically-seen-by-users">
+<span class="md-ellipsis">
+      
+        Internal Values (not typically seen by users)
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#how-content-type-affects-validation">
+<span class="md-ellipsis">
+      
+        How Content Type Affects Validation
+      
+    </span>
+</a>
+<nav aria-label="How Content Type Affects Validation" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#full-text-available-full_text_xml-full_text_html">
+<span class="md-ellipsis">
+      
+        Full Text Available (full_text_xml, full_text_html)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#abstract-only-abstract_only">
+<span class="md-ellipsis">
+      
+        Abstract Only (abstract_only)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#summary-summary">
+<span class="md-ellipsis">
+      
+        Summary (summary)
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#unavailable-unavailable">
+<span class="md-ellipsis">
+      
+        Unavailable (unavailable)
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#pmid-full-text-cascade">
+<span class="md-ellipsis">
+      
+        PMID Full Text Cascade
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#checking-content-type">
+<span class="md-ellipsis">
+      
+        Checking Content Type
+      
+    </span>
+</a>
+<nav aria-label="Checking Content Type" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#in-cache-files">
+<span class="md-ellipsis">
+      
+        In Cache Files
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#via-cli">
+<span class="md-ellipsis">
+      
+        Via CLI
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#in-validation-results">
+<span class="md-ellipsis">
+      
+        In Validation Results
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#strategies-when-full-text-unavailable">
+<span class="md-ellipsis">
+      
+        Strategies When Full Text Unavailable
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</div>
+</div>
+</div>
+<div class="md-content" data-md-component="content">
+<article class="md-content__inner md-typeset">
+<h1 id="content-types">Content Types</h1>
+<p>When fetching references, the validator tracks what type of content was retrieved using the <code>content_type</code> field. This is important because validation reliability depends on having access to the right content - an excerpt from a paper's Methods section won't be found if only the abstract is available.</p>
+<h2 id="content-type-values">Content Type Values</h2>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Source(s)</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full_text_xml</code></td>
+<td>PMID (via PMC)</td>
+<td>Full text retrieved from PubMed Central as XML</td>
+</tr>
+<tr>
+<td><code>full_text_html</code></td>
+<td>PMID (via PMC)</td>
+<td>Full text retrieved from PubMed Central as HTML (fallback)</td>
+</tr>
+<tr>
+<td><code>abstract_only</code></td>
+<td>PMID, DOI</td>
+<td>Only the abstract was available</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>GEO, BioProject, BioSample, ClinicalTrials</td>
+<td>Database summary/description field</td>
+</tr>
+<tr>
+<td><code>local_file</code></td>
+<td>file:</td>
+<td>Content read from local filesystem</td>
+</tr>
+<tr>
+<td><code>url</code></td>
+<td>url:</td>
+<td>Content fetched from web URL</td>
+</tr>
+<tr>
+<td><code>unavailable</code></td>
+<td>Any</td>
+<td>No content could be retrieved</td>
+</tr>
+</tbody>
+</table>
+<h3 id="internal-values-not-typically-seen-by-users">Internal Values (not typically seen by users)</h3>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no_pmc</code></td>
+<td>PMID has no corresponding PMC ID</td>
+</tr>
+<tr>
+<td><code>pmc_restricted</code></td>
+<td>PMC entry exists but content is restricted</td>
+</tr>
+<tr>
+<td><code>unknown</code></td>
+<td>Default value (content type not determined)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="how-content-type-affects-validation">How Content Type Affects Validation</h2>
+<h3 id="full-text-available-full_text_xml-full_text_html">Full Text Available (<code>full_text_xml</code>, <code>full_text_html</code>)</h3>
+<p>When full text is available, validation is most reliable. The content includes:</p>
+<ul>
+<li>Abstract</li>
+<li>Introduction</li>
+<li>Methods</li>
+<li>Results</li>
+<li>Discussion</li>
+<li>References</li>
+</ul>
+<p>Excerpts from any section can be validated.</p>
+<h3 id="abstract-only-abstract_only">Abstract Only (<code>abstract_only</code>)</h3>
+<p>When only the abstract is available:</p>
+<ul>
+<li>Validation works for text from the abstract</li>
+<li><strong>Validation will fail for excerpts from other sections</strong></li>
+<li>Error messages note this limitation: <code>(note: only abstract available for PMID:nnn, full text may contain this excerpt)</code></li>
+</ul>
+<p>This is common for PMIDs without open-access PMC versions.</p>
+<h3 id="summary-summary">Summary (<code>summary</code>)</h3>
+<p>For database records (GEO, BioProject, etc.), the "summary" or "description" field is used. This is typically a brief description, not a full publication.</p>
+<h3 id="unavailable-unavailable">Unavailable (<code>unavailable</code>)</h3>
+<p>No content was retrieved. Validation will fail with a clear error message.</p>
+<h2 id="pmid-full-text-cascade">PMID Full Text Cascade</h2>
+<p>For PMID references, the validator automatically attempts to get the best content available:</p>
+<div class="mermaid">flowchart TD
+    A[Fetch PMID] --&gt; B[Get abstract via Entrez]
+    B --&gt; C{Has PMC ID?}
+    C --&gt;|No| D[Return abstract_only]
+    C --&gt;|Yes| E[Try PMC XML]
+    E --&gt;|Success| F[Return full_text_xml]
+    E --&gt;|Fail| G[Try PMC HTML]
+    G --&gt;|Success| H[Return full_text_html]
+    G --&gt;|Fail/Restricted| I{Has abstract?}
+    I --&gt;|Yes| D
+    I --&gt;|No| J[Return unavailable]
+</div>
+<p>When full text is retrieved, it's <strong>concatenated with the abstract</strong> to provide maximum coverage.</p>
+<h2 id="checking-content-type">Checking Content Type</h2>
+<h3 id="in-cache-files">In Cache Files</h3>
+<p>Cached references store content type in YAML frontmatter:</p>
+<pre><code class="language-yaml">---
+reference_id: PMID:16888623
+title: Example Article
+content_type: abstract_only
+---
+</code></pre>
+<h3 id="via-cli">Via CLI</h3>
+<pre><code class="language-bash">linkml-reference-validator cache show PMID:16888623
+</code></pre>
+<p>Output includes:</p>
+<pre><code>Content type: abstract_only
+</code></pre>
+<h3 id="in-validation-results">In Validation Results</h3>
+<p>When validation fails and only abstract was available, the error message includes context:</p>
+<pre><code>Text part not found as substring: 'excerpt from methods section'
+(note: only abstract available for PMID:16888623, full text may contain this excerpt)
+</code></pre>
+<h2 id="strategies-when-full-text-unavailable">Strategies When Full Text Unavailable</h2>
+<p>If validation fails due to abstract-only content:</p>
+<ol>
+<li>
+<p><strong>Check for PMC version</strong>: Search <a href="https://www.ncbi.nlm.nih.gov/pmc/">PubMed Central</a> for the article - if available, use <code>PMC:</code> prefix instead of <code>PMID:</code></p>
+</li>
+<li>
+<p><strong>Use local file</strong>: If you have the PDF/text, save as markdown and reference with <code>file:./path/to/paper.md</code></p>
+</li>
+<li>
+<p><strong>Use URL</strong>: If the full text is freely available online, use <code>url:https://...</code></p>
+</li>
+<li>
+<p><strong>Remove the excerpt</strong>: If the excerpt can't be verified, consider removing it from your data</p>
+</li>
+<li>
+<p><strong>Accept the limitation</strong>: Document that certain excerpts couldn't be verified due to access limitations</p>
+</li>
+</ol>
+<p>See <a href="../../how-to/use-local-files-and-urls/">Using Local Files and URLs</a> for detailed guidance on alternatives.</p>
+</article>
+</div>
+<script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+</div>
+</main>
+<footer class="md-footer">
+<div class="md-footer-meta md-typeset">
+<div class="md-footer-meta__inner md-grid">
+<div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" rel="noopener" target="_blank">
+      Material for MkDocs
+    </a>
+</div>
+</div>
+</div>
+</footer>
+</div>
+<div class="md-dialog" data-md-component="dialog">
+<div class="md-dialog__inner md-typeset"></div>
+</div>
+<script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+<script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+<script type="module">import mermaid from "https://unpkg.com/mermaid@11.4.1/dist/mermaid.esm.min.mjs";
+mermaid.initialize({});</script></body>
+</html>

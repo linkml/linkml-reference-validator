@@ -11,6 +11,10 @@
         <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/repair-validation-errors/">
       
       
+        <link rel="prev" href="../add-reference-source/">
+      
+      
+        <link rel="next" href="../../concepts/how-it-works/">
       
       
         
@@ -21,7 +25,7 @@
     
     
       
-        <title>How to Repair Validation Errors - linkml-reference-validator</title>
+        <title>Repairing Validation Errors - linkml-reference-validator</title>
       
     
     
@@ -98,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              How to Repair Validation Errors
+              Repairing Validation Errors
             
           </span>
         </div>
@@ -435,18 +439,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -467,7 +473,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -702,6 +708,480 @@
 
               
             
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#repair-a-single-quote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repair a Single Quote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#repair-a-data-file-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repair a Data File (Dry Run)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#apply-repairs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Apply Repairs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-confidence-levels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Confidence Levels
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#repair-strategies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Repair Strategies
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Repair Strategies">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-character-normalization-high-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Character Normalization (High Confidence)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-ellipsis-insertion-medium-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Ellipsis Insertion (Medium Confidence)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-fuzzy-match-correction-variable-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Fuzzy Match Correction (Variable Confidence)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-removal-recommendation-very-low-confidence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Removal Recommendation (Very Low Confidence)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#command-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Command Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#repair-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        repair text
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#repair-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        repair data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#best-practices" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Best Practices
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Best Practices">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-always-start-with-dry-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Always Start with Dry Run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-review-suggested-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Review Suggested Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-handle-removals-manually" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Handle Removals Manually
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-use-skip-lists-for-known-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Use Skip Lists for Known Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-trust-list-for-verified-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Trust List for Verified References
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-evidence-items-found-to-repair" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "No evidence items found to repair"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flagged-for-removal-text-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Flagged for removal - text not found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-content-not-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Reference content not available"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#validation-failed-with-only-abstract-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failed with "only abstract available"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Failed with &#34;only abstract available&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-find-the-pmc-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Find the PMC Version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-use-a-local-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Use a Local File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-use-a-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Use a URL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-4-remove-or-revise-the-excerpt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 4: Remove or Revise the Excerpt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-5-accept-the-limitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 5: Accept the Limitation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#understanding-content-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Content Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#python-api" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Python API
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -771,6 +1251,34 @@
     
   
     How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/content-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Types
   
 
     
@@ -897,6 +1405,33 @@
           </ul>
         </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1227,6 +1762,89 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#validation-failed-with-only-abstract-available" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failed with "only abstract available"
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Failed with &#34;only abstract available&#34;">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-find-the-pmc-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Find the PMC Version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-use-a-local-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Use a Local File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-use-a-url" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Use a URL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-4-remove-or-revise-the-excerpt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 4: Remove or Revise the Excerpt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-5-accept-the-limitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 5: Accept the Limitation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#understanding-content-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Content Types
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1503,6 +2121,97 @@ linkml-reference-validator repair data file.yaml --schema schema.yaml --no-dry-r
   skip_references:
     - &quot;PMID:NOABSTRACT001&quot;
 </code></pre>
+<h3 id="validation-failed-with-only-abstract-available">Validation Failed with "only abstract available"</h3>
+<p>When you see an error like:</p>
+<pre><code>Text part not found as substring: 'excerpt from methods section'
+(note: only abstract available for PMID:16888623, full text may contain this excerpt)
+</code></pre>
+<p>This means the excerpt may exist in the paper's full text, but only the abstract was accessible. Here's what to do:</p>
+<h4 id="option-1-find-the-pmc-version">Option 1: Find the PMC Version</h4>
+<p>Search <a href="https://www.ncbi.nlm.nih.gov/pmc/">PubMed Central</a> for the article. If it has a PMC ID:</p>
+<pre><code class="language-yaml"># Instead of
+reference: PMID:16888623
+
+# Use
+reference: PMC:3458566
+</code></pre>
+<p>The validator will fetch full text from PMC automatically.</p>
+<h4 id="option-2-use-a-local-file">Option 2: Use a Local File</h4>
+<p>If you have access to the full text (PDF, HTML, or text):</p>
+<ol>
+<li>Save the text content as markdown:
+   ```bash
+   # Extract text from PDF (if you have one)
+   # Or copy/paste relevant sections
+   echo "# Article Title</li>
+</ol>
+<p>Full text content here..." &gt; papers/pmid_16888623.md
+   ```</p>
+<ol>
+<li>Reference the local file:
+   <code>yaml
+   reference: file:./papers/pmid_16888623.md</code></li>
+</ol>
+<p>See <a href="../use-local-files-and-urls/">Using Local Files and URLs</a> for details.</p>
+<h4 id="option-3-use-a-url">Option 3: Use a URL</h4>
+<p>If the full text is freely available online:</p>
+<pre><code class="language-yaml">reference: url:https://example.com/full-text-article
+</code></pre>
+<h4 id="option-4-remove-or-revise-the-excerpt">Option 4: Remove or Revise the Excerpt</h4>
+<p>If the excerpt can't be verified:</p>
+<ul>
+<li><strong>Remove it</strong> if it's not essential</li>
+<li><strong>Shorten it</strong> to text that appears in the abstract</li>
+<li><strong>Replace it</strong> with a verifiable quote from the abstract</li>
+</ul>
+<h4 id="option-5-accept-the-limitation">Option 5: Accept the Limitation</h4>
+<p>Document that certain excerpts couldn't be verified:</p>
+<pre><code class="language-yaml">repair:
+  skip_references:
+    - &quot;PMID:16888623&quot;  # Full text not available, abstract verified manually
+</code></pre>
+<h3 id="understanding-content-types">Understanding Content Types</h3>
+<p>The <code>content_type</code> field in cached references tells you what content was retrieved:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>What You Have</th>
+<th>Validation Reliability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full_text_xml</code></td>
+<td>Full PMC article</td>
+<td>High - all sections available</td>
+</tr>
+<tr>
+<td><code>full_text_html</code></td>
+<td>Full PMC article (HTML)</td>
+<td>High - all sections available</td>
+</tr>
+<tr>
+<td><code>abstract_only</code></td>
+<td>Abstract only</td>
+<td>Limited - only abstract searchable</td>
+</tr>
+<tr>
+<td><code>summary</code></td>
+<td>Database summary</td>
+<td>Limited - brief description only</td>
+</tr>
+<tr>
+<td><code>unavailable</code></td>
+<td>Nothing</td>
+<td>None - validation will fail</td>
+</tr>
+</tbody>
+</table>
+<p>Check content type with:</p>
+<pre><code class="language-bash">linkml-reference-validator cache show PMID:16888623
+</code></pre>
+<p>See <a href="../../concepts/content-types/">Content Types</a> for full documentation.</p>
 <h2 id="python-api">Python API</h2>
 <p>For programmatic access:</p>
 <pre><code class="language-python">from linkml_reference_validator.models import (

@@ -425,6 +425,50 @@ class ReferenceValidationConfig(BaseModel):
 
 
 @dataclass
+class JSONAPISourceConfig:
+    """Configuration for a JSON API reference source.
+
+    Allows defining custom reference sources via configuration rather than Python code.
+    Sources are defined by a URL template and JSONPath expressions for field extraction.
+
+    Environment variables can be interpolated in headers using ${VAR_NAME} syntax.
+
+    Examples:
+        >>> config = JSONAPISourceConfig(
+        ...     prefix="MGNIFY",
+        ...     url_template="https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}",
+        ...     fields={
+        ...         "title": "$.data.attributes.study-name",
+        ...         "content": "$.data.attributes.study-abstract",
+        ...     },
+        ... )
+        >>> config.prefix
+        'MGNIFY'
+        >>> config.url_template
+        'https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}'
+        >>> config.fields["title"]
+        '$.data.attributes.study-name'
+
+        >>> # With authentication via environment variable
+        >>> config_with_auth = JSONAPISourceConfig(
+        ...     prefix="PRIVATE_API",
+        ...     url_template="https://api.example.com/records/{id}",
+        ...     fields={"title": "$.title", "content": "$.description"},
+        ...     headers={"Authorization": "Bearer ${API_KEY}"},
+        ... )
+        >>> config_with_auth.headers["Authorization"]
+        'Bearer ${API_KEY}'
+    """
+
+    prefix: str
+    url_template: str  # URL with {id} placeholder, e.g. "https://api.example.com/v1/{id}"
+    fields: dict[str, str]  # Field name -> JSONPath expression
+    id_patterns: list[str] = field(default_factory=list)  # Regex patterns for bare ID matching
+    headers: dict[str, str] = field(default_factory=dict)  # HTTP headers (supports ${VAR} interpolation)
+    store_raw_response: bool = False  # Store full response in metadata['raw_response']
+
+
+@dataclass
 class ReferenceContent:
     """Content retrieved from a reference.
 

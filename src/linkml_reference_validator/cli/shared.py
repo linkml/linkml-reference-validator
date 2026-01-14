@@ -58,11 +58,16 @@ def setup_logging(verbose: bool) -> None:
         logging.basicConfig(level=logging.INFO)
 
 
-def load_validation_config(config_file: Optional[Path]) -> ReferenceValidationConfig:
+def load_validation_config(
+    config_file: Optional[Path], load_custom_sources: bool = True
+) -> ReferenceValidationConfig:
     """Load validation configuration from file.
+
+    Also loads custom JSON API sources from config files if available.
 
     Args:
         config_file: Path to config file, or None for defaults
+        load_custom_sources: Whether to register custom sources from config
 
     Returns:
         ReferenceValidationConfig instance
@@ -77,20 +82,42 @@ def load_validation_config(config_file: Optional[Path]) -> ReferenceValidationCo
                 break
 
     if config_file is None:
-        return ReferenceValidationConfig()
+        config = ReferenceValidationConfig()
+    else:
+        yaml = YAML(typ="safe")
+        with open(config_file) as f:
+            config_data = yaml.load(f)
 
-    yaml = YAML(typ="safe")
-    with open(config_file) as f:
-        config_data = yaml.load(f)
+        if not config_data:
+            config = ReferenceValidationConfig()
+        else:
+            validation_data = _extract_validation_config_data(config_data)
+            if validation_data is None:
+                config = ReferenceValidationConfig()
+            else:
+                config = ReferenceValidationConfig(**validation_data)
 
-    if not config_data:
-        return ReferenceValidationConfig()
+    # Load custom JSON API sources from config files
+    if load_custom_sources:
+        _load_custom_sources(config_file)
 
-    validation_data = _extract_validation_config_data(config_data)
-    if validation_data is None:
-        return ReferenceValidationConfig()
+    return config
 
-    return ReferenceValidationConfig(**validation_data)
+
+def _load_custom_sources(config_file: Optional[Path]) -> None:
+    """Load and register custom JSON API sources from configuration.
+
+    Loads sources from:
+    1. ~/.config/linkml-reference-validator/sources/*.yaml
+    2. .linkml-reference-validator-sources.yaml in current directory
+    3. 'sources' section in main config file
+
+    Args:
+        config_file: Optional path to main config file
+    """
+    from linkml_reference_validator.etl.sources.loader import register_custom_sources
+
+    register_custom_sources(config_file=config_file)
 
 
 def _extract_validation_config_data(config_data: object) -> Optional[dict]:

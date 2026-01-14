@@ -540,3 +540,159 @@ def test_skip_prefixes_with_fetchable_reference(tmp_path, mocker):
     assert result.severity == ValidationSeverity.INFO
     # Note: fetch should still be called, but the result is ignored
     assert "Skipping validation" in result.message
+
+
+# =============================================================================
+# validate_title tests
+# =============================================================================
+
+
+def test_validate_title_skip_prefixes(tmp_path, mocker):
+    """Test that validate_title respects skip_prefixes configuration.
+
+    When a reference prefix is in the skip_prefixes list, validate_title should
+    return is_valid=True with INFO severity instead of attempting to fetch.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate_title(
+        "SRA:PRJNA290729",
+        "Some Dataset Title",
+    )
+
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+    assert "Skipping" in result.message
+    assert "SRA" in result.message
+    # Fetch should not be called when prefix is skipped
+    mock_fetch.assert_not_called()
+
+
+def test_validate_title_skip_prefixes_multiple(tmp_path, mocker):
+    """Test that validate_title handles multiple skip_prefixes."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA", "MGNIFY", "BIOPROJECT"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # Test each prefix
+    for prefix, ref_id in [
+        ("SRA", "SRA:PRJNA290729"),
+        ("MGNIFY", "MGNIFY:MGYS00000596"),
+        ("BIOPROJECT", "BIOPROJECT:PRJNA566284"),
+    ]:
+        result = validator.validate_title(ref_id, "Some Title")
+        assert result.is_valid is True, f"Failed for {prefix}"
+        assert result.severity == ValidationSeverity.INFO, f"Failed for {prefix}"
+        assert "Skipping" in result.message, f"Failed for {prefix}"
+
+
+def test_validate_title_skip_prefixes_case_insensitive(tmp_path, mocker):
+    """Test that validate_title prefix matching is case-insensitive."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["sra"],  # lowercase in config
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # Test with uppercase prefix in reference
+    result = validator.validate_title("SRA:PRJNA290729", "Some Title")
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+
+
+def test_validate_title_unknown_prefix_severity(tmp_path, mocker):
+    """Test that validate_title uses unknown_prefix_severity for unfetchable refs.
+
+    When a reference cannot be fetched and is not in skip_prefixes,
+    the severity should match the configured unknown_prefix_severity.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        unknown_prefix_severity=ValidationSeverity.WARNING,
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate_title("MGNIFY:MGYS00000596", "Some Title")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.WARNING
+
+
+def test_validate_title_unknown_prefix_severity_default_error(tmp_path, mocker):
+    """Test that validate_title defaults to ERROR for unfetchable refs."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        # unknown_prefix_severity defaults to ERROR
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    result = validator.validate_title("UNKNOWN:12345", "Some Title")
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+
+
+def test_validate_title_skip_prefixes_takes_precedence(tmp_path, mocker):
+    """Test that skip_prefixes takes precedence over unknown_prefix_severity."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+        unknown_prefix_severity=ValidationSeverity.ERROR,
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = None
+
+    # SRA is skipped, should return INFO with is_valid=True
+    result = validator.validate_title("SRA:PRJNA290729", "Some Title")
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+
+
+def test_validate_title_normal_flow_still_works(tmp_path, mocker):
+    """Test that validate_title still works normally for non-skipped prefixes."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["SRA"],
+    )
+    validator = SupportingTextValidator(config)
+
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = ReferenceContent(
+        reference_id="PMID:123",
+        title="The Expected Title",
+        content="Some content",
+    )
+
+    # PMID is not skipped, should validate normally
+    result = validator.validate_title("PMID:123", "The Expected Title")
+    assert result.is_valid is True
+    assert result.severity == ValidationSeverity.INFO
+    mock_fetch.assert_called_once()

@@ -59,10 +59,10 @@ def test_parse_reference_id_with_prefix_map(tmp_path):
 
 def test_get_cache_path(fetcher):
     """Test cache path generation."""
-    path = fetcher._get_cache_path("PMID:12345678")
+    path = fetcher.get_cache_path("PMID:12345678")
     assert path.name == "PMID_12345678.md"
 
-    path = fetcher._get_cache_path("DOI:10.1234/test")
+    path = fetcher.get_cache_path("DOI:10.1234/test")
     assert path.name == "DOI_10.1234_test.md"
 
 
@@ -273,10 +273,10 @@ def test_fetch_url_http_error(mock_get, fetcher):
 
 def test_url_cache_path(fetcher):
     """Test cache path generation for URLs."""
-    path = fetcher._get_cache_path("url:https://example.com/book/chapter1")
+    path = fetcher.get_cache_path("url:https://example.com/book/chapter1")
     assert path.name == "url_https___example.com_book_chapter1.md"
 
-    path = fetcher._get_cache_path("url:https://example.com/path?param=value")
+    path = fetcher.get_cache_path("url:https://example.com/path?param=value")
     assert path.name == "url_https___example.com_path_param_value.md"
 
 

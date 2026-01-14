@@ -79,7 +79,7 @@ class ReferenceFetcher:
             >>> # ref = fetcher.fetch("PMID:12345678")
             >>> # ref = fetcher.fetch("file:./notes.md")
         """
-        normalized_reference_id = self._normalize_reference_id(reference_id)
+        normalized_reference_id = self.normalize_reference_id(reference_id)
 
         # Check memory cache
         if not force_refresh and normalized_reference_id in self._cache:
@@ -149,8 +149,23 @@ class ReferenceFetcher:
             return "PMID", reference_id.strip()
         return "UNKNOWN", reference_id
 
-    def _normalize_reference_id(self, reference_id: str) -> str:
-        """Normalize reference IDs using configured prefix aliases."""
+    def normalize_reference_id(self, reference_id: str) -> str:
+        """Normalize reference IDs using configured prefix aliases.
+
+        Args:
+            reference_id: Raw reference ID (e.g., "pmid:12345678", "PMID 12345678")
+
+        Returns:
+            Normalized reference ID (e.g., "PMID:12345678")
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> fetcher.normalize_reference_id("pmid:12345678")
+            'PMID:12345678'
+            >>> fetcher.normalize_reference_id("PMID 12345678")
+            'PMID:12345678'
+        """
         prefix, identifier = self._parse_reference_id(reference_id)
         if prefix == "UNKNOWN":
             return reference_id.strip()
@@ -174,7 +189,7 @@ class ReferenceFetcher:
             normalized[self._normalize_prefix(key)] = self._normalize_prefix(value)
         return normalized
 
-    def _get_cache_path(self, reference_id: str) -> Path:
+    def get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.
 
         Args:
@@ -186,10 +201,10 @@ class ReferenceFetcher:
         Examples:
             >>> config = ReferenceValidationConfig()
             >>> fetcher = ReferenceFetcher(config)
-            >>> path = fetcher._get_cache_path("PMID:12345678")
+            >>> path = fetcher.get_cache_path("PMID:12345678")
             >>> path.name
             'PMID_12345678.md'
-            >>> path = fetcher._get_cache_path("url:https://example.com/book/chapter1")
+            >>> path = fetcher.get_cache_path("url:https://example.com/book/chapter1")
             >>> path.name
             'url_https___example.com_book_chapter1.md'
         """
@@ -253,7 +268,7 @@ class ReferenceFetcher:
         Args:
             reference: Reference content to save
         """
-        cache_path = self._get_cache_path(reference.reference_id)
+        cache_path = self.get_cache_path(reference.reference_id)
 
         lines = []
         lines.append("---")
@@ -308,7 +323,7 @@ class ReferenceFetcher:
         Returns:
             ReferenceContent if cached, None otherwise
         """
-        cache_path = self._get_cache_path(reference_id)
+        cache_path = self.get_cache_path(reference_id)
 
         if not cache_path.exists():
             legacy_path = cache_path.with_suffix(".txt")

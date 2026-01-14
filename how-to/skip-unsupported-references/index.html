@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-urls/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/skip-unsupported-references/">
       
       
-        <link rel="prev" href="../validate-dois/">
+        <link rel="prev" href="../add-reference-source/">
       
       
-        <link rel="next" href="../validate-titles/">
+        <link rel="next" href="../repair-validation-errors/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Validating URLs - linkml-reference-validator</title>
+        <title>Skipping Unsupported References - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-url-references" class="md-skip">
+        <a href="#skipping-unsupported-reference-types" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating URLs
+              Skipping Unsupported References
             
           </span>
         </div>
@@ -628,37 +628,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating URLs
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../validate-urls/" class="md-nav__link">
         
   
   
@@ -674,303 +647,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Format
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Content Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Content Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Caching
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Limitations
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Limitations">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Static Content Only
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Raw Content
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        No Rendering
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Best Practices
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Best Practices">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Stable URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1064,10 +740,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../skip-unsupported-references/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skipping Unsupported References
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1083,6 +786,170 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration Options
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration Options">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#skip_prefixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        skip_prefixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#unknown_prefix_severity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        unknown_prefix_severity
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-file-locations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File Locations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-skip-known-unsupported-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Skip Known Unsupported Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-downgrade-all-fetch-failures-to-warnings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Downgrade All Fetch Failures to Warnings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-combined-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Combined Configuration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-support-for-new-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Support for New Reference Types
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relationship-to-custom-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relationship to Custom Sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1397,10 +1264,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#quick-start" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Quick Start
       
     </span>
   </a>
@@ -1408,44 +1275,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#url-format" class="md-nav__link">
+  <a href="#configuration-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        URL Format
+        Configuration Options
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#example" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Example
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-url-validation-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How URL Validation Works
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="How URL Validation Works">
+    <nav class="md-nav" aria-label="Configuration Options">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-content-fetching" class="md-nav__link">
+  <a href="#skip_prefixes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Content Fetching
+        skip_prefixes
       
     </span>
   </a>
@@ -1453,21 +1298,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-content-storage" class="md-nav__link">
+  <a href="#unknown_prefix_severity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Content Storage
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-caching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Caching
+        unknown_prefix_severity
       
     </span>
   </a>
@@ -1480,10 +1314,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration" class="md-nav__link">
+  <a href="#configuration-file-locations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration
+        Configuration File Locations
       
     </span>
   </a>
@@ -1491,22 +1325,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#limitations" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Limitations
+        Examples
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Limitations">
+    <nav class="md-nav" aria-label="Examples">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#static-content-only" class="md-nav__link">
+  <a href="#example-1-skip-known-unsupported-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Static Content Only
+        Example 1: Skip Known Unsupported Types
       
     </span>
   </a>
@@ -1514,10 +1348,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#raw-content" class="md-nav__link">
+  <a href="#example-2-downgrade-all-fetch-failures-to-warnings" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Raw Content
+        Example 2: Downgrade All Fetch Failures to Warnings
       
     </span>
   </a>
@@ -1525,10 +1359,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#no-rendering" class="md-nav__link">
+  <a href="#example-3-combined-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
-        No Rendering
+        Example 3: Combined Configuration
       
     </span>
   </a>
@@ -1541,121 +1375,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#best-practices" class="md-nav__link">
+  <a href="#adding-support-for-new-reference-types" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Best Practices
+        Adding Support for New Reference Types
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Best Practices">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-use-stable-urls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Use Stable URLs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-verify-content-quality" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Verify Content Quality
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-cache-management" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Cache Management
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Mix Reference Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#relationship-to-custom-sources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#url-not-fetching" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        URL Not Fetching
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validation-failing" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failing
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#force-refresh" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Force Refresh
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#comparison-with-other-reference-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison with Other Reference Types
+        Relationship to Custom Sources
       
     </span>
   </a>
@@ -1693,242 +1427,147 @@
   
 
 
-<h1 id="validating-url-references">Validating URL References</h1>
-<p>This guide explains how to validate references that use URLs instead of traditional identifiers like PMIDs or DOIs.</p>
-<h2 id="overview">Overview</h2>
-<p>The linkml-reference-validator supports validating references that point to web content, such as:</p>
-<ul>
-<li>Book chapters hosted online</li>
-<li>Educational resources</li>
-<li>Documentation pages</li>
-<li>Blog posts or articles</li>
-<li>Any static web content</li>
-</ul>
-<p>When a reference field contains a URL, the validator:</p>
-<ol>
-<li>Fetches the web page content</li>
-<li>Extracts the page title from <code>&lt;title&gt;</code> tag (for HTML)</li>
-<li>Caches the content for future validations</li>
-<li>Validates your supporting text against the page content</li>
-</ol>
-<h2 id="url-format">URL Format</h2>
-<p>Use the <code>url:</code> prefix to specify URL references:</p>
-<pre><code class="language-yaml">my_field:
-  value: &quot;Some text from the web page...&quot;
-  references:
-    - &quot;url:https://example.com/book/chapter1&quot;
-</code></pre>
-<p>Or via CLI:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text from the web page&quot; \
-  url:https://example.com/book/chapter1
-</code></pre>
-<h2 id="example">Example</h2>
-<p>Suppose you have an online textbook chapter at <code>https://example.com/biology/cell-structure</code> with the following content:</p>
-<pre><code class="language-html">&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  &lt;body&gt;
-    &lt;h1&gt;Cell Structure and Function&lt;/h1&gt;
-    &lt;p&gt;The cell is the basic structural and functional unit of all living organisms.&lt;/p&gt;
-    &lt;p&gt;Cells contain various organelles that perform specific functions...&lt;/p&gt;
-  &lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
-<p>You can validate text extracted from this chapter:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;The cell is the basic structural and functional unit of all living organisms&quot; \
-  url:https://example.com/biology/cell-structure
-</code></pre>
-<h2 id="how-url-validation-works">How URL Validation Works</h2>
-<h3 id="1-content-fetching">1. Content Fetching</h3>
-<p>When the validator encounters a URL reference, it:</p>
-<ul>
-<li>Makes an HTTP GET request to fetch the page</li>
-<li>Uses a polite user agent header identifying the tool</li>
-<li>Respects rate limiting (configurable via <code>rate_limit_delay</code>)</li>
-<li>Handles timeouts (default 30 seconds)</li>
-</ul>
-<h3 id="2-content-storage">2. Content Storage</h3>
-<p>The fetcher stores:</p>
-<ul>
-<li><strong>Title</strong>: Extracted from the <code>&lt;title&gt;</code> tag (for HTML pages)</li>
-<li><strong>Content</strong>: The raw page content as received</li>
-<li><strong>Content type</strong>: Marked as <code>url</code> to distinguish from other reference types</li>
-</ul>
-<p>Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.</p>
-<h3 id="3-caching">3. Caching</h3>
-<p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
-<pre><code class="language-markdown">---
-reference_id: url:https://example.com/biology/cell-structure
-title: &quot;Chapter 3: Cell Structure and Function&quot;
-content_type: url
----
+<h1 id="skipping-unsupported-reference-types">Skipping Unsupported Reference Types</h1>
+<p>When validating data that contains references from multiple sources, you may encounter reference types that aren't yet supported by the validator. Rather than failing validation entirely, you can configure the validator to skip or downgrade the severity for these references.</p>
+<h2 id="quick-start">Quick Start</h2>
+<p>Create a <code>.linkml-reference-validator.yaml</code> file in your project root:</p>
+<pre><code class="language-yaml">skip_prefixes:
+  - SRA
+  - MGNIFY
+  - BIOPROJECT
 
-# Chapter 3: Cell Structure and Function
-
-## Content
-
-&lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
-  ...
+unknown_prefix_severity: WARNING
 </code></pre>
-<p>Cache files are stored in the configured cache directory (default: <code>references_cache/</code>).</p>
-<h2 id="configuration">Configuration</h2>
-<p>URL fetching behavior can be configured:</p>
-<pre><code class="language-yaml"># config.yaml
-rate_limit_delay: 0.5  # Wait 0.5 seconds between requests
-email: &quot;your-email@example.com&quot;  # Used in user agent
-cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
+<p>Now references with these prefixes will be skipped, and any other unfetchable references will produce warnings instead of errors.</p>
+<h2 id="configuration-options">Configuration Options</h2>
+<h3 id="skip_prefixes">skip_prefixes</h3>
+<p>A list of reference prefixes to skip entirely during validation. References with these prefixes will:</p>
+<ul>
+<li>Return <code>is_valid=True</code></li>
+<li>Have severity <code>INFO</code></li>
+<li>Not block validation</li>
+</ul>
+<pre><code class="language-yaml">skip_prefixes:
+  - SRA        # NCBI Sequence Read Archive
+  - MGNIFY     # EBI Metagenomics
+  - BIOPROJECT # NCBI BioProject
 </code></pre>
-<p>Or via command-line:</p>
-<pre><code class="language-bash">linkml-reference-validator validate \
-  --cache-dir .cache \
-  --rate-limit-delay 0.5 \
-  my-data.yaml
+<p>Prefix matching is <strong>case-insensitive</strong>, so <code>sra</code>, <code>SRA</code>, and <code>Sra</code> all match.</p>
+<p><strong>When to use</strong>: When you have legitimate references that the validator doesn't yet support, but you want to keep them in your data.</p>
+<h3 id="unknown_prefix_severity">unknown_prefix_severity</h3>
+<p>Controls the severity level for references that cannot be fetched (unsupported prefix, network error, API failure). Does <strong>not</strong> apply to prefixes listed in <code>skip_prefixes</code>.</p>
+<p>Options:
+- <code>ERROR</code> (default) - Validation fails, exit code 1
+- <code>WARNING</code> - Issue reported but validation passes
+- <code>INFO</code> - Minimal reporting, validation passes</p>
+<pre><code class="language-yaml">unknown_prefix_severity: WARNING
 </code></pre>
-<h2 id="limitations">Limitations</h2>
-<h3 id="static-content-only">Static Content Only</h3>
-<p>URL validation is designed for static web pages. It may not work well with:</p>
-<ul>
-<li>Dynamic content loaded via JavaScript</li>
-<li>Pages requiring authentication</li>
-<li>Content behind paywalls</li>
-<li>Frequently changing content</li>
-</ul>
-<h3 id="raw-content">Raw Content</h3>
-<p>The validator stores raw page content. For HTML pages:</p>
-<ul>
-<li>HTML tags are preserved in the cache</li>
-<li>The text normalization during validation handles most cases</li>
-<li>Complex HTML layouts may require careful text extraction</li>
-</ul>
-<h3 id="no-rendering">No Rendering</h3>
-<p>The fetcher downloads raw HTML and parses it directly. It does not:</p>
-<ul>
-<li>Execute JavaScript</li>
-<li>Render the page in a browser</li>
-<li>Handle dynamic content</li>
-</ul>
-<h2 id="best-practices">Best Practices</h2>
-<h3 id="1-use-stable-urls">1. Use Stable URLs</h3>
-<p>Choose URLs that are unlikely to change:</p>
-<ul>
-<li>Versioned documentation: <code>https://docs.example.com/v1.0/chapter1</code></li>
-<li>Archived content: <code>https://archive.example.com/2024/article</code></li>
-<li>Avoid URLs with session parameters</li>
-</ul>
-<h3 id="2-verify-content-quality">2. Verify Content Quality</h3>
-<p>After adding a URL reference, verify the extracted content:</p>
-<pre><code class="language-bash"># Check what was extracted
-cat references_cache/url_https___example.com_page.md
-</code></pre>
-<p>Ensure the cached content contains the text you're referencing.</p>
-<h3 id="3-cache-management">3. Cache Management</h3>
-<ul>
-<li>Commit cache files to version control for reproducibility</li>
-<li>Use <code>--force-refresh</code> to update cached content when pages change</li>
-<li>Periodically review cached URLs to ensure they're still accessible</li>
-</ul>
-<h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
-<p>URL references work alongside PMIDs and DOIs:</p>
-<pre><code class="language-yaml">findings:
-  value: &quot;Multiple studies confirm this relationship&quot;
-  references:
-    - &quot;PMID:12345678&quot;  # Research paper
-    - &quot;DOI:10.1234/journal.article&quot;  # Another paper
-    - &quot;url:https://example.com/textbook/chapter5&quot;  # Textbook chapter
-</code></pre>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="url-not-fetching">URL Not Fetching</h3>
-<p>If URL content isn't being fetched:</p>
+<p><strong>When to use</strong>: When you want validation to continue even if some references can't be fetched, but still want to see which ones failed.</p>
+<h2 id="configuration-file-locations">Configuration File Locations</h2>
+<p>The validator looks for configuration in these locations (in order):</p>
 <ol>
-<li>Check network connectivity</li>
-<li>Verify the URL is accessible in a browser</li>
-<li>Check for rate limiting or IP blocks</li>
-<li>Look for error messages in the logs</li>
+<li>Path specified via <code>--config</code> CLI option</li>
+<li><code>.linkml-reference-validator.yaml</code> in current directory</li>
+<li><code>.linkml-reference-validator.yml</code> in current directory</li>
 </ol>
-<h3 id="validation-failing">Validation Failing</h3>
-<p>If validation fails for URL references:</p>
-<ol>
-<li>Check the cached content to see what was extracted</li>
-<li>Verify your supporting text actually appears on the page</li>
-<li>Check for whitespace or formatting differences</li>
-<li>Consider if the page content has changed since caching</li>
-</ol>
-<h3 id="force-refresh">Force Refresh</h3>
-<p>To re-fetch content for a URL that may have changed:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Updated content&quot; \
-  url:https://example.com/page \
-  --force-refresh
+<h2 id="examples">Examples</h2>
+<h3 id="example-1-skip-known-unsupported-types">Example 1: Skip Known Unsupported Types</h3>
+<p>You have a knowledge base with datasets from GEO (supported) and SRA (not yet supported):</p>
+<pre><code class="language-yaml"># data.yaml
+datasets:
+  - accession: geo:GSE12345
+    title: Gene expression in disease X
+  - accession: sra:PRJNA123456
+    title: Metagenome sequencing study
 </code></pre>
-<h2 id="comparison-with-other-reference-types">Comparison with Other Reference Types</h2>
+<p>Without configuration, validation fails on the SRA reference. Add:</p>
+<pre><code class="language-yaml"># .linkml-reference-validator.yaml
+skip_prefixes:
+  - SRA
+</code></pre>
+<p>Now validation passes, skipping the SRA reference:</p>
+<pre><code>$ linkml-reference-validator validate data data.yaml --schema schema.yaml
+
+Validation Summary:
+  Total checks: 1
+  All validations passed!
+</code></pre>
+<h3 id="example-2-downgrade-all-fetch-failures-to-warnings">Example 2: Downgrade All Fetch Failures to Warnings</h3>
+<p>For a permissive validation that reports issues without failing:</p>
+<pre><code class="language-yaml"># .linkml-reference-validator.yaml
+unknown_prefix_severity: WARNING
+</code></pre>
+<p>Output:</p>
+<pre><code>Validation Issues (1):
+  [WARNING] Could not fetch reference: sra:PRJNA123456
+    Location: datasets[1].title
+
+Validation Summary:
+  Total checks: 1
+  All validations passed!
+</code></pre>
+<h3 id="example-3-combined-configuration">Example 3: Combined Configuration</h3>
+<p>Skip known unsupported types, warn on unexpected failures:</p>
+<pre><code class="language-yaml"># .linkml-reference-validator.yaml
+cache_dir: references_cache
+
+skip_prefixes:
+  - SRA
+  - MGNIFY
+  - BIOPROJECT
+
+unknown_prefix_severity: WARNING
+</code></pre>
+<p>This is useful when:
+- You know certain prefixes aren't supported yet (<code>skip_prefixes</code>)
+- You want to catch unexpected issues without blocking CI (<code>unknown_prefix_severity: WARNING</code>)</p>
+<h2 id="adding-support-for-new-reference-types">Adding Support for New Reference Types</h2>
+<p>Instead of skipping a reference type permanently, consider adding support for it:</p>
+<ol>
+<li><strong>YAML configuration</strong> (no code): See <a href="../add-reference-source/">Adding a Custom Reference Source</a></li>
+<li><strong>Python plugin</strong> (complex sources): See the same guide for the advanced approach</li>
+</ol>
+<p>For example, to add MGnify support via YAML:</p>
+<pre><code class="language-yaml"># .linkml-reference-validator-sources.yaml
+sources:
+  MGNIFY:
+    url_template: &quot;https://www.ebi.ac.uk/metagenomics/api/v1/studies/{id}&quot;
+    fields:
+      title: &quot;$.data.attributes.study-name&quot;
+      content: &quot;$.data.attributes.study-abstract&quot;
+</code></pre>
+<h2 id="relationship-to-custom-sources">Relationship to Custom Sources</h2>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>PMID</th>
-<th>DOI</th>
-<th>URL</th>
-<th>file</th>
+<th>Approach</th>
+<th>Use Case</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Source</td>
-<td>PubMed</td>
-<td>Crossref</td>
-<td>Any web page</td>
-<td>Local filesystem</td>
+<td><code>skip_prefixes</code></td>
+<td>Temporarily ignore references you can't validate yet</td>
 </tr>
 <tr>
-<td>Content Type</td>
-<td>Abstract + Full Text</td>
-<td>Abstract</td>
-<td>Raw HTML/text</td>
-<td>Raw file content</td>
+<td><code>unknown_prefix_severity: WARNING</code></td>
+<td>Continue validation despite fetch failures</td>
 </tr>
 <tr>
-<td>Metadata</td>
-<td>Rich (authors, journal, etc.)</td>
-<td>Rich</td>
-<td>Minimal (title only)</td>
-<td>Minimal (title from heading)</td>
+<td>Custom source (YAML)</td>
+<td>Add support for a new API-backed reference type</td>
 </tr>
 <tr>
-<td>Stability</td>
-<td>High</td>
-<td>High</td>
-<td>Variable</td>
-<td>High (local control)</td>
-</tr>
-<tr>
-<td>Access</td>
-<td>Free for abstracts</td>
-<td>Varies</td>
-<td>Varies</td>
-<td>Always available</td>
-</tr>
-<tr>
-<td>Caching</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
-<td>Yes</td>
+<td>Custom source (Python)</td>
+<td>Add support for complex reference types</td>
 </tr>
 </tbody>
 </table>
 <h2 id="see-also">See Also</h2>
 <ul>
-<li><a href="../use-local-files-and-urls/">Using Local Files and URLs</a> - Quick reference for file and URL sources</li>
-<li><a href="../validate-dois/">Validating DOIs</a> - For journal articles with DOIs</li>
-<li><a href="../validate-obo-files/">Validating OBO Files</a> - For ontology-specific validation</li>
-<li><a href="../../concepts/how-it-works/">How It Works</a> - Core validation concepts</li>
+<li><a href="../add-reference-source/">Adding a Custom Reference Source</a> - Define new reference types</li>
 <li><a href="../../reference/cli/">CLI Reference</a> - Command-line options</li>
+<li><a href="../validate-titles/">Validating Titles</a> - Title validation with <code>dcterms:title</code></li>
 </ul>
 
 

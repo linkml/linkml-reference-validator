@@ -65,6 +65,26 @@
          <lastmod>2026-01-14</lastmod>
     </url>
     <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/notebooks/01_getting_started/</loc>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/notebooks/02_advanced_usage/</loc>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/notebooks/03_python_api/</loc>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/notebooks/04_obo_validation/</loc>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/notebooks/05_geo_validation/</loc>
+         <lastmod>2026-01-14</lastmod>
+    </url>
+    <url>
          <loc>https://linkml.github.io/linkml-reference-validator/reference/cli/</loc>
          <lastmod>2026-01-14</lastmod>
     </url>

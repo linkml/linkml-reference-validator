@@ -272,3 +272,48 @@ def test_greek_letter_distinction(validator):
     # Both should be present (not collapsed to just "catenin")
     match_both = validator.find_text_in_reference("alpha-catenin and beta-catenin", ref)
     assert match_both.found is True
+
+
+def test_validate_abstract_only_context_in_failure_message(validator, mocker):
+    """Test that failure message includes abstract-only context when applicable.
+
+    When validation fails and only abstract was available, the error message
+    should indicate this so users know the excerpt may exist in the full text.
+    """
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = ReferenceContent(
+        reference_id="PMID:123",
+        content="This is just the abstract text.",
+        content_type="abstract_only",
+    )
+
+    result = validator.validate(
+        "text from the full paper introduction",
+        "PMID:123",
+    )
+
+    assert result.is_valid is False
+    assert "only abstract available" in result.message
+    assert "full text may contain this excerpt" in result.message
+
+
+def test_validate_full_text_no_abstract_context_in_failure_message(validator, mocker):
+    """Test that failure message does NOT include abstract-only context for full text.
+
+    When validation fails but full text was available, the message should
+    not mention abstract-only limitation.
+    """
+    mock_fetch = mocker.patch.object(validator.fetcher, "fetch")
+    mock_fetch.return_value = ReferenceContent(
+        reference_id="PMID:123",
+        content="This is the full text of the paper including introduction and methods.",
+        content_type="full_text_xml",
+    )
+
+    result = validator.validate(
+        "text that does not exist anywhere",
+        "PMID:123",
+    )
+
+    assert result.is_valid is False
+    assert "only abstract available" not in result.message

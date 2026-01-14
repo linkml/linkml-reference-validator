@@ -304,6 +304,96 @@ repair:
     - "PMID:NOABSTRACT001"
 ```
 
+### Validation Failed with "only abstract available"
+
+When you see an error like:
+
+```
+Text part not found as substring: 'excerpt from methods section'
+(note: only abstract available for PMID:16888623, full text may contain this excerpt)
+```
+
+This means the excerpt may exist in the paper's full text, but only the abstract was accessible. Here's what to do:
+
+#### Option 1: Find the PMC Version
+
+Search [PubMed Central](https://www.ncbi.nlm.nih.gov/pmc/) for the article. If it has a PMC ID:
+
+```yaml
+# Instead of
+reference: PMID:16888623
+
+# Use
+reference: PMC:3458566
+```
+
+The validator will fetch full text from PMC automatically.
+
+#### Option 2: Use a Local File
+
+If you have access to the full text (PDF, HTML, or text):
+
+1. Save the text content as markdown:
+   ```bash
+   # Extract text from PDF (if you have one)
+   # Or copy/paste relevant sections
+   echo "# Article Title
+
+   Full text content here..." > papers/pmid_16888623.md
+   ```
+
+2. Reference the local file:
+   ```yaml
+   reference: file:./papers/pmid_16888623.md
+   ```
+
+See [Using Local Files and URLs](use-local-files-and-urls.md) for details.
+
+#### Option 3: Use a URL
+
+If the full text is freely available online:
+
+```yaml
+reference: url:https://example.com/full-text-article
+```
+
+#### Option 4: Remove or Revise the Excerpt
+
+If the excerpt can't be verified:
+
+- **Remove it** if it's not essential
+- **Shorten it** to text that appears in the abstract
+- **Replace it** with a verifiable quote from the abstract
+
+#### Option 5: Accept the Limitation
+
+Document that certain excerpts couldn't be verified:
+
+```yaml
+repair:
+  skip_references:
+    - "PMID:16888623"  # Full text not available, abstract verified manually
+```
+
+### Understanding Content Types
+
+The `content_type` field in cached references tells you what content was retrieved:
+
+| Value | What You Have | Validation Reliability |
+|-------|---------------|----------------------|
+| `full_text_xml` | Full PMC article | High - all sections available |
+| `full_text_html` | Full PMC article (HTML) | High - all sections available |
+| `abstract_only` | Abstract only | Limited - only abstract searchable |
+| `summary` | Database summary | Limited - brief description only |
+| `unavailable` | Nothing | None - validation will fail |
+
+Check content type with:
+```bash
+linkml-reference-validator cache show PMID:16888623
+```
+
+See [Content Types](../concepts/content-types.md) for full documentation.
+
 ## Python API
 
 For programmatic access:

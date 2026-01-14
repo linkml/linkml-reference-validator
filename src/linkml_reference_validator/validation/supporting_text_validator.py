@@ -189,6 +189,12 @@ class SupportingTextValidator:
                 message = match.error_message
             else:
                 message = f"Supporting text not found in reference {reference_id}"
+            # Add context when validation fails and only abstract was available
+            if not match.found and reference.content_type == "abstract_only":
+                message += (
+                    f" (note: only abstract available for {reference_id}, "
+                    "full text may contain this excerpt)"
+                )
         else:
             message = f"Supporting text validated successfully in {reference_id}"
             if expected_title:

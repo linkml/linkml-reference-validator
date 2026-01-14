@@ -270,7 +270,7 @@ Both parts must exist in the reference.
 
 ### Known Limitations
 
-- **Abstracts only for most PMIDs**: Full text requires PMC
+- **Abstracts only for most PMIDs**: Full text requires PMC. When validation fails and only an abstract was available, the error message will note this - the excerpt may exist in the full text.
 - **Network required**: For initial reference fetch
 - **English-focused**: Normalization optimized for English text
 - **No OCR**: Can't extract text from images/PDFs in papers

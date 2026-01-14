@@ -4,6 +4,7 @@ import typer
 
 # Import subcommand modules
 from .cache import cache_app, reference_command
+from .lookup import lookup_command
 from .repair import repair_app
 from .validate import data_command, text_command, validate_app
 
@@ -32,6 +33,9 @@ app.add_typer(
     name="cache",
     help="Manage reference cache",
 )
+
+# Register top-level lookup command
+app.command(name="lookup")(lookup_command)
 
 # BACKWARD COMPATIBILITY: Register old commands as hidden aliases
 # This allows existing scripts to continue working

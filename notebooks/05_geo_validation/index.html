@@ -1625,7 +1625,7 @@ The GEOSource automatically converts accessions to numeric UIDs:</p>
 <span class="n">search_result</span> <span class="o">=</span> <span class="n">Entrez</span><span class="o">.</span><span class="n">read</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
 <span class="n">handle</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Accession: GSE67472"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Accession: GSE67472"</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"UID(s) found: </span><span class="si">{</span><span class="n">search_result</span><span class="p">[</span><span class="s1">'IdList'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 
 <span class="k">if</span> <span class="n">search_result</span><span class="p">[</span><span class="s1">'IdList'</span><span class="p">]:</span>
@@ -1651,7 +1651,7 @@ handle = Entrez.esearch(db="gds", term="GSE67472[Accession]")
 search_result = Entrez.read(handle)
 handle.close()
 
-print(f"Accession: GSE67472")
+print("Accession: GSE67472")
 print(f"UID(s) found: {search_result['IdList']}")
 
 if search_result['IdList']:

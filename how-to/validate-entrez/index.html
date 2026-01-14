@@ -613,6 +613,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#validating-with-title-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validating with Title Check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bioproject" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -688,6 +699,78 @@
     <span class="md-ellipsis">
       
         Content Availability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-failure-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failure Scenarios
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Failure Scenarios">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#excerpt-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excerpt Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#title-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How GEO Accession-to-UID Conversion Works
       
     </span>
   </a>
@@ -1225,6 +1308,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#validating-with-title-check" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validating with Title Check
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#bioproject" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1307,6 +1401,78 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#validation-failure-scenarios" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Failure Scenarios
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Failure Scenarios">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#excerpt-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Excerpt Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#title-mismatch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title Mismatch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Not Found
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration File
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How GEO Accession-to-UID Conversion Works
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1340,11 +1506,11 @@
 <h1 id="validating-entrez-accessions">Validating Entrez Accessions</h1>
 <p>This guide shows how to validate supporting text against NCBI Entrez records for GEO, BioProject, and BioSample.</p>
 <h2 id="overview">Overview</h2>
-<p>These sources use the NCBI Entrez E-utilities <code>esummary</code> endpoint:</p>
+<p>These sources use the NCBI Entrez E-utilities:</p>
 <ul>
-<li><strong>GEO</strong> (GSE/GDS): summaries from the <code>gds</code> database</li>
-<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): summaries from the <code>bioproject</code> database</li>
-<li><strong>BioSample</strong> (SAMN/SAME/SAMD): summaries from the <code>biosample</code> database</li>
+<li><strong>GEO</strong> (GSE/GDS): Uses <code>esearch</code> to convert accessions to UIDs, then <code>esummary</code> from the <code>gds</code> database</li>
+<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): Uses <code>esummary</code> from the <code>bioproject</code> database</li>
+<li><strong>BioSample</strong> (SAMN/SAME/SAMD): Uses <code>esummary</code> from the <code>biosample</code> database</li>
 </ul>
 <p>The validator uses the returned summary/description fields as the content for matching.</p>
 <h2 id="basic-usage">Basic Usage</h2>
@@ -1353,6 +1519,15 @@
   &quot;RNA-seq analysis of cardiac tissue&quot; \
   GEO:GSE12345
 </code></pre>
+<h3 id="validating-with-title-check">Validating with Title Check</h3>
+<p>You can also validate that the reference title matches your expected title:</p>
+<pre><code class="language-bash"># This will validate both the excerpt AND the title
+linkml-reference-validator validate text \
+  &quot;Airway epithelial brushings&quot; \
+  GEO:GSE67472 \
+  --title &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
+</code></pre>
+<p>If the title doesn't match, validation will fail with a "title mismatch" error.</p>
 <h3 id="bioproject">BioProject</h3>
 <pre><code class="language-bash">linkml-reference-validator validate text \
   &quot;Whole genome sequencing project for strain X&quot; \
@@ -1410,9 +1585,84 @@ config = ReferenceValidationConfig(
 <h2 id="content-availability">Content Availability</h2>
 <p>Entrez summaries vary by record. If a summary field is missing, the validator will return
 <code>content_type: unavailable</code> and matching may fail.</p>
+<h2 id="validation-failure-scenarios">Validation Failure Scenarios</h2>
+<p>The validator catches several types of errors:</p>
+<h3 id="excerpt-not-found">Excerpt Not Found</h3>
+<p>When the quoted text is not in the reference content:</p>
+<pre><code class="language-bash">$ linkml-reference-validator validate text \
+    &quot;text that is not in the dataset&quot; \
+    GEO:GSE67472
+
+Result:
+  Valid: False
+  Message: Text part not found as substring: 'text that is not in the dataset'
+</code></pre>
+<h3 id="title-mismatch">Title Mismatch</h3>
+<p>When the expected title doesn't match the actual reference title:</p>
+<pre><code class="language-bash">$ linkml-reference-validator validate text \
+    &quot;Airway epithelial brushings&quot; \
+    GEO:GSE67472 \
+    --title &quot;Wrong Title Here&quot;
+
+Result:
+  Valid: False
+  Message: Title mismatch for GEO:GSE67472
+    Expected: &quot;Wrong Title Here&quot;
+    Actual: &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
+</code></pre>
+<h3 id="reference-not-found">Reference Not Found</h3>
+<p>When the accession doesn't exist:</p>
+<pre><code class="language-bash">$ linkml-reference-validator validate text \
+    &quot;Some text&quot; \
+    GEO:GSE99999999999
+
+Result:
+  Valid: False
+  Message: Could not fetch reference GEO:GSE99999999999
+</code></pre>
+<h2 id="configuration-file">Configuration File</h2>
+<p>Create <code>.linkml-reference-validator.yaml</code> in your project root for persistent configuration:</p>
+<pre><code class="language-yaml">validation:
+  # NCBI requires a valid email for Entrez API usage
+  email: you@example.org
+
+  # Rate limiting (seconds between API calls)
+  rate_limit_delay: 0.5
+
+  # Cache directory for offline use
+  cache_dir: references_cache
+
+  # Map alternate prefixes to canonical forms
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+    NCBIBioProject: BIOPROJECT
+    NCBIBioSample: BIOSAMPLE
+</code></pre>
+<p>Pass the config to CLI commands:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Some text&quot; \
+  GEO:GSE67472 \
+  --config .linkml-reference-validator.yaml
+</code></pre>
+<h2 id="how-geo-accession-to-uid-conversion-works">How GEO Accession-to-UID Conversion Works</h2>
+<p>The GDS Entrez database requires numeric UIDs, not accession numbers like GSE67472.
+The GEOSource automatically handles this conversion:</p>
+<ol>
+<li>
+<p><strong>esearch</strong>: Searches for the accession and returns the numeric UID
+   <code>esearch(db="gds", term="GSE67472[Accession]") → "200067472"</code></p>
+</li>
+<li>
+<p><strong>esummary</strong>: Uses the UID to fetch the dataset metadata
+   <code>esummary(db="gds", id="200067472") → {title, summary, ...}</code></p>
+</li>
+</ol>
+<p>This conversion happens transparently - you just use the GSE/GDS accession.</p>
 <h2 id="see-also">See Also</h2>
 <ul>
 <li><a href="../add-reference-source/">Adding a New Reference Source</a></li>
+<li><a href="../validate-titles/">Validating Titles</a></li>
 <li><a href="../../quickstart/">Quickstart</a></li>
 <li><a href="../../reference/cli/">CLI Reference</a></li>
 </ul>

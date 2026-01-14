@@ -24,8 +24,10 @@ plugins:
 
 nav:
   - Home: index.md
+  - Setup Guide: setup-guide.md
   - Quickstart: quickstart.md
   - Tutorials:
+      - Complete Workflow: tutorials/complete-workflow.md
       - Getting Started (CLI): notebooks/01_getting_started.ipynb
       - Advanced Usage (CLI): notebooks/02_advanced_usage.ipynb
       - Validating OBO Files (CLI): notebooks/04_obo_validation.ipynb
@@ -47,6 +49,7 @@ nav:
       - Editorial Conventions: concepts/editorial-conventions.md
   - Reference:
       - CLI Reference: reference/cli.md
+  - Troubleshooting: troubleshooting.md
   - Roadmap: todo.md
 
 exclude_docs: |

@@ -185,6 +185,9 @@ class EntrezSummarySource(ReferenceSource):
 class GEOSource(EntrezSummarySource):
     """Fetch GEO series and dataset summaries from Entrez.
 
+    The GDS Entrez database requires numeric UIDs, not accession numbers.
+    This source converts GSE/GDS accessions to UIDs via esearch before fetching.
+
     Examples:
         >>> GEOSource.prefix()
         'GEO'
@@ -196,7 +199,94 @@ class GEOSource(EntrezSummarySource):
     ENTREZ_DB = "gds"
     TITLE_FIELDS = ("title", "description", "summary")
     CONTENT_FIELDS = ("summary", "description", "title")
-    ID_PATTERNS = (r"^GSE\\d+$", r"^GDS\\d+$")
+    ID_PATTERNS = (r"^GSE\d+$", r"^GDS\d+$")
+
+    def fetch(
+        self, identifier: str, config: ReferenceValidationConfig
+    ) -> Optional[ReferenceContent]:
+        """Fetch GEO dataset metadata, converting accession to UID first.
+
+        The GDS Entrez database does not accept accession numbers (e.g. GSE67472)
+        directly in esummary - it requires numeric UIDs (e.g. 200067472).
+        This method uses esearch to convert accessions to UIDs first.
+
+        Args:
+            identifier: GEO accession (GSE or GDS number)
+            config: Configuration including rate limiting and email
+
+        Returns:
+            ReferenceContent if successful, None otherwise
+        """
+        Entrez.email = config.email  # type: ignore
+        time.sleep(config.rate_limit_delay)
+
+        # Convert accession to UID via esearch
+        uid = self._accession_to_uid(identifier, config)
+        if not uid:
+            logger.warning(f"Could not find GDS UID for {identifier}")
+            return None
+
+        # Now fetch summary with numeric UID
+        handle = None
+        try:
+            handle = Entrez.esummary(db=self.ENTREZ_DB, id=uid)
+            records = Entrez.read(handle)
+        except Exception as exc:
+            logger.warning(
+                f"Failed to fetch Entrez summary for {self.prefix()}:{identifier}: {exc}"
+            )
+            return None
+        finally:
+            if handle is not None:
+                handle.close()
+
+        record = self._extract_record(records)
+        if not record:
+            logger.warning(f"No Entrez summary found for {self.prefix()}:{identifier}")
+            return None
+
+        title = self._get_first_field_value(record, self.TITLE_FIELDS)
+        content = self._get_first_field_value(record, self.CONTENT_FIELDS)
+        content_type = "summary" if content else "unavailable"
+
+        return ReferenceContent(
+            reference_id=f"{self.prefix()}:{identifier}",
+            title=title,
+            content=content,
+            content_type=content_type,
+            metadata={"entrez_db": self.ENTREZ_DB, "entrez_uid": uid},
+        )
+
+    def _accession_to_uid(
+        self, accession: str, config: ReferenceValidationConfig
+    ) -> Optional[str]:
+        """Convert a GEO accession (GSE/GDS) to its Entrez UID.
+
+        Examples:
+            >>> source = GEOSource()
+            >>> # This would require network access to actually run:
+            >>> # source._accession_to_uid("GSE67472", config)  # Returns "200067472"
+
+        Args:
+            accession: GEO accession like GSE67472 or GDS1234
+            config: Configuration for rate limiting
+
+        Returns:
+            Numeric UID string if found, None otherwise
+        """
+        time.sleep(config.rate_limit_delay)
+        handle = None
+        try:
+            handle = Entrez.esearch(db=self.ENTREZ_DB, term=f"{accession}[Accession]")
+            result = Entrez.read(handle)
+            if result.get("IdList"):
+                return result["IdList"][0]
+        except Exception as exc:
+            logger.warning(f"esearch failed for {accession}: {exc}")
+        finally:
+            if handle is not None:
+                handle.close()
+        return None
 
 
 @ReferenceSourceRegistry.register

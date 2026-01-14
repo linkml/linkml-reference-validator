@@ -29,6 +29,7 @@ nav:
       - Getting Started (CLI): notebooks/01_getting_started.ipynb
       - Advanced Usage (CLI): notebooks/02_advanced_usage.ipynb
       - Validating OBO Files (CLI): notebooks/04_obo_validation.ipynb
+      - Validating GEO Datasets: notebooks/05_geo_validation.ipynb
       - Python API: notebooks/03_python_api.ipynb
   - How-To Guides:
       - Validating OBO Files: how-to/validate-obo-files.md

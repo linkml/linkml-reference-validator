@@ -20,7 +20,8 @@ from linkml_reference_validator.validation.supporting_text_validator import (
 )
 
 _LINKML_AVAILABLE = (
-    find_spec("linkml") is not None and find_spec("linkml.validator") is not None
+    find_spec("linkml") is not None and find_spec(
+        "linkml.validator") is not None
 )
 
 logger = logging.getLogger(__name__)
@@ -135,7 +136,8 @@ if _LINKML_AVAILABLE:
                 return
 
             target_class = (
-                context.target_class if hasattr(context, "target_class") else None
+                context.target_class if hasattr(
+                    context, "target_class") else None
             )
             if not target_class:
                 logger.warning("No target class specified")
@@ -217,7 +219,8 @@ if _LINKML_AVAILABLE:
                     for ref_field in reference_fields:
                         ref_value = instance.get(ref_field)
                         if ref_value:
-                            reference_id = self._extract_reference_id(ref_value)
+                            reference_id = self._extract_reference_id(
+                                ref_value)
                             if reference_id:
                                 yield from self._validate_title(
                                     first_title_value,
@@ -228,7 +231,6 @@ if _LINKML_AVAILABLE:
                                 )
                             # Break after processing first reference field with a value
                             break
-
 
             for slot_name, value in instance.items():
                 if value is None:
@@ -255,6 +257,32 @@ if _LINKML_AVAILABLE:
                                     item, range_class, item_path
                                 )
 
+        def _convert_severity(self, severity: Any) -> Severity:
+            """Translate internal severities to LinkML Severity enum.
+
+            Handles ValidationSeverity (uses WARNING) and falls back to ERROR
+            for unknown values to avoid AttributeErrors when LinkML expects
+            WARN instead of WARNING.
+            """
+            if isinstance(severity, Severity):
+                return severity
+
+            sev_value = getattr(severity, "value", severity)
+            if hasattr(sev_value, "value"):
+                sev_value = sev_value.value
+
+            sev_str = str(sev_value).upper() if sev_value is not None else ""
+            if sev_str == "ERROR":
+                return Severity.ERROR
+            if sev_str in {"WARN", "WARNING"}:
+                return Severity.WARN
+            if sev_str == "INFO":
+                return Severity.INFO
+
+            logger.warning(
+                "Unknown severity %s, defaulting to ERROR", severity)
+            return Severity.ERROR
+
         def _get_converter(self) -> Optional[Converter]:
             """Get a curies Converter from the schema for CURIE expansion.
 
@@ -278,7 +306,8 @@ if _LINKML_AVAILABLE:
                 return Converter.from_prefix_map(prefix_map)
             return None
 
-        def _find_reference_fields(self, class_name: str) -> list[str]:  # type: ignore
+        # type: ignore
+        def _find_reference_fields(self, class_name: str) -> list[str]:
             """Find slots that represent authoritative references.
 
             Supports canonical URIs (dcterms:references, dcterms:source) and
@@ -318,7 +347,8 @@ if _LINKML_AVAILABLE:
 
             return fields
 
-        def _find_excerpt_fields(self, class_name: str) -> list[str]:  # type: ignore
+        # type: ignore
+        def _find_excerpt_fields(self, class_name: str) -> list[str]:
             """Find slots that represent excerpt/supporting text fields.
 
             Supports canonical URI (oa:exact) and legacy URI (linkml:excerpt)
@@ -358,7 +388,8 @@ if _LINKML_AVAILABLE:
 
             return fields
 
-        def _find_title_fields(self, class_name: str) -> list[str]:  # type: ignore
+        # type: ignore
+        def _find_title_fields(self, class_name: str) -> list[str]:
             """Find slots that represent title fields.
 
             Supports dcterms:title via implements or slot_uri. Custom prefixes
@@ -468,13 +499,13 @@ if _LINKML_AVAILABLE:
             )
 
             if not result.is_valid:
+                severity = self._convert_severity(result.severity)
                 yield LinkMLValidationResult(
                     type="reference_validation",
-                    severity=Severity.ERROR
-                    if result.severity.value == "ERROR"
-                    else Severity.WARNING,
+                    severity=severity,
                     message=result.message or "Supporting text validation failed",
-                    instance={"supporting_text": excerpt, "reference_id": reference_id},
+                    instance={"supporting_text": excerpt,
+                              "reference_id": reference_id},
                     instantiates=path,
                 )
 
@@ -501,11 +532,10 @@ if _LINKML_AVAILABLE:
             )
 
             if not result.is_valid:
+                severity = self._convert_severity(result.severity)
                 yield LinkMLValidationResult(
                     type="reference_validation",
-                    severity=Severity.ERROR
-                    if result.severity.value == "ERROR"
-                    else Severity.WARNING,
+                    severity=severity,
                     message=result.message or "Title validation failed",
                     instance={"title": title, "reference_id": reference_id},
                     instantiates=path,

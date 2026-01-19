@@ -507,6 +507,8 @@ if _LINKML_AVAILABLE:
                     instance={"supporting_text": excerpt,
                               "reference_id": reference_id},
                     instantiates=path,
+                    context=[path] if path else [],
+                    source="ReferenceValidationPlugin",
                 )
 
         def _validate_title(
@@ -539,6 +541,8 @@ if _LINKML_AVAILABLE:
                     message=result.message or "Title validation failed",
                     instance={"title": title, "reference_id": reference_id},
                     instantiates=path,
+                    context=[path] if path else [],
+                    source="ReferenceValidationPlugin",
                 )
 
         def post_process(self, context: ValidationContext) -> None:

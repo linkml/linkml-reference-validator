@@ -1,7 +1,7 @@
 """Integration tests for the validation plugin."""
 
 import pytest
-from linkml.validator.report import Severity
+from linkml.validator.report import Severity  # type: ignore[import-untyped]
 from linkml_reference_validator.models import (
     ReferenceValidationConfig,
     ValidationSeverity,

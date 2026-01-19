@@ -1,7 +1,11 @@
 """Integration tests for the validation plugin."""
 
 import pytest
-from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml.validator.report import Severity
+from linkml_reference_validator.models import (
+    ReferenceValidationConfig,
+    ValidationSeverity,
+)
 from linkml_reference_validator.plugins.reference_validation_plugin import (
     ReferenceValidationPlugin,
 )
@@ -45,7 +49,8 @@ def test_extract_reference_id_string(plugin):
 
 def test_extract_reference_id_dict(plugin):
     """Test extracting reference ID from dict."""
-    ref_id = plugin._extract_reference_id({"id": "PMID:12345678", "title": "Test"})
+    ref_id = plugin._extract_reference_id(
+        {"id": "PMID:12345678", "title": "Test"})
     assert ref_id == "PMID:12345678"
 
     ref_id = plugin._extract_reference_id({"reference_id": "PMID:12345678"})
@@ -87,7 +92,8 @@ def test_find_excerpt_fields(plugin, mocker):
 
     plugin.schema_view = mocker.MagicMock()
     plugin.schema_view.get_class.return_value = mock_class_def
-    plugin.schema_view.class_slots.return_value = ["supporting_text", "other_field"]
+    plugin.schema_view.class_slots.return_value = [
+        "supporting_text", "other_field"]
     plugin.schema_view.induced_slot.side_effect = lambda name, cls: (
         mock_slot if name == "supporting_text" else None
     )
@@ -117,3 +123,47 @@ def test_validate_excerpt(plugin, mocker):
 
     assert len(results) == 1
     assert results[0].type == "reference_validation"
+
+
+def test_validate_excerpt_warning_maps_to_warn(plugin, mocker):
+    """Ensure WARNING severities map to LinkML WARN enum without error."""
+    mock_validate = mocker.patch.object(plugin.validator, "validate")
+    mock_result = mocker.MagicMock()
+    mock_result.is_valid = False
+    mock_result.message = "Could not fetch reference"
+    mock_result.severity = ValidationSeverity.WARNING
+    mock_validate.return_value = mock_result
+
+    results = list(
+        plugin._validate_excerpt(
+            "test quote",
+            "PMID:12345678",
+            None,  # expected_title
+            "evidence.supporting_text",
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0].severity == Severity.WARN
+
+
+def test_validate_title_warning_maps_to_warn(plugin, mocker):
+    """Ensure WARNING severities from title validation map correctly."""
+    mock_validate_title = mocker.patch.object(
+        plugin.validator, "validate_title")
+    mock_result = mocker.MagicMock()
+    mock_result.is_valid = False
+    mock_result.message = "Title mismatch"
+    mock_result.severity = ValidationSeverity.WARNING
+    mock_validate_title.return_value = mock_result
+
+    results = list(
+        plugin._validate_title(
+            "Some Title",
+            "PMID:12345678",
+            "evidence.title",
+        )
+    )
+
+    assert len(results) == 1
+    assert results[0].severity == Severity.WARN

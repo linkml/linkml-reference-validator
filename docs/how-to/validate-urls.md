@@ -21,7 +21,8 @@ When a reference field contains a URL, the validator:
 
 ## URL Format
 
-Use the `url:` prefix to specify URL references:
+Use the `url:` prefix to specify URL references (the prefix is optional for bare
+HTTP/HTTPS URLs and will be normalized to `url:` internally):
 
 ```yaml
 my_field:
@@ -82,7 +83,10 @@ The fetcher stores:
 - **Content**: The raw page content as received
 - **Content type**: Marked as `url` to distinguish from other reference types
 
-Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.
+Note: The validator stores raw page content without HTML-to-text conversion.
+HTML tags remain in the cached file, and tag names can surface during
+normalization. If validation fails because tags interrupt the text, consider
+extracting plain text and validating against a local `file:` reference instead.
 
 ### 3. Caching
 
@@ -171,7 +175,7 @@ After adding a URL reference, verify the extracted content:
 
 ```bash
 # Check what was extracted
-cat references_cache/url_https___example.com_page.md
+linkml-reference-validator cache lookup url:https://example.com/page --content
 ```
 
 Ensure the cached content contains the text you're referencing.
@@ -179,7 +183,7 @@ Ensure the cached content contains the text you're referencing.
 ### 3. Cache Management
 
 - Commit cache files to version control for reproducibility
-- Use `--force-refresh` to update cached content when pages change
+- Use `linkml-reference-validator cache reference url:https://... --force` to update cached content when pages change
 - Periodically review cached URLs to ensure they're still accessible
 
 ### 4. Mix Reference Types
@@ -217,13 +221,15 @@ If validation fails for URL references:
 
 ### Force Refresh
 
-To re-fetch content for a URL that may have changed:
+To re-fetch content for a URL that may have changed, refresh the cache before
+validating:
 
 ```bash
+linkml-reference-validator cache reference url:https://example.com/page --force
+
 linkml-reference-validator validate text \
   "Updated content" \
-  url:https://example.com/page \
-  --force-refresh
+  url:https://example.com/page
 ```
 
 ## Comparison with Other Reference Types

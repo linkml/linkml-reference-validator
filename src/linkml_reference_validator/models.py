@@ -410,6 +410,22 @@ class ReferenceValidationConfig(BaseModel):
             "Does not apply to prefixes in skip_prefixes list."
         ),
     )
+    download_supplementary_files: bool = Field(
+        default=False,
+        description=(
+            "If True, download supplementary files from repositories like Zenodo. "
+            "By default, only metadata is captured without downloading."
+        ),
+    )
+    max_supplementary_file_size: int = Field(
+        default=50 * 1024 * 1024,  # 50MB
+        ge=0,
+        description=(
+            "Maximum size in bytes for downloading individual supplementary files. "
+            "Files larger than this limit will have metadata captured but not downloaded. "
+            "Default is 50MB (50 * 1024 * 1024 bytes)."
+        ),
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.
@@ -469,6 +485,36 @@ class JSONAPISourceConfig:
 
 
 @dataclass
+class SupplementaryFile:
+    """Metadata for a supplementary file associated with a reference.
+
+    Captures file information from repository APIs (Zenodo, Figshare, etc.)
+    without necessarily downloading the file.
+
+    Examples:
+        >>> sf = SupplementaryFile(
+        ...     filename="Table_S1.xlsx",
+        ...     download_url="https://zenodo.org/api/records/123/files/Table_S1.xlsx/content",
+        ...     content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ...     size_bytes=12345,
+        ...     checksum="md5:88c66d378d886fea4969949c5877802f"
+        ... )
+        >>> sf.filename
+        'Table_S1.xlsx'
+        >>> sf.size_bytes
+        12345
+    """
+
+    filename: str
+    download_url: Optional[str] = None
+    content_type: Optional[str] = None  # MIME type: "application/pdf", "text/csv"
+    size_bytes: Optional[int] = None
+    checksum: Optional[str] = None  # e.g., "md5:88c66d378d886fea4969949c5877802f"
+    description: Optional[str] = None
+    local_path: Optional[str] = None  # Relative path if downloaded
+
+
+@dataclass
 class ReferenceContent:
     """Content retrieved from a reference.
 
@@ -481,6 +527,15 @@ class ReferenceContent:
         ... )
         >>> ref.reference_id
         'PMID:12345678'
+        >>> ref = ReferenceContent(
+        ...     reference_id="DOI:10.5281/zenodo.123",
+        ...     title="Dataset",
+        ...     supplementary_files=[
+        ...         SupplementaryFile(filename="data.csv", size_bytes=1000)
+        ...     ]
+        ... )
+        >>> len(ref.supplementary_files)
+        1
     """
 
     reference_id: str
@@ -491,6 +546,8 @@ class ReferenceContent:
     journal: Optional[str] = None
     year: Optional[str] = None
     doi: Optional[str] = None
+    keywords: Optional[list[str]] = None  # MeSH terms, subjects, tags
+    supplementary_files: Optional[list[SupplementaryFile]] = None
     metadata: dict = field(default_factory=dict)
 
 

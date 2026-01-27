@@ -4,7 +4,12 @@ This guide shows how to validate supporting text against publications using Digi
 
 ## Overview
 
-DOIs are persistent identifiers for digital objects, commonly used for journal articles. The validator fetches publication metadata from the [Crossref API](https://www.crossref.org/documentation/retrieve-metadata/rest-api/) when you provide a DOI reference.
+DOIs are persistent identifiers for digital objects, commonly used for journal articles and data repositories. The validator fetches publication metadata from:
+
+1. **Crossref API** - Primary source for journal articles
+2. **DataCite API** - Fallback for repository DOIs (Zenodo, Figshare, Dryad, OSTI)
+
+This dual-source approach ensures broad coverage across both scholarly publications and data repositories.
 
 ## Basic Usage
 
@@ -37,6 +42,79 @@ DOI:10.1016/j.cell.2023.01.001
 ```
 
 The DOI itself follows the standard format: `10.prefix/suffix`
+
+## Supported Repository DOIs
+
+The validator supports DOIs from data repositories via the DataCite API:
+
+| Repository | DOI Prefix | Example |
+|------------|------------|---------|
+| Zenodo | `10.5281/zenodo.*` | `DOI:10.5281/zenodo.7961621` |
+| Figshare | `10.6084/m9.figshare.*` | `DOI:10.6084/m9.figshare.123456` |
+| Dryad | `10.5061/dryad.*` | `DOI:10.5061/dryad.abc123` |
+| OSTI | `10.2172/*` | `DOI:10.2172/1234567` |
+
+### Looking Up Repository DOIs
+
+```bash
+linkml-reference-validator lookup DOI:10.5281/zenodo.7961621
+```
+
+For Zenodo DOIs, the output includes supplementary file metadata:
+
+```
+Reference: DOI:10.5281/zenodo.7961621
+Title: Gene Ontology Curators AI Workshop
+Authors: Dickinson R, Carbon S, Mungall CJ
+...
+Content type: abstract_only
+
+--- Supplementary Files (3) ---
+  - Dickinson_Varenna2022.pdf (1,975,995 bytes)
+  - workshop_slides.pptx (2,345,678 bytes)
+  - data_analysis.xlsx (123,456 bytes)
+```
+
+### Downloading Supplementary Files
+
+By default, only metadata about supplementary files is captured. To download the actual files:
+
+```bash
+linkml-reference-validator lookup -D DOI:10.5281/zenodo.7961621
+```
+
+Downloaded files are stored in:
+```
+references_cache/
+  files/
+    DOI_10.5281_zenodo.7961621/
+      Dickinson_Varenna2022.pdf
+      workshop_slides.pptx
+      data_analysis.xlsx
+```
+
+### Publisher DOIs vs Repository DOIs
+
+**Important:** Supplementary file support only works for **repository DOIs** (Zenodo, Figshare, Dryad), not for publisher DOIs (Elsevier, Springer, Nature, etc.).
+
+| DOI Type | Example | Supplementary Files |
+|----------|---------|---------------------|
+| **Repository** (Zenodo) | `10.5281/zenodo.7961621` | ✅ File metadata + download |
+| **Repository** (Figshare) | `10.6084/m9.figshare.123456` | ✅ File metadata + download |
+| **Publisher** (Elsevier) | `10.1016/j.neuron.2011.05.021` | ❌ Not available |
+| **Publisher** (Nature) | `10.1038/nature12373` | ❌ Not available |
+
+**Why the difference?**
+
+- **Repository APIs** (Zenodo, Figshare) are designed for data sharing and provide open, documented file APIs
+- **Publisher APIs** (Elsevier, Springer) require paid institutional access or text-mining agreements
+- Even when articles are in PMC, supplementary files are often not available via the OA API
+
+**Workarounds for publisher supplementary files:**
+
+1. **Manual download**: Download supplementary files from the publisher website and use `file:` references
+2. **Data repository**: Check if the authors deposited data separately in Zenodo/Figshare/Dryad
+3. **PubMed Central**: For some OA articles, supplementary files may be available via PMC
 
 ## Pre-caching DOIs
 
@@ -115,20 +193,24 @@ linkml-reference-validator repair text \
 
 | Feature | PMID | DOI |
 |---------|------|-----|
-| Source | NCBI PubMed | Crossref |
-| Coverage | Biomedical literature | All scholarly content |
+| Source | NCBI PubMed | Crossref + DataCite |
+| Coverage | Biomedical literature | All scholarly content + data repos |
 | Full text | Via PMC when available | Metadata only |
-| Abstract | Usually available | Depends on publisher |
+| Abstract | Usually available | Depends on publisher/repo |
+| Keywords | MeSH terms | Subjects (if available) |
+| Supplementary files | No | Yes (Zenodo, etc.) |
 
 **Use PMID when:**
 - Working with biomedical/life science literature
 - Full text access is important
 - The article is indexed in PubMed
+- You need MeSH term keywords
 
 **Use DOI when:**
 - The article is not in PubMed
 - Working with non-biomedical journals
-- The DOI is more readily available
+- Working with data repositories (Zenodo, Figshare, Dryad)
+- You need supplementary file metadata
 
 ## Content Availability
 
@@ -151,12 +233,18 @@ This means Crossref returned metadata but no abstract. The DOI was fetched succe
 
 ### "Failed to fetch DOI"
 
-The DOI may be invalid or the Crossref API may be temporarily unavailable.
+The DOI may be invalid or both APIs (Crossref and DataCite) may have failed.
+
+**How DOI resolution works:**
+1. First, the validator tries Crossref API
+2. If Crossref returns 404, it falls back to DataCite API
+3. If both fail, the error is reported
 
 **Check:**
 1. Verify the DOI format (should be `10.prefix/suffix`)
 2. Test the DOI at https://doi.org/YOUR_DOI
-3. Try again later if Crossref is rate-limiting
+3. Try again later if APIs are rate-limiting
+4. For repository DOIs (Zenodo, etc.), ensure the record is public
 
 ### Rate Limiting
 

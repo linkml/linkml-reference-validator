@@ -11,7 +11,11 @@ from typing import Optional
 
 from ruamel.yaml import YAML  # type: ignore
 
-from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.models import (
+    ReferenceContent,
+    ReferenceValidationConfig,
+    SupplementaryFile,
+)
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
 
 logger = logging.getLogger(__name__)
@@ -131,11 +135,19 @@ class ReferenceFetcher:
             ('file', './test.md')
             >>> fetcher._parse_reference_id("url:https://example.com/page")
             ('url', 'https://example.com/page')
+            >>> fetcher._parse_reference_id("https://example.com/page")
+            ('url', 'https://example.com/page')
+            >>> fetcher._parse_reference_id("http://example.com")
+            ('url', 'http://example.com')
             >>> config = ReferenceValidationConfig(reference_prefix_map={"geo": "GEO"})
             >>> ReferenceFetcher(config)._parse_reference_id("geo:GSE12345")
             ('GEO', 'GSE12345')
         """
         stripped = reference_id.strip()
+
+        # Handle bare HTTP/HTTPS URLs (before the prefix:identifier parsing)
+        if stripped.lower().startswith(("http://", "https://")):
+            return "url", stripped
 
         # Standard prefix:identifier format
         match = re.match(r"^([A-Za-z_]+)[:\s]+(.+)$", stripped)
@@ -285,7 +297,27 @@ class ReferenceFetcher:
             lines.append(f"year: '{reference.year}'")
         if reference.doi:
             lines.append(f"doi: {reference.doi}")
+        if reference.keywords:
+            lines.append("keywords:")
+            for keyword in reference.keywords:
+                lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
+        if reference.supplementary_files:
+            lines.append("supplementary_files:")
+            for sf in reference.supplementary_files:
+                lines.append(f"  - filename: {self._quote_yaml_value(sf.filename)}")
+                if sf.download_url:
+                    lines.append(f"    download_url: {self._quote_yaml_value(sf.download_url)}")
+                if sf.content_type:
+                    lines.append(f"    content_type: {sf.content_type}")
+                if sf.size_bytes is not None:
+                    lines.append(f"    size_bytes: {sf.size_bytes}")
+                if sf.checksum:
+                    lines.append(f"    checksum: {sf.checksum}")
+                if sf.description:
+                    lines.append(f"    description: {self._quote_yaml_value(sf.description)}")
+                if sf.local_path:
+                    lines.append(f"    local_path: {self._quote_yaml_value(sf.local_path)}")
         lines.append("---")
         lines.append("")
 
@@ -370,6 +402,19 @@ class ReferenceFetcher:
         else:
             authors = None
 
+        keywords = frontmatter.get("keywords")
+        if keywords and isinstance(keywords, list):
+            keywords = keywords
+        elif keywords:
+            keywords = [keywords]
+        else:
+            keywords = None
+
+        # Parse supplementary files
+        supplementary_files = self._parse_supplementary_files(
+            frontmatter.get("supplementary_files")
+        )
+
         return ReferenceContent(
             reference_id=frontmatter.get("reference_id", reference_id),
             title=frontmatter.get("title"),
@@ -379,6 +424,8 @@ class ReferenceFetcher:
             journal=frontmatter.get("journal"),
             year=str(frontmatter.get("year")) if frontmatter.get("year") else None,
             doi=frontmatter.get("doi"),
+            keywords=keywords,
+            supplementary_files=supplementary_files,
         )
 
     def _extract_content_from_markdown(self, body: str) -> str:
@@ -407,6 +454,56 @@ class ReferenceFetcher:
             return "\n".join(content_lines)
 
         return body
+
+    def _parse_supplementary_files(
+        self, files_data: Optional[list]
+    ) -> Optional[list[SupplementaryFile]]:
+        """Parse supplementary files from YAML frontmatter data.
+
+        Args:
+            files_data: List of file dicts from YAML frontmatter
+
+        Returns:
+            List of SupplementaryFile objects, or None if no files
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> fetcher._parse_supplementary_files(None) is None
+            True
+            >>> fetcher._parse_supplementary_files([]) is None
+            True
+            >>> files = fetcher._parse_supplementary_files([
+            ...     {"filename": "test.pdf", "size_bytes": 1000}
+            ... ])
+            >>> len(files)
+            1
+            >>> files[0].filename
+            'test.pdf'
+        """
+        if not files_data:
+            return None
+
+        files = []
+        for f in files_data:
+            if not isinstance(f, dict):
+                continue
+            filename = f.get("filename")
+            if not filename:
+                continue
+            files.append(
+                SupplementaryFile(
+                    filename=filename,
+                    download_url=f.get("download_url"),
+                    content_type=f.get("content_type"),
+                    size_bytes=f.get("size_bytes"),
+                    checksum=f.get("checksum"),
+                    description=f.get("description"),
+                    local_path=f.get("local_path"),
+                )
+            )
+
+        return files if files else None
 
     def _load_legacy_format(
         self, content_text: str, reference_id: str

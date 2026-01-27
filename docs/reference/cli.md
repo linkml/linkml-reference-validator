@@ -14,9 +14,145 @@ linkml-reference-validator [OPTIONS] COMMAND [ARGS]...
 
 ### Commands
 
+- `lookup` - Look up reference metadata (quick lookups)
 - `validate` - Validate supporting text against references
 - `repair` - Repair supporting text validation errors
 - `cache` - Manage reference cache
+
+---
+
+## lookup
+
+Look up reference metadata and content. Useful for quick "what is this PMID?" lookups.
+
+### Usage
+
+```bash
+linkml-reference-validator lookup [OPTIONS] REFERENCE_ID [REFERENCE_ID...]
+```
+
+### Arguments
+
+- **REFERENCE_ID** (required) - One or more reference IDs (e.g., PMID:12345678, DOI:10.1234/example)
+
+### Options
+
+- `--format, -f [md|json|yaml|text]` - Output format (default: md)
+- `--no-cache` - Bypass disk cache and fetch fresh from source
+- `--download-files, -D` - Download supplementary files from repositories (e.g., Zenodo)
+- `--cache-dir PATH, -c PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
+- `--verbose, -v` - Verbose output with detailed logging
+- `--help` - Show help message
+
+### Examples
+
+**Basic lookup:**
+```bash
+linkml-reference-validator lookup PMID:16888623
+```
+
+**Multiple references:**
+```bash
+linkml-reference-validator lookup PMID:16888623 PMID:33505029
+```
+
+**JSON output:**
+```bash
+linkml-reference-validator lookup PMID:16888623 --format json
+```
+
+**YAML output:**
+```bash
+linkml-reference-validator lookup PMID:16888623 --format yaml
+```
+
+**Text output (human-readable):**
+```bash
+linkml-reference-validator lookup PMID:16888623 --format text
+```
+
+**Force fresh fetch (bypass cache):**
+```bash
+linkml-reference-validator lookup PMID:16888623 --no-cache
+```
+
+**Zenodo DOI with supplementary files:**
+```bash
+linkml-reference-validator lookup DOI:10.5281/zenodo.7961621
+```
+
+**Download supplementary files:**
+```bash
+linkml-reference-validator lookup -D DOI:10.5281/zenodo.7961621
+```
+
+### Output Format
+
+**Markdown (default):**
+```markdown
+---
+reference_id: PMID:16888623
+title: MUC1 oncoprotein blocks nuclear targeting...
+authors:
+- Raina D
+- Ahmad R
+journal: Cancer Research
+year: '2006'
+doi: 10.1158/0008-5472.CAN-06-0205
+keywords:
+- Adaptor Proteins, Signal Transducing/metabolism
+- Cell Line, Tumor
+content_type: abstract_only
+---
+
+# MUC1 oncoprotein blocks nuclear targeting...
+**Authors:** Raina D, Ahmad R, ...
+**Journal:** Cancer Research (2006)
+**DOI:** [10.1158/...](https://doi.org/10.1158/...)
+
+## Content
+
+1. Cancer Res. 2006 Jul 1;66(13):6715-21...
+```
+
+**Text format:**
+```
+Reference: PMID:16888623
+Title: MUC1 oncoprotein blocks nuclear targeting...
+Authors: Raina D, Ahmad R, ...
+Journal: Cancer Research (2006)
+DOI: 10.1158/0008-5472.CAN-06-0205
+Keywords: Adaptor Proteins, Signal Transducing/metabolism, Cell Line, Tumor, ...
+Content type: abstract_only
+
+--- Content ---
+1. Cancer Res. 2006 Jul 1;66(13):6715-21...
+```
+
+**With supplementary files (Zenodo):**
+```
+Reference: DOI:10.5281/zenodo.7961621
+Title: Gene Ontology Curators AI Workshop
+Authors: Dickinson R, Carbon S, Mungall CJ
+...
+Content type: abstract_only
+
+--- Supplementary Files (3) ---
+  - Dickinson_Varenna2022.pdf (1,975,995 bytes)
+  - workshop_slides.pptx (2,345,678 bytes)
+  - data_analysis.xlsx (123,456 bytes)
+
+--- Content ---
+...
+```
+
+### Exit Codes
+
+- `0` - At least one reference fetched successfully
+- `1` - All references failed to fetch
+
+---
 
 ## validate
 
@@ -29,6 +165,7 @@ linkml-reference-validator validate COMMAND [ARGS]...
 ### Subcommands
 
 - `text` - Validate a single text quote
+- `text-file` - Validate supporting text extracted from a text file via regex
 - `data` - Validate supporting text in data files
 
 ---
@@ -50,6 +187,7 @@ linkml-reference-validator validate text [OPTIONS] TEXT REFERENCE_ID
 
 ### Options
 
+- `--title, -t TEXT` - Expected title to validate against the reference title
 - `--cache-dir PATH` - Directory for caching references (default: `references_cache`)
 - `--config PATH` - Path to validation configuration file (.yaml)
 - `--verbose, -v` - Verbose output with detailed logging
@@ -78,6 +216,14 @@ linkml-reference-validator validate text \
   "MUC1 oncoprotein blocks nuclear targeting" \
   PMID:16888623 \
   --verbose
+```
+
+**With title check:**
+```bash
+linkml-reference-validator validate text \
+  "Airway epithelial brushings" \
+  GEO:GSE67472 \
+  --title "Airway epithelial gene expression in asthma versus healthy controls"
 ```
 
 **With editorial notes:**
@@ -117,6 +263,55 @@ Result:
   Message: Supporting text validated successfully in PMID:16888623
   Matched text: MUC1 oncoprotein blocks nuclear targeting...
 ```
+
+---
+
+## validate text-file
+
+Validate supporting text in a text file by extracting quotes and references with a regex.
+
+### Usage
+
+```bash
+linkml-reference-validator validate text-file [OPTIONS] FILE_PATH
+```
+
+### Arguments
+
+- **FILE_PATH** (required) - Path to a text file (e.g., OBO, plain text)
+
+### Options
+
+- `--regex, -r TEXT` (required) - Regular expression with capture groups for text and reference ID
+- `--text-group, -t INTEGER` - Capture group number for supporting text (default: 1)
+- `--ref-group, -R INTEGER` - Capture group number for reference ID (default: 2)
+- `--summary, -s` - Show only summary statistics (skip per-line output)
+- `--cache-dir PATH, -c PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
+- `--verbose, -v` - Verbose output with detailed logging
+- `--help` - Show help message
+
+### Examples
+
+**Validate OBO axiom annotations:**
+```bash
+linkml-reference-validator validate text-file my_ontology.obo \
+  --regex 'ex:supporting_text="([^"]*)\[(\S+:\S+)\]"' \
+  --text-group 1 \
+  --ref-group 2
+```
+
+**Summary only:**
+```bash
+linkml-reference-validator validate text-file my_ontology.obo \
+  --regex 'ex:supporting_text="([^"]*)\[(\S+:\S+)\]"' \
+  --summary
+```
+
+### Exit Codes
+
+- `0` - Validation successful
+- `1` - Validation failed
 
 ---
 
@@ -461,6 +656,7 @@ linkml-reference-validator cache COMMAND [ARGS]...
 ### Subcommands
 
 - `reference` - Cache a reference for offline use
+- `lookup` - Show the cache path for a reference (or print file contents)
 
 ---
 
@@ -525,6 +721,48 @@ Successfully cached PMID:16888623
 
 ---
 
+## cache lookup
+
+Show the cached file path for a reference, or print the cached file contents.
+
+### Usage
+
+```bash
+linkml-reference-validator cache lookup [OPTIONS] REFERENCE_ID
+```
+
+### Arguments
+
+- **REFERENCE_ID** (required) - Reference ID (e.g., PMID:12345678)
+
+### Options
+
+- `--content` - Show file contents instead of just the path
+- `--no-cache` - Bypass disk cache and fetch fresh from source
+- `--cache-dir PATH, -c PATH` - Directory for caching references (default: `references_cache`)
+- `--config PATH` - Path to validation configuration file (.yaml)
+- `--verbose, -v` - Verbose output with detailed logging
+- `--help` - Show help message
+
+### Examples
+
+**Show cache path:**
+```bash
+linkml-reference-validator cache lookup PMID:16888623
+```
+
+**Print cached content:**
+```bash
+linkml-reference-validator cache lookup PMID:16888623 --content
+```
+
+**Refresh then show path:**
+```bash
+linkml-reference-validator cache lookup PMID:16888623 --no-cache
+```
+
+---
+
 ## Reference ID Formats
 
 ### PubMed (PMID)
@@ -560,27 +798,11 @@ DOI:10.1126/science.1234567
 
 ---
 
-## Environment Variables
+## Configuration Notes
 
-### LINKML_REFERENCE_VALIDATOR_CACHE_DIR
-
-Override default cache directory:
-
-```bash
-export LINKML_REFERENCE_VALIDATOR_CACHE_DIR=/custom/cache
-linkml-reference-validator validate text "..." PMID:12345678
-```
-
-### NCBI_API_KEY
-
-Set NCBI API key for higher rate limits:
-
-```bash
-export NCBI_API_KEY=your_api_key_here
-linkml-reference-validator validate text "..." PMID:12345678
-```
-
-Request an API key: https://www.ncbi.nlm.nih.gov/account/settings/
+- The CLI currently does not read environment variables for cache dir or NCBI API keys.
+- Use `--cache-dir` or set `cache_dir` in `.linkml-reference-validator.yaml`.
+- Set `email` in `.linkml-reference-validator.yaml` for NCBI requests.
 
 ---
 
@@ -650,4 +872,4 @@ The old commands are hidden from `--help` but continue to function.
 
 - [Quickstart](../quickstart.md) - Get started quickly
 - [Tutorial 1](../notebooks/01_getting_started.ipynb) - CLI examples
-- [Python API Reference](python-api.md) - Programmatic usage
+- [Python API](../notebooks/03_python_api.ipynb) - Programmatic usage

@@ -118,14 +118,17 @@ class PMIDSource(ReferenceSource):
 
         record = records[0] if isinstance(records, list) else records
 
-        title = record.get("Title", "")
+        # Convert Entrez StringElement objects to plain strings
+        title = str(record.get("Title", ""))
         authors = self._parse_authors(record.get("AuthorList", []))
-        journal = record.get("Source", "")
-        year = record.get("PubDate", "")[:4] if record.get("PubDate") else ""
-        doi = record.get("DOI", "")
+        journal = str(record.get("Source", ""))
+        pub_date = record.get("PubDate", "")
+        year = str(pub_date)[:4] if pub_date else ""
+        doi = str(record.get("DOI", "")) if record.get("DOI") else ""
 
         abstract = self._fetch_abstract(pmid, config)
         full_text, content_type = self._fetch_pmc_fulltext(pmid, config)
+        keywords = self._fetch_mesh_terms(pmid, config)
 
         if full_text:
             content: Optional[str] = f"{abstract}\n\n{full_text}" if abstract else full_text
@@ -142,6 +145,7 @@ class PMIDSource(ReferenceSource):
             journal=journal,
             year=year,
             doi=doi,
+            keywords=keywords,
         )
 
     def _parse_authors(self, author_list: list) -> list[str]:
@@ -182,6 +186,52 @@ class PMIDSource(ReferenceSource):
             return str(abstract_text)
 
         return None
+
+    def _fetch_mesh_terms(
+        self, pmid: str, config: ReferenceValidationConfig
+    ) -> Optional[list[str]]:
+        """Fetch MeSH terms for a PMID from PubMed XML.
+
+        Args:
+            pmid: PubMed ID
+            config: Configuration for rate limiting
+
+        Returns:
+            List of MeSH terms if available
+
+        Examples:
+            >>> source = PMIDSource()
+            >>> # Would return MeSH terms like:
+            >>> # ['Adaptation, Physiological/genetics', 'Climate Change', ...]
+        """
+        time.sleep(config.rate_limit_delay)
+
+        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="xml", retmode="xml")
+        xml_content = handle.read()
+        handle.close()
+
+        if isinstance(xml_content, bytes):
+            xml_content = xml_content.decode("utf-8")
+
+        soup = BeautifulSoup(xml_content, "xml")
+        mesh_list = soup.find("MeshHeadingList")
+
+        if not mesh_list:
+            return None
+
+        terms = []
+        for heading in mesh_list.find_all("MeshHeading"):
+            descriptor = heading.find("DescriptorName")
+            if descriptor:
+                term = descriptor.get_text()
+                # Include qualifiers if present (e.g., "genetics", "metabolism")
+                qualifiers = heading.find_all("QualifierName")
+                if qualifiers:
+                    qualifier_texts = [q.get_text() for q in qualifiers]
+                    term = f"{term}/{', '.join(qualifier_texts)}"
+                terms.append(term)
+
+        return terms if terms else None
 
     def _fetch_pmc_fulltext(
         self, pmid: str, config: ReferenceValidationConfig

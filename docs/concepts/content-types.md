@@ -92,12 +92,12 @@ content_type: abstract_only
 ### Via CLI
 
 ```bash
-linkml-reference-validator cache show PMID:16888623
+linkml-reference-validator cache lookup PMID:16888623 --content
 ```
 
 Output includes:
 ```
-Content type: abstract_only
+content_type: abstract_only
 ```
 
 ### In Validation Results
@@ -124,3 +124,62 @@ If validation fails due to abstract-only content:
 5. **Accept the limitation**: Document that certain excerpts couldn't be verified due to access limitations
 
 See [Using Local Files and URLs](../how-to/use-local-files-and-urls.md) for detailed guidance on alternatives.
+
+## Reference Metadata
+
+Beyond the main content, the validator extracts additional metadata from references:
+
+### Keywords
+
+The `keywords` field contains subject terms or tags from the source:
+
+| Source | Keyword Type | Example |
+|--------|--------------|---------|
+| PMID | MeSH terms | `Adaptor Proteins, Signal Transducing/metabolism` |
+| DOI (Crossref) | Subjects | `General Chemistry`, `Biochemistry` |
+| DOI (DataCite) | Subjects | `Climate Change`, `Bioinformatics` |
+
+MeSH (Medical Subject Headings) terms from PubMed are particularly valuable for biomedical literature, providing standardized vocabulary with qualifier subheadings (e.g., `/metabolism`, `/genetics`).
+
+**Example cache file with keywords:**
+```yaml
+---
+reference_id: PMID:33505029
+title: Genomic mechanisms of climate adaptation...
+keywords:
+- Acclimatization/genetics
+- Biofuels
+- Genetic Introgression
+- Genome, Plant/genetics
+content_type: abstract_only
+---
+```
+
+**Viewing keywords via CLI:**
+```bash
+linkml-reference-validator lookup PMID:33505029 --format text
+```
+
+Output:
+```
+Reference: PMID:33505029
+Title: Genomic mechanisms of climate adaptation...
+Keywords: Acclimatization/genetics, Biofuels, Genetic Introgression, ...
+```
+
+### Supplementary Files
+
+For repository DOIs (Zenodo, etc.), the `supplementary_files` field lists associated files:
+
+```yaml
+---
+reference_id: DOI:10.5281/zenodo.7961621
+supplementary_files:
+  - filename: data_analysis.xlsx
+    download_url: https://zenodo.org/api/records/7961621/files/data_analysis.xlsx/content
+    size_bytes: 123456
+    checksum: md5:88c66d378d886fea4969949c5877802f
+---
+```
+
+See [Validating DOIs](../how-to/validate-dois.md#supported-repository-dois) for details on supplementary files.

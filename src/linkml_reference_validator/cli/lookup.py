@@ -50,19 +50,43 @@ NoCacheOption = Annotated[
     ),
 ]
 
+# Option for downloading supplementary files
+DownloadFilesOption = Annotated[
+    bool,
+    typer.Option(
+        "--download-files",
+        "-D",
+        help="Download supplementary files from repositories (e.g., Zenodo). By default, only metadata is captured.",
+    ),
+]
+
 
 def _reference_to_dict(reference: ReferenceContent) -> dict:
     """Convert ReferenceContent to a dictionary."""
-    return {
+    result: dict = {
         "reference_id": reference.reference_id,
         "title": reference.title,
         "authors": reference.authors,
         "journal": reference.journal,
         "year": reference.year,
         "doi": reference.doi,
+        "keywords": reference.keywords,
         "content_type": reference.content_type,
         "content": reference.content,
     }
+    if reference.supplementary_files:
+        result["supplementary_files"] = [
+            {
+                "filename": sf.filename,
+                "download_url": sf.download_url,
+                "content_type": sf.content_type,
+                "size_bytes": sf.size_bytes,
+                "checksum": sf.checksum,
+                "local_path": sf.local_path,
+            }
+            for sf in reference.supplementary_files
+        ]
+    return result
 
 
 def _format_as_markdown(reference: ReferenceContent, fetcher: ReferenceFetcher) -> str:
@@ -159,7 +183,15 @@ def _format_as_text(reference: ReferenceContent) -> str:
         lines.append(f"Journal: {journal_info}")
     if reference.doi:
         lines.append(f"DOI: {reference.doi}")
+    if reference.keywords:
+        lines.append(f"Keywords: {', '.join(reference.keywords)}")
     lines.append(f"Content type: {reference.content_type}")
+    if reference.supplementary_files:
+        lines.append("")
+        lines.append(f"--- Supplementary Files ({len(reference.supplementary_files)}) ---")
+        for sf in reference.supplementary_files:
+            size_str = f" ({sf.size_bytes:,} bytes)" if sf.size_bytes else ""
+            lines.append(f"  - {sf.filename}{size_str}")
     if reference.content:
         lines.append("")
         lines.append("--- Content ---")
@@ -176,6 +208,7 @@ def lookup_command(
     cache_dir: CacheDirOption = None,
     format: FormatOption = OutputFormat.md,
     no_cache: NoCacheOption = False,
+    download_files: DownloadFilesOption = False,
     verbose: VerboseOption = False,
 ):
     """Look up reference(s) and display their information.
@@ -194,12 +227,16 @@ def lookup_command(
         linkml-reference-validator lookup PMID:12345678 --format yaml
 
         linkml-reference-validator lookup PMID:12345678 --no-cache
+
+        linkml-reference-validator lookup -D DOI:10.5281/zenodo.7961621
     """
     setup_logging(verbose)
 
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    if download_files:
+        config.download_supplementary_files = True
 
     fetcher = ReferenceFetcher(config)
 

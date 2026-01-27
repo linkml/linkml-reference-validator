@@ -389,7 +389,7 @@ The `content_type` field in cached references tells you what content was retriev
 
 Check content type with:
 ```bash
-linkml-reference-validator cache show PMID:16888623
+linkml-reference-validator cache lookup PMID:16888623 --content
 ```
 
 See [Content Types](../concepts/content-types.md) for full documentation.

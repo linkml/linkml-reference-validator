@@ -31,6 +31,9 @@ file:/Users/me/research/notes.md
 1. If `reference_base_dir` is configured, paths resolve relative to it
 2. Otherwise, paths resolve relative to the current working directory
 
+Note: cached references use the resolved absolute path in the reference ID, so
+the cache file name reflects the full path.
+
 ### Configuring a Base Directory
 
 Set a base directory for all relative file references:
@@ -67,7 +70,8 @@ linkml-reference-validator validate text \
 
 ## URL References
 
-Use the `url:` prefix to reference web pages:
+Use the `url:` prefix to reference web pages (the prefix is optional for bare
+HTTP/HTTPS URLs and will be normalized to `url:` internally):
 
 ```bash
 linkml-reference-validator validate text \
@@ -81,7 +85,7 @@ URLs are cached the same way as PMID and DOI references:
 
 - First fetch downloads and caches the content
 - Subsequent validations use the cached version
-- Use `--force-refresh` to re-fetch
+- Use `linkml-reference-validator cache reference url:https://... --force` to re-fetch
 
 ### Title Extraction
 

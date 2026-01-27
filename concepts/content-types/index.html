@@ -568,6 +568,37 @@
     </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#reference-metadata">
+<span class="md-ellipsis">
+      
+        Reference Metadata
+      
+    </span>
+</a>
+<nav aria-label="Reference Metadata" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#keywords">
+<span class="md-ellipsis">
+      
+        Keywords
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#supplementary-files">
+<span class="md-ellipsis">
+      
+        Supplementary Files
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
 </ul>
 </nav>
 </li>
@@ -779,6 +810,37 @@
     </span>
 </a>
 </li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#reference-metadata">
+<span class="md-ellipsis">
+      
+        Reference Metadata
+      
+    </span>
+</a>
+<nav aria-label="Reference Metadata" class="md-nav">
+<ul class="md-nav__list">
+<li class="md-nav__item">
+<a class="md-nav__link" href="#keywords">
+<span class="md-ellipsis">
+      
+        Keywords
+      
+    </span>
+</a>
+</li>
+<li class="md-nav__item">
+<a class="md-nav__link" href="#supplementary-files">
+<span class="md-ellipsis">
+      
+        Supplementary Files
+      
+    </span>
+</a>
+</li>
+</ul>
+</nav>
+</li>
 </ul>
 </nav>
 </div>
@@ -907,10 +969,10 @@ content_type: abstract_only
 ---
 </code></pre>
 <h3 id="via-cli">Via CLI</h3>
-<pre><code class="language-bash">linkml-reference-validator cache show PMID:16888623
+<pre><code class="language-bash">linkml-reference-validator cache lookup PMID:16888623 --content
 </code></pre>
 <p>Output includes:</p>
-<pre><code>Content type: abstract_only
+<pre><code>content_type: abstract_only
 </code></pre>
 <h3 id="in-validation-results">In Validation Results</h3>
 <p>When validation fails and only abstract was available, the error message includes context:</p>
@@ -937,6 +999,69 @@ content_type: abstract_only
 </li>
 </ol>
 <p>See <a href="../../how-to/use-local-files-and-urls/">Using Local Files and URLs</a> for detailed guidance on alternatives.</p>
+<h2 id="reference-metadata">Reference Metadata</h2>
+<p>Beyond the main content, the validator extracts additional metadata from references:</p>
+<h3 id="keywords">Keywords</h3>
+<p>The <code>keywords</code> field contains subject terms or tags from the source:</p>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Keyword Type</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PMID</td>
+<td>MeSH terms</td>
+<td><code>Adaptor Proteins, Signal Transducing/metabolism</code></td>
+</tr>
+<tr>
+<td>DOI (Crossref)</td>
+<td>Subjects</td>
+<td><code>General Chemistry</code>, <code>Biochemistry</code></td>
+</tr>
+<tr>
+<td>DOI (DataCite)</td>
+<td>Subjects</td>
+<td><code>Climate Change</code>, <code>Bioinformatics</code></td>
+</tr>
+</tbody>
+</table>
+<p>MeSH (Medical Subject Headings) terms from PubMed are particularly valuable for biomedical literature, providing standardized vocabulary with qualifier subheadings (e.g., <code>/metabolism</code>, <code>/genetics</code>).</p>
+<p><strong>Example cache file with keywords:</strong></p>
+<pre><code class="language-yaml">---
+reference_id: PMID:33505029
+title: Genomic mechanisms of climate adaptation...
+keywords:
+- Acclimatization/genetics
+- Biofuels
+- Genetic Introgression
+- Genome, Plant/genetics
+content_type: abstract_only
+---
+</code></pre>
+<p><strong>Viewing keywords via CLI:</strong></p>
+<pre><code class="language-bash">linkml-reference-validator lookup PMID:33505029 --format text
+</code></pre>
+<p>Output:</p>
+<pre><code>Reference: PMID:33505029
+Title: Genomic mechanisms of climate adaptation...
+Keywords: Acclimatization/genetics, Biofuels, Genetic Introgression, ...
+</code></pre>
+<h3 id="supplementary-files">Supplementary Files</h3>
+<p>For repository DOIs (Zenodo, etc.), the <code>supplementary_files</code> field lists associated files:</p>
+<pre><code class="language-yaml">---
+reference_id: DOI:10.5281/zenodo.7961621
+supplementary_files:
+  - filename: data_analysis.xlsx
+    download_url: https://zenodo.org/api/records/7961621/files/data_analysis.xlsx/content
+    size_bytes: 123456
+    checksum: md5:88c66d378d886fea4969949c5877802f
+---
+</code></pre>
+<p>See <a href="../../how-to/validate-dois/#supported-repository-dois">Validating DOIs</a> for details on supplementary files.</p>
 </article>
 </div>
 <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>

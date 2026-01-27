@@ -1680,23 +1680,25 @@ tail -10 references_cache/PMID_11601609.md</p>
 </div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="o">%%</span><span class="n">bash</span>
 <span class="c1"># View the cached reference</span>
+<span class="n">cache_path</span><span class="o">=</span><span class="err">$</span><span class="p">(</span><span class="n">linkml</span><span class="o">-</span><span class="n">reference</span><span class="o">-</span><span class="n">validator</span> <span class="n">cache</span> <span class="n">lookup</span> <span class="n">PMID</span><span class="p">:</span><span class="mi">11601609</span><span class="p">)</span>
 <span class="n">echo</span> <span class="s2">"Cached reference metadata:"</span>
-<span class="n">head</span> <span class="o">-</span><span class="mi">20</span> <span class="n">references_cache</span><span class="o">/</span><span class="n">PMID_11601609</span><span class="o">.</span><span class="n">md</span>
+<span class="n">head</span> <span class="o">-</span><span class="mi">20</span> <span class="s2">"$cache_path"</span>
 <span class="n">echo</span> <span class="s2">""</span>
 <span class="n">echo</span> <span class="s2">"..."</span>
 <span class="n">echo</span> <span class="s2">""</span>
 <span class="n">echo</span> <span class="s2">"Abstract excerpt:"</span>
-<span class="n">tail</span> <span class="o">-</span><span class="mi">10</span> <span class="n">references_cache</span><span class="o">/</span><span class="n">PMID_11601609</span><span class="o">.</span><span class="n">md</span>
+<span class="n">tail</span> <span class="o">-</span><span class="mi">10</span> <span class="s2">"$cache_path"</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-9">%%bash
 # View the cached reference
+cache_path=$(linkml-reference-validator cache lookup PMID:11601609)
 echo "Cached reference metadata:"
-head -20 references_cache/PMID_11601609.md
+head -20 "$cache_path"
 echo ""
 echo "..."
 echo ""
 echo "Abstract excerpt:"
-tail -10 references_cache/PMID_11601609.md</div>
+tail -10 "$cache_path"</div>
 </div>
 </div>
 </div>

@@ -2507,12 +2507,14 @@ ls -lh references_cache/</div>
 <div class="highlight-ipynb hl-python"><pre><span></span><span class="o">%%</span><span class="n">bash</span>
 <span class="c1"># Show structure of a cached reference</span>
 <span class="n">echo</span> <span class="s2">"Structure of cached reference PMID:16888623:"</span>
-<span class="n">head</span> <span class="o">-</span><span class="mi">25</span> <span class="n">references_cache</span><span class="o">/</span><span class="n">PMID_16888623</span><span class="o">.</span><span class="n">md</span>
+<span class="n">cache_path</span><span class="o">=</span><span class="err">$</span><span class="p">(</span><span class="n">linkml</span><span class="o">-</span><span class="n">reference</span><span class="o">-</span><span class="n">validator</span> <span class="n">cache</span> <span class="n">lookup</span> <span class="n">PMID</span><span class="p">:</span><span class="mi">16888623</span><span class="p">)</span>
+<span class="n">head</span> <span class="o">-</span><span class="mi">25</span> <span class="s2">"$cache_path"</span>
 </pre></div>
 <div class="clipboard-copy-txt" id="cell-14">%%bash
 # Show structure of a cached reference
 echo "Structure of cached reference PMID:16888623:"
-head -25 references_cache/PMID_16888623.md</div>
+cache_path=$(linkml-reference-validator cache lookup PMID:16888623)
+head -25 "$cache_path"</div>
 </div>
 </div>
 </div>

@@ -1712,7 +1712,8 @@
 <li>Validates your supporting text against the page content</li>
 </ol>
 <h2 id="url-format">URL Format</h2>
-<p>Use the <code>url:</code> prefix to specify URL references:</p>
+<p>Use the <code>url:</code> prefix to specify URL references (the prefix is optional for bare
+HTTP/HTTPS URLs and will be normalized to <code>url:</code> internally):</p>
 <pre><code class="language-yaml">my_field:
   value: &quot;Some text from the web page...&quot;
   references:
@@ -1757,7 +1758,10 @@
 <li><strong>Content</strong>: The raw page content as received</li>
 <li><strong>Content type</strong>: Marked as <code>url</code> to distinguish from other reference types</li>
 </ul>
-<p>Note: Unlike some tools, the validator stores the raw page content without HTML-to-text conversion. This preserves the original content, though HTML tags will be present in the cached file.</p>
+<p>Note: The validator stores raw page content without HTML-to-text conversion.
+HTML tags remain in the cached file, and tag names can surface during
+normalization. If validation fails because tags interrupt the text, consider
+extracting plain text and validating against a local <code>file:</code> reference instead.</p>
 <h3 id="3-caching">3. Caching</h3>
 <p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
 <pre><code class="language-markdown">---
@@ -1824,13 +1828,13 @@ cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
 <h3 id="2-verify-content-quality">2. Verify Content Quality</h3>
 <p>After adding a URL reference, verify the extracted content:</p>
 <pre><code class="language-bash"># Check what was extracted
-cat references_cache/url_https___example.com_page.md
+linkml-reference-validator cache lookup url:https://example.com/page --content
 </code></pre>
 <p>Ensure the cached content contains the text you're referencing.</p>
 <h3 id="3-cache-management">3. Cache Management</h3>
 <ul>
 <li>Commit cache files to version control for reproducibility</li>
-<li>Use <code>--force-refresh</code> to update cached content when pages change</li>
+<li>Use <code>linkml-reference-validator cache reference url:https://... --force</code> to update cached content when pages change</li>
 <li>Periodically review cached URLs to ensure they're still accessible</li>
 </ul>
 <h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
@@ -1860,11 +1864,13 @@ cat references_cache/url_https___example.com_page.md
 <li>Consider if the page content has changed since caching</li>
 </ol>
 <h3 id="force-refresh">Force Refresh</h3>
-<p>To re-fetch content for a URL that may have changed:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
+<p>To re-fetch content for a URL that may have changed, refresh the cache before
+validating:</p>
+<pre><code class="language-bash">linkml-reference-validator cache reference url:https://example.com/page --force
+
+linkml-reference-validator validate text \
   &quot;Updated content&quot; \
-  url:https://example.com/page \
-  --force-refresh
+  url:https://example.com/page
 </code></pre>
 <h2 id="comparison-with-other-reference-types">Comparison with Other Reference Types</h2>
 <table>

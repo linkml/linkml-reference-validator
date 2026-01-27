@@ -713,6 +713,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#supported-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Repository DOIs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Repository DOIs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#looking-up-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Looking Up Repository DOIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#downloading-supplementary-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downloading Supplementary Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publisher-dois-vs-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publisher DOIs vs Repository DOIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pre-caching-dois" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1336,6 +1386,56 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#supported-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supported Repository DOIs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Supported Repository DOIs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#looking-up-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Looking Up Repository DOIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#downloading-supplementary-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Downloading Supplementary Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publisher-dois-vs-repository-dois" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publisher DOIs vs Repository DOIs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#pre-caching-dois" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1474,7 +1574,12 @@
 <h1 id="validating-text-against-dois">Validating Text Against DOIs</h1>
 <p>This guide shows how to validate supporting text against publications using Digital Object Identifiers (DOIs).</p>
 <h2 id="overview">Overview</h2>
-<p>DOIs are persistent identifiers for digital objects, commonly used for journal articles. The validator fetches publication metadata from the <a href="https://www.crossref.org/documentation/retrieve-metadata/rest-api/">Crossref API</a> when you provide a DOI reference.</p>
+<p>DOIs are persistent identifiers for digital objects, commonly used for journal articles and data repositories. The validator fetches publication metadata from:</p>
+<ol>
+<li><strong>Crossref API</strong> - Primary source for journal articles</li>
+<li><strong>DataCite API</strong> - Fallback for repository DOIs (Zenodo, Figshare, Dryad, OSTI)</li>
+</ol>
+<p>This dual-source approach ensures broad coverage across both scholarly publications and data repositories.</p>
 <h2 id="basic-usage">Basic Usage</h2>
 <h3 id="validate-a-single-quote">Validate a Single Quote</h3>
 <pre><code class="language-bash">linkml-reference-validator validate text \
@@ -1496,6 +1601,111 @@ DOI:10.1126/science.1234567
 DOI:10.1016/j.cell.2023.01.001
 </code></pre>
 <p>The DOI itself follows the standard format: <code>10.prefix/suffix</code></p>
+<h2 id="supported-repository-dois">Supported Repository DOIs</h2>
+<p>The validator supports DOIs from data repositories via the DataCite API:</p>
+<table>
+<thead>
+<tr>
+<th>Repository</th>
+<th>DOI Prefix</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Zenodo</td>
+<td><code>10.5281/zenodo.*</code></td>
+<td><code>DOI:10.5281/zenodo.7961621</code></td>
+</tr>
+<tr>
+<td>Figshare</td>
+<td><code>10.6084/m9.figshare.*</code></td>
+<td><code>DOI:10.6084/m9.figshare.123456</code></td>
+</tr>
+<tr>
+<td>Dryad</td>
+<td><code>10.5061/dryad.*</code></td>
+<td><code>DOI:10.5061/dryad.abc123</code></td>
+</tr>
+<tr>
+<td>OSTI</td>
+<td><code>10.2172/*</code></td>
+<td><code>DOI:10.2172/1234567</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="looking-up-repository-dois">Looking Up Repository DOIs</h3>
+<pre><code class="language-bash">linkml-reference-validator lookup DOI:10.5281/zenodo.7961621
+</code></pre>
+<p>For Zenodo DOIs, the output includes supplementary file metadata:</p>
+<pre><code>Reference: DOI:10.5281/zenodo.7961621
+Title: Gene Ontology Curators AI Workshop
+Authors: Dickinson R, Carbon S, Mungall CJ
+...
+Content type: abstract_only
+
+--- Supplementary Files (3) ---
+  - Dickinson_Varenna2022.pdf (1,975,995 bytes)
+  - workshop_slides.pptx (2,345,678 bytes)
+  - data_analysis.xlsx (123,456 bytes)
+</code></pre>
+<h3 id="downloading-supplementary-files">Downloading Supplementary Files</h3>
+<p>By default, only metadata about supplementary files is captured. To download the actual files:</p>
+<pre><code class="language-bash">linkml-reference-validator lookup -D DOI:10.5281/zenodo.7961621
+</code></pre>
+<p>Downloaded files are stored in:</p>
+<pre><code>references_cache/
+  files/
+    DOI_10.5281_zenodo.7961621/
+      Dickinson_Varenna2022.pdf
+      workshop_slides.pptx
+      data_analysis.xlsx
+</code></pre>
+<h3 id="publisher-dois-vs-repository-dois">Publisher DOIs vs Repository DOIs</h3>
+<p><strong>Important:</strong> Supplementary file support only works for <strong>repository DOIs</strong> (Zenodo, Figshare, Dryad), not for publisher DOIs (Elsevier, Springer, Nature, etc.).</p>
+<table>
+<thead>
+<tr>
+<th>DOI Type</th>
+<th>Example</th>
+<th>Supplementary Files</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Repository</strong> (Zenodo)</td>
+<td><code>10.5281/zenodo.7961621</code></td>
+<td>✅ File metadata + download</td>
+</tr>
+<tr>
+<td><strong>Repository</strong> (Figshare)</td>
+<td><code>10.6084/m9.figshare.123456</code></td>
+<td>✅ File metadata + download</td>
+</tr>
+<tr>
+<td><strong>Publisher</strong> (Elsevier)</td>
+<td><code>10.1016/j.neuron.2011.05.021</code></td>
+<td>❌ Not available</td>
+</tr>
+<tr>
+<td><strong>Publisher</strong> (Nature)</td>
+<td><code>10.1038/nature12373</code></td>
+<td>❌ Not available</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Why the difference?</strong></p>
+<ul>
+<li><strong>Repository APIs</strong> (Zenodo, Figshare) are designed for data sharing and provide open, documented file APIs</li>
+<li><strong>Publisher APIs</strong> (Elsevier, Springer) require paid institutional access or text-mining agreements</li>
+<li>Even when articles are in PMC, supplementary files are often not available via the OA API</li>
+</ul>
+<p><strong>Workarounds for publisher supplementary files:</strong></p>
+<ol>
+<li><strong>Manual download</strong>: Download supplementary files from the publisher website and use <code>file:</code> references</li>
+<li><strong>Data repository</strong>: Check if the authors deposited data separately in Zenodo/Figshare/Dryad</li>
+<li><strong>PubMed Central</strong>: For some OA articles, supplementary files may be available via PMC</li>
+</ol>
 <h2 id="pre-caching-dois">Pre-caching DOIs</h2>
 <p>For offline validation or to speed up repeated validations:</p>
 <pre><code class="language-bash">linkml-reference-validator cache reference DOI:10.1038/nature12373
@@ -1562,12 +1772,12 @@ classes:
 <tr>
 <td>Source</td>
 <td>NCBI PubMed</td>
-<td>Crossref</td>
+<td>Crossref + DataCite</td>
 </tr>
 <tr>
 <td>Coverage</td>
 <td>Biomedical literature</td>
-<td>All scholarly content</td>
+<td>All scholarly content + data repos</td>
 </tr>
 <tr>
 <td>Full text</td>
@@ -1577,18 +1787,30 @@ classes:
 <tr>
 <td>Abstract</td>
 <td>Usually available</td>
-<td>Depends on publisher</td>
+<td>Depends on publisher/repo</td>
+</tr>
+<tr>
+<td>Keywords</td>
+<td>MeSH terms</td>
+<td>Subjects (if available)</td>
+</tr>
+<tr>
+<td>Supplementary files</td>
+<td>No</td>
+<td>Yes (Zenodo, etc.)</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Use PMID when:</strong>
 - Working with biomedical/life science literature
 - Full text access is important
-- The article is indexed in PubMed</p>
+- The article is indexed in PubMed
+- You need MeSH term keywords</p>
 <p><strong>Use DOI when:</strong>
 - The article is not in PubMed
 - Working with non-biomedical journals
-- The DOI is more readily available</p>
+- Working with data repositories (Zenodo, Figshare, Dryad)
+- You need supplementary file metadata</p>
 <h2 id="content-availability">Content Availability</h2>
 <p>Unlike PMIDs which often provide abstracts, DOI metadata from Crossref may have limited content:</p>
 <ul>
@@ -1603,11 +1825,16 @@ classes:
 <p>This means Crossref returned metadata but no abstract. The DOI was fetched successfully, but validation may fail if your text doesn't match the title.</p>
 <p><strong>Solution:</strong> Consider using the PMID if the article is in PubMed.</p>
 <h3 id="failed-to-fetch-doi">"Failed to fetch DOI"</h3>
-<p>The DOI may be invalid or the Crossref API may be temporarily unavailable.</p>
+<p>The DOI may be invalid or both APIs (Crossref and DataCite) may have failed.</p>
+<p><strong>How DOI resolution works:</strong>
+1. First, the validator tries Crossref API
+2. If Crossref returns 404, it falls back to DataCite API
+3. If both fail, the error is reported</p>
 <p><strong>Check:</strong>
 1. Verify the DOI format (should be <code>10.prefix/suffix</code>)
 2. Test the DOI at https://doi.org/YOUR_DOI
-3. Try again later if Crossref is rate-limiting</p>
+3. Try again later if APIs are rate-limiting
+4. For repository DOIs (Zenodo, etc.), ensure the record is public</p>
 <h3 id="rate-limiting">Rate Limiting</h3>
 <p>The validator automatically respects Crossref rate limits. For bulk operations, consider:</p>
 <ol>

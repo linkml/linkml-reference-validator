@@ -1528,6 +1528,8 @@
 <li>If <code>reference_base_dir</code> is configured, paths resolve relative to it</li>
 <li>Otherwise, paths resolve relative to the current working directory</li>
 </ol>
+<p>Note: cached references use the resolved absolute path in the reference ID, so
+the cache file name reflects the full path.</p>
 <h3 id="configuring-a-base-directory">Configuring a Base Directory</h3>
 <p>Set a base directory for all relative file references:</p>
 <pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
@@ -1551,7 +1553,8 @@ This leads to STAT phosphorylation and nuclear translocation.
   file:./jak-signaling.md
 </code></pre>
 <h2 id="url-references">URL References</h2>
-<p>Use the <code>url:</code> prefix to reference web pages:</p>
+<p>Use the <code>url:</code> prefix to reference web pages (the prefix is optional for bare
+HTTP/HTTPS URLs and will be normalized to <code>url:</code> internally):</p>
 <pre><code class="language-bash">linkml-reference-validator validate text \
   &quot;Climate change affects biodiversity&quot; \
   url:https://example.org/climate-report.html
@@ -1561,7 +1564,7 @@ This leads to STAT phosphorylation and nuclear translocation.
 <ul>
 <li>First fetch downloads and caches the content</li>
 <li>Subsequent validations use the cached version</li>
-<li>Use <code>--force-refresh</code> to re-fetch</li>
+<li>Use <code>linkml-reference-validator cache reference url:https://... --force</code> to re-fetch</li>
 </ul>
 <h3 id="title-extraction">Title Extraction</h3>
 <p>For HTML pages, the title is extracted from the <code>&lt;title&gt;</code> tag. For other content types, the URL itself is used as the title.</p>

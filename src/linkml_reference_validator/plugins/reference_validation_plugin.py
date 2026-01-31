@@ -297,8 +297,8 @@ if _LINKML_AVAILABLE:
                 # The Prefix object has a prefix_reference attribute with the URI
                 prefix_map = {
                     name: (
-                        prefix.prefix_reference
-                        if hasattr(prefix, "prefix_reference")
+                        prefix.get("prefix_reference")
+                        if isinstance(prefix, dict) and "prefix_reference" in prefix
                         else str(prefix)
                     )
                     for name, prefix in schema.prefixes.items()

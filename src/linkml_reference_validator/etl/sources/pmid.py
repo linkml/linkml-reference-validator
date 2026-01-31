@@ -178,7 +178,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="abstract", retmode="text")
+        handle = Entrez.efetch(db="pubmed", id=pmid,
+                               rettype="abstract", retmode="text")
         abstract_text = handle.read()
         handle.close()
 
@@ -206,7 +207,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="xml", retmode="xml")
+        handle = Entrez.efetch(db="pubmed", id=pmid,
+                               rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
 
@@ -271,9 +273,22 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.elink(dbfrom="pubmed", db="pmc", id=pmid, linkname="pubmed_pmc")
-        result = Entrez.read(handle)
-        handle.close()
+        try:
+            handle = Entrez.elink(
+                dbfrom="pubmed", db="pmc", id=pmid, linkname="pubmed_pmc"
+            )
+        except Exception as exc:
+            logger.warning("Failed to link PMID:%s to PMC: %s", pmid, exc)
+            return None
+
+        try:
+            result = Entrez.read(handle)
+        except Exception as exc:
+            logger.warning(
+                "Failed to read PMC link for PMID:%s: %s", pmid, exc)
+            return None
+        finally:
+            handle.close()
 
         if result and result[0].get("LinkSetDb"):
             links = result[0]["LinkSetDb"][0].get("Link", [])
@@ -296,7 +311,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pmc", id=pmcid, rettype="xml", retmode="xml")
+        handle = Entrez.efetch(
+            db="pmc", id=pmcid, rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
 

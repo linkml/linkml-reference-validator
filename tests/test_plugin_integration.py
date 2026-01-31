@@ -38,7 +38,8 @@ def test_plugin_initialization_with_params():
     plugin = ReferenceValidationPlugin(
         cache_dir="/tmp/cache",
     )
-    assert plugin.config.cache_dir.as_posix() == "/tmp/cache"
+    # Access the cache_dir attribute directly if config is not exposed
+    assert plugin.cache_dir.as_posix() == "/tmp/cache"
 
 
 def test_extract_reference_id_string(plugin):

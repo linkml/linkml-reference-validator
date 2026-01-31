@@ -130,6 +130,7 @@ class TestFileSource:
         result = source.fetch("notes.md", config)
 
         assert result is not None
+        assert result.content is not None
         assert "Some notes here." in result.content
 
     def test_fetch_relative_path_cwd_fallback(self, source, config, tmp_path, monkeypatch):

@@ -297,10 +297,14 @@ class PMIDSource(ReferenceSource):
         finally:
             handle.close()
 
-        if result and result[0].get("LinkSetDb"):
-            links = result[0]["LinkSetDb"][0].get("Link", [])
-            if links:
-                return links[0]["Id"]
+        if isinstance(result, list) and result and isinstance(result[0], dict):
+            link_set_db = result[0].get("LinkSetDb", [])
+            if isinstance(link_set_db, list) and link_set_db:
+                links = link_set_db[0].get("Link", [])
+                if isinstance(links, list) and links:
+                    first_link = links[0]
+                    if isinstance(first_link, dict) and "Id" in first_link:
+                        return str(first_link["Id"])
 
         return None
 

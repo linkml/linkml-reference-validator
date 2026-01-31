@@ -13,7 +13,7 @@ Examples:
 import logging
 import re
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -118,13 +118,20 @@ class PMIDSource(ReferenceSource):
 
         record = records[0] if isinstance(records, list) else records
 
+        if not isinstance(record, dict):
+            logger.warning(
+                "Unexpected record format for PMID:%s: %s", pmid, type(record))
+            return None
+
+        record_dict: dict[str, Any] = record
+
         # Convert Entrez StringElement objects to plain strings
-        title = str(record.get("Title", ""))
-        authors = self._parse_authors(record.get("AuthorList", []))
-        journal = str(record.get("Source", ""))
-        pub_date = record.get("PubDate", "")
+        title = str(record_dict.get("Title", ""))
+        authors = self._parse_authors(record_dict.get("AuthorList", []))
+        journal = str(record_dict.get("Source", ""))
+        pub_date = record_dict.get("PubDate", "")
         year = str(pub_date)[:4] if pub_date else ""
-        doi = str(record.get("DOI", "")) if record.get("DOI") else ""
+        doi = str(record_dict.get("DOI", "")) if record_dict.get("DOI") else ""
 
         abstract = self._fetch_abstract(pmid, config)
         full_text, content_type = self._fetch_pmc_fulltext(pmid, config)

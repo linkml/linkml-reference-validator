@@ -94,6 +94,16 @@ if _LINKML_AVAILABLE:
             self.validator = SupportingTextValidator(config)
             self.schema_view: Optional[SchemaView] = None
 
+        @property
+        def cache_dir(self) -> Path:
+            """Return the cache directory for this plugin."""
+            return self.config.cache_dir
+
+        @cache_dir.setter
+        def cache_dir(self, value: Path) -> None:
+            """Update the cache directory for this plugin."""
+            self.config.cache_dir = value
+
         def pre_process(self, context: ValidationContext) -> None:
             """Pre-process hook called before validation.
 
@@ -293,17 +303,16 @@ if _LINKML_AVAILABLE:
                 return None
             schema = self.schema_view.schema
             if schema and schema.prefixes:
-                # schema.prefixes is a dict of prefix name -> Prefix object
-                # The Prefix object has a prefix_reference attribute with the URI
-                prefix_map = {
-                    name: (
-                        prefix.prefix_reference
-                        if hasattr(prefix, "prefix_reference")
-                        else str(prefix)
-                    )
-                    for name, prefix in schema.prefixes.items()
-                }
-                return Converter.from_prefix_map(prefix_map)
+                # schema.prefixes is a list of Prefix objects
+                # Each Prefix object has a prefix_name and prefix_reference attribute
+                prefix_map: dict[str, str] = {}
+                for prefix in schema.prefixes:
+                    prefix_name = getattr(prefix, "prefix_name", None)
+                    prefix_reference = getattr(prefix, "prefix_reference", None)
+                    if isinstance(prefix_name, str) and prefix_reference is not None:
+                        prefix_map[prefix_name] = str(prefix_reference)
+                if prefix_map:
+                    return Converter.from_prefix_map(prefix_map)
             return None
 
         # type: ignore

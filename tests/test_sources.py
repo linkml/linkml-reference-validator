@@ -130,6 +130,7 @@ class TestFileSource:
         result = source.fetch("notes.md", config)
 
         assert result is not None
+        assert result.content is not None
         assert "Some notes here." in result.content
 
     def test_fetch_relative_path_cwd_fallback(self, source, config, tmp_path, monkeypatch):
@@ -154,7 +155,8 @@ class TestFileSource:
     def test_extract_title_from_markdown(self, source, config, tmp_path):
         """Should extract title from first heading."""
         test_file = tmp_path / "titled.md"
-        test_file.write_text("Some preamble\n\n# The Real Title\n\nContent here.")
+        test_file.write_text(
+            "Some preamble\n\n# The Real Title\n\nContent here.")
 
         result = source.fetch(str(test_file), config)
 
@@ -164,7 +166,8 @@ class TestFileSource:
     def test_html_content_preserved(self, source, config, tmp_path):
         """HTML content should be preserved as-is."""
         test_file = tmp_path / "test.html"
-        test_file.write_text("<html><body><p>Test &amp; content</p></body></html>")
+        test_file.write_text(
+            "<html><body><p>Test &amp; content</p></body></html>")
 
         result = source.fetch(str(test_file), config)
 
@@ -279,6 +282,27 @@ class TestPMIDSource:
         assert source.can_handle("PMID:12345678")
         assert source.can_handle("PMID 12345678")
         assert not source.can_handle("DOI:10.1234/test")
+
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.elink")
+    def test_get_pmcid_handles_entrez_error(
+        self,
+        mock_elink,
+        mock_read,
+        source,
+        config,
+    ):
+        """Should return None when Entrez.read raises an error."""
+        handle = MagicMock()
+        mock_elink.return_value = handle
+        mock_read.side_effect = RuntimeError(
+            "Couldn't resolve #exLinkSrv2, the address table is empty."
+        )
+
+        result = source._get_pmcid("12112053", config)
+
+        assert result is None
+        handle.close.assert_called_once()
 
 
 class TestDOISource:
@@ -470,7 +494,8 @@ class TestEntrezSummarySources:
                 "Project_Description",
                 "bioproject",
             ),
-            (BioSampleSource, "biosample:SAMN00000001", "Title", "Description", "biosample"),
+            (BioSampleSource, "biosample:SAMN00000001",
+             "Title", "Description", "biosample"),
         ],
     )
     @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
@@ -505,7 +530,8 @@ class TestEntrezSummarySources:
         assert result.content == "Example content summary."
         assert result.content_type == "summary"
         assert result.metadata["entrez_db"] == db_name
-        mock_esummary.assert_called_once_with(db=db_name, id=reference_id.split(":", 1)[1])
+        mock_esummary.assert_called_once_with(
+            db=db_name, id=reference_id.split(":", 1)[1])
         mock_handle.close.assert_called_once()
 
     @pytest.mark.parametrize(
@@ -578,7 +604,8 @@ class TestGEOSource:
         # Configure mock_read to return different values for esearch vs esummary
         mock_read.side_effect = [
             {"IdList": ["200067472"]},  # esearch result
-            [{"title": "GEO Dataset Title", "summary": "GEO dataset summary."}],  # esummary result
+            # esummary result
+            [{"title": "GEO Dataset Title", "summary": "GEO dataset summary."}],
         ]
 
         result = source.fetch("GSE67472", config)
@@ -592,7 +619,8 @@ class TestGEOSource:
         assert result.metadata["entrez_uid"] == "200067472"
 
         # Verify esearch was called with accession
-        mock_esearch.assert_called_once_with(db="gds", term="GSE67472[Accession]")
+        mock_esearch.assert_called_once_with(
+            db="gds", term="GSE67472[Accession]")
         # Verify esummary was called with UID, not accession
         mock_esummary.assert_called_once_with(db="gds", id="200067472")
 

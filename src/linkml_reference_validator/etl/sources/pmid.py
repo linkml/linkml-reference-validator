@@ -13,7 +13,7 @@ Examples:
 import logging
 import re
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -118,13 +118,20 @@ class PMIDSource(ReferenceSource):
 
         record = records[0] if isinstance(records, list) else records
 
+        if not isinstance(record, dict):
+            logger.warning(
+                "Unexpected record format for PMID:%s: %s", pmid, type(record))
+            return None
+
+        record_dict: dict[str, Any] = record
+
         # Convert Entrez StringElement objects to plain strings
-        title = str(record.get("Title", ""))
-        authors = self._parse_authors(record.get("AuthorList", []))
-        journal = str(record.get("Source", ""))
-        pub_date = record.get("PubDate", "")
+        title = str(record_dict.get("Title", ""))
+        authors = self._parse_authors(record_dict.get("AuthorList", []))
+        journal = str(record_dict.get("Source", ""))
+        pub_date = record_dict.get("PubDate", "")
         year = str(pub_date)[:4] if pub_date else ""
-        doi = str(record.get("DOI", "")) if record.get("DOI") else ""
+        doi = str(record_dict.get("DOI", "")) if record_dict.get("DOI") else ""
 
         abstract = self._fetch_abstract(pmid, config)
         full_text, content_type = self._fetch_pmc_fulltext(pmid, config)
@@ -178,7 +185,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="abstract", retmode="text")
+        handle = Entrez.efetch(db="pubmed", id=pmid,
+                               rettype="abstract", retmode="text")
         abstract_text = handle.read()
         handle.close()
 
@@ -206,7 +214,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pubmed", id=pmid, rettype="xml", retmode="xml")
+        handle = Entrez.efetch(db="pubmed", id=pmid,
+                               rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
 
@@ -271,14 +280,31 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.elink(dbfrom="pubmed", db="pmc", id=pmid, linkname="pubmed_pmc")
-        result = Entrez.read(handle)
-        handle.close()
+        try:
+            handle = Entrez.elink(
+                dbfrom="pubmed", db="pmc", id=pmid, linkname="pubmed_pmc"
+            )
+        except Exception as exc:
+            logger.warning("Failed to link PMID:%s to PMC: %s", pmid, exc)
+            return None
 
-        if result and result[0].get("LinkSetDb"):
-            links = result[0]["LinkSetDb"][0].get("Link", [])
-            if links:
-                return links[0]["Id"]
+        try:
+            result = Entrez.read(handle)
+        except Exception as exc:
+            logger.warning(
+                "Failed to read PMC link for PMID:%s: %s", pmid, exc)
+            return None
+        finally:
+            handle.close()
+
+        if isinstance(result, list) and result and isinstance(result[0], dict):
+            link_set_db = result[0].get("LinkSetDb", [])
+            if isinstance(link_set_db, list) and link_set_db:
+                links = link_set_db[0].get("Link", [])
+                if isinstance(links, list) and links:
+                    first_link = links[0]
+                    if isinstance(first_link, dict) and "Id" in first_link:
+                        return str(first_link["Id"])
 
         return None
 
@@ -296,7 +322,8 @@ class PMIDSource(ReferenceSource):
         """
         time.sleep(config.rate_limit_delay)
 
-        handle = Entrez.efetch(db="pmc", id=pmcid, rettype="xml", retmode="xml")
+        handle = Entrez.efetch(
+            db="pmc", id=pmcid, rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
 

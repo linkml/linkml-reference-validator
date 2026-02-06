@@ -94,6 +94,16 @@ if _LINKML_AVAILABLE:
             self.validator = SupportingTextValidator(config)
             self.schema_view: Optional[SchemaView] = None
 
+        @property
+        def cache_dir(self) -> Path:
+            """Return the cache directory for this plugin."""
+            return self.config.cache_dir
+
+        @cache_dir.setter
+        def cache_dir(self, value: Path) -> None:
+            """Update the cache directory for this plugin."""
+            self.config.cache_dir = value
+
         def pre_process(self, context: ValidationContext) -> None:
             """Pre-process hook called before validation.
 

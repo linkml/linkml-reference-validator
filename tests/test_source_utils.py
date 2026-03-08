@@ -1,7 +1,5 @@
 """Tests for etl/sources/utils.py — extract_extra_fields and format_extra_fields_for_content."""
 
-import pytest
-
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
     format_extra_fields_for_content,

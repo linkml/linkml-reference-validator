@@ -398,6 +398,8 @@ class ReferenceValidationConfig(BaseModel):
             "Per-source extra fields to capture. "
             "Keys are source prefixes (e.g. 'clinicaltrials', 'PMID'). "
             "Values map field_name -> JSONPath expression into the raw API response. "
+            "Within each source, field names must be unique (they become section headings in cached content). "
+            "The same field name may be used for different sources. "
             "Captured fields are stored in ReferenceContent.metadata and persisted to cache."
         )
     )

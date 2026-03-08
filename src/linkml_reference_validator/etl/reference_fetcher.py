@@ -302,6 +302,10 @@ class ReferenceFetcher:
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
+        if reference.metadata and "extra_fields_captured" in reference.metadata:
+            lines.append("extra_fields_captured:")
+            for field_name in reference.metadata["extra_fields_captured"]:
+                lines.append(f"- {field_name}")
         if reference.supplementary_files:
             lines.append("supplementary_files:")
             for sf in reference.supplementary_files:
@@ -415,6 +419,10 @@ class ReferenceFetcher:
             frontmatter.get("supplementary_files")
         )
 
+        metadata: dict = {}
+        if "extra_fields_captured" in frontmatter:
+            metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
+
         return ReferenceContent(
             reference_id=frontmatter.get("reference_id", reference_id),
             title=frontmatter.get("title"),
@@ -426,6 +434,7 @@ class ReferenceFetcher:
             doi=frontmatter.get("doi"),
             keywords=keywords,
             supplementary_files=supplementary_files,
+            metadata=metadata,
         )
 
     def _extract_content_from_markdown(self, body: str) -> str:

@@ -128,7 +128,6 @@ class EntrezSummarySource(ReferenceSource):
 
         title = self._get_first_field_value(record, self.TITLE_FIELDS)
         content = self._get_first_field_value(record, self.CONTENT_FIELDS)
-        content_type = "summary" if content else "unavailable"
 
         metadata: dict[str, Any] = {"entrez_db": self.ENTREZ_DB}
         extra = extract_extra_fields(
@@ -137,6 +136,8 @@ class EntrezSummarySource(ReferenceSource):
         if extra:
             content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
             metadata["extra_fields_captured"] = list(extra.keys())
+
+        content_type = "summary" if (content or "").strip() else "unavailable"
 
         return ReferenceContent(
             reference_id=f"{self.prefix()}:{identifier}",
@@ -259,7 +260,6 @@ class GEOSource(EntrezSummarySource):
 
         title = self._get_first_field_value(record, self.TITLE_FIELDS)
         content = self._get_first_field_value(record, self.CONTENT_FIELDS)
-        content_type = "summary" if content else "unavailable"
 
         metadata: dict[str, Any] = {
             "entrez_db": self.ENTREZ_DB,
@@ -271,6 +271,8 @@ class GEOSource(EntrezSummarySource):
         if extra:
             content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
             metadata["extra_fields_captured"] = list(extra.keys())
+
+        content_type = "summary" if (content or "").strip() else "unavailable"
 
         return ReferenceContent(
             reference_id=f"{self.prefix()}:{identifier}",

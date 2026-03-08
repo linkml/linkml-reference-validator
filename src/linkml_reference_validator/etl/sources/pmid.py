@@ -155,6 +155,9 @@ class PMIDSource(ReferenceSource):
             content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
             metadata["extra_fields_captured"] = list(extra.keys())
 
+        if (content or "").strip() and content_type == "unavailable":
+            content_type = "summary"
+
         return ReferenceContent(
             reference_id=f"PMID:{pmid}",
             title=title,

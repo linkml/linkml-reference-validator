@@ -132,6 +132,24 @@ def test_yaml_value_quoting(fetcher):
     assert fetcher._quote_yaml_value("[Cholera].") == '"[Cholera]."'
     assert fetcher._quote_yaml_value("{Test}") == '"{Test}"'
 
+
+def test_save_and_load_extra_fields_captured(fetcher):
+    """Test that extra_fields_captured in metadata is saved and loaded from cache."""
+    ref = ReferenceContent(
+        reference_id="clinicaltrials:NCT00000001",
+        title="Test Trial",
+        content="Summary text.",
+        content_type="summary",
+        metadata={"extra_fields_captured": ["eligibility", "outcomes"]},
+    )
+
+    fetcher._save_to_disk(ref)
+
+    loaded = fetcher._load_from_disk("clinicaltrials:NCT00000001")
+
+    assert loaded is not None
+    assert loaded.metadata.get("extra_fields_captured") == ["eligibility", "outcomes"]
+
     # Colons should be quoted
     assert fetcher._quote_yaml_value("Title: Subtitle") == '"Title: Subtitle"'
 

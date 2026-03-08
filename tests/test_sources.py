@@ -472,6 +472,41 @@ class TestClinicalTrialsSource:
 
         assert result is None
 
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_with_source_extra_fields(self, mock_get, source, config):
+        """Should append user-configured extra fields to content and set extra_fields_captured."""
+        config.source_extra_fields["clinicaltrials"] = {
+            "eligibility": "$.protocolSection.eligibilityModule.eligibilityCriteria",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000001",
+                    "officialTitle": "Trial With Eligibility",
+                },
+                "descriptionModule": {
+                    "briefSummary": "Main summary.",
+                },
+                "eligibilityModule": {
+                    "eligibilityCriteria": "Inclusion: age >= 18. Exclusion: pregnant.",
+                },
+                "statusModule": {},
+                "sponsorCollaboratorsModule": {},
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is not None
+        assert result.content is not None
+        assert "Main summary." in result.content
+        assert "### eligibility" in result.content
+        assert "Inclusion: age >= 18" in result.content
+        assert result.metadata.get("extra_fields_captured") == ["eligibility"]
+
 
 class TestEntrezSummarySources:
     """Tests for Entrez summary-based sources."""

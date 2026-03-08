@@ -12,14 +12,12 @@ from jsonpath_ng.exceptions import JsonPathParserError
 logger = logging.getLogger(__name__)
 
 
-def extract_extra_fields(data: dict, field_map: dict[str, str]) -> str:
+def extract_extra_fields(data: dict, field_map: dict[str, str]) -> dict[str, str]:
     """Extract extra fields from a raw API response using JSONPath expressions.
 
     For each entry in *field_map*, the corresponding JSONPath expression is
-    evaluated against *data*.  Matching values are formatted as a labelled
-    Markdown section (``### field_name``) and concatenated together.  Fields
-    that produce no match, an empty value, or an invalid JSONPath expression
-    are silently omitted.
+    evaluated against *data*.  Fields that produce no match, an empty value,
+    or an invalid JSONPath expression are omitted from the result.
 
     Args:
         data: Raw API response dictionary to extract from.
@@ -27,35 +25,35 @@ def extract_extra_fields(data: dict, field_map: dict[str, str]) -> str:
             Example: ``{"eligibility": "$.protocolSection.eligibilityModule.eligibilityCriteria"}``.
 
     Returns:
-        A string of one or more ``### field_name\\n\\nvalue`` sections joined
-        by ``\\n\\n``, or an empty string when nothing could be extracted.
+        A dict mapping ``field_name`` → extracted text string for each field
+        that had a non-empty value.  Use :func:`format_extra_fields_for_content`
+        to turn this into text to append to reference content, and
+        ``list(result.keys())`` for ``extra_fields_captured`` metadata.
 
     Examples:
         >>> extract_extra_fields({}, {})
-        ''
+        {}
         >>> extract_extra_fields({"title": "My Paper"}, {})
-        ''
+        {}
         >>> extract_extra_fields({}, {"eligibility": "$.eligibility"})
-        ''
+        {}
         >>> extract_extra_fields({"foo": "bar"}, {"foo": "$.foo"})
-        '### foo\\n\\nbar'
+        {'foo': 'bar'}
         >>> result = extract_extra_fields(
         ...     {"a": "alpha", "b": "beta"},
         ...     {"a": "$.a", "b": "$.b"},
         ... )
-        >>> "### a" in result and "### b" in result
-        True
-        >>> "alpha" in result and "beta" in result
+        >>> result == {"a": "alpha", "b": "beta"}
         True
         >>> extract_extra_fields({"other": "x"}, {"missing": "$.missing"})
-        ''
+        {}
         >>> extract_extra_fields({"foo": "bar"}, {"bad": "not a valid $[[[jsonpath"})
-        ''
+        {}
     """
     if not field_map or not data:
-        return ""
+        return {}
 
-    sections: list[str] = []
+    result: dict[str, str] = {}
 
     for field_name, jsonpath_expr in field_map.items():
         try:
@@ -80,6 +78,29 @@ def extract_extra_fields(data: dict, field_map: dict[str, str]) -> str:
         if not text.strip():
             continue
 
-        sections.append(f"### {field_name}\n\n{text}")
+        result[field_name] = text
 
-    return "\n\n".join(sections)
+    return result
+
+
+def format_extra_fields_for_content(extra: dict[str, str]) -> str:
+    """Format an extra-fields dict as markdown sections for appending to reference content.
+
+    Args:
+        extra: Result of :func:`extract_extra_fields` (field_name → text).
+
+    Returns:
+        String of ``### field_name\\n\\ntext`` sections joined by ``\\n\\n``,
+        or empty string if *extra* is empty.
+
+    Examples:
+        >>> format_extra_fields_for_content({})
+        ''
+        >>> format_extra_fields_for_content({"foo": "bar content"})
+        '### foo\\n\\nbar content'
+        >>> format_extra_fields_for_content({"a": "alpha", "b": "beta"})
+        '### a\\n\\nalpha\\n\\n### b\\n\\nbeta'
+    """
+    if not extra:
+        return ""
+    return "\n\n".join(f"### {k}\n\n{v}" for k, v in extra.items())

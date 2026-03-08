@@ -871,6 +871,32 @@ linkml-reference-validator validate text "text" UNKNOWN:12345
 # ✗ Valid: False (WARNING) - Could not fetch reference
 ```
 
+#### `source_extra_fields` (per-source JSONPath map)
+
+Capture additional fields from reference API responses and append them to cached content so they are included in validation. Keys are source prefixes (e.g. `clinicaltrials`, `PMID`, `DOI`, `GEO`); values map a field name to a JSONPath expression into the raw API response. Prefer paths to a single value (string/number); if the path selects an object or array, its string representation is used.
+
+**Example:**
+
+Save as `my-config.yaml`:
+
+```yaml
+validation:
+  source_extra_fields:
+    clinicaltrials:
+      eligibility: "$.protocolSection.eligibilityModule.eligibilityCriteria"
+      outcomes: "$.protocolSection.outcomesModule.primaryOutcomes"
+```
+
+Pass this config when fetching so the cache includes these sections: use `--config my-config.yaml` with `cache reference` or `validate`. Captured field names are stored in `extra_fields_captured` in the cache frontmatter.
+
+```bash
+# Fetch and cache a trial with extra fields (eligibility, outcomes)
+linkml-reference-validator cache reference clinicaltrials:NCT00000001 --config my-config.yaml
+
+# Validate text against the cached content (including extra sections)
+linkml-reference-validator validate text "Inclusion: age >= 18" clinicaltrials:NCT00001372 --config my-config.yaml
+```
+
 ### Cache Directory
 
 Default: `references_cache/` in current directory

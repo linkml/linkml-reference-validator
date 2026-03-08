@@ -873,7 +873,7 @@ linkml-reference-validator validate text "text" UNKNOWN:12345
 
 #### `source_extra_fields` (per-source JSONPath map)
 
-Capture additional fields from reference API responses and append them to cached content so they are included in validation. Keys are source prefixes (e.g. `clinicaltrials`, `PMID`, `DOI`, `GEO`); values map a field name to a JSONPath expression into the raw API response. Prefer paths to a single value (string/number); if the path selects an object or array, its string representation is used.
+Capture additional fields from reference API responses and append them to cached content so they are included in validation. Keys are source prefixes (e.g. `clinicaltrials`, `PMID`, `DOI`, `GEO`); values map a field name to a JSONPath expression into the raw API response. Prefer paths to a single value (string/number). If the path selects a list, its elements are converted to strings and joined with spaces. If it selects an object or other type, its string representation is used.
 
 **Example:**
 

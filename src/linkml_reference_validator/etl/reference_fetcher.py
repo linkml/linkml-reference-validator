@@ -303,9 +303,18 @@ class ReferenceFetcher:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
         if reference.metadata and "extra_fields_captured" in reference.metadata:
-            lines.append("extra_fields_captured:")
-            for field_name in reference.metadata["extra_fields_captured"]:
-                lines.append(f"- {field_name}")
+            extra_fields = reference.metadata.get("extra_fields_captured")
+            if isinstance(extra_fields, list):
+                lines.append("extra_fields_captured:")
+                for field_name in extra_fields:
+                    if isinstance(field_name, str):
+                        lines.append(f"- {self._quote_yaml_value(field_name)}")
+                    else:
+                        logger.warning(
+                            "Skipping non-string item in extra_fields_captured: %r (type %s)",
+                            field_name,
+                            type(field_name).__name__,
+                        )
         if reference.supplementary_files:
             lines.append("supplementary_files:")
             for sf in reference.supplementary_files:

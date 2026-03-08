@@ -19,6 +19,10 @@ from Bio import Entrez  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.utils import (
+    extract_extra_fields,
+    format_extra_fields_for_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -126,12 +130,20 @@ class EntrezSummarySource(ReferenceSource):
         content = self._get_first_field_value(record, self.CONTENT_FIELDS)
         content_type = "summary" if content else "unavailable"
 
+        metadata: dict[str, Any] = {"entrez_db": self.ENTREZ_DB}
+        extra = extract_extra_fields(
+            record, config.source_extra_fields.get(self.prefix(), {})
+        )
+        if extra:
+            content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
+
         return ReferenceContent(
             reference_id=f"{self.prefix()}:{identifier}",
             title=title,
             content=content,
             content_type=content_type,
-            metadata={"entrez_db": self.ENTREZ_DB},
+            metadata=metadata,
         )
 
     def _extract_record(self, records: Any) -> Optional[dict[str, Any]]:
@@ -249,12 +261,23 @@ class GEOSource(EntrezSummarySource):
         content = self._get_first_field_value(record, self.CONTENT_FIELDS)
         content_type = "summary" if content else "unavailable"
 
+        metadata: dict[str, Any] = {
+            "entrez_db": self.ENTREZ_DB,
+            "entrez_uid": uid,
+        }
+        extra = extract_extra_fields(
+            record, config.source_extra_fields.get(self.prefix(), {})
+        )
+        if extra:
+            content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
+
         return ReferenceContent(
             reference_id=f"{self.prefix()}:{identifier}",
             title=title,
             content=content,
             content_type=content_type,
-            metadata={"entrez_db": self.ENTREZ_DB, "entrez_uid": uid},
+            metadata=metadata,
         )
 
     def _accession_to_uid(

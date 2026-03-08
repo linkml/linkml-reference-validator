@@ -24,6 +24,10 @@ from linkml_reference_validator.models import (
     SupplementaryFile,
 )
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.utils import (
+    extract_extra_fields,
+    format_extra_fields_for_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -128,6 +132,14 @@ class DOISource(ReferenceSource):
         # Extract keywords/subjects from Crossref
         keywords = self._parse_crossref_subjects(message.get("subject", []))
 
+        metadata: dict = {}
+        extra = extract_extra_fields(
+            message, config.source_extra_fields.get("DOI", {})
+        )
+        if extra:
+            abstract = (abstract + "\n\n" + format_extra_fields_for_content(extra)) if abstract else format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
+
         return ReferenceContent(
             reference_id=f"DOI:{doi}",
             title=title,
@@ -138,6 +150,7 @@ class DOISource(ReferenceSource):
             year=year,
             doi=doi,
             keywords=keywords,
+            metadata=metadata,
         )
 
     def _fetch_from_datacite(
@@ -195,6 +208,14 @@ class DOISource(ReferenceSource):
         # Fetch supplementary files from repository-specific APIs
         supplementary_files = self._fetch_repository_files(doi, config)
 
+        metadata: dict = {}
+        extra = extract_extra_fields(
+            attributes, config.source_extra_fields.get("DOI", {})
+        )
+        if extra:
+            abstract = (abstract + "\n\n" + format_extra_fields_for_content(extra)) if abstract else format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
+
         return ReferenceContent(
             reference_id=f"DOI:{doi}",
             title=title,
@@ -206,6 +227,7 @@ class DOISource(ReferenceSource):
             doi=doi,
             keywords=keywords,
             supplementary_files=supplementary_files,
+            metadata=metadata,
         )
 
     def _detect_repository(self, doi: str) -> Optional[str]:

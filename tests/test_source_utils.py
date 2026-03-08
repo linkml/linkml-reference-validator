@@ -16,7 +16,9 @@ class TestExtractExtraFieldsEmpty:
             >>> extract_extra_fields({"key": "value"}, {})
             {}
         """
-        data = {"protocolSection": {"descriptionModule": {"briefSummary": "Some text."}}}
+        data = {
+            "protocolSection": {"descriptionModule": {"briefSummary": "Some text."}}
+        }
         assert extract_extra_fields(data, {}) == {}
 
     def test_empty_data_returns_empty_dict(self):
@@ -167,7 +169,10 @@ class TestExtractExtraFieldsValueTypes:
         data = {"conditions": ["Fanconi Anemia", "Aplastic Anemia"]}
         result = extract_extra_fields(data, {"conditions": "$.conditions"})
         assert "conditions" in result
-        assert "Fanconi Anemia" in result["conditions"] and "Aplastic Anemia" in result["conditions"]
+        assert (
+            "Fanconi Anemia" in result["conditions"]
+            and "Aplastic Anemia" in result["conditions"]
+        )
 
 
 class TestFormatExtraFieldsForContent:

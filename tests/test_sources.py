@@ -507,6 +507,38 @@ class TestClinicalTrialsSource:
         assert "Inclusion: age >= 18" in result.content
         assert result.metadata.get("extra_fields_captured") == ["eligibility"]
 
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_extras_only_sets_content_type_summary(self, mock_get, source, config):
+        """When primary content is empty but source_extra_fields produce content, content_type is summary."""
+        config.source_extra_fields["clinicaltrials"] = {
+            "eligibility": "$.protocolSection.eligibilityModule.eligibilityCriteria",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000001",
+                    "officialTitle": "Trial With Eligibility Only",
+                },
+                "descriptionModule": {},
+                "eligibilityModule": {
+                    "eligibilityCriteria": "Inclusion: age >= 18.",
+                },
+                "statusModule": {},
+                "sponsorCollaboratorsModule": {},
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is not None
+        assert result.content
+        assert "### eligibility" in result.content
+        assert "age >= 18" in result.content
+        assert result.content_type == "summary"
+
 
 class TestEntrezSummarySources:
     """Tests for Entrez summary-based sources."""

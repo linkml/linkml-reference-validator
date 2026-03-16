@@ -21,6 +21,10 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.utils import (
+    extract_extra_fields,
+    format_extra_fields_for_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +147,17 @@ class PMIDSource(ReferenceSource):
             content = abstract
             content_type = "abstract_only" if abstract else "unavailable"
 
+        metadata: dict = {}
+        extra = extract_extra_fields(
+            record_dict, config.source_extra_fields.get("PMID", {})
+        )
+        if extra:
+            content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
+
+        if (content or "").strip() and content_type == "unavailable":
+            content_type = "summary"
+
         return ReferenceContent(
             reference_id=f"PMID:{pmid}",
             title=title,
@@ -153,6 +168,7 @@ class PMIDSource(ReferenceSource):
             year=year,
             doi=doi,
             keywords=keywords,
+            metadata=metadata,
         )
 
     def _parse_authors(self, author_list: list) -> list[str]:

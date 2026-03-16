@@ -2,7 +2,10 @@
 
 import pytest
 from unittest.mock import patch, MagicMock
-from linkml_reference_validator.models import ReferenceValidationConfig, ReferenceContent
+from linkml_reference_validator.models import (
+    ReferenceValidationConfig,
+    ReferenceContent,
+)
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 
 
@@ -36,7 +39,10 @@ def test_parse_reference_id(fetcher):
     assert fetcher._parse_reference_id("12345678") == ("PMID", "12345678")
     assert fetcher._parse_reference_id("DOI:10.1234/test") == ("DOI", "10.1234/test")
     assert fetcher._parse_reference_id("file:./test.md") == ("file", "./test.md")
-    assert fetcher._parse_reference_id("url:https://example.com") == ("url", "https://example.com")
+    assert fetcher._parse_reference_id("url:https://example.com") == (
+        "url",
+        "https://example.com",
+    )
 
 
 def test_parse_reference_id_with_prefix_map(tmp_path):
@@ -54,7 +60,10 @@ def test_parse_reference_id_with_prefix_map(tmp_path):
 
     assert fetcher._parse_reference_id("geo:GSE12345") == ("GEO", "GSE12345")
     assert fetcher._parse_reference_id("NCBIGeo:GSE12345") == ("GEO", "GSE12345")
-    assert fetcher._parse_reference_id("bioproject:PRJNA12345") == ("BIOPROJECT", "PRJNA12345")
+    assert fetcher._parse_reference_id("bioproject:PRJNA12345") == (
+        "BIOPROJECT",
+        "PRJNA12345",
+    )
 
 
 def test_get_cache_path(fetcher):
@@ -131,6 +140,24 @@ def test_yaml_value_quoting(fetcher):
     # Brackets should be quoted
     assert fetcher._quote_yaml_value("[Cholera].") == '"[Cholera]."'
     assert fetcher._quote_yaml_value("{Test}") == '"{Test}"'
+
+
+def test_save_and_load_extra_fields_captured(fetcher):
+    """Test that extra_fields_captured in metadata is saved and loaded from cache."""
+    ref = ReferenceContent(
+        reference_id="clinicaltrials:NCT00000001",
+        title="Test Trial",
+        content="Summary text.",
+        content_type="summary",
+        metadata={"extra_fields_captured": ["eligibility", "outcomes"]},
+    )
+
+    fetcher._save_to_disk(ref)
+
+    loaded = fetcher._load_from_disk("clinicaltrials:NCT00000001")
+
+    assert loaded is not None
+    assert loaded.metadata.get("extra_fields_captured") == ["eligibility", "outcomes"]
 
     # Colons should be quoted
     assert fetcher._quote_yaml_value("Title: Subtitle") == '"Title: Subtitle"'
@@ -302,7 +329,9 @@ def test_save_and_load_url_from_disk(mock_get, fetcher, tmp_path):
     fetcher._cache.clear()
 
     # Second fetch - should load from disk without making HTTP request
-    with patch("linkml_reference_validator.etl.sources.url.requests.get") as mock_no_request:
+    with patch(
+        "linkml_reference_validator.etl.sources.url.requests.get"
+    ) as mock_no_request:
         result2 = fetcher.fetch("url:https://example.com/cached")
         mock_no_request.assert_not_called()
 
@@ -329,7 +358,9 @@ def test_parse_bare_https_url(fetcher):
     assert identifier == "http://example.com/path"
 
     # doi.org URL should also be treated as url:
-    prefix, identifier = fetcher._parse_reference_id("https://doi.org/10.5281/zenodo.123")
+    prefix, identifier = fetcher._parse_reference_id(
+        "https://doi.org/10.5281/zenodo.123"
+    )
     assert prefix == "url"
     assert identifier == "https://doi.org/10.5281/zenodo.123"
 
@@ -341,9 +372,18 @@ def test_parse_bare_https_url(fetcher):
 
 def test_normalize_bare_https_url(fetcher):
     """Test that normalize_reference_id handles bare HTTPS URLs."""
-    assert fetcher.normalize_reference_id("https://example.com") == "url:https://example.com"
-    assert fetcher.normalize_reference_id("http://example.com/path") == "url:http://example.com/path"
-    assert fetcher.normalize_reference_id("https://doi.org/10.5281/zenodo.123") == "url:https://doi.org/10.5281/zenodo.123"
+    assert (
+        fetcher.normalize_reference_id("https://example.com")
+        == "url:https://example.com"
+    )
+    assert (
+        fetcher.normalize_reference_id("http://example.com/path")
+        == "url:http://example.com/path"
+    )
+    assert (
+        fetcher.normalize_reference_id("https://doi.org/10.5281/zenodo.123")
+        == "url:https://doi.org/10.5281/zenodo.123"
+    )
 
 
 @patch("linkml_reference_validator.etl.sources.url.requests.get")
@@ -583,7 +623,9 @@ def test_detect_repository():
     assert source._detect_repository("10.1234/test") is None
 
     # Edge cases
-    assert source._detect_repository("10.5281/other.123") is None  # 10.5281 but not zenodo
+    assert (
+        source._detect_repository("10.5281/other.123") is None
+    )  # 10.5281 but not zenodo
 
 
 def test_extract_zenodo_record_id():

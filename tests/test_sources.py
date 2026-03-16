@@ -133,7 +133,9 @@ class TestFileSource:
         assert result.content is not None
         assert "Some notes here." in result.content
 
-    def test_fetch_relative_path_cwd_fallback(self, source, config, tmp_path, monkeypatch):
+    def test_fetch_relative_path_cwd_fallback(
+        self, source, config, tmp_path, monkeypatch
+    ):
         """Should resolve relative paths from CWD if no base_dir set."""
         # Create test file in tmp_path (simulating CWD)
         test_file = tmp_path / "relative.md"
@@ -155,8 +157,7 @@ class TestFileSource:
     def test_extract_title_from_markdown(self, source, config, tmp_path):
         """Should extract title from first heading."""
         test_file = tmp_path / "titled.md"
-        test_file.write_text(
-            "Some preamble\n\n# The Real Title\n\nContent here.")
+        test_file.write_text("Some preamble\n\n# The Real Title\n\nContent here.")
 
         result = source.fetch(str(test_file), config)
 
@@ -166,8 +167,7 @@ class TestFileSource:
     def test_html_content_preserved(self, source, config, tmp_path):
         """HTML content should be preserved as-is."""
         test_file = tmp_path / "test.html"
-        test_file.write_text(
-            "<html><body><p>Test &amp; content</p></body></html>")
+        test_file.write_text("<html><body><p>Test &amp; content</p></body></html>")
 
         result = source.fetch(str(test_file), config)
 
@@ -472,6 +472,73 @@ class TestClinicalTrialsSource:
 
         assert result is None
 
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_with_source_extra_fields(self, mock_get, source, config):
+        """Should append user-configured extra fields to content and set extra_fields_captured."""
+        config.source_extra_fields["clinicaltrials"] = {
+            "eligibility": "$.protocolSection.eligibilityModule.eligibilityCriteria",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000001",
+                    "officialTitle": "Trial With Eligibility",
+                },
+                "descriptionModule": {
+                    "briefSummary": "Main summary.",
+                },
+                "eligibilityModule": {
+                    "eligibilityCriteria": "Inclusion: age >= 18. Exclusion: pregnant.",
+                },
+                "statusModule": {},
+                "sponsorCollaboratorsModule": {},
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is not None
+        assert result.content is not None
+        assert "Main summary." in result.content
+        assert "### eligibility" in result.content
+        assert "Inclusion: age >= 18" in result.content
+        assert result.metadata.get("extra_fields_captured") == ["eligibility"]
+
+    @patch("linkml_reference_validator.etl.sources.clinicaltrials.requests.get")
+    def test_fetch_extras_only_sets_content_type_summary(self, mock_get, source, config):
+        """When primary content is empty but source_extra_fields produce content, content_type is summary."""
+        config.source_extra_fields["clinicaltrials"] = {
+            "eligibility": "$.protocolSection.eligibilityModule.eligibilityCriteria",
+        }
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "protocolSection": {
+                "identificationModule": {
+                    "nctId": "NCT00000001",
+                    "officialTitle": "Trial With Eligibility Only",
+                },
+                "descriptionModule": {},
+                "eligibilityModule": {
+                    "eligibilityCriteria": "Inclusion: age >= 18.",
+                },
+                "statusModule": {},
+                "sponsorCollaboratorsModule": {},
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = source.fetch("NCT00000001", config)
+
+        assert result is not None
+        assert result.content
+        assert "### eligibility" in result.content
+        assert "age >= 18" in result.content
+        assert result.content_type == "summary"
+
 
 class TestEntrezSummarySources:
     """Tests for Entrez summary-based sources."""
@@ -494,8 +561,13 @@ class TestEntrezSummarySources:
                 "Project_Description",
                 "bioproject",
             ),
-            (BioSampleSource, "biosample:SAMN00000001",
-             "Title", "Description", "biosample"),
+            (
+                BioSampleSource,
+                "biosample:SAMN00000001",
+                "Title",
+                "Description",
+                "biosample",
+            ),
         ],
     )
     @patch("linkml_reference_validator.etl.sources.entrez.Entrez.read")
@@ -525,13 +597,16 @@ class TestEntrezSummarySources:
         result = source.fetch(reference_id.split(":", 1)[1], config)
 
         assert result is not None
-        assert result.reference_id == f"{source.prefix()}:{reference_id.split(':', 1)[1]}"
+        assert (
+            result.reference_id == f"{source.prefix()}:{reference_id.split(':', 1)[1]}"
+        )
         assert result.title == "Example Title"
         assert result.content == "Example content summary."
         assert result.content_type == "summary"
         assert result.metadata["entrez_db"] == db_name
         mock_esummary.assert_called_once_with(
-            db=db_name, id=reference_id.split(":", 1)[1])
+            db=db_name, id=reference_id.split(":", 1)[1]
+        )
         mock_handle.close.assert_called_once()
 
     @pytest.mark.parametrize(
@@ -619,8 +694,7 @@ class TestGEOSource:
         assert result.metadata["entrez_uid"] == "200067472"
 
         # Verify esearch was called with accession
-        mock_esearch.assert_called_once_with(
-            db="gds", term="GSE67472[Accession]")
+        mock_esearch.assert_called_once_with(db="gds", term="GSE67472[Accession]")
         # Verify esummary was called with UID, not accession
         mock_esummary.assert_called_once_with(db="gds", id="200067472")
 

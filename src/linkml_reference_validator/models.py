@@ -392,6 +392,20 @@ class ReferenceValidationConfig(BaseModel):
             "e.g. {'geo': 'GEO', 'NCBIGeo': 'GEO'}"
         ),
     )
+    source_extra_fields: dict[str, dict[str, str]] = Field(
+        default_factory=dict,
+        description=(
+            "Per-source extra fields to capture. "
+            "Keys are source prefixes (e.g. 'clinicaltrials', 'PMID'). "
+            "Values map field_name -> JSONPath expression into the raw API response. "
+            "Prefer JSONPath expressions that point to a single value (string/number). "
+            "If the path selects a list, its elements are converted to strings and joined with spaces. "
+            "If it selects an object or other type, its string representation is used. "
+            "Within each source, field names must be unique (they become section headings in cached content). "
+            "The same field name may be used for different sources. "
+            "Captured fields are stored in ReferenceContent.metadata and persisted to cache."
+        )
+    )
     skip_prefixes: list[str] = Field(
         default_factory=list,
         description=(

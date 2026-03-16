@@ -24,6 +24,10 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.utils import (
+    extract_extra_fields,
+    format_extra_fields_for_content,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +137,11 @@ class ClinicalTrialsSource(ReferenceSource):
             logger.warning(f"Failed to parse JSON response for {nct_id}: {exc}")
             return None
 
-        return self._parse_response(nct_id, data)
+        return self._parse_response(nct_id, data, config)
 
-    def _parse_response(self, nct_id: str, data: dict) -> Optional[ReferenceContent]:
+    def _parse_response(
+        self, nct_id: str, data: dict, config: ReferenceValidationConfig
+    ) -> Optional[ReferenceContent]:
         """Parse the ClinicalTrials.gov API response into ReferenceContent.
 
         Args:
@@ -168,6 +174,13 @@ class ClinicalTrialsSource(ReferenceSource):
         sponsor_name = lead_sponsor.get("name")
         if sponsor_name:
             metadata["sponsor"] = sponsor_name
+
+        extra = extract_extra_fields(
+            data, config.source_extra_fields.get("clinicaltrials", {})
+        )
+        if extra:
+            content = (content or "") + "\n\n" + format_extra_fields_for_content(extra)
+            metadata["extra_fields_captured"] = list(extra.keys())
 
         content_type = "summary" if content else "unavailable"
 

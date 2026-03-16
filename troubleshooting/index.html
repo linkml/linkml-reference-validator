@@ -1,0 +1,2691 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/troubleshooting/">
+      
+      
+        <link rel="prev" href="../reference/cli/">
+      
+      
+        <link rel="next" href="../todo/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Troubleshooting - linkml-reference-validator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#troubleshooting-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            linkml-reference-validator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Troubleshooting
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    linkml-reference-validator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/complete-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/01_getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started with linkml-reference-validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/02_advanced_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Usage: Validating Data with LinkML Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/04_obo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Format Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/05_geo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating GEO Dataset References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/03_python_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API for Programmatic Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-To Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-To Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-obo-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-entrez/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-clinical-trials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Clinical Trials
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Reference Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/use-local-files-and-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/add-reference-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/skip-unsupported-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skipping Unsupported References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/repair-validation-errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/content-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/editorial-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Editorial Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-not-found-linkml-reference-validator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command not found: linkml-reference-validator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#importerror-no-module-named-linkml_reference_validator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ImportError: No module named 'linkml_reference_validator'
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version conflicts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-fetching-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Fetching Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference Fetching Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#could-not-fetch-reference-pmidxxxxxxxx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Could not fetch reference: PMID:XXXXXXXX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-content-available-for-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No content available for reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate limiting errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supporting-text-not-found-in-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supporting text not found in reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-is-empty-after-removing-brackets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query is empty after removing brackets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#title-validation-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title validation failed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-reference-or-supporting_text-fields-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No reference or supporting_text fields found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schema-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-format-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Format Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-parsing-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML parsing errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalid-reference-id-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invalid reference ID format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation-is-very-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation is very slow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#large-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Large cache directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-error-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Error Messages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Error Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#text-normalization-resulted-in-empty-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Text normalization resulted in empty string"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-reference-fields-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Multiple reference fields found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-base-directory-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Reference base directory not found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-more-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting More Help
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting More Help">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-verbose-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable verbose logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-cache-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check cache contents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-with-simple-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test with simple example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#report-bugs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report bugs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-diagnostic-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Diagnostic Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-not-found-linkml-reference-validator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command not found: linkml-reference-validator
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#importerror-no-module-named-linkml_reference_validator" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ImportError: No module named 'linkml_reference_validator'
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#version-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Version conflicts
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reference-fetching-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reference Fetching Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reference Fetching Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#could-not-fetch-reference-pmidxxxxxxxx" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Could not fetch reference: PMID:XXXXXXXX
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#no-content-available-for-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No content available for reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rate-limiting-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Rate limiting errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validation-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Validation Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#supporting-text-not-found-in-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Supporting text not found in reference
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-is-empty-after-removing-brackets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query is empty after removing brackets
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#title-validation-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title validation failed
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#schema-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Schema Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#no-reference-or-supporting_text-fields-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        No reference or supporting_text fields found
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#schema-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema validation errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-format-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Format Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Format Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#yaml-parsing-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        YAML parsing errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#invalid-reference-id-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Invalid reference ID format
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#performance-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance Issues
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Performance Issues">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validation-is-very-slow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validation is very slow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#large-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Large cache directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#common-error-messages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Error Messages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Common Error Messages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#text-normalization-resulted-in-empty-string" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Text normalization resulted in empty string"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multiple-reference-fields-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Multiple reference fields found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-base-directory-not-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Reference base directory not found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-more-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting More Help
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting More Help">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#enable-verbose-logging" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enable verbose logging
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#check-cache-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Check cache contents
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-with-simple-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test with simple example
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#report-bugs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Report bugs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-diagnostic-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Diagnostic Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See Also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="troubleshooting-guide">Troubleshooting Guide</h1>
+<p>This guide covers common issues and their solutions when using linkml-reference-validator.</p>
+<h2 id="installation-issues">Installation Issues</h2>
+<h3 id="command-not-found-linkml-reference-validator">Command not found: linkml-reference-validator</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code class="language-bash">$ linkml-reference-validator --help
+bash: linkml-reference-validator: command not found
+</code></pre>
+<p><strong>Causes:</strong>
+- Package not installed
+- Package installed but not in PATH
+- Using wrong Python environment</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Verify installation:</strong></li>
+</ol>
+<pre><code class="language-bash">pip list | grep linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Reinstall if missing:</strong></li>
+</ol>
+<pre><code class="language-bash">pip install linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Check if it's in PATH:</strong></li>
+</ol>
+<pre><code class="language-bash">which linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Use module invocation:</strong></li>
+</ol>
+<pre><code class="language-bash">python -m linkml_reference_validator --help
+</code></pre>
+<ol>
+<li><strong>Check Python environment:</strong></li>
+</ol>
+<pre><code class="language-bash"># Show current Python
+which python
+python --version
+
+# If using virtual environment
+source venv/bin/activate  # Linux/Mac
+venv\Scripts\activate     # Windows
+</code></pre>
+<h3 id="importerror-no-module-named-linkml_reference_validator">ImportError: No module named 'linkml_reference_validator'</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code class="language-python">ImportError: No module named 'linkml_reference_validator'
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Install in correct environment:</strong></li>
+</ol>
+<pre><code class="language-bash"># Check current environment
+python -c &quot;import sys; print(sys.executable)&quot;
+
+# Install in that environment
+python -m pip install linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Verify installation:</strong></li>
+</ol>
+<pre><code class="language-python">python -c &quot;import linkml_reference_validator; print(linkml_reference_validator.__version__)&quot;
+</code></pre>
+<h3 id="version-conflicts">Version conflicts</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>ERROR: pip's dependency resolver does not currently take into account all the packages that are installed. This behaviour is the source of the following dependency conflicts.
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Use uv (recommended):</strong></li>
+</ol>
+<pre><code class="language-bash">curl -LsSf https://astral.sh/uv/install.sh | sh
+uv pip install linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Create fresh virtual environment:</strong></li>
+</ol>
+<pre><code class="language-bash">python -m venv fresh_env
+source fresh_env/bin/activate
+pip install --upgrade pip
+pip install linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Use compatible versions:</strong></li>
+</ol>
+<pre><code class="language-bash">pip install linkml-reference-validator --upgrade
+</code></pre>
+<h2 id="reference-fetching-issues">Reference Fetching Issues</h2>
+<h3 id="could-not-fetch-reference-pmidxxxxxxxx">Could not fetch reference: PMID:XXXXXXXX</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Could not fetch reference PMID:12345678
+Failed to retrieve reference content
+</code></pre>
+<p><strong>Causes:</strong>
+- PMID doesn't exist
+- Network connectivity issues
+- NCBI API temporarily unavailable
+- Rate limiting
+- Missing NCBI email configuration</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Verify PMID exists:</strong></li>
+<li>Visit https://pubmed.ncbi.nlm.nih.gov/12345678/</li>
+<li>
+<p>Check if the number is correct</p>
+</li>
+<li>
+<p><strong>Check network connectivity:</strong></p>
+</li>
+</ol>
+<pre><code class="language-bash">ping www.ncbi.nlm.nih.gov
+curl -I https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi
+</code></pre>
+<ol>
+<li><strong>Set NCBI email (required):</strong></li>
+</ol>
+<pre><code class="language-bash">export NCBI_EMAIL=&quot;your.email@example.com&quot;
+</code></pre>
+<ol>
+<li><strong>Get NCBI API key for higher limits:</strong></li>
+<li>Visit https://www.ncbi.nlm.nih.gov/account/</li>
+<li>Generate API key</li>
+<li>Set environment variable:</li>
+</ol>
+<pre><code class="language-bash">export NCBI_API_KEY=&quot;your_api_key_here&quot;
+</code></pre>
+<ol>
+<li><strong>Retry after delay:</strong></li>
+</ol>
+<pre><code class="language-bash"># Wait a moment and try again
+sleep 5
+linkml-reference-validator validate text &quot;quote&quot; PMID:12345678
+</code></pre>
+<ol>
+<li><strong>Check cache directory permissions:</strong></li>
+</ol>
+<pre><code class="language-bash">ls -ld references_cache/
+chmod 755 references_cache/
+</code></pre>
+<h3 id="no-content-available-for-reference">No content available for reference</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: No content available for PMID:12345678
+Content type: unavailable
+</code></pre>
+<p><strong>Causes:</strong>
+- Abstract not available
+- Article behind paywall (no PMC access)
+- Retracted article
+- Very old article
+- Article not yet indexed</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Try PMC version:</strong></li>
+</ol>
+<pre><code class="language-bash"># Search for PMC ID at https://www.ncbi.nlm.nih.gov/pmc/
+linkml-reference-validator validate text &quot;quote&quot; PMC:3458566
+</code></pre>
+<ol>
+<li><strong>Use DOI instead:</strong></li>
+</ol>
+<pre><code class="language-bash">linkml-reference-validator validate text &quot;quote&quot; DOI:10.1038/nature12373
+</code></pre>
+<ol>
+<li><strong>Use local file:</strong></li>
+</ol>
+<pre><code class="language-bash"># Save article content as markdown or text
+linkml-reference-validator validate text &quot;quote&quot; file:./papers/article.md
+</code></pre>
+<ol>
+<li><strong>Check cache file:</strong></li>
+</ol>
+<pre><code class="language-bash"># See what was actually fetched
+cat references_cache/PMID_12345678.md
+</code></pre>
+<h3 id="rate-limiting-errors">Rate limiting errors</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Too many requests to NCBI API
+HTTP Error 429: Too Many Requests
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Set NCBI API key:</strong></li>
+</ol>
+<pre><code class="language-bash">export NCBI_API_KEY=&quot;your_api_key&quot;
+</code></pre>
+<p>Without key: 3 requests/second
+With key: 10 requests/second</p>
+<ol>
+<li><strong>Pre-cache references:</strong></li>
+</ol>
+<pre><code class="language-bash"># Cache all references before validation
+for pmid in PMID:111 PMID:222 PMID:333; do
+  linkml-reference-validator cache reference $pmid
+  sleep 1  # Add delay between requests
+done
+</code></pre>
+<ol>
+<li><strong>Use cached references:</strong></li>
+</ol>
+<pre><code class="language-bash"># If cache exists, no API call is made
+linkml-reference-validator validate text &quot;quote&quot; PMID:12345678 \
+  --cache-dir ./references_cache
+</code></pre>
+<h2 id="validation-issues">Validation Issues</h2>
+<h3 id="supporting-text-not-found-in-reference">Supporting text not found in reference</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Supporting text not found in reference
+Text part not found as substring: &quot;your quote here&quot;
+</code></pre>
+<p><strong>Causes:</strong>
+- Quote is paraphrased, not exact
+- Text only in figures/tables/supplementary materials
+- Text uses different terminology in reference
+- Unicode/character differences
+- Only abstract available (text in full text)</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Verify exact quote:</strong></li>
+<li>Open the PDF or HTML of the article</li>
+<li>Copy the exact text</li>
+<li>
+<p>Check for character differences (O2 vs O₂, α vs alpha)</p>
+</li>
+<li>
+<p><strong>Check content type:</strong></p>
+</li>
+</ol>
+<pre><code class="language-bash">linkml-reference-validator cache reference PMID:12345678
+# Look for &quot;Content type: abstract_only&quot; vs &quot;full_text_xml&quot;
+</code></pre>
+<ol>
+<li><strong>Try PMC for full text:</strong></li>
+</ol>
+<pre><code class="language-bash"># If only abstract was fetched
+linkml-reference-validator validate text &quot;quote&quot; PMC:3458566
+</code></pre>
+<ol>
+<li><strong>Use repair command:</strong></li>
+</ol>
+<pre><code class="language-bash">linkml-reference-validator repair text \
+  &quot;your quote here&quot; \
+  PMID:12345678
+</code></pre>
+<ol>
+<li><strong>Add editorial notes:</strong></li>
+</ol>
+<pre><code class="language-yaml"># If you need to clarify or modernize
+supporting_text: &quot;protein [X] functions in cells&quot;
+</code></pre>
+<ol>
+<li><strong>Use ellipsis for non-contiguous text:</strong></li>
+</ol>
+<pre><code class="language-yaml">supporting_text: &quot;protein functions ... in cell regulation&quot;
+</code></pre>
+<ol>
+<li><strong>Check normalization:</strong></li>
+</ol>
+<pre><code class="language-python"># Test what the text looks like after normalization
+from linkml_reference_validator.validation.supporting_text_validator import normalize_text
+
+text = &quot;Your quote here&quot;
+print(normalize_text(text))
+</code></pre>
+<h3 id="query-is-empty-after-removing-brackets">Query is empty after removing brackets</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Query is empty after removing brackets
+Supporting text: &quot;[editorial note]&quot;
+</code></pre>
+<p><strong>Cause:</strong>
+- Entire supporting_text is in brackets</p>
+<p><strong>Solution:</strong></p>
+<p>Include actual quote text:</p>
+<pre><code class="language-yaml"># Wrong
+supporting_text: &quot;[sic]&quot;
+
+# Correct
+supporting_text: &quot;protein functions in cells [sic]&quot;
+</code></pre>
+<h3 id="title-validation-failed">Title validation failed</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Reference title mismatch
+Expected: &quot;Study of Protein X&quot;
+Actual: &quot;Study of protein X function&quot;
+</code></pre>
+<p><strong>Causes:</strong>
+- Title in data doesn't match fetched title
+- Partial title provided
+- Capitalization differences</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Use exact title:</strong></li>
+</ol>
+<pre><code class="language-bash"># Fetch reference to see actual title
+linkml-reference-validator cache reference PMID:12345678
+cat references_cache/PMID_12345678.md | head -20
+</code></pre>
+<ol>
+<li><strong>Omit title if uncertain:</strong></li>
+</ol>
+<pre><code class="language-yaml"># Title validation is optional
+reference_id: PMID:12345678
+# Don't include reference_title if unsure
+supporting_text: &quot;your quote&quot;
+</code></pre>
+<ol>
+<li><strong>Understand title matching:</strong></li>
+<li>Titles must match completely (not substring)</li>
+<li>Case and punctuation are normalized</li>
+<li>But all words must match</li>
+</ol>
+<pre><code class="language-yaml"># These match (after normalization):
+reference_title: &quot;Role of JAK1 in Cell-Signaling&quot;
+actual_title: &quot;Role of JAK1 in Cell Signaling&quot;
+
+# These DON'T match (partial):
+reference_title: &quot;Role of JAK1&quot;
+actual_title: &quot;Role of JAK1 in Cell Signaling&quot;
+</code></pre>
+<h2 id="schema-issues">Schema Issues</h2>
+<h3 id="no-reference-or-supporting_text-fields-found">No reference or supporting_text fields found</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Could not find fields marked with linkml:authoritative_reference or linkml:excerpt
+</code></pre>
+<p><strong>Causes:</strong>
+- Schema doesn't have required slot_uri markers
+- Using wrong field names
+- Schema not properly configured</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Add slot_uri markers:</strong></li>
+</ol>
+<pre><code class="language-yaml">classes:
+  Evidence:
+    attributes:
+      reference:
+        slot_uri: linkml:authoritative_reference  # Required
+      supporting_text:
+        slot_uri: linkml:excerpt  # Required
+</code></pre>
+<ol>
+<li><strong>Or use implements:</strong></li>
+</ol>
+<pre><code class="language-yaml">classes:
+  Evidence:
+    attributes:
+      reference:
+        implements:
+          - linkml:authoritative_reference
+      supporting_text:
+        implements:
+          - linkml:excerpt
+</code></pre>
+<ol>
+<li><strong>Or use standard field names:</strong></li>
+<li><code>reference</code>, <code>reference_id</code>, <code>pmid</code> for references</li>
+<li><code>supporting_text</code>, <code>excerpt</code>, <code>quote</code> for text</li>
+</ol>
+<h3 id="schema-validation-errors">Schema validation errors</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>LinkML schema validation failed
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Validate schema separately:</strong></li>
+</ol>
+<pre><code class="language-bash">linkml-validate --schema schema.yaml schema.yaml
+</code></pre>
+<ol>
+<li><strong>Check required fields:</strong></li>
+</ol>
+<pre><code class="language-yaml">prefixes:
+  linkml: https://w3id.org/linkml/  # Must be defined
+
+classes:
+  MyClass:
+    tree_root: true  # At least one class needs this
+</code></pre>
+<ol>
+<li><strong>Fix common issues:</strong></li>
+</ol>
+<pre><code class="language-yaml"># Bad: missing range
+reference:
+  required: true
+
+# Good: includes range
+reference:
+  required: true
+  range: string
+</code></pre>
+<h2 id="data-format-issues">Data Format Issues</h2>
+<h3 id="yaml-parsing-errors">YAML parsing errors</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>yaml.scanner.ScannerError: mapping values are not allowed here
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Check YAML syntax:</strong></li>
+</ol>
+<pre><code class="language-bash"># Use YAML validator
+python -c &quot;import yaml; yaml.safe_load(open('data.yaml'))&quot;
+</code></pre>
+<ol>
+<li><strong>Common YAML mistakes:</strong></li>
+</ol>
+<pre><code class="language-yaml"># Bad: missing quotes
+supporting_text: Text with: colon
+
+# Good: quoted
+supporting_text: &quot;Text with: colon&quot;
+
+# Bad: incorrect indentation
+evidence:
+  reference: PMID:123
+supporting_text: &quot;text&quot;
+
+# Good: proper indentation
+evidence:
+  reference: PMID:123
+  supporting_text: &quot;text&quot;
+</code></pre>
+<ol>
+<li><strong>Use YAML linter:</strong></li>
+</ol>
+<pre><code class="language-bash">pip install yamllint
+yamllint data.yaml
+</code></pre>
+<h3 id="invalid-reference-id-format">Invalid reference ID format</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code>Error: Invalid reference ID format: &quot;invalid_id&quot;
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<p>Use correct format:</p>
+<pre><code class="language-yaml"># Correct formats:
+reference_id: PMID:12345678
+reference_id: PMC:3458566
+reference_id: DOI:10.1038/nature12373
+reference_id: file:./path/to/file.md
+reference_id: url:https://example.org/article
+
+# Incorrect:
+reference_id: 12345678  # Missing PMID: prefix
+reference_id: www.example.org  # Missing url: prefix
+reference_id: ./file.md  # Missing file: prefix
+</code></pre>
+<h2 id="performance-issues">Performance Issues</h2>
+<h3 id="validation-is-very-slow">Validation is very slow</h3>
+<p><strong>Symptom:</strong>
+Validation takes minutes instead of seconds</p>
+<p><strong>Causes:</strong>
+- References not cached
+- Network latency
+- Large number of references
+- Fetching full text for each validation</p>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Pre-cache references:</strong></li>
+</ol>
+<pre><code class="language-bash"># Extract all PMIDs from data
+grep -r &quot;PMID:&quot; data/ | grep -o &quot;PMID:[0-9]*&quot; | sort -u &gt; pmids.txt
+
+# Cache all
+while read pmid; do
+  linkml-reference-validator cache reference &quot;$pmid&quot;
+done &lt; pmids.txt
+</code></pre>
+<ol>
+<li><strong>Use global cache:</strong></li>
+</ol>
+<pre><code class="language-bash">export REFERENCE_CACHE_DIR=~/.cache/linkml-reference-validator
+</code></pre>
+<ol>
+<li><strong>Use verbose mode to identify bottlenecks:</strong></li>
+</ol>
+<pre><code class="language-bash">linkml-reference-validator validate data data.yaml \
+  --schema schema.yaml \
+  --verbose
+</code></pre>
+<ol>
+<li><strong>Check cache hits:</strong></li>
+</ol>
+<pre><code class="language-bash"># Cached validations should be &lt;100ms
+# First fetch will be 2-3 seconds
+</code></pre>
+<h3 id="large-cache-directory">Large cache directory</h3>
+<p><strong>Symptom:</strong></p>
+<pre><code class="language-bash">du -sh references_cache/
+500M    references_cache/
+</code></pre>
+<p><strong>Solutions:</strong></p>
+<ol>
+<li><strong>Clean old entries:</strong></li>
+</ol>
+<pre><code class="language-bash"># Remove cache entries older than 30 days
+find references_cache/ -name &quot;*.md&quot; -mtime +30 -delete
+</code></pre>
+<ol>
+<li><strong>Use selective caching:</strong></li>
+</ol>
+<pre><code class="language-bash"># Cache only what you need
+# Don't cache during experimentation
+</code></pre>
+<ol>
+<li><strong>Compress cache:</strong></li>
+</ol>
+<pre><code class="language-bash">tar -czf references_cache_backup.tar.gz references_cache/
+rm -rf references_cache/
+</code></pre>
+<h2 id="common-error-messages">Common Error Messages</h2>
+<h3 id="text-normalization-resulted-in-empty-string">"Text normalization resulted in empty string"</h3>
+<p><strong>Cause:</strong>
+Text only contains punctuation or whitespace</p>
+<p><strong>Solution:</strong></p>
+<pre><code class="language-yaml"># Bad
+supporting_text: &quot;...&quot;
+
+# Good
+supporting_text: &quot;text content ... more text&quot;
+</code></pre>
+<h3 id="multiple-reference-fields-found">"Multiple reference fields found"</h3>
+<p><strong>Cause:</strong>
+Schema has multiple fields marked as authoritative_reference</p>
+<p><strong>Solution:</strong>
+Only mark one field per class:</p>
+<pre><code class="language-yaml"># Bad
+attributes:
+  pmid:
+    slot_uri: linkml:authoritative_reference
+  doi:
+    slot_uri: linkml:authoritative_reference
+
+# Good - use one field that can hold different types
+attributes:
+  reference_id:
+    slot_uri: linkml:authoritative_reference
+</code></pre>
+<h3 id="reference-base-directory-not-found">"Reference base directory not found"</h3>
+<p><strong>Cause:</strong>
+Using <code>file:</code> references but base directory not configured</p>
+<p><strong>Solution:</strong></p>
+<pre><code class="language-yaml"># In .linkml-reference-validator.yaml
+validation:
+  reference_base_dir: ./references
+
+# Or use absolute paths
+reference_id: file:/full/path/to/file.md
+</code></pre>
+<h2 id="getting-more-help">Getting More Help</h2>
+<h3 id="enable-verbose-logging">Enable verbose logging</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;quote&quot; PMID:12345678 \
+  --verbose
+</code></pre>
+<h3 id="check-cache-contents">Check cache contents</h3>
+<pre><code class="language-bash"># View cached reference
+cat references_cache/PMID_12345678.md
+
+# Check cache metadata
+head -n 20 references_cache/PMID_12345678.md
+</code></pre>
+<h3 id="test-with-simple-example">Test with simple example</h3>
+<pre><code class="language-bash"># Known working example
+linkml-reference-validator validate text \
+  &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot; \
+  PMID:16888623
+</code></pre>
+<h3 id="report-bugs">Report bugs</h3>
+<p>If you've found a bug:</p>
+<ol>
+<li>
+<p><strong>Check existing issues:</strong>
+   https://github.com/linkml/linkml-reference-validator/issues</p>
+</li>
+<li>
+<p><strong>Create minimal reproduction:</strong></p>
+</li>
+</ol>
+<pre><code class="language-bash"># Simplest possible command that shows the issue
+linkml-reference-validator validate text &quot;test&quot; PMID:12345678 --verbose
+</code></pre>
+<ol>
+<li><strong>Include:</strong></li>
+<li>Command you ran</li>
+<li>Expected behavior</li>
+<li>Actual behavior</li>
+<li>Error messages (full output)</li>
+<li>Schema (if applicable)</li>
+<li>Data file (if applicable, minimal example)</li>
+<li>Version: <code>linkml-reference-validator --version</code></li>
+<li>Python version: <code>python --version</code></li>
+<li>OS: <code>uname -a</code> (Linux/Mac) or <code>ver</code> (Windows)</li>
+</ol>
+<h2 id="quick-diagnostic-checklist">Quick Diagnostic Checklist</h2>
+<p>Run through this checklist when encountering issues:</p>
+<ul>
+<li>[ ] Installation successful: <code>linkml-reference-validator --version</code></li>
+<li>[ ] Network accessible: <code>ping www.ncbi.nlm.nih.gov</code></li>
+<li>[ ] NCBI email set: <code>echo $NCBI_EMAIL</code></li>
+<li>[ ] Cache directory writable: <code>touch references_cache/test &amp;&amp; rm references_cache/test</code></li>
+<li>[ ] Schema valid: <code>linkml-validate --schema schema.yaml schema.yaml</code></li>
+<li>[ ] Data valid YAML: <code>python -c "import yaml; yaml.safe_load(open('data.yaml'))"</code></li>
+<li>[ ] Reference exists: Visit PubMed URL for the PMID</li>
+<li>[ ] Simple test works: Validate known-good example</li>
+</ul>
+<h2 id="see-also">See Also</h2>
+<ul>
+<li><a href="../setup-guide/">Setup Guide</a> - Initial installation and configuration</li>
+<li><a href="../quickstart/">Quickstart</a> - Basic usage examples</li>
+<li><a href="../reference/cli/">CLI Reference</a> - Complete command documentation</li>
+<li><a href="../how-to/repair-validation-errors/">How to Repair Validation Errors</a> - Fixing common issues</li>
+<li><a href="https://github.com/linkml/linkml-reference-validator/issues">GitHub Issues</a> - Report bugs</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.tabs.link"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -13,7 +13,15 @@
          <lastmod>2026-03-16</lastmod>
     </url>
     <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/setup-guide/</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
          <loc>https://linkml.github.io/linkml-reference-validator/todo/</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/troubleshooting/</loc>
          <lastmod>2026-03-16</lastmod>
     </url>
     <url>
@@ -90,6 +98,10 @@
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/reference/cli/</loc>
+         <lastmod>2026-03-16</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/tutorials/complete-workflow/</loc>
          <lastmod>2026-03-16</lastmod>
     </url>
 </urlset>

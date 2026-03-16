@@ -1,0 +1,2834 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/setup-guide/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../quickstart/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Setup Guide - linkml-reference-validator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#complete-setup-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            linkml-reference-validator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Setup Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    linkml-reference-validator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional but Recommended
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-using-pip-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Using pip (Standard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-using-uv-recommended-for-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Using uv (Recommended for Speed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-development-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Development Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#initial-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initial Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Initial Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-set-up-your-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Set Up Your Workspace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-ncbi-access-optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configure NCBI Access (Optional but Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-set-up-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Set Up Cache Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-validate-a-single-quote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Validate a Single Quote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-create-your-first-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Create Your First Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-create-your-first-data-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Create Your First Data File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-4-validate-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 4: Validate Your Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-world-example-validating-gene-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-World Example: Validating Gene Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Real-World Example: Validating Gene Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-project-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Project Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-create-the-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Create the Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-create-sample-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Create Sample Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Validate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-handle-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Handle Validation Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#project-configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Configuration File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-different-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Different Reference Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working with Different Reference Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pubmed-ids-pmid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed IDs (PMID)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pubmed-central-pmc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed Central (PMC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#digital-object-identifiers-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Digital Object Identifiers (DOI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web URLs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-existing-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Existing Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with Existing Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pre-commit-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-commit Hook
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-integration-github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD Integration (GitHub Actions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#makefile-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Makefile Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorials/complete-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/01_getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started with linkml-reference-validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/02_advanced_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Usage: Validating Data with LinkML Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/04_obo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Format Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/05_geo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating GEO Dataset References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../notebooks/03_python_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API for Programmatic Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-To Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-To Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-obo-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-entrez/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-clinical-trials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Clinical Trials
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/validate-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Reference Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/use-local-files-and-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/add-reference-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/skip-unsupported-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skipping Unsupported References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../how-to/repair-validation-errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/content-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concepts/editorial-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Editorial Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Prerequisites">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#system-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Requirements
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optional but Recommended
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Installation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#option-1-using-pip-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 1: Using pip (Standard)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-2-using-uv-recommended-for-speed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 2: Using uv (Recommended for Speed)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#option-3-development-installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Option 3: Development Installation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#initial-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Initial Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Initial Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-set-up-your-workspace" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Set Up Your Workspace
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-configure-ncbi-access-optional-but-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Configure NCBI Access (Optional but Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-set-up-cache-directory" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Set Up Cache Directory
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quick-start-examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Start Examples
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Quick Start Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example-1-validate-a-single-quote" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 1: Validate a Single Quote
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-2-create-your-first-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 2: Create Your First Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-3-create-your-first-data-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 3: Create Your First Data File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example-4-validate-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Example 4: Validate Your Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#real-world-example-validating-gene-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Real-World Example: Validating Gene Functions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Real-World Example: Validating Gene Functions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-project-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Project Setup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-create-the-schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Create the Schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-create-sample-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Create Sample Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-validate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Validate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-handle-validation-errors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Handle Validation Errors
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#advanced-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Advanced Configuration
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Advanced Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#project-configuration-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Configuration File
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#using-environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using Environment Variables
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#working-with-different-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Working with Different Reference Types
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Working with Different Reference Types">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pubmed-ids-pmid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed IDs (PMID)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#pubmed-central-pmc" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PubMed Central (PMC)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#digital-object-identifiers-doi" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Digital Object Identifiers (DOI)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local Files
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#web-urls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Web URLs
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#integration-with-existing-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Integration with Existing Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Integration with Existing Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pre-commit-hook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pre-commit Hook
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cicd-integration-github-actions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CI/CD Integration (GitHub Actions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#makefile-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Makefile Integration
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#verification-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verification Checklist
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#next-steps" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Next Steps
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Help
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#quick-fixes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Fixes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="complete-setup-guide">Complete Setup Guide</h1>
+<p>This guide walks you through setting up linkml-reference-validator from scratch, with complete examples for different use cases.</p>
+<h2 id="prerequisites">Prerequisites</h2>
+<h3 id="system-requirements">System Requirements</h3>
+<ul>
+<li><strong>Python 3.10 or higher</strong> - Check with <code>python --version</code></li>
+<li><strong>pip or uv</strong> - Package installer (uv is faster and recommended)</li>
+<li><strong>Internet connection</strong> - For fetching references from PubMed, Crossref, etc.</li>
+</ul>
+<h3 id="optional-but-recommended">Optional but Recommended</h3>
+<ul>
+<li><strong>NCBI API Key</strong> - For higher rate limits when fetching PubMed articles</li>
+<li><strong>Git</strong> - For version control of your data and schemas</li>
+</ul>
+<h2 id="installation">Installation</h2>
+<h3 id="option-1-using-pip-standard">Option 1: Using pip (Standard)</h3>
+<pre><code class="language-bash">pip install linkml-reference-validator
+</code></pre>
+<p>Verify the installation:</p>
+<pre><code class="language-bash">linkml-reference-validator --version
+</code></pre>
+<h3 id="option-2-using-uv-recommended-for-speed">Option 2: Using uv (Recommended for Speed)</h3>
+<p><a href="https://github.com/astral-sh/uv">uv</a> is a fast Python package installer:</p>
+<pre><code class="language-bash"># Install uv first (if you don't have it)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Install linkml-reference-validator
+uv pip install linkml-reference-validator
+</code></pre>
+<p>Verify:</p>
+<pre><code class="language-bash">uv run linkml-reference-validator --version
+</code></pre>
+<h3 id="option-3-development-installation">Option 3: Development Installation</h3>
+<p>If you want to contribute or modify the code:</p>
+<pre><code class="language-bash"># Clone the repository
+git clone https://github.com/linkml/linkml-reference-validator.git
+cd linkml-reference-validator
+
+# Install with development dependencies
+uv sync --group dev
+
+# Run tests to verify
+just test
+</code></pre>
+<h2 id="initial-configuration">Initial Configuration</h2>
+<h3 id="1-set-up-your-workspace">1. Set Up Your Workspace</h3>
+<p>Create a directory for your validation project:</p>
+<pre><code class="language-bash">mkdir my-validation-project
+cd my-validation-project
+</code></pre>
+<h3 id="2-configure-ncbi-access-optional-but-recommended">2. Configure NCBI Access (Optional but Recommended)</h3>
+<p>To avoid rate limits when fetching PubMed articles:</p>
+<ol>
+<li><strong>Get an NCBI API Key</strong> (free):</li>
+<li>Visit https://www.ncbi.nlm.nih.gov/account/</li>
+<li>Sign up or log in</li>
+<li>Go to Settings → API Key Management</li>
+<li>
+<p>Create a new API key</p>
+</li>
+<li>
+<p><strong>Set environment variables</strong>:</p>
+</li>
+</ol>
+<pre><code class="language-bash"># Add to your ~/.bashrc, ~/.zshrc, or ~/.profile
+export NCBI_EMAIL=&quot;your.email@example.com&quot;
+export NCBI_API_KEY=&quot;your_api_key_here&quot;
+
+# Or create a .env file in your project
+echo 'NCBI_EMAIL=your.email@example.com' &gt;&gt; .env
+echo 'NCBI_API_KEY=your_api_key_here' &gt;&gt; .env
+</code></pre>
+<ol>
+<li><strong>Test the configuration</strong>:</li>
+</ol>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot; \
+  PMID:16888623
+</code></pre>
+<p>If successful, you should see:</p>
+<pre><code>Validating text against PMID:16888623...
+  Text: MUC1 oncoprotein blocks nuclear targeting of c-Abl
+
+Result:
+  Valid: True
+  Message: Supporting text validated successfully in PMID:16888623
+</code></pre>
+<h3 id="3-set-up-cache-directory">3. Set Up Cache Directory</h3>
+<p>By default, references are cached in <code>references_cache/</code> in your current directory. To use a global cache:</p>
+<pre><code class="language-bash"># Create a global cache directory
+mkdir -p ~/.cache/linkml-reference-validator
+
+# Set environment variable
+export REFERENCE_CACHE_DIR=~/.cache/linkml-reference-validator
+
+# Or add to your shell profile
+echo 'export REFERENCE_CACHE_DIR=~/.cache/linkml-reference-validator' &gt;&gt; ~/.bashrc
+</code></pre>
+<p>Benefits of a global cache:
+- Share references across multiple projects
+- Avoid re-downloading the same papers
+- Faster validation when working on multiple datasets</p>
+<h2 id="quick-start-examples">Quick Start Examples</h2>
+<h3 id="example-1-validate-a-single-quote">Example 1: Validate a Single Quote</h3>
+<p>The simplest use case - verify that a quote appears in a paper:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;TP53 functions as a tumor suppressor&quot; \
+  PMID:12345678
+</code></pre>
+<p><strong>What happens:</strong>
+1. Fetches the reference from PubMed
+2. Caches it locally in <code>references_cache/PMID_12345678.md</code>
+3. Searches for the quote in the reference content
+4. Returns validation result</p>
+<h3 id="example-2-create-your-first-schema">Example 2: Create Your First Schema</h3>
+<p>Create a schema file to define your data structure:</p>
+<p><strong>schema.yaml:</strong></p>
+<pre><code class="language-yaml">id: https://example.org/gene-validation
+name: gene-validation-schema
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+classes:
+  GeneAnnotation:
+    tree_root: true
+    attributes:
+      gene_symbol:
+        required: true
+        description: Gene symbol (e.g., TP53, BRCA1)
+
+      function:
+        required: true
+        description: Functional description of the gene
+
+      supporting_text:
+        required: true
+        description: Quote from the reference supporting this annotation
+        slot_uri: linkml:excerpt
+
+      reference_id:
+        required: true
+        description: PubMed ID or DOI of the reference
+        slot_uri: linkml:authoritative_reference
+</code></pre>
+<p><strong>Key points:</strong>
+- <code>slot_uri: linkml:excerpt</code> marks the field containing quoted text
+- <code>slot_uri: linkml:authoritative_reference</code> marks the reference identifier
+- These special URIs tell the validator which fields to check</p>
+<h3 id="example-3-create-your-first-data-file">Example 3: Create Your First Data File</h3>
+<p>Create a data file matching your schema:</p>
+<p><strong>gene_data.yaml:</strong></p>
+<pre><code class="language-yaml">gene_symbol: TP53
+function: Tumor suppressor that regulates cell cycle
+supporting_text: TP53 functions as a tumor suppressor through regulation of cell cycle arrest
+reference_id: PMID:12345678
+</code></pre>
+<h3 id="example-4-validate-your-data">Example 4: Validate Your Data</h3>
+<pre><code class="language-bash">linkml-reference-validator validate data \
+  gene_data.yaml \
+  --schema schema.yaml \
+  --target-class GeneAnnotation
+</code></pre>
+<p><strong>Expected output (if valid):</strong></p>
+<pre><code>Validating gene_data.yaml against schema schema.yaml
+Cache directory: references_cache
+
+Validating 1 object(s) of type GeneAnnotation...
+✓ All validations passed!
+</code></pre>
+<p><strong>Output if validation fails:</strong></p>
+<pre><code>Validating gene_data.yaml against schema schema.yaml
+Cache directory: references_cache
+
+Validating 1 object(s) of type GeneAnnotation...
+✗ Validation failed for:
+  Reference: PMID:12345678
+  Supporting text: &quot;TP53 functions as a tumor suppressor through regulation of cell cycle arrest&quot;
+  Error: Text not found in reference
+
+1 validation(s) failed, 0 passed
+</code></pre>
+<h2 id="real-world-example-validating-gene-functions">Real-World Example: Validating Gene Functions</h2>
+<p>Let's work through a complete real-world example: validating gene function annotations.</p>
+<h3 id="step-1-project-setup">Step 1: Project Setup</h3>
+<pre><code class="language-bash"># Create project directory
+mkdir gene-annotations
+cd gene-annotations
+
+# Create subdirectories
+mkdir schemas
+mkdir data
+mkdir references_cache
+</code></pre>
+<h3 id="step-2-create-the-schema">Step 2: Create the Schema</h3>
+<p><strong>schemas/gene_function_schema.yaml:</strong></p>
+<pre><code class="language-yaml">id: https://example.org/gene-functions
+name: gene-functions
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+classes:
+  GeneFunctionDataset:
+    tree_root: true
+    attributes:
+      genes:
+        multivalued: true
+        range: GeneFunction
+
+  GeneFunction:
+    attributes:
+      gene_symbol:
+        identifier: true
+        required: true
+        description: Official gene symbol
+
+      function_category:
+        required: true
+        description: Broad category of function
+        range: FunctionCategory
+
+      detailed_function:
+        required: true
+        description: Detailed description of function
+
+      evidence:
+        required: true
+        range: Evidence
+        description: Supporting evidence from literature
+
+  Evidence:
+    attributes:
+      reference_id:
+        required: true
+        slot_uri: linkml:authoritative_reference
+        description: PMID, DOI, or PMC identifier
+
+      supporting_text:
+        required: true
+        slot_uri: linkml:excerpt
+        description: Direct quote from the reference
+
+      notes:
+        description: Additional context or clarifications
+
+enums:
+  FunctionCategory:
+    permissible_values:
+      TUMOR_SUPPRESSOR:
+        description: Prevents uncontrolled cell growth
+      ONCOGENE:
+        description: Promotes cell growth and division
+      DNA_REPAIR:
+        description: Repairs damaged DNA
+      TRANSCRIPTION_FACTOR:
+        description: Regulates gene expression
+      CELL_CYCLE_REGULATOR:
+        description: Controls cell cycle progression
+</code></pre>
+<h3 id="step-3-create-sample-data">Step 3: Create Sample Data</h3>
+<p><strong>data/tp53_brca1.yaml:</strong></p>
+<pre><code class="language-yaml">genes:
+  - gene_symbol: TP53
+    function_category: TUMOR_SUPPRESSOR
+    detailed_function: Regulates cell cycle arrest and apoptosis in response to DNA damage
+    evidence:
+      reference_id: PMID:16888623
+      supporting_text: &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot;
+      notes: Example from actual paper
+
+  - gene_symbol: BRCA1
+    function_category: DNA_REPAIR
+    detailed_function: Critical role in homologous recombination DNA repair
+    evidence:
+      reference_id: PMID:12345678
+      supporting_text: &quot;BRCA1 plays a critical role in DNA double-strand break repair through homologous recombination&quot;
+</code></pre>
+<h3 id="step-4-validate">Step 4: Validate</h3>
+<pre><code class="language-bash">linkml-reference-validator validate data \
+  data/tp53_brca1.yaml \
+  --schema schemas/gene_function_schema.yaml \
+  --target-class GeneFunctionDataset \
+  --verbose
+</code></pre>
+<h3 id="step-5-handle-validation-errors">Step 5: Handle Validation Errors</h3>
+<p>If validation fails, use the repair command:</p>
+<pre><code class="language-bash"># First, see what repairs are suggested (dry run)
+linkml-reference-validator repair data \
+  data/tp53_brca1.yaml \
+  --schema schemas/gene_function_schema.yaml \
+  --target-class GeneFunctionDataset \
+  --dry-run
+
+# Review the suggested repairs, then apply if appropriate
+linkml-reference-validator repair data \
+  data/tp53_brca1.yaml \
+  --schema schemas/gene_function_schema.yaml \
+  --target-class GeneFunctionDataset \
+  --no-dry-run
+</code></pre>
+<h2 id="advanced-configuration">Advanced Configuration</h2>
+<h3 id="project-configuration-file">Project Configuration File</h3>
+<p>Create <code>.linkml-reference-validator.yaml</code> in your project root:</p>
+<pre><code class="language-yaml"># Validation settings
+validation:
+  # Cache directory (relative to config file or absolute)
+  cache_dir: ./references_cache
+
+  # Custom reference prefix mappings
+  reference_prefix_map:
+    geo: GEO
+    NCBIGeo: GEO
+    pubmed: PMID
+
+  # Base directory for resolving file:// references
+  reference_base_dir: ./references
+
+# Repair settings
+repair:
+  # Confidence thresholds
+  auto_fix_threshold: 0.95
+  suggest_threshold: 0.80
+  removal_threshold: 0.50
+
+  # Character normalization mappings
+  character_mappings:
+    &quot;CO2&quot;: &quot;CO₂&quot;
+    &quot;H2O&quot;: &quot;H₂O&quot;
+    &quot;O2&quot;: &quot;O₂&quot;
+    &quot;+/-&quot;: &quot;±&quot;
+    &quot;+-&quot;: &quot;±&quot;
+
+  # Skip certain references
+  skip_references:
+    - &quot;PMID:00000000&quot;  # Example: no abstract available
+
+  # Trust low-similarity matches (manually verified)
+  trusted_low_similarity:
+    - &quot;PMID:99999999&quot;  # Example: verified manually
+</code></pre>
+<p>Use the config file:</p>
+<pre><code class="language-bash">linkml-reference-validator validate data \
+  data.yaml \
+  --schema schema.yaml \
+  --config .linkml-reference-validator.yaml
+</code></pre>
+<h3 id="using-environment-variables">Using Environment Variables</h3>
+<p>Create a <code>.env</code> file:</p>
+<pre><code class="language-bash"># NCBI Configuration
+NCBI_EMAIL=your.email@example.com
+NCBI_API_KEY=your_api_key_here
+
+# Cache Configuration
+REFERENCE_CACHE_DIR=/path/to/global/cache
+
+# Rate Limiting (requests per second)
+NCBI_RATE_LIMIT=3
+CROSSREF_RATE_LIMIT=2
+</code></pre>
+<p>Load environment variables:</p>
+<pre><code class="language-bash"># Using direnv (recommended)
+echo 'dotenv' &gt; .envrc
+direnv allow
+
+# Or manually source
+set -a
+source .env
+set +a
+</code></pre>
+<h2 id="working-with-different-reference-types">Working with Different Reference Types</h2>
+<h3 id="pubmed-ids-pmid">PubMed IDs (PMID)</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  PMID:16888623
+</code></pre>
+<h3 id="pubmed-central-pmc">PubMed Central (PMC)</h3>
+<p>For full-text access:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  PMC:3458566
+</code></pre>
+<h3 id="digital-object-identifiers-doi">Digital Object Identifiers (DOI)</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  DOI:10.1038/nature12373
+</code></pre>
+<h3 id="local-files">Local Files</h3>
+<pre><code class="language-bash"># Markdown file
+linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  file:./references/paper1.md
+
+# Text file
+linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  file:./references/paper1.txt
+
+# HTML file
+linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  file:./references/paper1.html
+</code></pre>
+<h3 id="web-urls">Web URLs</h3>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;Your quote here&quot; \
+  url:https://example.org/article.html
+</code></pre>
+<h2 id="integration-with-existing-workflows">Integration with Existing Workflows</h2>
+<h3 id="pre-commit-hook">Pre-commit Hook</h3>
+<p>Add validation to your git pre-commit:</p>
+<p><strong>.git/hooks/pre-commit:</strong></p>
+<pre><code class="language-bash">#!/bin/bash
+
+echo &quot;Running reference validation...&quot;
+
+linkml-reference-validator validate data \
+  data/*.yaml \
+  --schema schemas/schema.yaml \
+  --target-class Dataset
+
+if [ $? -ne 0 ]; then
+  echo &quot;❌ Reference validation failed!&quot;
+  echo &quot;Run 'linkml-reference-validator repair data ...' to fix errors&quot;
+  exit 1
+fi
+
+echo &quot;✅ Reference validation passed!&quot;
+</code></pre>
+<p>Make it executable:</p>
+<pre><code class="language-bash">chmod +x .git/hooks/pre-commit
+</code></pre>
+<h3 id="cicd-integration-github-actions">CI/CD Integration (GitHub Actions)</h3>
+<p><strong>.github/workflows/validate.yml:</strong></p>
+<pre><code class="language-yaml">name: Validate References
+
+on: [push, pull_request]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install linkml-reference-validator
+
+      - name: Validate references
+        run: |
+          linkml-reference-validator validate data \
+            data/*.yaml \
+            --schema schemas/schema.yaml \
+            --target-class Dataset
+        env:
+          NCBI_EMAIL: ${{ secrets.NCBI_EMAIL }}
+          NCBI_API_KEY: ${{ secrets.NCBI_API_KEY }}
+</code></pre>
+<h3 id="makefile-integration">Makefile Integration</h3>
+<p><strong>Makefile:</strong></p>
+<pre><code class="language-makefile">.PHONY: validate repair clean
+
+SCHEMA := schemas/schema.yaml
+DATA := data/*.yaml
+CLASS := Dataset
+
+validate:
+    linkml-reference-validator validate data \
+        $(DATA) \
+        --schema $(SCHEMA) \
+        --target-class $(CLASS)
+
+repair:
+    linkml-reference-validator repair data \
+        $(DATA) \
+        --schema $(SCHEMA) \
+        --target-class $(CLASS) \
+        --dry-run
+
+repair-apply:
+    linkml-reference-validator repair data \
+        $(DATA) \
+        --schema $(SCHEMA) \
+        --target-class $(CLASS) \
+        --no-dry-run
+
+clean:
+    rm -rf references_cache/
+</code></pre>
+<p>Usage:</p>
+<pre><code class="language-bash">make validate
+make repair
+make repair-apply
+</code></pre>
+<h2 id="verification-checklist">Verification Checklist</h2>
+<p>After setup, verify everything works:</p>
+<ul>
+<li>[ ] Installation successful: <code>linkml-reference-validator --version</code></li>
+<li>[ ] Can fetch PubMed articles: <code>linkml-reference-validator cache reference PMID:16888623</code></li>
+<li>[ ] Can validate text: <code>linkml-reference-validator validate text "test" PMID:16888623</code></li>
+<li>[ ] Schema validates: <code>linkml-validate --schema schema.yaml data.yaml</code></li>
+<li>[ ] Reference validation works: <code>linkml-reference-validator validate data data.yaml --schema schema.yaml</code></li>
+<li>[ ] Cache directory created: <code>ls -l references_cache/</code></li>
+<li>[ ] Configuration file recognized: <code>linkml-reference-validator --help</code> shows config options</li>
+</ul>
+<h2 id="next-steps">Next Steps</h2>
+<p>Now that you're set up:</p>
+<ol>
+<li><strong>Read the Quickstart</strong> - <a href="../quickstart/">quickstart.md</a> for basic usage</li>
+<li><strong>Explore Tutorials</strong> - Work through the Jupyter notebooks in <code>docs/notebooks/</code></li>
+<li><strong>Learn Editorial Conventions</strong> - <a href="../concepts/editorial-conventions/">concepts/editorial-conventions.md</a> for using <code>[...]</code> and <code>...</code></li>
+<li><strong>Review How-To Guides</strong> - Specific recipes for common tasks</li>
+<li><strong>Check out the CLI Reference</strong> - <a href="../reference/cli/">reference/cli.md</a> for all commands</li>
+</ol>
+<h2 id="getting-help">Getting Help</h2>
+<p>If you encounter issues:</p>
+<ol>
+<li><strong>Check the documentation</strong> - Most common questions are covered</li>
+<li><strong>Search existing issues</strong> - https://github.com/linkml/linkml-reference-validator/issues</li>
+<li><strong>Ask for help</strong> - Create a new issue with:</li>
+<li>Your command</li>
+<li>Expected behavior</li>
+<li>Actual behavior</li>
+<li>Schema and data samples (if applicable)</li>
+<li><strong>Join the community</strong> - LinkML discussions on GitHub</li>
+</ol>
+<h2 id="troubleshooting">Troubleshooting</h2>
+<p>See the <a href="../troubleshooting/">Troubleshooting Guide</a> for common issues and solutions.</p>
+<h3 id="quick-fixes">Quick Fixes</h3>
+<p><strong>"Command not found: linkml-reference-validator"</strong></p>
+<pre><code class="language-bash"># Ensure it's installed
+pip install linkml-reference-validator
+
+# Check if it's in PATH
+which linkml-reference-validator
+
+# Use full path if needed
+python -m linkml_reference_validator --help
+</code></pre>
+<p><strong>"Could not fetch reference: PMID:12345678"</strong></p>
+<pre><code class="language-bash"># Check internet connection
+ping www.ncbi.nlm.nih.gov
+
+# Verify PMID exists
+# Visit: https://pubmed.ncbi.nlm.nih.gov/12345678/
+
+# Set email for NCBI (required for API access)
+export NCBI_EMAIL=&quot;your.email@example.com&quot;
+</code></pre>
+<p><strong>"Permission denied: references_cache/"</strong></p>
+<pre><code class="language-bash"># Check directory permissions
+ls -ld references_cache/
+
+# Create with proper permissions
+mkdir -p references_cache
+chmod 755 references_cache
+</code></pre>
+<p><strong>"Validation failed but text is in the paper"</strong>
+- Check if only abstract was fetched (full text may be in PMC)
+- Use PMC ID instead: <code>PMC:3458566</code>
+- Or use a local file with full text: <code>file:./paper.md</code>
+- See <a href="../how-to/repair-validation-errors/">repair-validation-errors.md</a></p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["content.tabs.link"], "search": "../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

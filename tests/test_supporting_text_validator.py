@@ -96,6 +96,20 @@ def test_split_query_with_brackets(validator):
     assert "important" not in parts[0]
 
 
+def test_split_query_keeps_literal_brackets_when_pattern_matches(tmp_path):
+    """Test splitting query keeps configured literal bracket content."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        literal_bracket_patterns=[r"\d"],
+    )
+    validator = SupportingTextValidator(config)
+
+    parts = validator._split_query("protein [important] binds [2Fe-2S] cluster")
+
+    assert parts == ["protein binds [2Fe-2S] cluster"]
+
+
 def test_substring_match_found(validator):
     """Test substring matching when text is found."""
     match = validator._substring_match(
@@ -161,6 +175,37 @@ def test_find_text_empty_query_after_brackets(validator):
     match = validator.find_text_in_reference("[editorial note only]", ref)
     assert match.found is False
     assert "empty" in match.error_message.lower()
+
+
+def test_find_text_in_reference_literal_brackets_require_config(validator):
+    """Test literal bracket content is still stripped by default."""
+    ref = ReferenceContent(
+        reference_id="PMID:123",
+        content="The [2Fe-2S] cluster is required for activity.",
+    )
+
+    match = validator.find_text_in_reference("The [2Fe-2S] cluster", ref)
+
+    assert match.found is False
+
+
+def test_find_text_in_reference_keeps_literal_brackets_with_config(tmp_path):
+    """Test literal bracket content can be preserved through configuration."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        literal_bracket_patterns=[r"\d"],
+    )
+    validator = SupportingTextValidator(config)
+    ref = ReferenceContent(
+        reference_id="PMID:123",
+        content="The [2Fe-2S] cluster is required for activity.",
+    )
+
+    match = validator.find_text_in_reference("The [2Fe-2S] cluster", ref)
+
+    assert match.found is True
+    assert match.similarity_score == 1.0
 
 
 def test_validate_success(validator, mocker):

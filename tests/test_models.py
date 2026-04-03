@@ -16,6 +16,7 @@ def test_config_defaults():
     config = ReferenceValidationConfig()
     assert config.cache_dir == Path("references_cache")
     assert config.rate_limit_delay == 0.5
+    assert config.literal_bracket_patterns == []
 
 
 def test_config_custom_values():
@@ -23,9 +24,11 @@ def test_config_custom_values():
     config = ReferenceValidationConfig(
         cache_dir=Path("/tmp/cache"),
         rate_limit_delay=1.0,
+        literal_bracket_patterns=[r"\d"],
     )
     assert config.cache_dir == Path("/tmp/cache")
     assert config.rate_limit_delay == 1.0
+    assert config.literal_bracket_patterns == [r"\d"]
 
 
 def test_config_get_cache_dir(tmp_path):

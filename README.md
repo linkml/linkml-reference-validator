@@ -496,6 +496,19 @@ supporting_text: "protein [X] functions in cell cycle regulation"
 - `[gene name]` - Clarifications
 - `[...]` - Omitted content markers
 
+If your corpus uses square brackets as literal source text, configure patterns
+that should be preserved instead of stripped:
+
+```yaml
+validation:
+  literal_bracket_patterns:
+    - "\\d"       # keep [2Fe-2S], [+21], [30S], [Ca2+]
+    - "^\\S"      # keep tight brackets like [poly(A)+], strip [ editorial ]
+```
+
+Patterns are matched against the content inside `[...]`. If any pattern matches,
+that bracketed text is kept verbatim during validation.
+
 ### Omitted Text `...`
 
 Use ellipsis for gaps in quoted text:

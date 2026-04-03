@@ -70,6 +70,30 @@ Nested brackets are not recommended and may not work as expected:
 ✅ "MUC1 [mucin 1, a membrane protein] blocks targeting"
 ```
 
+### Literal Brackets in Source Text
+
+Some corpora use square brackets as part of the quoted source text itself:
+
+```
+Reference: "polyadenylated [poly(A)+] RNA export"
+Quote:     "polyadenylated [poly(A)+] RNA export"
+```
+
+By default, linkml-reference-validator strips all bracketed text for backward
+compatibility. To preserve literal brackets, configure
+`literal_bracket_patterns` in your validation config:
+
+```yaml
+validation:
+  literal_bracket_patterns:
+    - "\\d"       # keep [2Fe-2S], [+21], [30S], [Ca2+]
+    - "^\\S"      # keep tight brackets like [poly(A)+], strip [ editorial ]
+```
+
+Each pattern is matched against the content inside `[...]`. If any pattern
+matches, that bracketed text is kept during validation. If none match, the
+content is treated as an editorial insertion and stripped.
+
 ## Ellipsis `...`
 
 Use ellipsis (three dots) to indicate **omitted text** between parts of a quote.

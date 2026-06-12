@@ -87,12 +87,16 @@ compatibility. To preserve literal brackets, configure
 validation:
   literal_bracket_patterns:
     - "\\d"       # keep [2Fe-2S], [+21], [30S], [Ca2+]
-    - "^\\S"      # keep tight brackets like [poly(A)+], strip [ editorial ]
+    - "[()+]"     # keep notation with parens/charges, e.g. [poly(A)+]
 ```
 
 Each pattern is matched against the content inside `[...]`. If any pattern
 matches, that bracketed text is kept during validation. If none match, the
 content is treated as an editorial insertion and stripped.
+
+Keep patterns specific to your notation. A pattern broad enough to also match
+ordinary editorial notes will preserve those too — for example `^\S` (any note
+not starting with a space) would keep `[important]` as well as `[poly(A)+]`.
 
 ## Ellipsis `...`
 

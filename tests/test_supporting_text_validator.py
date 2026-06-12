@@ -110,6 +110,26 @@ def test_split_query_keeps_literal_brackets_when_pattern_matches(tmp_path):
     assert parts == ["protein binds [2Fe-2S] cluster"]
 
 
+def test_split_query_specific_pattern_keeps_notation_but_strips_editorial(tmp_path):
+    """The documented `[()+]` pattern keeps notation yet still strips editorial notes.
+
+    Pins the README/editorial-conventions example: a pattern targeted at the
+    notation (here parens/charges) preserves `[poly(A)+]` while an ordinary
+    editorial note like `[important]`, which the pattern does not match, is
+    still removed.
+    """
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        literal_bracket_patterns=[r"[()+]"],
+    )
+    validator = SupportingTextValidator(config)
+
+    parts = validator._split_query("export of [poly(A)+] RNA [important] in cells")
+
+    assert parts == ["export of [poly(A)+] RNA in cells"]
+
+
 def test_substring_match_found(validator):
     """Test substring matching when text is found."""
     match = validator._substring_match(

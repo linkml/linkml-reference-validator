@@ -496,6 +496,24 @@ supporting_text: "protein [X] functions in cell cycle regulation"
 - `[gene name]` - Clarifications
 - `[...]` - Omitted content markers
 
+If your corpus uses square brackets as literal source text, configure patterns
+that should be preserved instead of stripped:
+
+```yaml
+validation:
+  literal_bracket_patterns:
+    - "\\d"       # keep [2Fe-2S], [+21], [30S], [Ca2+]
+    - "[()+]"     # keep notation with parens/charges, e.g. [poly(A)+]
+```
+
+Patterns are matched against the content inside `[...]`. If any pattern matches,
+that bracketed text is preserved (not stripped) before normalization and validation.
+
+Keep patterns **specific** to your notation. A pattern broad enough to also match
+ordinary editorial notes will preserve those too — for example `^\S` matches any
+note that doesn't start with a space, so it would keep `[important]` as well as
+`[poly(A)+]`.
+
 ### Omitted Text `...`
 
 Use ellipsis for gaps in quoted text:

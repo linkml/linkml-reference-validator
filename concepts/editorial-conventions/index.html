@@ -1129,6 +1129,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#literal-brackets-in-source-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Literal Brackets in Source Text
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1690,6 +1701,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#literal-brackets-in-source-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Literal Brackets in Source Text
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2027,6 +2049,25 @@ Your quote: &quot;It [BRCA1] regulates transcription&quot;
 <pre><code>❌ &quot;MUC1 [mucin 1 [a membrane protein]] blocks targeting&quot;
 ✅ &quot;MUC1 [mucin 1, a membrane protein] blocks targeting&quot;
 </code></pre>
+<h3 id="literal-brackets-in-source-text">Literal Brackets in Source Text</h3>
+<p>Some corpora use square brackets as part of the quoted source text itself:</p>
+<pre><code>Reference: &quot;polyadenylated [poly(A)+] RNA export&quot;
+Quote:     &quot;polyadenylated [poly(A)+] RNA export&quot;
+</code></pre>
+<p>By default, linkml-reference-validator strips all bracketed text for backward
+compatibility. To preserve literal brackets, configure
+<code>literal_bracket_patterns</code> in your validation config:</p>
+<pre><code class="language-yaml">validation:
+  literal_bracket_patterns:
+    - &quot;\\d&quot;       # keep [2Fe-2S], [+21], [30S], [Ca2+]
+    - &quot;[()+]&quot;     # keep notation with parens/charges, e.g. [poly(A)+]
+</code></pre>
+<p>Each pattern is matched against the content inside <code>[...]</code>. If any pattern
+matches, that bracketed text is kept during validation. If none match, the
+content is treated as an editorial insertion and stripped.</p>
+<p>Keep patterns specific to your notation. A pattern broad enough to also match
+ordinary editorial notes will preserve those too — for example <code>^\S</code> (any note
+not starting with a space) would keep <code>[important]</code> as well as <code>[poly(A)+]</code>.</p>
 <h2 id="ellipsis">Ellipsis <code>...</code></h2>
 <p>Use ellipsis (three dots) to indicate <strong>omitted text</strong> between parts of a quote.</p>
 <h3 id="basic-usage_1">Basic Usage</h3>

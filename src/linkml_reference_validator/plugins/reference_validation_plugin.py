@@ -242,8 +242,13 @@ if _LINKML_AVAILABLE:
                             # Break after processing first reference field with a value
                             break
 
+            # Only slots actually defined on the class can be induced; data may
+            # carry extra keys (a stray ``id``, metadata, a typo) that are not
+            # slots. induced_slot() raises ValueError for those, so skip them.
+            class_slots = set(self.schema_view.class_slots(class_name))
+
             for slot_name, value in instance.items():
-                if value is None:
+                if value is None or slot_name not in class_slots:
                     continue
 
                 slot = self.schema_view.induced_slot(slot_name, class_name)

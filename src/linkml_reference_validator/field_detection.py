@@ -29,11 +29,32 @@ The detection functions accept an optional prefix_map to expand CURIEs to
 full URIs before matching.
 """
 
+import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Optional, Protocol
 
 if TYPE_CHECKING:
     from curies import Converter
+
+
+def _uri_tokens(uri: str) -> set[str]:
+    """Split a URI/CURIE into lowercased word tokens.
+
+    Splits on camelCase boundaries and any run of non-alphanumeric characters,
+    so a generic term can be matched as a whole word rather than as a bare
+    substring (which would flag ``user_preference`` or ``dereference`` as
+    containing "reference").
+
+    Examples:
+        >>> sorted(_uri_tokens("http://example.org/myReferenceField"))
+        ['example', 'field', 'http', 'my', 'org', 'reference']
+        >>> sorted(_uri_tokens("test:user_preference"))
+        ['preference', 'test', 'user']
+        >>> sorted(_uri_tokens("dcterms:references"))
+        ['dcterms', 'references']
+    """
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", uri)
+    return {tok.lower() for tok in re.split(r"[^A-Za-z0-9]+", spaced) if tok}
 
 
 # =============================================================================
@@ -126,19 +147,31 @@ class ReferenceURIs:
     LEGACY_LINKML: str = "https://w3id.org/linkml/authoritative_reference"
     LEGACY_LINKML_PREFIXED: str = "linkml:authoritative_reference"
 
-    # Additional patterns to match (substrings)
+    # Unambiguous patterns matched as substrings (e.g. dcterms:source has no
+    # generic single-word form to confuse).
     MATCH_PATTERNS: tuple[str, ...] = (
         "dcterms:references",
         "dc/terms/references",
         "dcterms:source",
         "dc/terms/source",
         "authoritative_reference",
+    )
+
+    # Generic terms matched as whole word tokens, NOT bare substrings, so that
+    # "user_preference" / "dereference" are not mistaken for references.
+    TOKEN_TERMS: tuple[str, ...] = (
         "reference",
+        "references",
     )
 
     @classmethod
     def is_reference_uri(cls, uri: str) -> bool:
         """Check if a URI identifies a reference field.
+
+        Specific Dublin Core / legacy URIs are matched as substrings. The
+        generic word "reference(s)" is matched only as a whole token, so URIs
+        that merely contain those letters (``user_preference``, ``dereference``)
+        are not misclassified.
 
         Args:
             uri: URI string to check (can be full or prefixed)
@@ -155,11 +188,19 @@ class ReferenceURIs:
             True
             >>> ReferenceURIs.is_reference_uri("https://w3id.org/linkml/authoritative_reference")
             True
+            >>> ReferenceURIs.is_reference_uri("http://example.org/myReferenceField")
+            True
             >>> ReferenceURIs.is_reference_uri("oa:exact")
+            False
+            >>> ReferenceURIs.is_reference_uri("test:user_preference")
+            False
+            >>> ReferenceURIs.is_reference_uri("ex:dereference")
             False
         """
         uri_lower = uri.lower()
-        return any(pattern in uri_lower for pattern in cls.MATCH_PATTERNS)
+        if any(pattern in uri_lower for pattern in cls.MATCH_PATTERNS):
+            return True
+        return bool(_uri_tokens(uri) & set(cls.TOKEN_TERMS))
 
 
 @dataclass(frozen=True)

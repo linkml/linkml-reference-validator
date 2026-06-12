@@ -318,10 +318,12 @@ class TestPluginTitleValidation:
         # Setup schema view
         mock_slot_ref = mocker.MagicMock()
         mock_slot_ref.implements = ["linkml:authoritative_reference"]
+        mock_slot_ref.slot_uri = None
         mock_slot_ref.range = None
 
         mock_slot_excerpt = mocker.MagicMock()
         mock_slot_excerpt.implements = ["linkml:excerpt"]
+        mock_slot_excerpt.slot_uri = None
         mock_slot_excerpt.range = None
 
         mock_slot_title = mocker.MagicMock()

@@ -507,7 +507,7 @@ validation:
 ```
 
 Patterns are matched against the content inside `[...]`. If any pattern matches,
-that bracketed text is kept verbatim during validation.
+that bracketed text is preserved (not stripped) before normalization and validation.
 
 ### Omitted Text `...`
 

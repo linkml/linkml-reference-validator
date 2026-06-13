@@ -1,6 +1,5 @@
 """Tests for declarative custom full-text providers."""
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from linkml_reference_validator.models import (

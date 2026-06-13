@@ -746,7 +746,6 @@ def test_enrich_with_full_text_uses_first_successful_provider(tmp_path):
     from linkml_reference_validator.models import (
         ReferenceContent,
         ReferenceValidationConfig,
-        ReferenceIdentifiers,
         FullTextLocation,
     )
     from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher

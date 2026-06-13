@@ -1,6 +1,5 @@
 """Tests for the content acquirer."""
 
-import pytest
 from unittest.mock import patch, MagicMock
 
 from linkml_reference_validator.models import ReferenceValidationConfig

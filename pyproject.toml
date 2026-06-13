@@ -25,6 +25,7 @@ dependencies = [
   "ruamel-yaml >= 0.18.0",
   "rapidfuzz >= 3.14.3",
   "jsonpath-ng >= 1.6.0",
+  "pypdf>=4.0.0",
 ]
 
 [dependency-groups]

@@ -440,6 +440,29 @@ class ReferenceValidationConfig(BaseModel):
             "Default is 50MB (50 * 1024 * 1024 bytes)."
         ),
     )
+    fetch_full_text: bool = Field(
+        default=True,
+        description=(
+            "If True, attempt to obtain full text via the full_text_providers chain "
+            "when a metadata source does not already return full text."
+        ),
+    )
+    full_text_providers: list[str] = Field(
+        default_factory=lambda: ["pmc", "unpaywall", "openalex"],
+        description=(
+            "Ordered list of full-text provider names to try until one yields usable "
+            "full text. Names map to built-in providers (pmc, unpaywall, openalex) or "
+            "custom providers loaded from YAML."
+        ),
+    )
+    pdf_backend: str = Field(
+        default="pypdf",
+        description="Name of the PDF text-extraction backend to use (e.g. 'pypdf').",
+    )
+    download_pdfs: bool = Field(
+        default=True,
+        description="If True, persist downloaded PDFs to the files cache directory.",
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.
@@ -452,6 +475,23 @@ class ReferenceValidationConfig(BaseModel):
         """
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         return self.cache_dir
+
+    def get_files_cache_dir(self) -> Path:
+        """Create and return the binary-files cache directory (for downloaded PDFs).
+
+        Examples:
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> config = ReferenceValidationConfig(cache_dir=Path(tempfile.mkdtemp()))
+            >>> d = config.get_files_cache_dir()
+            >>> d.name
+            'files'
+            >>> d.exists()
+            True
+        """
+        files_dir = self.cache_dir / "files"
+        files_dir.mkdir(parents=True, exist_ok=True)
+        return files_dir
 
 
 @dataclass

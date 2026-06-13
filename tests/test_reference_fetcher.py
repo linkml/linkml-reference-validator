@@ -823,3 +823,32 @@ def test_enrich_downloads_and_extracts_pdf(tmp_path):
     assert enriched.content_type == "full_text_pdf"
     assert "extracted pdf text" in enriched.content
     assert enriched.full_text_provider == "fake_pdf"
+
+
+def test_provenance_round_trips_through_cache(tmp_path):
+    from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+
+    content = ReferenceContent(
+        reference_id="DOI:10.1/x",
+        title="Paper",
+        content="full body text",
+        content_type="full_text_pdf",
+        full_text_provider="unpaywall",
+        full_text_url="https://oa/x.pdf",
+        oa_status="gold",
+        license="cc-by",
+        local_pdf_path="files/DOI_10.1_x.pdf",
+    )
+    fetcher._save_to_disk(content)
+    loaded = fetcher._load_from_disk("DOI:10.1/x")
+
+    assert loaded.content_type == "full_text_pdf"
+    assert loaded.full_text_provider == "unpaywall"
+    assert loaded.full_text_url == "https://oa/x.pdf"
+    assert loaded.oa_status == "gold"
+    assert loaded.license == "cc-by"
+    assert loaded.local_pdf_path == "files/DOI_10.1_x.pdf"

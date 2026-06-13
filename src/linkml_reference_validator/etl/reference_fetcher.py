@@ -432,6 +432,16 @@ class ReferenceFetcher:
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
+        if reference.full_text_provider:
+            lines.append(f"full_text_provider: {reference.full_text_provider}")
+        if reference.full_text_url:
+            lines.append(f"full_text_url: {self._quote_yaml_value(reference.full_text_url)}")
+        if reference.oa_status:
+            lines.append(f"oa_status: {reference.oa_status}")
+        if reference.license:
+            lines.append(f"license: {self._quote_yaml_value(reference.license)}")
+        if reference.local_pdf_path:
+            lines.append(f"local_pdf_path: {self._quote_yaml_value(reference.local_pdf_path)}")
         if reference.metadata and "extra_fields_captured" in reference.metadata:
             extra_fields = reference.metadata.get("extra_fields_captured")
             if isinstance(extra_fields, list):
@@ -574,6 +584,11 @@ class ReferenceFetcher:
             keywords=keywords,
             supplementary_files=supplementary_files,
             metadata=metadata,
+            full_text_provider=frontmatter.get("full_text_provider"),
+            full_text_url=frontmatter.get("full_text_url"),
+            oa_status=frontmatter.get("oa_status"),
+            license=frontmatter.get("license"),
+            local_pdf_path=frontmatter.get("local_pdf_path"),
         )
 
     def _extract_content_from_markdown(self, body: str) -> str:

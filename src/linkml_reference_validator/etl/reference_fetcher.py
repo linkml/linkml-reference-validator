@@ -17,8 +17,32 @@ from linkml_reference_validator.models import (
     SupplementaryFile,
 )
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
+from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format
+from linkml_reference_validator.etl.identifiers import build_identifiers
+from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
+from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 
 logger = logging.getLogger(__name__)
+
+
+NEEDS_FULL_TEXT_TYPES = {
+    "abstract_only",
+    "unavailable",
+    "no_pmc",
+    "pmc_restricted",
+    "summary",
+}
+
+MIN_FULL_TEXT_CHARS = 500
+
+_FORMAT_TO_CONTENT_TYPE = {
+    "pdf": "full_text_pdf",
+    "html": "full_text_html",
+    "xml": "full_text_xml",
+    "text": "full_text",
+}
 
 
 class ReferenceFetcher:
@@ -57,6 +81,7 @@ class ReferenceFetcher:
         """
         self.config = config
         self._cache: dict[str, ReferenceContent] = {}
+        self._acquirer = ContentAcquirer()
 
     def fetch(
         self, reference_id: str, force_refresh: bool = False
@@ -107,11 +132,116 @@ class ReferenceFetcher:
         source = source_class()
         content = source.fetch(identifier, self.config)
 
+        if content and self.config.fetch_full_text and self._needs_full_text(content):
+            content = self._enrich_with_full_text(content)
+
         if content:
             self._cache[normalized_reference_id] = content
             self._save_to_disk(content)
 
         return content
+
+    def _needs_full_text(self, content: ReferenceContent) -> bool:
+        """Return True if the content lacks full text and the chain should run.
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> from linkml_reference_validator.models import ReferenceContent
+            >>> fetcher._needs_full_text(
+            ...     ReferenceContent(reference_id="DOI:1", content_type="abstract_only")
+            ... )
+            True
+            >>> fetcher._needs_full_text(
+            ...     ReferenceContent(reference_id="DOI:1", content_type="full_text_xml")
+            ... )
+            False
+        """
+        return content.content_type in NEEDS_FULL_TEXT_TYPES
+
+    def _enrich_with_full_text(self, content: ReferenceContent) -> ReferenceContent:
+        """Walk the provider chain; merge the first usable full text into content."""
+        ids = build_identifiers(content)
+        abstract = content.content
+
+        for provider_name in self.config.full_text_providers:
+            provider = FullTextProviderRegistry.get(provider_name)
+            if provider is None:
+                logger.debug(f"Full-text provider not registered: {provider_name}")
+                continue
+
+            try:  # external system boundary: a provider failure must not abort the chain
+                location = provider.locate(ids, self.config)
+            except Exception as exc:
+                logger.warning(f"Provider '{provider_name}' failed for {content.reference_id}: {exc}")
+                continue
+
+            if location is None:
+                continue
+
+            text, fmt, pdf_bytes = self._materialize(location)
+            if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
+                continue
+
+            content.content = f"{abstract}\n\n{text}" if abstract else text
+            content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
+            content.full_text_provider = location.provider or provider_name
+            content.full_text_url = location.url
+            content.oa_status = location.oa_status
+            content.license = location.license
+            if pdf_bytes is not None and self.config.download_pdfs:
+                content.local_pdf_path = self._save_pdf(content.reference_id, pdf_bytes)
+            return content
+
+        return content
+
+    def _materialize(self, location) -> tuple[Optional[str], Optional[str], Optional[bytes]]:
+        """Turn a FullTextLocation into (text, format, pdf_bytes_if_any)."""
+        if location.text:
+            return location.text, location.format_hint or "text", None
+
+        if not location.url:
+            return None, None, None
+
+        try:  # external system boundary
+            data, content_type = self._acquirer.fetch_bytes(location.url, self.config)
+        except Exception as exc:
+            logger.warning(f"Download failed for {location.url}: {exc}")
+            return None, None, None
+
+        if data is None:
+            return None, None, None
+
+        fmt = resolve_format(content_type, location.url, location.format_hint)
+        if fmt is None:
+            return None, None, None
+
+        extractor: Optional[Extractor]
+        if fmt == "pdf":
+            extractor = PDFExtractor(backend=self.config.pdf_backend)
+        else:
+            extractor = ExtractorRegistry.get(fmt)
+        if extractor is None:
+            return None, fmt, None
+
+        try:  # external system boundary: parsing arbitrary downloaded bytes
+            text = extractor.extract(data, content_type=content_type)
+        except Exception as exc:
+            logger.warning(f"Extraction failed for {location.url}: {exc}")
+            return None, fmt, None
+
+        pdf_bytes = data if fmt == "pdf" else None
+        return text, fmt, pdf_bytes
+
+    def _save_pdf(self, reference_id: str, data: bytes) -> str:
+        """Persist a downloaded PDF and return its path relative to the cache dir."""
+        safe_id = (
+            reference_id.replace(":", "_").replace("/", "_").replace("?", "_").replace("=", "_")
+        )
+        files_dir = self.config.get_files_cache_dir()
+        pdf_path = files_dir / f"{safe_id}.pdf"
+        pdf_path.write_bytes(data)
+        return str(pdf_path.relative_to(self.config.cache_dir))
 
     def _parse_reference_id(self, reference_id: str) -> tuple[str, str]:
         """Parse a reference ID into prefix and identifier.

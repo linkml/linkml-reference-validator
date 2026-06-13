@@ -734,3 +734,92 @@ def test_save_and_load_empty_supplementary_files(fetcher, tmp_path):
     assert loaded is not None
     # Empty list should be treated as None or empty
     assert loaded.supplementary_files is None or loaded.supplementary_files == []
+
+
+def test_enrich_with_full_text_uses_first_successful_provider(tmp_path):
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+        ReferenceIdentifiers,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+
+    class _TextProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return "fake_text"
+
+        def locate(self, ids, config):
+            return FullTextLocation(text="X" * 600, format_hint="xml", provider="fake_text", oa_status="green")
+
+    FullTextProviderRegistry.register(_TextProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        full_text_providers=["fake_text"],
+    )
+    fetcher = ReferenceFetcher(config)
+
+    content = ReferenceContent(
+        reference_id="DOI:10.1/x", doi="10.1/x", content="abstract here", content_type="abstract_only"
+    )
+    enriched = fetcher._enrich_with_full_text(content)
+    assert enriched.content_type == "full_text_xml"
+    assert "X" * 600 in enriched.content
+    assert enriched.full_text_provider == "fake_text"
+    assert enriched.oa_status == "green"
+
+
+def test_enrich_skips_when_already_full_text(tmp_path):
+    from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+    content = ReferenceContent(
+        reference_id="PMID:1", content="lots of full text", content_type="full_text_xml"
+    )
+    assert fetcher._needs_full_text(content) is False
+
+
+def test_enrich_downloads_and_extracts_pdf(tmp_path):
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+    from unittest.mock import patch
+
+    class _PdfProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return "fake_pdf"
+
+        def locate(self, ids, config):
+            return FullTextLocation(url="https://x/y.pdf", format_hint="pdf", provider="fake_pdf")
+
+    FullTextProviderRegistry.register(_PdfProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        full_text_providers=["fake_pdf"],
+    )
+    fetcher = ReferenceFetcher(config)
+    content = ReferenceContent(
+        reference_id="DOI:10.1/x", doi="10.1/x", content="abstract", content_type="abstract_only"
+    )
+
+    with patch.object(fetcher._acquirer, "fetch_bytes", return_value=(b"%PDF-fake", "application/pdf")), \
+         patch("linkml_reference_validator.etl.reference_fetcher.PDFExtractor") as MockPDF:
+        MockPDF.return_value.extract.return_value = "extracted pdf text " * 50
+        enriched = fetcher._enrich_with_full_text(content)
+
+    assert enriched.content_type == "full_text_pdf"
+    assert "extracted pdf text" in enriched.content
+    assert enriched.full_text_provider == "fake_pdf"

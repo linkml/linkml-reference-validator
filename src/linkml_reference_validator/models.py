@@ -529,6 +529,51 @@ class SupplementaryFile:
 
 
 @dataclass
+class ReferenceIdentifiers:
+    """Cross-walked identifiers for a single reference.
+
+    Used by full-text providers, several of which are keyed on DOI regardless of
+    the original reference prefix.
+
+    Examples:
+        >>> ids = ReferenceIdentifiers(doi="10.1038/x", pmid="123")
+        >>> ids.doi
+        '10.1038/x'
+        >>> ids.pmcid is None
+        True
+    """
+
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    pmcid: Optional[str] = None
+    url: Optional[str] = None
+
+
+@dataclass
+class FullTextLocation:
+    """A located full-text resource for a reference.
+
+    A provider returns either a downloadable ``url`` (PDF/HTML/XML) or inline
+    ``text`` it has already extracted.
+
+    Examples:
+        >>> loc = FullTextLocation(url="https://x/y.pdf", format_hint="pdf")
+        >>> loc.format_hint
+        'pdf'
+        >>> loc.text is None
+        True
+    """
+
+    url: Optional[str] = None
+    text: Optional[str] = None
+    format_hint: Optional[str] = None  # "pdf" | "html" | "xml" | "text"
+    oa_status: Optional[str] = None    # "gold" | "green" | "bronze" | ...
+    license: Optional[str] = None
+    provider: str = ""
+    version: Optional[str] = None      # "publishedVersion" | "acceptedVersion" | ...
+
+
+@dataclass
 class ReferenceContent:
     """Content retrieved from a reference.
 
@@ -563,6 +608,11 @@ class ReferenceContent:
     keywords: Optional[list[str]] = None  # MeSH terms, subjects, tags
     supplementary_files: Optional[list[SupplementaryFile]] = None
     metadata: dict = field(default_factory=dict)
+    full_text_provider: Optional[str] = None
+    full_text_url: Optional[str] = None
+    oa_status: Optional[str] = None
+    license: Optional[str] = None
+    local_pdf_path: Optional[str] = None
 
 
 @dataclass

@@ -19,6 +19,7 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,21 @@ class URLSource(ReferenceSource):
         if response.status_code != 200:
             logger.warning(f"Failed to fetch URL:{url} - status {response.status_code}")
             return None
+
+        content_type_header = (response.headers.get("content-type") or "").lower()
+        is_pdf = "application/pdf" in content_type_header or response.content[:5] == b"%PDF-"
+
+        if is_pdf:
+            text = PDFExtractor(backend=config.pdf_backend).extract(
+                response.content, content_type="application/pdf"
+            )
+            return ReferenceContent(
+                reference_id=f"url:{url}",
+                title=url,
+                content=text,
+                content_type="full_text_pdf" if text else "unavailable",
+                full_text_url=url,
+            )
 
         content = response.text
         title = self._extract_title(content, url)

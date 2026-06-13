@@ -257,6 +257,30 @@ class TestURLSource:
         assert result.title == "Page Title Here"
 
 
+@patch("linkml_reference_validator.etl.sources.url.requests.get")
+def test_fetch_url_pdf_extracts_text(mock_get, tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+    from linkml_reference_validator.etl.sources.url import URLSource
+    from unittest.mock import patch as _patch
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {"content-type": "application/pdf"}
+    mock_response.content = b"%PDF-1.4 fake bytes"
+    mock_get.return_value = mock_response
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    source = URLSource()
+
+    with _patch("linkml_reference_validator.etl.sources.url.PDFExtractor") as MockPDF:
+        MockPDF.return_value.extract.return_value = "extracted pdf text"
+        result = source.fetch("https://x/y.pdf", config)
+
+    assert result is not None
+    assert result.content == "extracted pdf text"
+    assert result.content_type == "full_text_pdf"
+
+
 class TestPMIDSource:
     """Tests for PMIDSource (refactored from ReferenceFetcher)."""
 

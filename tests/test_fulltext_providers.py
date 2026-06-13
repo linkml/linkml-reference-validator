@@ -83,3 +83,61 @@ class TestUnpaywallProvider:
         from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
 
         assert UnpaywallProvider().locate(ReferenceIdentifiers(pmid="123"), config) is None
+
+
+class TestOpenAlexProvider:
+    @pytest.fixture
+    def config(self, tmp_path):
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / "cache", rate_limit_delay=0.0, email="me@example.org"
+        )
+
+    @patch("linkml_reference_validator.etl.fulltext.openalex.requests.get")
+    def test_locate_returns_pdf_location(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "open_access": {"is_oa": True, "oa_status": "green", "oa_url": "https://oa/paper"},
+            "best_oa_location": {
+                "pdf_url": "https://oa.example.org/openalex.pdf",
+                "license": "cc-by",
+                "version": "acceptedVersion",
+            },
+        }
+        mock_get.return_value = mock_response
+
+        loc = OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config)
+        assert loc is not None
+        assert loc.url == "https://oa.example.org/openalex.pdf"
+        assert loc.format_hint == "pdf"
+        assert loc.oa_status == "green"
+        assert loc.provider == "openalex"
+
+    @patch("linkml_reference_validator.etl.fulltext.openalex.requests.get")
+    def test_locate_falls_back_to_oa_url(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "open_access": {"is_oa": True, "oa_status": "bronze", "oa_url": "https://oa/landing"},
+            "best_oa_location": {"pdf_url": None},
+        }
+        mock_get.return_value = mock_response
+
+        loc = OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config)
+        assert loc.url == "https://oa/landing"
+        assert loc.format_hint == "html"
+
+    @patch("linkml_reference_validator.etl.fulltext.openalex.requests.get")
+    def test_locate_not_oa_returns_none(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"open_access": {"is_oa": False}, "best_oa_location": None}
+        mock_get.return_value = mock_response
+
+        assert OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None

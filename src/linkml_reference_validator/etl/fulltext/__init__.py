@@ -5,4 +5,11 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 
-__all__ = ["FullTextProvider", "FullTextProviderRegistry"]
+# Import providers to register them
+from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
+
+__all__ = [
+    "FullTextProvider",
+    "FullTextProviderRegistry",
+    "UnpaywallProvider",
+]

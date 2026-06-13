@@ -858,3 +858,22 @@ def test_provenance_round_trips_through_cache(tmp_path):
     assert loaded.oa_status == "gold"
     assert loaded.license == "cc-by"
     assert loaded.local_pdf_path == "files/DOI_10.1_x.pdf"
+
+
+def test_fetcher_registers_custom_full_text_providers(tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+
+    yaml_file = tmp_path / ".linkml-reference-validator-fulltext.yaml"
+    yaml_file.write_text(
+        "full_text_providers:\n"
+        "  custom_at_init:\n"
+        "    url_template: https://api.example.org/ft/{doi}\n"
+        "    location_field: $.pdf_url\n"
+    )
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache", rate_limit_delay=0.0, full_text_providers_file=yaml_file
+    )
+    ReferenceFetcher(config)
+    assert FullTextProviderRegistry.get("custom_at_init") is not None

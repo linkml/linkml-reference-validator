@@ -19,6 +19,7 @@ from .shared import (
     CacheDirOption,
     VerboseOption,
     ConfigFileOption,
+    FullTextOption,
     setup_logging,
     load_validation_config,
 )
@@ -46,6 +47,7 @@ def text_command(
     ] = None,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
     """Validate a single supporting text quote against a reference.
@@ -68,6 +70,7 @@ def text_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    config.fetch_full_text = full_text
 
     validator = SupportingTextValidator(config)
 
@@ -133,6 +136,7 @@ def text_file_command(
     ] = False,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
     r"""Validate supporting text in a plain text file using regex extraction.
@@ -162,6 +166,7 @@ def text_file_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    config.fetch_full_text = full_text
 
     typer.echo(f"Extracting text from {file_path}")
     typer.echo(f"  Regex pattern: {regex}")
@@ -233,6 +238,7 @@ def data_command(
     ] = None,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
     """Validate supporting text in data against references.
@@ -251,6 +257,7 @@ def data_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    config.fetch_full_text = full_text
 
     # NOTE: `linkml` is an optional dependency. Import it only when this command is invoked.
     # We use `find_spec` rather than try/except so importing this module never fails when
@@ -310,10 +317,9 @@ def data_command(
                     typer.echo(f"    Reference: {result.instance['reference_id']}")
 
     typer.echo("\nValidation Summary:")
-    typer.echo(f"  Total checks: {len(all_results)}")
+    typer.echo(f"  Issues found: {len(all_results)}")
 
     if all_results:
-        typer.echo(f"  Issues found: {len(all_results)}")
         raise typer.Exit(1)
     else:
         typer.echo("  All validations passed!")

@@ -23,6 +23,7 @@ from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry 
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,7 @@ class ReferenceFetcher:
         self.config = config
         self._cache: dict[str, ReferenceContent] = {}
         self._acquirer = ContentAcquirer()
+        register_custom_full_text_providers(config.full_text_providers_file)
 
     def fetch(
         self, reference_id: str, force_refresh: bool = False

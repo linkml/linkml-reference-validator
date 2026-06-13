@@ -463,6 +463,10 @@ class ReferenceValidationConfig(BaseModel):
         default=True,
         description="If True, persist downloaded PDFs to the files cache directory.",
     )
+    full_text_providers_file: Optional[Path] = Field(
+        default=None,
+        description="Optional path to a YAML file defining custom full-text providers.",
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.

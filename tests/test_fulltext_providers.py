@@ -141,3 +141,35 @@ class TestOpenAlexProvider:
         mock_get.return_value = mock_response
 
         assert OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None
+
+
+class TestPMCProvider:
+    @pytest.fixture
+    def config(self, tmp_path):
+        return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+
+    def test_name(self):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        assert PMCFullTextProvider.name() == "pmc"
+
+    def test_locate_without_pmid_or_pmcid_returns_none(self, config):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        assert PMCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None
+
+    def test_locate_returns_text_from_xml(self, config):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        provider = PMCFullTextProvider()
+        long_body = "<body>" + "".join(f"<p>Sentence {i} of the body.</p>" for i in range(40)) + "</body>"
+        xml = f"<article>{long_body}</article>".encode("utf-8")
+
+        with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+             patch.object(provider, "_fetch_pmc_xml_bytes", return_value=xml):
+            loc = provider.locate(ReferenceIdentifiers(pmid="123", pmcid="999"), config)
+
+        assert loc is not None
+        assert loc.format_hint == "xml"
+        assert loc.provider == "pmc"
+        assert "Sentence 0 of the body." in loc.text

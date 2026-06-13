@@ -11,10 +11,16 @@ from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 
 @pytest.fixture
 def config(tmp_path):
-    """Create a test configuration."""
+    """Create a test configuration.
+
+    Full-text enrichment is disabled so these legacy fetcher unit tests
+    (ID parsing / caching / Crossref-vs-DataCite dispatch) stay isolated
+    from the full-text provider chain, which has its own dedicated tests.
+    """
     return ReferenceValidationConfig(
         cache_dir=tmp_path / "cache",
         rate_limit_delay=0.0,  # No delay for tests
+        fetch_full_text=False,
     )
 
 

@@ -539,6 +539,32 @@ class JSONAPISourceConfig:
 
 
 @dataclass
+class FullTextProviderConfig:
+    """Configuration for a declarative custom full-text provider.
+
+    Mirrors JSONAPISourceConfig but resolves a downloadable full-text location
+    (or inline text) rather than metadata.
+
+    Examples:
+        >>> cfg = FullTextProviderConfig(
+        ...     name="myrepo",
+        ...     url_template="https://api.example.org/ft/{doi}",
+        ...     location_field="$.pdf_url",
+        ...     format_hint="pdf",
+        ... )
+        >>> cfg.name
+        'myrepo'
+    """
+
+    name: str
+    url_template: str               # supports {doi} / {pmid} / {pmcid} placeholders
+    location_field: Optional[str] = None  # JSONPath to a downloadable URL
+    text_field: Optional[str] = None      # JSONPath to inline text (alternative to a URL)
+    format_hint: Optional[str] = None
+    headers: dict[str, str] = field(default_factory=dict)  # ${VAR} interpolation
+
+
+@dataclass
 class SupplementaryFile:
     """Metadata for a supplementary file associated with a reference.
 

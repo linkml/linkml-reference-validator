@@ -359,3 +359,62 @@ def test_e2e_list_of_instances(e2e_schema_file, e2e_plugin):
     # Both should validate successfully
     error_results = [r for r in all_results if r.severity.value == "ERROR"]
     assert len(error_results) == 0
+
+
+def test_full_chain_doi_falls_through_to_pdf(tmp_path):
+    from unittest.mock import patch
+    from linkml_reference_validator.models import (
+        ReferenceValidationConfig,
+        ReferenceContent,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+
+    class _MissProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return "miss"
+
+        def locate(self, ids, config):
+            return None
+
+    class _PdfProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return "hit_pdf"
+
+        def locate(self, ids, config):
+            return FullTextLocation(url="https://oa/x.pdf", format_hint="pdf", provider="hit_pdf", oa_status="gold")
+
+    FullTextProviderRegistry.register(_MissProvider)
+    FullTextProviderRegistry.register(_PdfProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        full_text_providers=["miss", "hit_pdf"],
+    )
+    fetcher = ReferenceFetcher(config)
+
+    metadata = ReferenceContent(
+        reference_id="DOI:10.1/x", doi="10.1/x", title="P", content="abstract", content_type="abstract_only"
+    )
+
+    with patch.object(fetcher, "_load_from_disk", return_value=None), \
+         patch("linkml_reference_validator.etl.reference_fetcher.ReferenceSourceRegistry.get_source") as mock_get_source, \
+         patch.object(fetcher._acquirer, "fetch_bytes", return_value=(b"%PDF-bytes", "application/pdf")), \
+         patch("linkml_reference_validator.etl.reference_fetcher.PDFExtractor") as MockPDF:
+        mock_source_class = mock_get_source.return_value
+        mock_source_class.return_value.fetch.return_value = metadata
+        MockPDF.return_value.extract.return_value = "full text body " * 60
+
+        result = fetcher.fetch("DOI:10.1/x")
+
+    assert result.content_type == "full_text_pdf"
+    assert result.full_text_provider == "hit_pdf"
+    assert result.oa_status == "gold"
+    assert "full text body" in result.content
+    # cached PDF written
+    assert result.local_pdf_path is not None
+    assert (config.cache_dir / result.local_pdf_path).exists()

@@ -166,6 +166,53 @@ class TestIsExcerptSlot:
         assert is_excerpt_slot(slot) is True
 
 
+class TestReferenceURITokenBoundaries:
+    """The generic 'reference' term must match as a token, not a bare substring.
+
+    A bare substring match flags unrelated URIs like ``user_preference`` or
+    ``dereference`` (both contain the letters 'reference'), which would cause
+    the plugin to treat those slots as authoritative references. Matching the
+    word as a camelCase / separator-delimited token avoids the false positives
+    while still recognising real reference fields.
+    """
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            "test:user_preference",
+            "ex:dereference",
+            "http://example.org/userPreference",
+            "schema:preferenceOrder",
+        ],
+    )
+    def test_non_reference_terms_rejected(self, uri: str):
+        """URIs where 'reference' is only a substring of another word."""
+        assert ReferenceURIs.is_reference_uri(uri) is False
+
+    @pytest.mark.parametrize(
+        "uri",
+        [
+            # Specific canonical / legacy forms must keep matching
+            "dcterms:references",
+            "http://purl.org/dc/terms/references",
+            "dcterms:source",
+            "linkml:authoritative_reference",
+            # Generic 'reference' token in various shapes
+            "http://example.org/myReferenceField",
+            "test:reference",
+            "ex:cross_reference",
+        ],
+    )
+    def test_real_reference_terms_accepted(self, uri: str):
+        """Genuine reference fields must still be detected."""
+        assert ReferenceURIs.is_reference_uri(uri) is True
+
+    def test_slot_with_preference_uri_not_a_reference(self):
+        """A slot whose URI merely contains 'preference' is not a reference."""
+        slot = Mock(implements=["test:user_preference"], slot_uri=None)
+        assert is_reference_slot(slot) is False
+
+
 class TestIsReferenceSlot:
     """Tests for is_reference_slot function."""
 

@@ -55,3 +55,18 @@ def test_files_cache_dir(tmp_path):
     files_dir = config.get_files_cache_dir()
     assert files_dir == tmp_path / "cache" / "files"
     assert files_dir.exists()
+def test_load_validation_config_literal_bracket_patterns(tmp_path):
+    """Should load literal bracket patterns from validation config."""
+    config_file = tmp_path / ".linkml-reference-validator.yaml"
+    config_file.write_text(
+        """
+validation:
+  literal_bracket_patterns:
+    - "\\\\d"
+    - "^\\\\S"
+"""
+    )
+
+    config = load_validation_config(config_file)
+
+    assert config.literal_bracket_patterns == [r"\d", r"^\S"]

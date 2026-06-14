@@ -23,7 +23,8 @@ class SupportingTextValidator:
     appears in the referenced publication using deterministic substring matching.
 
     Supports:
-    - Editorial notes in [square brackets] that are ignored
+    - Editorial notes in [square brackets] that are ignored by default
+    - Configurable literal bracket patterns for bracketed source text
     - Multi-part quotes with "..." separators indicating omitted text
 
     Examples:
@@ -46,6 +47,9 @@ class SupportingTextValidator:
         """
         self.config = config
         self.fetcher = ReferenceFetcher(config)
+        self._literal_bracket_regexes = [
+            re.compile(pattern) for pattern in config.literal_bracket_patterns
+        ]
 
     def validate_title(
         self,
@@ -287,7 +291,7 @@ class SupportingTextValidator:
         return self._substring_match(query_parts, reference.content, supporting_text)
 
     def _split_query(self, text: str) -> list[str]:
-        """Split query into parts separated by ... removing [...] editorial notes.
+        """Split query into parts while stripping editorial brackets by default.
 
         Args:
             text: Query text
@@ -302,12 +306,28 @@ class SupportingTextValidator:
             ['protein functions', 'in cells']
             >>> validator._split_query("protein [important] functions")
             ['protein functions']
+            >>> config = ReferenceValidationConfig(literal_bracket_patterns=[r"\\d"])
+            >>> validator = SupportingTextValidator(config)
+            >>> validator._split_query("protein [important] binds [2Fe-2S] cluster")
+            ['protein binds [2Fe-2S] cluster']
             >>> validator._split_query("[editorial note]")
             []
         """
-        text_without_brackets = re.sub(r"\[.*?\]", " ", text)
+        if not self._literal_bracket_regexes:
+            text_without_brackets = re.sub(r"\[.*?\]", " ", text)
+        else:
+
+            def replace_bracket(match: re.Match[str]) -> str:
+                """Preserve configured literal bracket content, strip editorial notes."""
+                content = match.group(1)
+                if any(regex.search(content) for regex in self._literal_bracket_regexes):
+                    return match.group(0)
+                return " "
+
+            text_without_brackets = re.sub(r"\[(.*?)\]", replace_bracket, text)
+
         parts = re.split(r"\s*\.{2,}\s*", text_without_brackets)
-        parts = [p.strip() for p in parts if p.strip()]
+        parts = [re.sub(r"\s+", " ", p).strip() for p in parts if p.strip()]
         return parts
 
     def _substring_match(

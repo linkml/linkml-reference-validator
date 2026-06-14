@@ -352,6 +352,11 @@ class ReferenceValidationConfig(BaseModel):
         ['SRA', 'MGNIFY']
         >>> config.unknown_prefix_severity
         <ValidationSeverity.WARNING: 'WARNING'>
+        >>> config = ReferenceValidationConfig(
+        ...     literal_bracket_patterns=[r"\d", r"^[A-Z]$"]
+        ... )
+        >>> config.literal_bracket_patterns
+        ['\\d', '^[A-Z]$']
     """
 
     cache_dir: Path = Field(
@@ -384,6 +389,15 @@ class ReferenceValidationConfig(BaseModel):
         default=2,
         ge=1,
         description="Regex capture group number containing the reference ID",
+    )
+    literal_bracket_patterns: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Regular expressions matched against the content inside square brackets. "
+            "If any pattern matches, the bracketed text is treated as literal source "
+            "text and preserved during supporting text validation. "
+            "If no patterns are configured, all bracketed text is stripped."
+        ),
     )
     reference_prefix_map: dict[str, str] = Field(
         default_factory=dict,

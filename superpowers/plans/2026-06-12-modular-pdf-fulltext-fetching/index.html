@@ -1,0 +1,4228 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/superpowers/plans/2026-06-12-modular-pdf-fulltext-fetching/">
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
+    
+    
+      
+        <title>Modular PDF & Full-Text Fetching Framework Implementation Plan - linkml-reference-validator</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#modular-pdf-full-text-fetching-framework-implementation-plan" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            linkml-reference-validator
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Modular PDF &amp; Full-Text Fetching Framework Implementation Plan
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    linkml-reference-validator
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/linkml/linkml-reference-validator" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../setup-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Setup Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../quickstart/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quickstart
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tutorials
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Tutorials
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tutorials/complete-workflow/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Complete Workflow
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../notebooks/01_getting_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started with linkml-reference-validator
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../notebooks/02_advanced_usage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Usage: Validating Data with LinkML Schemas
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../notebooks/04_obo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Format Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../notebooks/05_geo_validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating GEO Dataset References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../notebooks/03_python_api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python API for Programmatic Usage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How-To Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    How-To Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-obo-files/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating OBO Files
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-entrez/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Entrez Accessions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-clinical-trials/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Clinical Trials
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-dois/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating DOIs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-titles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Reference Titles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/use-local-files-and-urls/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using Local Files and URLs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/fetch-full-text-and-pdfs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Fetching Full Text and PDFs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/add-reference-source/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Adding a New Reference Source
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/skip-unsupported-references/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Skipping Unsupported References
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../how-to/repair-validation-errors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Repairing Validation Errors
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Concepts
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/how-it-works/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    How It Works
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/content-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Content Types
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/editorial-conventions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Editorial Conventions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../reference/cli/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    CLI Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../todo/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Roadmap
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#file-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        File Structure
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-1-data-models-identifiers-location-provenance-fields" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 1: Data models — identifiers, location, provenance fields
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-2-config-fields-for-full-text-fetching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 2: Config fields for full-text fetching
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-3-extractor-base-class-and-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 3: Extractor base class and registry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-4-html-and-xml-extractors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 4: HTML and XML extractors
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-5-pdf-extractor-with-pluggable-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 5: PDF extractor with pluggable backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-6-contentacquirer-download-format-resolution" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 6: ContentAcquirer (download + format resolution)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-7-fulltextprovider-base-class-and-registry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 7: FullTextProvider base class and registry
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-8-unpaywallprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 8: UnpaywallProvider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-9-openalexprovider" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 9: OpenAlexProvider
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-10-pmcfulltextprovider-refactor-pmidsource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 10: PMCFullTextProvider + refactor PMIDSource
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-11-identifier-crosswalk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 11: Identifier crosswalk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-12-orchestration-wire-the-full-text-chain-into-referencefetcher" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 12: Orchestration — wire the full-text chain into ReferenceFetcher
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-13-round-trip-provenance-fields-through-the-disk-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 13: Round-trip provenance fields through the disk cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-14-generic-urlpdf-in-urlsource" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 14: Generic URL→PDF in URLSource
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-15-declarative-custom-full-text-providers-json-api-loader" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 15: Declarative custom full-text providers (JSON API + loader)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-16-register-custom-providers-at-fetcher-init-cli-flag" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 16: Register custom providers at fetcher init + CLI flag
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-17-end-to-end-integration-test-full-quality-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 17: End-to-end integration test + full quality gate
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#task-18-documentation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Task 18: Documentation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#self-review-notes-for-the-implementer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Self-Review Notes (for the implementer)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="modular-pdf-full-text-fetching-framework-implementation-plan">Modular PDF &amp; Full-Text Fetching Framework Implementation Plan</h1>
+<blockquote>
+<p><strong>For agentic workers:</strong> REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (<code>- [ ]</code>) syntax for tracking.</p>
+</blockquote>
+<p><strong>Goal:</strong> Add a modular, ordered full-text provider chain (PMC → Unpaywall → OpenAlex → custom) that downloads and text-extracts PDFs (and HTML/XML) into <code>ReferenceContent.content</code>, so supporting-text validation runs against full text.</p>
+<p><strong>Architecture:</strong> Keep the existing prefix-keyed <code>ReferenceSource</code> metadata layer untouched. Add three small new layers: (1) an ordered <code>FullTextProvider</code> chain that <em>locates</em> full text, (2) a <code>ContentAcquirer</code> that downloads bytes with a size cap, and (3) a format-keyed <code>Extractor</code> registry that turns bytes into text. <code>ReferenceFetcher</code> orchestrates: resolve metadata → if no full text, walk the provider chain → acquire → extract → assemble with provenance. Design spec: <code>docs/superpowers/specs/2026-06-12-modular-pdf-fulltext-fetching-design.md</code>.</p>
+<p><strong>Tech Stack:</strong> Python 3.10+, <code>pydantic</code> (config), dataclasses (models), <code>requests</code> (HTTP), <code>beautifulsoup4</code>/<code>lxml</code> (HTML/XML), <code>pypdf</code> (default PDF backend, BSD-licensed, pure-python), <code>jsonpath-ng</code> (declarative custom providers), <code>biopython</code>/Entrez (PMC). Tests: <code>pytest</code> with <code>unittest.mock.patch</code> over <code>requests.get</code> (the established pattern in this repo) + doctests.</p>
+<p><strong>Conventions to follow (from repo CLAUDE.md):</strong>
+- TDD: write the failing test first, watch it fail, implement minimally, watch it pass, commit.
+- Avoid <code>try/except</code> for deterministic code. The <strong>one</strong> legitimate boundary for <code>try/except</code> here is the orchestrator looping over <em>external</em> providers (network/corrupt-PDF failures must not abort the chain) — that is the "interfacing with external systems" exception. Individual providers/extractors stay clean and let genuine programming errors propagate.
+- Docstrings + doctests on pure helpers.
+- Run tests with <code>uv run pytest ...</code>; full gate is <code>just test</code> (pytest + mypy + ruff). Doctests via <code>just doctest</code>.</p>
+<p><strong>Branch:</strong> Work on <code>feature/modular-pdf-fulltext-fetching</code> (already created; the spec is committed there).</p>
+<hr />
+<h2 id="file-structure">File Structure</h2>
+<p><strong>New files:</strong>
+- <code>src/linkml_reference_validator/etl/identifiers.py</code> — <code>ReferenceIdentifiers</code> + crosswalk helper.
+- <code>src/linkml_reference_validator/etl/acquire.py</code> — <code>ContentAcquirer</code> (streaming download + format resolution).
+- <code>src/linkml_reference_validator/etl/extract/__init__.py</code> — <code>ExtractorRegistry</code> + imports.
+- <code>src/linkml_reference_validator/etl/extract/base.py</code> — <code>Extractor</code> ABC.
+- <code>src/linkml_reference_validator/etl/extract/pdf.py</code> — <code>PDFExtractor</code> + <code>PDFTextBackend</code> protocol + <code>PypdfBackend</code>.
+- <code>src/linkml_reference_validator/etl/extract/html.py</code> — <code>HTMLExtractor</code>.
+- <code>src/linkml_reference_validator/etl/extract/xml.py</code> — <code>XMLExtractor</code> (JATS).
+- <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code> — <code>FullTextProviderRegistry</code> + imports.
+- <code>src/linkml_reference_validator/etl/fulltext/base.py</code> — <code>FullTextProvider</code> ABC.
+- <code>src/linkml_reference_validator/etl/fulltext/pmc.py</code> — <code>PMCFullTextProvider</code>.
+- <code>src/linkml_reference_validator/etl/fulltext/unpaywall.py</code> — <code>UnpaywallProvider</code>.
+- <code>src/linkml_reference_validator/etl/fulltext/openalex.py</code> — <code>OpenAlexProvider</code>.
+- <code>src/linkml_reference_validator/etl/fulltext/json_api.py</code> — declarative <code>JSONAPIFullTextProvider</code>.
+- <code>src/linkml_reference_validator/etl/fulltext/loader.py</code> — load custom providers from YAML.
+- Tests: <code>tests/test_extractors.py</code>, <code>tests/test_acquire.py</code>, <code>tests/test_fulltext_providers.py</code>, <code>tests/test_identifiers.py</code>, <code>tests/test_fulltext_loader.py</code>.</p>
+<p><strong>Modified files:</strong>
+- <code>src/linkml_reference_validator/models.py</code> — new dataclasses + config fields + <code>ReferenceContent</code> provenance fields + <code>FullTextProviderConfig</code>.
+- <code>src/linkml_reference_validator/etl/reference_fetcher.py</code> — orchestration + provenance frontmatter round-trip + PDF caching.
+- <code>src/linkml_reference_validator/etl/sources/url.py</code> — generic URL→PDF.
+- <code>src/linkml_reference_validator/etl/sources/pmid.py</code> — stop inlining PMC (return abstract; PMC now flows through the chain).
+- <code>src/linkml_reference_validator/cli/validate.py</code> (+ <code>cli/shared.py</code>) — <code>--full-text/--no-full-text</code> flag.
+- <code>pyproject.toml</code> — add <code>pypdf</code> dependency.
+- <code>tests/test_pmc_fulltext.py</code> — adjust to the PMC-via-provider flow.</p>
+<hr />
+<h2 id="task-1-data-models-identifiers-location-provenance-fields">Task 1: Data models — identifiers, location, provenance fields</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/models.py</code> (add after <code>SupplementaryFile</code>, before <code>ReferenceContent</code>; add fields to <code>ReferenceContent</code>)
+- Test: <code>tests/test_models.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_models.py</code>:</p>
+<pre><code class="language-python">def test_reference_identifiers_defaults():
+    from linkml_reference_validator.models import ReferenceIdentifiers
+
+    ids = ReferenceIdentifiers(doi=&quot;10.1/x&quot;)
+    assert ids.doi == &quot;10.1/x&quot;
+    assert ids.pmid is None
+    assert ids.pmcid is None
+    assert ids.url is None
+
+
+def test_full_text_location_defaults():
+    from linkml_reference_validator.models import FullTextLocation
+
+    loc = FullTextLocation(url=&quot;https://x/y.pdf&quot;, format_hint=&quot;pdf&quot;, provider=&quot;unpaywall&quot;)
+    assert loc.url == &quot;https://x/y.pdf&quot;
+    assert loc.text is None
+    assert loc.format_hint == &quot;pdf&quot;
+    assert loc.provider == &quot;unpaywall&quot;
+
+
+def test_reference_content_provenance_fields():
+    from linkml_reference_validator.models import ReferenceContent
+
+    ref = ReferenceContent(
+        reference_id=&quot;DOI:10.1/x&quot;,
+        content=&quot;full text&quot;,
+        content_type=&quot;full_text_pdf&quot;,
+        full_text_provider=&quot;unpaywall&quot;,
+        full_text_url=&quot;https://x/y.pdf&quot;,
+        oa_status=&quot;gold&quot;,
+        license=&quot;cc-by&quot;,
+        local_pdf_path=&quot;files/DOI_10.1_x.pdf&quot;,
+    )
+    assert ref.full_text_provider == &quot;unpaywall&quot;
+    assert ref.oa_status == &quot;gold&quot;
+    assert ref.local_pdf_path == &quot;files/DOI_10.1_x.pdf&quot;
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_models.py::test_reference_identifiers_defaults tests/test_models.py::test_full_text_location_defaults tests/test_models.py::test_reference_content_provenance_fields -v</code>
+Expected: FAIL with <code>ImportError</code> / <code>TypeError: unexpected keyword argument</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Add the dataclasses and provenance fields</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/models.py</code>, add immediately before the <code>ReferenceContent</code> definition:</p>
+<pre><code class="language-python">@dataclass
+class ReferenceIdentifiers:
+    &quot;&quot;&quot;Cross-walked identifiers for a single reference.
+
+    Used by full-text providers, several of which are keyed on DOI regardless of
+    the original reference prefix.
+
+    Examples:
+        &gt;&gt;&gt; ids = ReferenceIdentifiers(doi=&quot;10.1038/x&quot;, pmid=&quot;123&quot;)
+        &gt;&gt;&gt; ids.doi
+        '10.1038/x'
+        &gt;&gt;&gt; ids.pmcid is None
+        True
+    &quot;&quot;&quot;
+
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    pmcid: Optional[str] = None
+    url: Optional[str] = None
+
+
+@dataclass
+class FullTextLocation:
+    &quot;&quot;&quot;A located full-text resource for a reference.
+
+    A provider returns either a downloadable ``url`` (PDF/HTML/XML) or inline
+    ``text`` it has already extracted.
+
+    Examples:
+        &gt;&gt;&gt; loc = FullTextLocation(url=&quot;https://x/y.pdf&quot;, format_hint=&quot;pdf&quot;)
+        &gt;&gt;&gt; loc.format_hint
+        'pdf'
+        &gt;&gt;&gt; loc.text is None
+        True
+    &quot;&quot;&quot;
+
+    url: Optional[str] = None
+    text: Optional[str] = None
+    format_hint: Optional[str] = None  # &quot;pdf&quot; | &quot;html&quot; | &quot;xml&quot; | &quot;text&quot;
+    oa_status: Optional[str] = None    # &quot;gold&quot; | &quot;green&quot; | &quot;bronze&quot; | ...
+    license: Optional[str] = None
+    provider: str = &quot;&quot;
+    version: Optional[str] = None      # &quot;publishedVersion&quot; | &quot;acceptedVersion&quot; | ...
+</code></pre>
+<p>Then add these fields to the end of the <code>ReferenceContent</code> dataclass field list (after <code>metadata</code>):</p>
+<pre><code class="language-python">    full_text_provider: Optional[str] = None
+    full_text_url: Optional[str] = None
+    oa_status: Optional[str] = None
+    license: Optional[str] = None
+    local_pdf_path: Optional[str] = None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_models.py -v</code>
+Expected: PASS (including the three new tests).</p>
+<ul>
+<li>[ ] <strong>Step 5: Run doctests for models</strong></li>
+</ul>
+<p>Run: <code>uv run pytest --doctest-modules src/linkml_reference_validator/models.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/models.py tests/test_models.py
+git commit -m &quot;feat: add ReferenceIdentifiers, FullTextLocation, and ReferenceContent provenance fields&quot;
+</code></pre>
+<hr />
+<h2 id="task-2-config-fields-for-full-text-fetching">Task 2: Config fields for full-text fetching</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/models.py</code> (<code>ReferenceValidationConfig</code>, add fields after <code>max_supplementary_file_size</code>; add <code>get_files_cache_dir</code> next to <code>get_cache_dir</code>)
+- Test: <code>tests/test_validation_config.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_validation_config.py</code>:</p>
+<pre><code class="language-python">def test_full_text_config_defaults():
+    from linkml_reference_validator.models import ReferenceValidationConfig
+
+    config = ReferenceValidationConfig()
+    assert config.fetch_full_text is True
+    assert config.full_text_providers == [&quot;pmc&quot;, &quot;unpaywall&quot;, &quot;openalex&quot;]
+    assert config.pdf_backend == &quot;pypdf&quot;
+    assert config.download_pdfs is True
+
+
+def test_files_cache_dir(tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;)
+    files_dir = config.get_files_cache_dir()
+    assert files_dir == tmp_path / &quot;cache&quot; / &quot;files&quot;
+    assert files_dir.exists()
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_validation_config.py::test_full_text_config_defaults tests/test_validation_config.py::test_files_cache_dir -v</code>
+Expected: FAIL with <code>AttributeError</code> / <code>assert ... == ...</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Add config fields and helper</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/models.py</code>, inside <code>ReferenceValidationConfig</code>, after the <code>max_supplementary_file_size</code> field:</p>
+<pre><code class="language-python">    fetch_full_text: bool = Field(
+        default=True,
+        description=(
+            &quot;If True, attempt to obtain full text via the full_text_providers chain &quot;
+            &quot;when a metadata source does not already return full text.&quot;
+        ),
+    )
+    full_text_providers: list[str] = Field(
+        default_factory=lambda: [&quot;pmc&quot;, &quot;unpaywall&quot;, &quot;openalex&quot;],
+        description=(
+            &quot;Ordered list of full-text provider names to try until one yields usable &quot;
+            &quot;full text. Names map to built-in providers (pmc, unpaywall, openalex) or &quot;
+            &quot;custom providers loaded from YAML.&quot;
+        ),
+    )
+    pdf_backend: str = Field(
+        default=&quot;pypdf&quot;,
+        description=&quot;Name of the PDF text-extraction backend to use (e.g. 'pypdf').&quot;,
+    )
+    download_pdfs: bool = Field(
+        default=True,
+        description=&quot;If True, persist downloaded PDFs to the files cache directory.&quot;,
+    )
+</code></pre>
+<p>Then add this method right after <code>get_cache_dir</code>:</p>
+<pre><code class="language-python">    def get_files_cache_dir(self) -&gt; Path:
+        &quot;&quot;&quot;Create and return the binary-files cache directory (for downloaded PDFs).
+
+        Examples:
+            &gt;&gt;&gt; import tempfile
+            &gt;&gt;&gt; from pathlib import Path
+            &gt;&gt;&gt; config = ReferenceValidationConfig(cache_dir=Path(tempfile.mkdtemp()))
+            &gt;&gt;&gt; d = config.get_files_cache_dir()
+            &gt;&gt;&gt; d.name
+            'files'
+            &gt;&gt;&gt; d.exists()
+            True
+        &quot;&quot;&quot;
+        files_dir = self.cache_dir / &quot;files&quot;
+        files_dir.mkdir(parents=True, exist_ok=True)
+        return files_dir
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_validation_config.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Run doctests</strong></li>
+</ul>
+<p>Run: <code>uv run pytest --doctest-modules src/linkml_reference_validator/models.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/models.py tests/test_validation_config.py
+git commit -m &quot;feat: add full-text fetching config fields and files cache dir&quot;
+</code></pre>
+<hr />
+<h2 id="task-3-extractor-base-class-and-registry">Task 3: Extractor base class and registry</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/extract/base.py</code>
+- Create: <code>src/linkml_reference_validator/etl/extract/__init__.py</code>
+- Test: <code>tests/test_extractors.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Create <code>tests/test_extractors.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Tests for content extractors.&quot;&quot;&quot;
+
+import pytest
+
+from linkml_reference_validator.etl.extract import ExtractorRegistry
+from linkml_reference_validator.etl.extract.base import Extractor
+
+
+class _FakeExtractor(Extractor):
+    @classmethod
+    def formats(cls):
+        return [&quot;fake&quot;]
+
+    def extract(self, data, *, content_type=None):
+        return data.decode(&quot;utf-8&quot;)
+
+
+def test_registry_register_and_get():
+    ExtractorRegistry.register(_FakeExtractor)
+    extractor = ExtractorRegistry.get(&quot;fake&quot;)
+    assert extractor is not None
+    assert extractor.extract(b&quot;hello&quot;, content_type=&quot;text/plain&quot;) == &quot;hello&quot;
+
+
+def test_registry_get_unknown_returns_none():
+    assert ExtractorRegistry.get(&quot;does-not-exist&quot;) is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: No module named '...etl.extract'</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement base and registry</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/extract/base.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Base class and registry for content extractors.
+
+An extractor turns raw downloaded bytes (PDF/HTML/XML/text) into plain text.
+
+Examples:
+    &gt;&gt;&gt; from linkml_reference_validator.etl.extract.base import Extractor
+    &gt;&gt;&gt; issubclass(Extractor, object)
+    True
+&quot;&quot;&quot;
+
+import logging
+from abc import ABC, abstractmethod
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+
+class Extractor(ABC):
+    &quot;&quot;&quot;Abstract base class for content extractors.
+
+    Subclasses declare the formats they handle and implement ``extract``.
+    &quot;&quot;&quot;
+
+    @classmethod
+    @abstractmethod
+    def formats(cls) -&gt; list[str]:
+        &quot;&quot;&quot;Return the format keys this extractor handles (e.g. ['pdf']).&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def extract(self, data: bytes, *, content_type: Optional[str] = None) -&gt; Optional[str]:
+        &quot;&quot;&quot;Extract plain text from ``data``; return None if nothing usable.&quot;&quot;&quot;
+        ...
+
+
+class ExtractorRegistry:
+    &quot;&quot;&quot;Registry mapping format keys to extractor instances.
+
+    Examples:
+        &gt;&gt;&gt; from linkml_reference_validator.etl.extract.base import ExtractorRegistry
+        &gt;&gt;&gt; ExtractorRegistry.get(&quot;nope&quot;) is None
+        True
+    &quot;&quot;&quot;
+
+    _by_format: dict[str, Extractor] = {}
+
+    @classmethod
+    def register(cls, extractor_class: type[Extractor]) -&gt; type[Extractor]:
+        &quot;&quot;&quot;Register an extractor class (usable as a decorator).&quot;&quot;&quot;
+        instance = extractor_class()
+        for fmt in extractor_class.formats():
+            cls._by_format[fmt] = instance
+            logger.debug(f&quot;Registered extractor for format: {fmt}&quot;)
+        return extractor_class
+
+    @classmethod
+    def get(cls, fmt: str) -&gt; Optional[Extractor]:
+        &quot;&quot;&quot;Return the extractor for ``fmt``, or None if none registered.&quot;&quot;&quot;
+        return cls._by_format.get(fmt)
+
+    @classmethod
+    def clear(cls) -&gt; None:
+        &quot;&quot;&quot;Clear all registered extractors (for testing).&quot;&quot;&quot;
+        cls._by_format = {}
+</code></pre>
+<p>Create <code>src/linkml_reference_validator/etl/extract/__init__.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Content extractors (PDF, HTML, XML).&quot;&quot;&quot;
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+__all__ = [&quot;Extractor&quot;, &quot;ExtractorRegistry&quot;]
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/extract tests/test_extractors.py
+git commit -m &quot;feat: add Extractor base class and ExtractorRegistry&quot;
+</code></pre>
+<hr />
+<h2 id="task-4-html-and-xml-extractors">Task 4: HTML and XML extractors</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/extract/html.py</code>
+- Create: <code>src/linkml_reference_validator/etl/extract/xml.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/extract/__init__.py</code> (import to register)
+- Test: <code>tests/test_extractors.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_extractors.py</code>:</p>
+<pre><code class="language-python">def test_html_extractor():
+    from linkml_reference_validator.etl.extract.html import HTMLExtractor
+
+    html = b&quot;&lt;html&gt;&lt;head&gt;&lt;title&gt;T&lt;/title&gt;&lt;/head&gt;&lt;body&gt;&lt;p&gt;Hello&lt;/p&gt;&lt;p&gt;World&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;
+    text = HTMLExtractor().extract(html, content_type=&quot;text/html&quot;)
+    assert &quot;Hello&quot; in text
+    assert &quot;World&quot; in text
+
+
+def test_xml_extractor_jats_body():
+    from linkml_reference_validator.etl.extract.xml import XMLExtractor
+
+    xml = b&quot;&quot;&quot;&lt;article&gt;&lt;body&gt;&lt;sec&gt;&lt;p&gt;First paragraph.&lt;/p&gt;&lt;p&gt;Second paragraph.&lt;/p&gt;&lt;/sec&gt;&lt;/body&gt;&lt;/article&gt;&quot;&quot;&quot;
+    text = XMLExtractor().extract(xml, content_type=&quot;application/xml&quot;)
+    assert &quot;First paragraph.&quot; in text
+    assert &quot;Second paragraph.&quot; in text
+
+
+def test_xml_extractor_no_body_returns_none():
+    from linkml_reference_validator.etl.extract.xml import XMLExtractor
+
+    xml = b&quot;&lt;article&gt;&lt;front&gt;&lt;title&gt;x&lt;/title&gt;&lt;/front&gt;&lt;/article&gt;&quot;
+    assert XMLExtractor().extract(xml, content_type=&quot;application/xml&quot;) is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py::test_html_extractor tests/test_extractors.py::test_xml_extractor_jats_body -v</code>
+Expected: FAIL with <code>ModuleNotFoundError</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement HTML and XML extractors</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/extract/html.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;HTML content extractor.&quot;&quot;&quot;
+
+import logging
+from typing import Optional
+
+from bs4 import BeautifulSoup  # type: ignore
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+logger = logging.getLogger(__name__)
+
+
+@ExtractorRegistry.register
+class HTMLExtractor(Extractor):
+    &quot;&quot;&quot;Extract readable text from HTML bytes.
+
+    Prefers an ``&lt;article&gt;`` or main content region; falls back to all paragraph
+    text, then to the whole document text.
+
+    Examples:
+        &gt;&gt;&gt; html = b&quot;&lt;html&gt;&lt;body&gt;&lt;p&gt;Hi&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;&quot;
+        &gt;&gt;&gt; HTMLExtractor().extract(html)
+        'Hi'
+    &quot;&quot;&quot;
+
+    @classmethod
+    def formats(cls) -&gt; list[str]:
+        return [&quot;html&quot;]
+
+    def extract(self, data: bytes, *, content_type: Optional[str] = None) -&gt; Optional[str]:
+        soup = BeautifulSoup(data, &quot;html.parser&quot;)
+
+        for tag in soup([&quot;script&quot;, &quot;style&quot;]):
+            tag.decompose()
+
+        region = soup.find(&quot;article&quot;) or soup.find(&quot;main&quot;)
+        scope = region if region is not None else soup
+
+        paragraphs = scope.find_all(&quot;p&quot;)
+        if paragraphs:
+            text = &quot;\n\n&quot;.join(p.get_text(strip=True) for p in paragraphs if p.get_text(strip=True))
+            if text.strip():
+                return text
+
+        text = scope.get_text(separator=&quot;\n&quot;, strip=True)
+        return text if text.strip() else None
+</code></pre>
+<p>Create <code>src/linkml_reference_validator/etl/extract/xml.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;JATS/PMC XML content extractor.&quot;&quot;&quot;
+
+import logging
+from typing import Optional
+
+from bs4 import BeautifulSoup  # type: ignore
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+logger = logging.getLogger(__name__)
+
+
+@ExtractorRegistry.register
+class XMLExtractor(Extractor):
+    &quot;&quot;&quot;Extract body text from JATS/PMC article XML.
+
+    Returns the concatenated text of paragraphs within the article ``&lt;body&gt;``.
+    Returns None when there is no body content (e.g. restricted articles).
+
+    Examples:
+        &gt;&gt;&gt; xml = b&quot;&lt;article&gt;&lt;body&gt;&lt;p&gt;Hello body.&lt;/p&gt;&lt;/body&gt;&lt;/article&gt;&quot;
+        &gt;&gt;&gt; XMLExtractor().extract(xml)
+        'Hello body.'
+    &quot;&quot;&quot;
+
+    @classmethod
+    def formats(cls) -&gt; list[str]:
+        return [&quot;xml&quot;]
+
+    def extract(self, data: bytes, *, content_type: Optional[str] = None) -&gt; Optional[str]:
+        text_data = data.decode(&quot;utf-8&quot;) if isinstance(data, bytes) else data
+
+        if &quot;cannot be obtained&quot; in text_data.lower() or &quot;restricted&quot; in text_data.lower():
+            return None
+
+        soup = BeautifulSoup(text_data, &quot;xml&quot;)
+        body = soup.find(&quot;body&quot;)
+        if not body:
+            return None
+
+        paragraphs = body.find_all(&quot;p&quot;)
+        if not paragraphs:
+            return None
+
+        text = &quot;\n\n&quot;.join(p.get_text() for p in paragraphs if p.get_text().strip())
+        return text if text.strip() else None
+</code></pre>
+<p>Update <code>src/linkml_reference_validator/etl/extract/__init__.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Content extractors (PDF, HTML, XML).&quot;&quot;&quot;
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+# Import extractors to register them
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
+
+__all__ = [&quot;Extractor&quot;, &quot;ExtractorRegistry&quot;, &quot;HTMLExtractor&quot;, &quot;XMLExtractor&quot;]
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/extract/html.py src/linkml_reference_validator/etl/extract/xml.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/extract tests/test_extractors.py
+git commit -m &quot;feat: add HTML and JATS/XML extractors&quot;
+</code></pre>
+<hr />
+<h2 id="task-5-pdf-extractor-with-pluggable-backend">Task 5: PDF extractor with pluggable backend</h2>
+<p><strong>Files:</strong>
+- Modify: <code>pyproject.toml</code> (add <code>pypdf</code>)
+- Create: <code>src/linkml_reference_validator/etl/extract/pdf.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/extract/__init__.py</code>
+- Test: <code>tests/test_extractors.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Add the dependency</strong></li>
+</ul>
+<p>Run: <code>uv add "pypdf&gt;=4.0.0"</code>
+Expected: <code>pypdf</code> added to <code>[project].dependencies</code> in <code>pyproject.toml</code> and <code>uv.lock</code> updated.</p>
+<ul>
+<li>[ ] <strong>Step 2: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_extractors.py</code> (top-level helper + tests). This builds a minimal valid PDF with zero extra dependencies:</p>
+<pre><code class="language-python">def _build_minimal_pdf(text: str = &quot;Hello PDF&quot;) -&gt; bytes:
+    &quot;&quot;&quot;Build a minimal single-page PDF containing ``text`` (no external deps).&quot;&quot;&quot;
+    objs = [
+        b&quot;&lt;&lt; /Type /Catalog /Pages 2 0 R &gt;&gt;&quot;,
+        b&quot;&lt;&lt; /Type /Pages /Kids [3 0 R] /Count 1 &gt;&gt;&quot;,
+        b&quot;&lt;&lt; /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] &quot;
+        b&quot;/Contents 4 0 R /Resources &lt;&lt; /Font &lt;&lt; /F1 5 0 R &gt;&gt; &gt;&gt; &gt;&gt;&quot;,
+    ]
+    stream = b&quot;BT /F1 24 Tf 72 720 Td (&quot; + text.encode(&quot;latin-1&quot;) + b&quot;) Tj ET&quot;
+    objs.append(b&quot;&lt;&lt; /Length &quot; + str(len(stream)).encode() + b&quot; &gt;&gt;\nstream\n&quot; + stream + b&quot;\nendstream&quot;)
+    objs.append(b&quot;&lt;&lt; /Type /Font /Subtype /Type1 /BaseFont /Helvetica &gt;&gt;&quot;)
+
+    out = bytearray(b&quot;%PDF-1.4\n&quot;)
+    offsets = []
+    for i, body in enumerate(objs, start=1):
+        offsets.append(len(out))
+        out += str(i).encode() + b&quot; 0 obj\n&quot; + body + b&quot;\nendobj\n&quot;
+    xref_pos = len(out)
+    n = len(objs) + 1
+    out += b&quot;xref\n0 &quot; + str(n).encode() + b&quot;\n0000000000 65535 f \n&quot;
+    for off in offsets:
+        out += (&quot;%010d 00000 n \n&quot; % off).encode()
+    out += (
+        b&quot;trailer\n&lt;&lt; /Size &quot; + str(n).encode() + b&quot; /Root 1 0 R &gt;&gt;\n&quot;
+        b&quot;startxref\n&quot; + str(xref_pos).encode() + b&quot;\n%%EOF&quot;
+    )
+    return bytes(out)
+
+
+def test_pdf_extractor_default_backend():
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    pdf_bytes = _build_minimal_pdf(&quot;Hello PDF&quot;)
+    text = PDFExtractor().extract(pdf_bytes, content_type=&quot;application/pdf&quot;)
+    assert text is not None
+    assert &quot;Hello&quot; in text
+
+
+def test_pdf_extractor_named_backend():
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    pdf_bytes = _build_minimal_pdf(&quot;Backend Test&quot;)
+    text = PDFExtractor(backend=&quot;pypdf&quot;).extract(pdf_bytes)
+    assert &quot;Backend&quot; in text
+
+
+def test_pdf_extractor_unknown_backend_raises():
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    with pytest.raises(ValueError):
+        PDFExtractor(backend=&quot;not-a-backend&quot;)
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 3: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py::test_pdf_extractor_default_backend -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...extract.pdf</code>.</p>
+<ul>
+<li>[ ] <strong>Step 4: Implement the PDF extractor + backend protocol</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/extract/pdf.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;PDF content extractor with a pluggable text backend.
+
+The concrete text-extraction backend is selectable so heavier/structure-aware
+backends (docling, grobid) can be swapped in later without touching callers.
+&quot;&quot;&quot;
+
+import io
+import logging
+from typing import Optional, Protocol
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+logger = logging.getLogger(__name__)
+
+
+class PDFTextBackend(Protocol):
+    &quot;&quot;&quot;Protocol for a PDF-to-text backend.&quot;&quot;&quot;
+
+    def extract_text(self, data: bytes) -&gt; str:
+        &quot;&quot;&quot;Return extracted plain text for the given PDF bytes.&quot;&quot;&quot;
+        ...
+
+
+class PypdfBackend:
+    &quot;&quot;&quot;Default PDF backend using ``pypdf`` (BSD-licensed, pure-python).
+
+    Examples:
+        &gt;&gt;&gt; isinstance(PypdfBackend(), object)
+        True
+    &quot;&quot;&quot;
+
+    def extract_text(self, data: bytes) -&gt; str:
+        from pypdf import PdfReader
+
+        reader = PdfReader(io.BytesIO(data))
+        return &quot;\n\n&quot;.join(page.extract_text() or &quot;&quot; for page in reader.pages)
+
+
+_BACKENDS: dict[str, type] = {
+    &quot;pypdf&quot;: PypdfBackend,
+}
+
+
+@ExtractorRegistry.register
+class PDFExtractor(Extractor):
+    &quot;&quot;&quot;Extract text from PDF bytes via a named backend.
+
+    Examples:
+        &gt;&gt;&gt; PDFExtractor.formats()
+        ['pdf']
+    &quot;&quot;&quot;
+
+    def __init__(self, backend: str = &quot;pypdf&quot;):
+        backend_class = _BACKENDS.get(backend)
+        if backend_class is None:
+            raise ValueError(
+                f&quot;Unknown pdf_backend '{backend}'. Available: {sorted(_BACKENDS)}&quot;
+            )
+        self._backend = backend_class()
+
+    @classmethod
+    def formats(cls) -&gt; list[str]:
+        return [&quot;pdf&quot;]
+
+    def extract(self, data: bytes, *, content_type: Optional[str] = None) -&gt; Optional[str]:
+        text = self._backend.extract_text(data)
+        return text if text and text.strip() else None
+</code></pre>
+<p>Update <code>src/linkml_reference_validator/etl/extract/__init__.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Content extractors (PDF, HTML, XML).&quot;&quot;&quot;
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+
+# Import extractors to register them
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+__all__ = [
+    &quot;Extractor&quot;,
+    &quot;ExtractorRegistry&quot;,
+    &quot;HTMLExtractor&quot;,
+    &quot;XMLExtractor&quot;,
+    &quot;PDFExtractor&quot;,
+]
+</code></pre>
+<blockquote>
+<p>Note: the registry registers <code>PDFExtractor()</code> with the default backend. The orchestrator (Task 13) instantiates <code>PDFExtractor(backend=config.pdf_backend)</code> directly for non-default backends.</p>
+</blockquote>
+<ul>
+<li>[ ] <strong>Step 5: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_extractors.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/extract/pdf.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add pyproject.toml uv.lock src/linkml_reference_validator/etl/extract tests/test_extractors.py
+git commit -m &quot;feat: add pluggable PDF extractor with pypdf default backend&quot;
+</code></pre>
+<hr />
+<h2 id="task-6-contentacquirer-download-format-resolution">Task 6: ContentAcquirer (download + format resolution)</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/acquire.py</code>
+- Test: <code>tests/test_acquire.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Create <code>tests/test_acquire.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Tests for the content acquirer.&quot;&quot;&quot;
+
+import pytest
+from unittest.mock import patch, MagicMock
+
+from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format
+
+
+def test_resolve_format_by_content_type():
+    assert resolve_format(&quot;application/pdf&quot;, &quot;https://x/y&quot;, None) == &quot;pdf&quot;
+    assert resolve_format(&quot;text/html; charset=utf-8&quot;, &quot;https://x/y&quot;, None) == &quot;html&quot;
+    assert resolve_format(&quot;application/xml&quot;, &quot;https://x/y&quot;, None) == &quot;xml&quot;
+
+
+def test_resolve_format_by_url_suffix():
+    assert resolve_format(None, &quot;https://x/y.pdf&quot;, None) == &quot;pdf&quot;
+    assert resolve_format(None, &quot;https://x/y.html&quot;, None) == &quot;html&quot;
+
+
+def test_resolve_format_by_hint():
+    assert resolve_format(None, &quot;https://x/y&quot;, &quot;pdf&quot;) == &quot;pdf&quot;
+
+
+def test_resolve_format_precedence_content_type_wins():
+    assert resolve_format(&quot;application/pdf&quot;, &quot;https://x/y.html&quot;, &quot;html&quot;) == &quot;pdf&quot;
+
+
+@patch(&quot;linkml_reference_validator.etl.acquire.requests.get&quot;)
+def test_fetch_bytes_returns_content_and_type(mock_get, tmp_path):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {&quot;content-type&quot;: &quot;application/pdf&quot;, &quot;content-length&quot;: &quot;5&quot;}
+    mock_response.iter_content.return_value = [b&quot;%PDF-&quot;]
+    mock_get.return_value = mock_response
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+    data, ctype = ContentAcquirer().fetch_bytes(&quot;https://x/y.pdf&quot;, config)
+    assert data == b&quot;%PDF-&quot;
+    assert ctype == &quot;application/pdf&quot;
+
+
+@patch(&quot;linkml_reference_validator.etl.acquire.requests.get&quot;)
+def test_fetch_bytes_enforces_size_cap(mock_get, tmp_path):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {&quot;content-type&quot;: &quot;application/pdf&quot;}
+    mock_response.iter_content.return_value = [b&quot;x&quot; * 10, b&quot;x&quot; * 10]
+    mock_get.return_value = mock_response
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / &quot;cache&quot;,
+        rate_limit_delay=0.0,
+        max_supplementary_file_size=15,
+    )
+    data, ctype = ContentAcquirer().fetch_bytes(&quot;https://x/y.pdf&quot;, config)
+    assert data is None  # exceeded cap → not returned
+
+
+@patch(&quot;linkml_reference_validator.etl.acquire.requests.get&quot;)
+def test_fetch_bytes_non_200_returns_none(mock_get, tmp_path):
+    mock_response = MagicMock()
+    mock_response.status_code = 404
+    mock_get.return_value = mock_response
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+    data, ctype = ContentAcquirer().fetch_bytes(&quot;https://x/missing.pdf&quot;, config)
+    assert data is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_acquire.py -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...etl.acquire</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement the acquirer</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/acquire.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Download bytes from a URL with a size cap, and resolve the content format.&quot;&quot;&quot;
+
+import logging
+import time
+from typing import Optional
+
+import requests  # type: ignore
+
+from linkml_reference_validator.models import ReferenceValidationConfig
+
+logger = logging.getLogger(__name__)
+
+_CONTENT_TYPE_FORMATS = {
+    &quot;application/pdf&quot;: &quot;pdf&quot;,
+    &quot;text/html&quot;: &quot;html&quot;,
+    &quot;application/xml&quot;: &quot;xml&quot;,
+    &quot;text/xml&quot;: &quot;xml&quot;,
+    &quot;text/plain&quot;: &quot;text&quot;,
+}
+
+_SUFFIX_FORMATS = {
+    &quot;.pdf&quot;: &quot;pdf&quot;,
+    &quot;.html&quot;: &quot;html&quot;,
+    &quot;.htm&quot;: &quot;html&quot;,
+    &quot;.xml&quot;: &quot;xml&quot;,
+    &quot;.txt&quot;: &quot;text&quot;,
+}
+
+
+def resolve_format(
+    content_type: Optional[str], url: Optional[str], format_hint: Optional[str]
+) -&gt; Optional[str]:
+    &quot;&quot;&quot;Resolve a format key from content-type, then URL suffix, then provider hint.
+
+    Examples:
+        &gt;&gt;&gt; resolve_format(&quot;application/pdf&quot;, &quot;https://x/y&quot;, None)
+        'pdf'
+        &gt;&gt;&gt; resolve_format(None, &quot;https://x/paper.html&quot;, None)
+        'html'
+        &gt;&gt;&gt; resolve_format(None, &quot;https://x/y&quot;, &quot;pdf&quot;)
+        'pdf'
+        &gt;&gt;&gt; resolve_format(None, &quot;https://x/y&quot;, None) is None
+        True
+    &quot;&quot;&quot;
+    if content_type:
+        base = content_type.split(&quot;;&quot;)[0].strip().lower()
+        if base in _CONTENT_TYPE_FORMATS:
+            return _CONTENT_TYPE_FORMATS[base]
+
+    if url:
+        lowered = url.lower().split(&quot;?&quot;)[0]
+        for suffix, fmt in _SUFFIX_FORMATS.items():
+            if lowered.endswith(suffix):
+                return fmt
+
+    return format_hint
+
+
+class ContentAcquirer:
+    &quot;&quot;&quot;Stream-download a URL, enforcing the configured size cap.
+
+    Examples:
+        &gt;&gt;&gt; isinstance(ContentAcquirer(), object)
+        True
+    &quot;&quot;&quot;
+
+    def fetch_bytes(
+        self, url: str, config: ReferenceValidationConfig
+    ) -&gt; tuple[Optional[bytes], Optional[str]]:
+        &quot;&quot;&quot;Download ``url`` and return ``(bytes, content_type)``.
+
+        Returns ``(None, content_type)`` on non-200 responses or when the size cap
+        is exceeded.
+        &quot;&quot;&quot;
+        time.sleep(config.rate_limit_delay)
+
+        headers = {
+            &quot;User-Agent&quot;: f&quot;linkml-reference-validator/1.0 (mailto:{config.email})&quot;,
+        }
+        response = requests.get(url, headers=headers, timeout=60, stream=True)
+        if response.status_code != 200:
+            logger.warning(f&quot;Download failed for {url} - status {response.status_code}&quot;)
+            return None, None
+
+        content_type = response.headers.get(&quot;content-type&quot;)
+        max_size = config.max_supplementary_file_size
+
+        chunks = bytearray()
+        for chunk in response.iter_content(chunk_size=8192):
+            if not chunk:
+                continue
+            chunks.extend(chunk)
+            if max_size and len(chunks) &gt; max_size:
+                logger.warning(
+                    f&quot;Download for {url} exceeded size cap ({max_size} bytes); skipping&quot;
+                )
+                return None, content_type
+
+        return bytes(chunks), content_type
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_acquire.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/acquire.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/acquire.py tests/test_acquire.py
+git commit -m &quot;feat: add ContentAcquirer with size cap and format resolution&quot;
+</code></pre>
+<hr />
+<h2 id="task-7-fulltextprovider-base-class-and-registry">Task 7: FullTextProvider base class and registry</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/base.py</code>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>
+- Test: <code>tests/test_fulltext_providers.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Create <code>tests/test_fulltext_providers.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Tests for full-text providers and their registry.&quot;&quot;&quot;
+
+import pytest
+from unittest.mock import patch, MagicMock
+
+from linkml_reference_validator.models import (
+    ReferenceValidationConfig,
+    ReferenceIdentifiers,
+    FullTextLocation,
+)
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+
+
+class _FakeProvider(FullTextProvider):
+    @classmethod
+    def name(cls):
+        return &quot;fake&quot;
+
+    def locate(self, ids, config):
+        return FullTextLocation(text=&quot;some text&quot;, format_hint=&quot;text&quot;, provider=&quot;fake&quot;)
+
+
+def test_registry_register_and_get():
+    FullTextProviderRegistry.register(_FakeProvider)
+    provider = FullTextProviderRegistry.get(&quot;fake&quot;)
+    assert provider is not None
+    loc = provider.locate(ReferenceIdentifiers(), ReferenceValidationConfig())
+    assert loc.text == &quot;some text&quot;
+
+
+def test_registry_get_unknown_returns_none():
+    assert FullTextProviderRegistry.get(&quot;nope&quot;) is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py::test_registry_register_and_get -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...etl.fulltext</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement base and registry</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/base.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Base class and registry for full-text providers.
+
+A provider, given cross-walked identifiers, returns a FullTextLocation that points
+to (or directly contains) the full text of a reference. Providers are tried in a
+configured order until one yields usable text.
+&quot;&quot;&quot;
+
+import logging
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+
+logger = logging.getLogger(__name__)
+
+
+class FullTextProvider(ABC):
+    &quot;&quot;&quot;Abstract base class for full-text providers.&quot;&quot;&quot;
+
+    @classmethod
+    @abstractmethod
+    def name(cls) -&gt; str:
+        &quot;&quot;&quot;Return the provider name used in the configured chain (e.g. 'unpaywall').&quot;&quot;&quot;
+        ...
+
+    @abstractmethod
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[FullTextLocation]:
+        &quot;&quot;&quot;Return a FullTextLocation, or None if this provider cannot supply one.&quot;&quot;&quot;
+        ...
+
+
+class FullTextProviderRegistry:
+    &quot;&quot;&quot;Registry mapping provider names to provider instances.
+
+    Examples:
+        &gt;&gt;&gt; from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+        &gt;&gt;&gt; FullTextProviderRegistry.get(&quot;nope&quot;) is None
+        True
+    &quot;&quot;&quot;
+
+    _by_name: dict[str, FullTextProvider] = {}
+
+    @classmethod
+    def register(cls, provider_class: type[FullTextProvider]) -&gt; type[FullTextProvider]:
+        &quot;&quot;&quot;Register a provider class (usable as a decorator).&quot;&quot;&quot;
+        cls._by_name[provider_class.name()] = provider_class()
+        logger.debug(f&quot;Registered full-text provider: {provider_class.name()}&quot;)
+        return provider_class
+
+    @classmethod
+    def register_instance(cls, name: str, provider: FullTextProvider) -&gt; None:
+        &quot;&quot;&quot;Register a pre-built provider instance under ``name`` (for custom providers).&quot;&quot;&quot;
+        cls._by_name[name] = provider
+        logger.debug(f&quot;Registered full-text provider instance: {name}&quot;)
+
+    @classmethod
+    def get(cls, name: str) -&gt; Optional[FullTextProvider]:
+        &quot;&quot;&quot;Return the provider registered under ``name``, or None.&quot;&quot;&quot;
+        return cls._by_name.get(name)
+
+    @classmethod
+    def clear(cls) -&gt; None:
+        &quot;&quot;&quot;Clear all registered providers (for testing).&quot;&quot;&quot;
+        cls._by_name = {}
+</code></pre>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Full-text providers (PMC, Unpaywall, OpenAlex, custom).&quot;&quot;&quot;
+
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+
+__all__ = [&quot;FullTextProvider&quot;, &quot;FullTextProviderRegistry&quot;]
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/fulltext/base.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/fulltext tests/test_fulltext_providers.py
+git commit -m &quot;feat: add FullTextProvider base class and registry&quot;
+</code></pre>
+<hr />
+<h2 id="task-8-unpaywallprovider">Task 8: UnpaywallProvider</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/unpaywall.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>
+- Test: <code>tests/test_fulltext_providers.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_fulltext_providers.py</code>:</p>
+<pre><code class="language-python">class TestUnpaywallProvider:
+    @pytest.fixture
+    def config(self, tmp_path):
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0, email=&quot;me@example.org&quot;
+        )
+
+    @patch(&quot;linkml_reference_validator.etl.fulltext.unpaywall.requests.get&quot;)
+    def test_locate_returns_pdf_location(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            &quot;is_oa&quot;: True,
+            &quot;oa_status&quot;: &quot;gold&quot;,
+            &quot;best_oa_location&quot;: {
+                &quot;url_for_pdf&quot;: &quot;https://oa.example.org/paper.pdf&quot;,
+                &quot;url&quot;: &quot;https://oa.example.org/paper&quot;,
+                &quot;license&quot;: &quot;cc-by&quot;,
+                &quot;version&quot;: &quot;publishedVersion&quot;,
+            },
+        }
+        mock_get.return_value = mock_response
+
+        loc = UnpaywallProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config)
+        assert loc is not None
+        assert loc.url == &quot;https://oa.example.org/paper.pdf&quot;
+        assert loc.format_hint == &quot;pdf&quot;
+        assert loc.oa_status == &quot;gold&quot;
+        assert loc.license == &quot;cc-by&quot;
+        assert loc.provider == &quot;unpaywall&quot;
+
+    @patch(&quot;linkml_reference_validator.etl.fulltext.unpaywall.requests.get&quot;)
+    def test_locate_not_oa_returns_none(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {&quot;is_oa&quot;: False, &quot;best_oa_location&quot;: None}
+        mock_get.return_value = mock_response
+
+        assert UnpaywallProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config) is None
+
+    def test_locate_without_doi_returns_none(self, config):
+        from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
+
+        assert UnpaywallProvider().locate(ReferenceIdentifiers(pmid=&quot;123&quot;), config) is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py::TestUnpaywallProvider -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...fulltext.unpaywall</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement the provider</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/unpaywall.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Unpaywall full-text provider.
+
+Looks up the best open-access location for a DOI via the Unpaywall v2 API.
+&quot;&quot;&quot;
+
+import logging
+import time
+from typing import Optional
+
+import requests  # type: ignore
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@FullTextProviderRegistry.register
+class UnpaywallProvider(FullTextProvider):
+    &quot;&quot;&quot;Locate an open-access PDF/landing page for a DOI via Unpaywall.
+
+    Examples:
+        &gt;&gt;&gt; UnpaywallProvider.name()
+        'unpaywall'
+    &quot;&quot;&quot;
+
+    @classmethod
+    def name(cls) -&gt; str:
+        return &quot;unpaywall&quot;
+
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[FullTextLocation]:
+        if not ids.doi:
+            return None
+
+        time.sleep(config.rate_limit_delay)
+        url = f&quot;https://api.unpaywall.org/v2/{ids.doi}&quot;
+        response = requests.get(url, params={&quot;email&quot;: config.email}, timeout=30)
+        if response.status_code != 200:
+            logger.debug(f&quot;Unpaywall returned {response.status_code} for DOI:{ids.doi}&quot;)
+            return None
+
+        data = response.json()
+        best = data.get(&quot;best_oa_location&quot;)
+        if not data.get(&quot;is_oa&quot;) or not best:
+            return None
+
+        pdf_url = best.get(&quot;url_for_pdf&quot;)
+        landing = best.get(&quot;url&quot;)
+        target = pdf_url or landing
+        if not target:
+            return None
+
+        return FullTextLocation(
+            url=target,
+            format_hint=&quot;pdf&quot; if pdf_url else &quot;html&quot;,
+            oa_status=data.get(&quot;oa_status&quot;),
+            license=best.get(&quot;license&quot;),
+            version=best.get(&quot;version&quot;),
+            provider=&quot;unpaywall&quot;,
+        )
+</code></pre>
+<p>Update <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Full-text providers (PMC, Unpaywall, OpenAlex, custom).&quot;&quot;&quot;
+
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+
+# Import providers to register them
+from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
+
+__all__ = [
+    &quot;FullTextProvider&quot;,
+    &quot;FullTextProviderRegistry&quot;,
+    &quot;UnpaywallProvider&quot;,
+]
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/fulltext/unpaywall.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/fulltext tests/test_fulltext_providers.py
+git commit -m &quot;feat: add UnpaywallProvider&quot;
+</code></pre>
+<hr />
+<h2 id="task-9-openalexprovider">Task 9: OpenAlexProvider</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/openalex.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>
+- Test: <code>tests/test_fulltext_providers.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_fulltext_providers.py</code>:</p>
+<pre><code class="language-python">class TestOpenAlexProvider:
+    @pytest.fixture
+    def config(self, tmp_path):
+        return ReferenceValidationConfig(
+            cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0, email=&quot;me@example.org&quot;
+        )
+
+    @patch(&quot;linkml_reference_validator.etl.fulltext.openalex.requests.get&quot;)
+    def test_locate_returns_pdf_location(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            &quot;open_access&quot;: {&quot;is_oa&quot;: True, &quot;oa_status&quot;: &quot;green&quot;, &quot;oa_url&quot;: &quot;https://oa/paper&quot;},
+            &quot;best_oa_location&quot;: {
+                &quot;pdf_url&quot;: &quot;https://oa.example.org/openalex.pdf&quot;,
+                &quot;license&quot;: &quot;cc-by&quot;,
+                &quot;version&quot;: &quot;acceptedVersion&quot;,
+            },
+        }
+        mock_get.return_value = mock_response
+
+        loc = OpenAlexProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config)
+        assert loc is not None
+        assert loc.url == &quot;https://oa.example.org/openalex.pdf&quot;
+        assert loc.format_hint == &quot;pdf&quot;
+        assert loc.oa_status == &quot;green&quot;
+        assert loc.provider == &quot;openalex&quot;
+
+    @patch(&quot;linkml_reference_validator.etl.fulltext.openalex.requests.get&quot;)
+    def test_locate_falls_back_to_oa_url(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            &quot;open_access&quot;: {&quot;is_oa&quot;: True, &quot;oa_status&quot;: &quot;bronze&quot;, &quot;oa_url&quot;: &quot;https://oa/landing&quot;},
+            &quot;best_oa_location&quot;: {&quot;pdf_url&quot;: None},
+        }
+        mock_get.return_value = mock_response
+
+        loc = OpenAlexProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config)
+        assert loc.url == &quot;https://oa/landing&quot;
+        assert loc.format_hint == &quot;html&quot;
+
+    @patch(&quot;linkml_reference_validator.etl.fulltext.openalex.requests.get&quot;)
+    def test_locate_not_oa_returns_none(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {&quot;open_access&quot;: {&quot;is_oa&quot;: False}, &quot;best_oa_location&quot;: None}
+        mock_get.return_value = mock_response
+
+        assert OpenAlexProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config) is None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py::TestOpenAlexProvider -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...fulltext.openalex</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement the provider</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/openalex.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;OpenAlex full-text provider.
+
+Looks up open-access locations for a DOI via the OpenAlex works API.
+&quot;&quot;&quot;
+
+import logging
+import time
+from typing import Optional
+
+import requests  # type: ignore
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+
+logger = logging.getLogger(__name__)
+
+
+@FullTextProviderRegistry.register
+class OpenAlexProvider(FullTextProvider):
+    &quot;&quot;&quot;Locate an open-access PDF/landing page for a DOI via OpenAlex.
+
+    Examples:
+        &gt;&gt;&gt; OpenAlexProvider.name()
+        'openalex'
+    &quot;&quot;&quot;
+
+    @classmethod
+    def name(cls) -&gt; str:
+        return &quot;openalex&quot;
+
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[FullTextLocation]:
+        if not ids.doi:
+            return None
+
+        time.sleep(config.rate_limit_delay)
+        url = f&quot;https://api.openalex.org/works/doi:{ids.doi}&quot;
+        response = requests.get(url, params={&quot;mailto&quot;: config.email}, timeout=30)
+        if response.status_code != 200:
+            logger.debug(f&quot;OpenAlex returned {response.status_code} for DOI:{ids.doi}&quot;)
+            return None
+
+        data = response.json()
+        open_access = data.get(&quot;open_access&quot;) or {}
+        if not open_access.get(&quot;is_oa&quot;):
+            return None
+
+        best = data.get(&quot;best_oa_location&quot;) or {}
+        pdf_url = best.get(&quot;pdf_url&quot;)
+        oa_url = open_access.get(&quot;oa_url&quot;)
+        target = pdf_url or oa_url
+        if not target:
+            return None
+
+        return FullTextLocation(
+            url=target,
+            format_hint=&quot;pdf&quot; if pdf_url else &quot;html&quot;,
+            oa_status=open_access.get(&quot;oa_status&quot;),
+            license=best.get(&quot;license&quot;),
+            version=best.get(&quot;version&quot;),
+            provider=&quot;openalex&quot;,
+        )
+</code></pre>
+<p>Update <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code> to import and export <code>OpenAlexProvider</code> (add the import line and list entry alongside <code>UnpaywallProvider</code>):</p>
+<pre><code class="language-python">from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+</code></pre>
+<p>and add <code>"OpenAlexProvider"</code> to <code>__all__</code>.</p>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/fulltext/openalex.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/fulltext tests/test_fulltext_providers.py
+git commit -m &quot;feat: add OpenAlexProvider&quot;
+</code></pre>
+<hr />
+<h2 id="task-10-pmcfulltextprovider-refactor-pmidsource">Task 10: PMCFullTextProvider + refactor PMIDSource</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/pmc.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code>
+- Modify: <code>src/linkml_reference_validator/etl/sources/pmid.py</code> (stop inlining PMC full text)
+- Test: <code>tests/test_fulltext_providers.py</code>, <code>tests/test_pmc_fulltext.py</code></p>
+<p><strong>Context:</strong> Today <code>PMIDSource.fetch</code> calls <code>_fetch_pmc_fulltext</code> and merges abstract + full text. After this task, <code>PMIDSource</code> returns metadata + abstract only (<code>content_type="abstract_only"</code>/<code>"summary"</code>/<code>"unavailable"</code>), and PMC full text is obtained through the provider chain via <code>PMCFullTextProvider</code>, which reuses the existing <code>_get_pmcid</code>/<code>_fetch_pmc_xml</code>/<code>_fetch_pmc_html</code> logic. The PMC provider extracts XML via the <code>XMLExtractor</code> (Task 4) to stay DRY.</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_fulltext_providers.py</code>:</p>
+<pre><code class="language-python">class TestPMCProvider:
+    @pytest.fixture
+    def config(self, tmp_path):
+        return ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+
+    def test_name(self):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        assert PMCFullTextProvider.name() == &quot;pmc&quot;
+
+    def test_locate_without_pmid_or_pmcid_returns_none(self, config):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        assert PMCFullTextProvider().locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), config) is None
+
+    def test_locate_returns_text_from_xml(self, config):
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        provider = PMCFullTextProvider()
+        long_body = &quot;&lt;body&gt;&quot; + &quot;&quot;.join(f&quot;&lt;p&gt;Sentence {i} of the body.&lt;/p&gt;&quot; for i in range(40)) + &quot;&lt;/body&gt;&quot;
+        xml = f&quot;&lt;article&gt;{long_body}&lt;/article&gt;&quot;.encode(&quot;utf-8&quot;)
+
+        with patch.object(provider, &quot;_resolve_pmcid&quot;, return_value=&quot;999&quot;), \
+             patch.object(provider, &quot;_fetch_pmc_xml_bytes&quot;, return_value=xml):
+            loc = provider.locate(ReferenceIdentifiers(pmid=&quot;123&quot;, pmcid=&quot;999&quot;), config)
+
+        assert loc is not None
+        assert loc.format_hint == &quot;xml&quot;
+        assert loc.provider == &quot;pmc&quot;
+        assert &quot;Sentence 0 of the body.&quot; in loc.text
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py::TestPMCProvider -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...fulltext.pmc</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement the PMC provider</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/pmc.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;PMC full-text provider.
+
+Resolves a PMC ID (from a PMID if needed) and returns the article body text,
+fetched from the PMC XML API (with an HTML fallback) and extracted via XMLExtractor.
+&quot;&quot;&quot;
+
+import logging
+import time
+from typing import Optional
+
+from Bio import Entrez  # type: ignore
+from bs4 import BeautifulSoup  # type: ignore
+import requests  # type: ignore
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
+
+logger = logging.getLogger(__name__)
+
+_MIN_PMC_FULLTEXT_CHARS = 1000
+
+
+@FullTextProviderRegistry.register
+class PMCFullTextProvider(FullTextProvider):
+    &quot;&quot;&quot;Provide PMC full text for a reference identified by PMID/PMCID.
+
+    Examples:
+        &gt;&gt;&gt; PMCFullTextProvider.name()
+        'pmc'
+    &quot;&quot;&quot;
+
+    @classmethod
+    def name(cls) -&gt; str:
+        return &quot;pmc&quot;
+
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[FullTextLocation]:
+        if not ids.pmcid and not ids.pmid:
+            return None
+
+        pmcid = ids.pmcid or self._resolve_pmcid(ids.pmid, config)
+        if not pmcid:
+            return None
+
+        Entrez.email = config.email  # type: ignore
+
+        xml_bytes = self._fetch_pmc_xml_bytes(pmcid, config)
+        if xml_bytes:
+            text = XMLExtractor().extract(xml_bytes, content_type=&quot;application/xml&quot;)
+            if text and len(text) &gt; _MIN_PMC_FULLTEXT_CHARS:
+                return FullTextLocation(
+                    text=text, format_hint=&quot;xml&quot;, oa_status=&quot;green&quot;, provider=&quot;pmc&quot;
+                )
+
+        html_text = self._fetch_pmc_html(pmcid, config)
+        if html_text and len(html_text) &gt; _MIN_PMC_FULLTEXT_CHARS:
+            return FullTextLocation(
+                text=html_text, format_hint=&quot;html&quot;, oa_status=&quot;green&quot;, provider=&quot;pmc&quot;
+            )
+
+        return None
+
+    def _resolve_pmcid(self, pmid: Optional[str], config: ReferenceValidationConfig) -&gt; Optional[str]:
+        &quot;&quot;&quot;Resolve a PMC ID from a PMID via Entrez elink.&quot;&quot;&quot;
+        if not pmid:
+            return None
+        Entrez.email = config.email  # type: ignore
+        time.sleep(config.rate_limit_delay)
+
+        try:
+            handle = Entrez.elink(dbfrom=&quot;pubmed&quot;, db=&quot;pmc&quot;, id=pmid, linkname=&quot;pubmed_pmc&quot;)
+            result = Entrez.read(handle)
+            handle.close()
+        except Exception as exc:  # external system boundary
+            logger.warning(&quot;Failed to link PMID:%s to PMC: %s&quot;, pmid, exc)
+            return None
+
+        if isinstance(result, list) and result and isinstance(result[0], dict):
+            link_set_db = result[0].get(&quot;LinkSetDb&quot;, [])
+            if isinstance(link_set_db, list) and link_set_db:
+                links = link_set_db[0].get(&quot;Link&quot;, [])
+                if isinstance(links, list) and links:
+                    first_link = links[0]
+                    if isinstance(first_link, dict) and &quot;Id&quot; in first_link:
+                        return str(first_link[&quot;Id&quot;])
+        return None
+
+    def _fetch_pmc_xml_bytes(self, pmcid: str, config: ReferenceValidationConfig) -&gt; Optional[bytes]:
+        &quot;&quot;&quot;Fetch raw PMC XML bytes for a PMC ID.&quot;&quot;&quot;
+        time.sleep(config.rate_limit_delay)
+        handle = Entrez.efetch(db=&quot;pmc&quot;, id=pmcid, rettype=&quot;xml&quot;, retmode=&quot;xml&quot;)
+        xml_content = handle.read()
+        handle.close()
+        if isinstance(xml_content, str):
+            xml_content = xml_content.encode(&quot;utf-8&quot;)
+        return xml_content
+
+    def _fetch_pmc_html(self, pmcid: str, config: ReferenceValidationConfig) -&gt; Optional[str]:
+        &quot;&quot;&quot;Fetch full text from the PMC HTML page as a fallback.&quot;&quot;&quot;
+        time.sleep(config.rate_limit_delay)
+        url = f&quot;https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}/&quot;
+        response = requests.get(url, timeout=30)
+        if response.status_code != 200:
+            return None
+
+        soup = BeautifulSoup(response.content, &quot;html.parser&quot;)
+        article_body = soup.find(&quot;div&quot;, class_=&quot;article-body&quot;) or soup.find(&quot;div&quot;, class_=&quot;tsec&quot;)
+        if article_body:
+            paragraphs = article_body.find_all(&quot;p&quot;)
+            if paragraphs:
+                return &quot;\n\n&quot;.join(p.get_text() for p in paragraphs)
+        return None
+</code></pre>
+<p>Update <code>src/linkml_reference_validator/etl/fulltext/__init__.py</code> to import and export <code>PMCFullTextProvider</code> (add the import and <code>__all__</code> entry).</p>
+<ul>
+<li>[ ] <strong>Step 4: Run the new provider tests</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_providers.py::TestPMCProvider -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Refactor PMIDSource to stop inlining PMC</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/etl/sources/pmid.py</code>, in <code>fetch</code>, replace the full-text block:</p>
+<pre><code class="language-python">        abstract = self._fetch_abstract(pmid, config)
+        full_text, content_type = self._fetch_pmc_fulltext(pmid, config)
+        keywords = self._fetch_mesh_terms(pmid, config)
+
+        if full_text:
+            content: Optional[str] = f&quot;{abstract}\n\n{full_text}&quot; if abstract else full_text
+        else:
+            content = abstract
+            content_type = &quot;abstract_only&quot; if abstract else &quot;unavailable&quot;
+</code></pre>
+<p>with:</p>
+<pre><code class="language-python">        abstract = self._fetch_abstract(pmid, config)
+        keywords = self._fetch_mesh_terms(pmid, config)
+
+        content: Optional[str] = abstract
+        content_type = &quot;abstract_only&quot; if abstract else &quot;unavailable&quot;
+</code></pre>
+<p>Leave <code>_fetch_pmc_fulltext</code>, <code>_get_pmcid</code>, <code>_fetch_pmc_xml</code>, and <code>_fetch_pmc_html</code> in place for now (still covered by their unit tests); they are simply no longer called from <code>fetch</code>. (A later cleanup may remove them once the provider fully supersedes them.)</p>
+<ul>
+<li>[ ] <strong>Step 6: Update the PMC full-text test expectations</strong></li>
+</ul>
+<p><code>tests/test_pmc_fulltext.py</code> currently asserts that <code>PMIDSource.fetch</code> returns merged abstract+full text. Update the high-level fetch-flow tests so that, with PMC inlining removed, <code>PMIDSource.fetch</code> returns <code>content_type</code> in <code>{"abstract_only", "summary", "unavailable"}</code> and <code>content</code> equal to the abstract. Keep any direct unit tests of <code>_fetch_pmc_xml</code>/<code>_fetch_pmc_html</code> (they still pass). Run the file to see which assertions need changing:</p>
+<p>Run: <code>uv run pytest tests/test_pmc_fulltext.py -v</code>
+Expected: identify failures tied to merged-content assertions; update those specific assertions to the abstract-only expectation. Re-run until PASS.</p>
+<ul>
+<li>[ ] <strong>Step 7: Run the broader suite for regressions</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_pmc_fulltext.py tests/test_sources.py tests/test_fulltext_providers.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 8: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/fulltext src/linkml_reference_validator/etl/sources/pmid.py tests/test_fulltext_providers.py tests/test_pmc_fulltext.py
+git commit -m &quot;feat: add PMCFullTextProvider; route PMID full text through the chain&quot;
+</code></pre>
+<hr />
+<h2 id="task-11-identifier-crosswalk">Task 11: Identifier crosswalk</h2>
+<p><strong>Files:</strong>
+- Create: <code>src/linkml_reference_validator/etl/identifiers.py</code>
+- Test: <code>tests/test_identifiers.py</code></p>
+<p><strong>Context:</strong> Build a <code>ReferenceIdentifiers</code> from an already-fetched <code>ReferenceContent</code> plus its <code>reference_id</code>. The DOI is often already on the content (PMID esummary returns it; DOISource sets it). PMID is recoverable from the reference id. PMCID is filled <strong>lazily</strong> by the PMC provider itself (Task 10 already resolves it), so the crosswalk does not need to call elink here.</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Create <code>tests/test_identifiers.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Tests for identifier crosswalk.&quot;&quot;&quot;
+
+from linkml_reference_validator.models import ReferenceContent
+from linkml_reference_validator.etl.identifiers import build_identifiers
+
+
+def test_build_from_doi_reference():
+    content = ReferenceContent(reference_id=&quot;DOI:10.1038/x&quot;, doi=&quot;10.1038/x&quot;)
+    ids = build_identifiers(content)
+    assert ids.doi == &quot;10.1038/x&quot;
+    assert ids.pmid is None
+
+
+def test_build_from_pmid_reference_with_doi_metadata():
+    content = ReferenceContent(reference_id=&quot;PMID:123&quot;, doi=&quot;10.1/y&quot;)
+    ids = build_identifiers(content)
+    assert ids.pmid == &quot;123&quot;
+    assert ids.doi == &quot;10.1/y&quot;
+
+
+def test_build_from_pmid_reference_without_doi():
+    content = ReferenceContent(reference_id=&quot;PMID:123&quot;)
+    ids = build_identifiers(content)
+    assert ids.pmid == &quot;123&quot;
+    assert ids.doi is None
+
+
+def test_build_from_url_reference():
+    content = ReferenceContent(reference_id=&quot;url:https://x/y.pdf&quot;)
+    ids = build_identifiers(content)
+    assert ids.url == &quot;https://x/y.pdf&quot;
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_identifiers.py -v</code>
+Expected: FAIL with <code>ModuleNotFoundError: ...etl.identifiers</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement the crosswalk</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/identifiers.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Build cross-walked identifiers for a reference.
+
+Most identifier data is already present on the fetched ReferenceContent (the DOI is
+returned by PubMed esummary and set by the DOI source). PMC ID resolution is done
+lazily inside the PMC provider, so it is not performed here.
+&quot;&quot;&quot;
+
+import logging
+import re
+from typing import Optional
+
+from linkml_reference_validator.models import ReferenceContent, ReferenceIdentifiers
+
+logger = logging.getLogger(__name__)
+
+
+def _split_reference_id(reference_id: str) -&gt; tuple[Optional[str], Optional[str]]:
+    &quot;&quot;&quot;Split a reference id into (prefix, identifier).
+
+    Examples:
+        &gt;&gt;&gt; _split_reference_id(&quot;PMID:123&quot;)
+        ('PMID', '123')
+        &gt;&gt;&gt; _split_reference_id(&quot;url:https://x/y&quot;)
+        ('url', 'https://x/y')
+        &gt;&gt;&gt; _split_reference_id(&quot;nope&quot;)
+        (None, None)
+    &quot;&quot;&quot;
+    match = re.match(r&quot;^([A-Za-z_]+):(.+)$&quot;, reference_id.strip())
+    if match:
+        return match.group(1), match.group(2)
+    return None, None
+
+
+def build_identifiers(content: ReferenceContent) -&gt; ReferenceIdentifiers:
+    &quot;&quot;&quot;Build ReferenceIdentifiers from a fetched ReferenceContent.
+
+    Examples:
+        &gt;&gt;&gt; from linkml_reference_validator.models import ReferenceContent
+        &gt;&gt;&gt; ids = build_identifiers(ReferenceContent(reference_id=&quot;PMID:9&quot;, doi=&quot;10.1/z&quot;))
+        &gt;&gt;&gt; ids.pmid, ids.doi
+        ('9', '10.1/z')
+    &quot;&quot;&quot;
+    prefix, identifier = _split_reference_id(content.reference_id)
+
+    ids = ReferenceIdentifiers(doi=content.doi or None)
+
+    if prefix and identifier:
+        upper = prefix.upper()
+        if upper == &quot;PMID&quot;:
+            ids.pmid = identifier
+        elif upper == &quot;PMCID&quot;:
+            ids.pmcid = identifier
+        elif upper == &quot;DOI&quot; and not ids.doi:
+            ids.doi = identifier
+        elif prefix.lower() == &quot;url&quot;:
+            ids.url = identifier
+
+    return ids
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_identifiers.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/identifiers.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/identifiers.py tests/test_identifiers.py
+git commit -m &quot;feat: add identifier crosswalk for full-text providers&quot;
+</code></pre>
+<hr />
+<h2 id="task-12-orchestration-wire-the-full-text-chain-into-referencefetcher">Task 12: Orchestration — wire the full-text chain into ReferenceFetcher</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/etl/reference_fetcher.py</code>
+- Test: <code>tests/test_reference_fetcher.py</code></p>
+<p><strong>Context:</strong> After the metadata source returns content, if <code>config.fetch_full_text</code> and the content lacks full text, walk <code>config.full_text_providers</code> in order. The first provider whose location yields usable text wins. Provider/acquire/extract failures must not abort the chain — this is the legitimate <code>try/except</code> boundary for external systems.</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_reference_fetcher.py</code>:</p>
+<pre><code class="language-python">def test_enrich_with_full_text_uses_first_successful_provider(tmp_path):
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+        ReferenceIdentifiers,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+
+    class _TextProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return &quot;fake_text&quot;
+
+        def locate(self, ids, config):
+            return FullTextLocation(text=&quot;X&quot; * 600, format_hint=&quot;xml&quot;, provider=&quot;fake_text&quot;, oa_status=&quot;green&quot;)
+
+    FullTextProviderRegistry.register(_TextProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / &quot;cache&quot;,
+        rate_limit_delay=0.0,
+        full_text_providers=[&quot;fake_text&quot;],
+    )
+    fetcher = ReferenceFetcher(config)
+
+    content = ReferenceContent(
+        reference_id=&quot;DOI:10.1/x&quot;, doi=&quot;10.1/x&quot;, content=&quot;abstract here&quot;, content_type=&quot;abstract_only&quot;
+    )
+    enriched = fetcher._enrich_with_full_text(content)
+    assert enriched.content_type == &quot;full_text_xml&quot;
+    assert &quot;X&quot; * 600 in enriched.content
+    assert enriched.full_text_provider == &quot;fake_text&quot;
+    assert enriched.oa_status == &quot;green&quot;
+
+
+def test_enrich_skips_when_already_full_text(tmp_path):
+    from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+    content = ReferenceContent(
+        reference_id=&quot;PMID:1&quot;, content=&quot;lots of full text&quot;, content_type=&quot;full_text_xml&quot;
+    )
+    assert fetcher._needs_full_text(content) is False
+
+
+def test_enrich_downloads_and_extracts_pdf(tmp_path):
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+    from unittest.mock import patch
+
+    class _PdfProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return &quot;fake_pdf&quot;
+
+        def locate(self, ids, config):
+            return FullTextLocation(url=&quot;https://x/y.pdf&quot;, format_hint=&quot;pdf&quot;, provider=&quot;fake_pdf&quot;)
+
+    FullTextProviderRegistry.register(_PdfProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / &quot;cache&quot;,
+        rate_limit_delay=0.0,
+        full_text_providers=[&quot;fake_pdf&quot;],
+    )
+    fetcher = ReferenceFetcher(config)
+    content = ReferenceContent(
+        reference_id=&quot;DOI:10.1/x&quot;, doi=&quot;10.1/x&quot;, content=&quot;abstract&quot;, content_type=&quot;abstract_only&quot;
+    )
+
+    with patch.object(fetcher._acquirer, &quot;fetch_bytes&quot;, return_value=(b&quot;%PDF-fake&quot;, &quot;application/pdf&quot;)), \
+         patch(&quot;linkml_reference_validator.etl.reference_fetcher.PDFExtractor&quot;) as MockPDF:
+        MockPDF.return_value.extract.return_value = &quot;extracted pdf text &quot; * 50
+        enriched = fetcher._enrich_with_full_text(content)
+
+    assert enriched.content_type == &quot;full_text_pdf&quot;
+    assert &quot;extracted pdf text&quot; in enriched.content
+    assert enriched.full_text_provider == &quot;fake_pdf&quot;
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py::test_enrich_with_full_text_uses_first_successful_provider -v</code>
+Expected: FAIL with <code>AttributeError: 'ReferenceFetcher' object has no attribute '_enrich_with_full_text'</code>.</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement orchestration</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/etl/reference_fetcher.py</code>, update the imports near the top:</p>
+<pre><code class="language-python">from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
+from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format
+from linkml_reference_validator.etl.identifiers import build_identifiers
+from linkml_reference_validator.etl.extract import ExtractorRegistry  # noqa: F401  (registers extractors)
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
+from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+</code></pre>
+<p>Add module-level constants below the imports:</p>
+<pre><code class="language-python">NEEDS_FULL_TEXT_TYPES = {
+    &quot;abstract_only&quot;,
+    &quot;unavailable&quot;,
+    &quot;no_pmc&quot;,
+    &quot;pmc_restricted&quot;,
+    &quot;summary&quot;,
+}
+
+MIN_FULL_TEXT_CHARS = 500
+
+_FORMAT_TO_CONTENT_TYPE = {
+    &quot;pdf&quot;: &quot;full_text_pdf&quot;,
+    &quot;html&quot;: &quot;full_text_html&quot;,
+    &quot;xml&quot;: &quot;full_text_xml&quot;,
+    &quot;text&quot;: &quot;full_text&quot;,
+}
+</code></pre>
+<p>In <code>__init__</code>, add the acquirer:</p>
+<pre><code class="language-python">        self.config = config
+        self._cache: dict[str, ReferenceContent] = {}
+        self._acquirer = ContentAcquirer()
+</code></pre>
+<p>In <code>fetch</code>, after the existing block that obtains <code>content</code> from the source and before <code>if content:</code> saves to disk, insert enrichment:</p>
+<pre><code class="language-python">        source = source_class()
+        content = source.fetch(identifier, self.config)
+
+        if content and self.config.fetch_full_text and self._needs_full_text(content):
+            content = self._enrich_with_full_text(content)
+
+        if content:
+            self._cache[normalized_reference_id] = content
+            self._save_to_disk(content)
+
+        return content
+</code></pre>
+<p>Add these methods to the class:</p>
+<pre><code class="language-python">    def _needs_full_text(self, content: ReferenceContent) -&gt; bool:
+        &quot;&quot;&quot;Return True if the content lacks full text and the chain should run.
+
+        Examples:
+            &gt;&gt;&gt; config = ReferenceValidationConfig()
+            &gt;&gt;&gt; fetcher = ReferenceFetcher(config)
+            &gt;&gt;&gt; from linkml_reference_validator.models import ReferenceContent
+            &gt;&gt;&gt; fetcher._needs_full_text(
+            ...     ReferenceContent(reference_id=&quot;DOI:1&quot;, content_type=&quot;abstract_only&quot;)
+            ... )
+            True
+            &gt;&gt;&gt; fetcher._needs_full_text(
+            ...     ReferenceContent(reference_id=&quot;DOI:1&quot;, content_type=&quot;full_text_xml&quot;)
+            ... )
+            False
+        &quot;&quot;&quot;
+        return content.content_type in NEEDS_FULL_TEXT_TYPES
+
+    def _enrich_with_full_text(self, content: ReferenceContent) -&gt; ReferenceContent:
+        &quot;&quot;&quot;Walk the provider chain; merge the first usable full text into content.&quot;&quot;&quot;
+        ids = build_identifiers(content)
+        abstract = content.content
+
+        for provider_name in self.config.full_text_providers:
+            provider = FullTextProviderRegistry.get(provider_name)
+            if provider is None:
+                logger.debug(f&quot;Full-text provider not registered: {provider_name}&quot;)
+                continue
+
+            try:  # external system boundary: a provider failure must not abort the chain
+                location = provider.locate(ids, self.config)
+            except Exception as exc:
+                logger.warning(f&quot;Provider '{provider_name}' failed for {content.reference_id}: {exc}&quot;)
+                continue
+
+            if location is None:
+                continue
+
+            text, fmt, pdf_bytes = self._materialize(location)
+            if not text or len(text.strip()) &lt; MIN_FULL_TEXT_CHARS:
+                continue
+
+            content.content = f&quot;{abstract}\n\n{text}&quot; if abstract else text
+            content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or &quot;text&quot;, &quot;full_text&quot;)
+            content.full_text_provider = location.provider or provider_name
+            content.full_text_url = location.url
+            content.oa_status = location.oa_status
+            content.license = location.license
+            if pdf_bytes is not None and self.config.download_pdfs:
+                content.local_pdf_path = self._save_pdf(content.reference_id, pdf_bytes)
+            return content
+
+        return content
+
+    def _materialize(self, location) -&gt; tuple[Optional[str], Optional[str], Optional[bytes]]:
+        &quot;&quot;&quot;Turn a FullTextLocation into (text, format, pdf_bytes_if_any).&quot;&quot;&quot;
+        if location.text:
+            return location.text, location.format_hint or &quot;text&quot;, None
+
+        if not location.url:
+            return None, None, None
+
+        try:  # external system boundary
+            data, content_type = self._acquirer.fetch_bytes(location.url, self.config)
+        except Exception as exc:
+            logger.warning(f&quot;Download failed for {location.url}: {exc}&quot;)
+            return None, None, None
+
+        if data is None:
+            return None, None, None
+
+        fmt = resolve_format(content_type, location.url, location.format_hint)
+        if fmt is None:
+            return None, None, None
+
+        if fmt == &quot;pdf&quot;:
+            extractor = PDFExtractor(backend=self.config.pdf_backend)
+        else:
+            extractor = ExtractorRegistry.get(fmt)
+        if extractor is None:
+            return None, fmt, None
+
+        try:  # external system boundary: parsing arbitrary downloaded bytes
+            text = extractor.extract(data, content_type=content_type)
+        except Exception as exc:
+            logger.warning(f&quot;Extraction failed for {location.url}: {exc}&quot;)
+            return None, fmt, None
+
+        pdf_bytes = data if fmt == &quot;pdf&quot; else None
+        return text, fmt, pdf_bytes
+
+    def _save_pdf(self, reference_id: str, data: bytes) -&gt; str:
+        &quot;&quot;&quot;Persist a downloaded PDF and return its path relative to the cache dir.&quot;&quot;&quot;
+        safe_id = (
+            reference_id.replace(&quot;:&quot;, &quot;_&quot;).replace(&quot;/&quot;, &quot;_&quot;).replace(&quot;?&quot;, &quot;_&quot;).replace(&quot;=&quot;, &quot;_&quot;)
+        )
+        files_dir = self.config.get_files_cache_dir()
+        pdf_path = files_dir / f&quot;{safe_id}.pdf&quot;
+        pdf_path.write_bytes(data)
+        return str(pdf_path.relative_to(self.config.cache_dir))
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py -v</code>
+Expected: PASS (new enrichment tests + existing tests).</p>
+<ul>
+<li>[ ] <strong>Step 5: Run doctests</strong></li>
+</ul>
+<p>Run: <code>uv run pytest --doctest-modules src/linkml_reference_validator/etl/reference_fetcher.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/reference_fetcher.py tests/test_reference_fetcher.py
+git commit -m &quot;feat: wire full-text provider chain into ReferenceFetcher with PDF download+extract&quot;
+</code></pre>
+<hr />
+<h2 id="task-13-round-trip-provenance-fields-through-the-disk-cache">Task 13: Round-trip provenance fields through the disk cache</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/etl/reference_fetcher.py</code> (<code>_save_to_disk</code>, <code>_load_markdown_format</code>)
+- Test: <code>tests/test_reference_fetcher.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_reference_fetcher.py</code>:</p>
+<pre><code class="language-python">def test_provenance_round_trips_through_cache(tmp_path):
+    from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+
+    content = ReferenceContent(
+        reference_id=&quot;DOI:10.1/x&quot;,
+        title=&quot;Paper&quot;,
+        content=&quot;full body text&quot;,
+        content_type=&quot;full_text_pdf&quot;,
+        full_text_provider=&quot;unpaywall&quot;,
+        full_text_url=&quot;https://oa/x.pdf&quot;,
+        oa_status=&quot;gold&quot;,
+        license=&quot;cc-by&quot;,
+        local_pdf_path=&quot;files/DOI_10.1_x.pdf&quot;,
+    )
+    fetcher._save_to_disk(content)
+    loaded = fetcher._load_from_disk(&quot;DOI:10.1/x&quot;)
+
+    assert loaded.content_type == &quot;full_text_pdf&quot;
+    assert loaded.full_text_provider == &quot;unpaywall&quot;
+    assert loaded.full_text_url == &quot;https://oa/x.pdf&quot;
+    assert loaded.oa_status == &quot;gold&quot;
+    assert loaded.license == &quot;cc-by&quot;
+    assert loaded.local_pdf_path == &quot;files/DOI_10.1_x.pdf&quot;
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py::test_provenance_round_trips_through_cache -v</code>
+Expected: FAIL (loaded provenance fields are None).</p>
+<ul>
+<li>[ ] <strong>Step 3: Write provenance to frontmatter</strong></li>
+</ul>
+<p>In <code>_save_to_disk</code>, after the <code>content_type</code> line is appended (after the block that writes <code>content_type: {reference.content_type}</code>), add:</p>
+<pre><code class="language-python">        if reference.full_text_provider:
+            lines.append(f&quot;full_text_provider: {reference.full_text_provider}&quot;)
+        if reference.full_text_url:
+            lines.append(f&quot;full_text_url: {self._quote_yaml_value(reference.full_text_url)}&quot;)
+        if reference.oa_status:
+            lines.append(f&quot;oa_status: {reference.oa_status}&quot;)
+        if reference.license:
+            lines.append(f&quot;license: {self._quote_yaml_value(reference.license)}&quot;)
+        if reference.local_pdf_path:
+            lines.append(f&quot;local_pdf_path: {self._quote_yaml_value(reference.local_pdf_path)}&quot;)
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Read provenance from frontmatter</strong></li>
+</ul>
+<p>In <code>_load_markdown_format</code>, add these keyword arguments to the <code>ReferenceContent(...)</code> constructor call:</p>
+<pre><code class="language-python">            full_text_provider=frontmatter.get(&quot;full_text_provider&quot;),
+            full_text_url=frontmatter.get(&quot;full_text_url&quot;),
+            oa_status=frontmatter.get(&quot;oa_status&quot;),
+            license=frontmatter.get(&quot;license&quot;),
+            local_pdf_path=frontmatter.get(&quot;local_pdf_path&quot;),
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 5: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 6: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/reference_fetcher.py tests/test_reference_fetcher.py
+git commit -m &quot;feat: persist full-text provenance fields in the disk cache&quot;
+</code></pre>
+<hr />
+<h2 id="task-14-generic-urlpdf-in-urlsource">Task 14: Generic URL→PDF in URLSource</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/etl/sources/url.py</code>
+- Test: <code>tests/test_sources.py</code></p>
+<p><strong>Context:</strong> When a <code>url:</code> reference points at a PDF, fetch the bytes and extract text instead of returning raw bytes as <code>content</code>. Detect by content-type header or a <code>%PDF</code> magic-number prefix.</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Add to <code>tests/test_sources.py</code> (within the URL source test area; mirror the existing <code>@patch("...sources.url.requests.get")</code> style):</p>
+<pre><code class="language-python">@patch(&quot;linkml_reference_validator.etl.sources.url.requests.get&quot;)
+def test_fetch_url_pdf_extracts_text(mock_get, tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+    from linkml_reference_validator.etl.sources.url import URLSource
+    from unittest.mock import patch as _patch
+
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.headers = {&quot;content-type&quot;: &quot;application/pdf&quot;}
+    mock_response.content = b&quot;%PDF-1.4 fake bytes&quot;
+    mock_get.return_value = mock_response
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0)
+    source = URLSource()
+
+    with _patch(&quot;linkml_reference_validator.etl.sources.url.PDFExtractor&quot;) as MockPDF:
+        MockPDF.return_value.extract.return_value = &quot;extracted pdf text&quot;
+        result = source.fetch(&quot;https://x/y.pdf&quot;, config)
+
+    assert result is not None
+    assert result.content == &quot;extracted pdf text&quot;
+    assert result.content_type == &quot;full_text_pdf&quot;
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_sources.py::test_fetch_url_pdf_extracts_text -v</code>
+Expected: FAIL (content would be raw text / <code>ImportError</code> for PDFExtractor).</p>
+<ul>
+<li>[ ] <strong>Step 3: Implement URL→PDF handling</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/etl/sources/url.py</code>, add an import:</p>
+<pre><code class="language-python">from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+</code></pre>
+<p>Then in <code>fetch</code>, replace the block after the status check:</p>
+<pre><code class="language-python">        content = response.text
+        title = self._extract_title(content, url)
+
+        return ReferenceContent(
+            reference_id=f&quot;url:{url}&quot;,
+            title=title,
+            content=content,
+            content_type=&quot;url&quot;,
+        )
+</code></pre>
+<p>with:</p>
+<pre><code class="language-python">        content_type_header = (response.headers.get(&quot;content-type&quot;) or &quot;&quot;).lower()
+        is_pdf = &quot;application/pdf&quot; in content_type_header or response.content[:5] == b&quot;%PDF-&quot;
+
+        if is_pdf:
+            text = PDFExtractor(backend=config.pdf_backend).extract(
+                response.content, content_type=&quot;application/pdf&quot;
+            )
+            return ReferenceContent(
+                reference_id=f&quot;url:{url}&quot;,
+                title=url,
+                content=text,
+                content_type=&quot;full_text_pdf&quot; if text else &quot;unavailable&quot;,
+                full_text_url=url,
+            )
+
+        content = response.text
+        title = self._extract_title(content, url)
+
+        return ReferenceContent(
+            reference_id=f&quot;url:{url}&quot;,
+            title=title,
+            content=content,
+            content_type=&quot;url&quot;,
+        )
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_sources.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/etl/sources/url.py tests/test_sources.py
+git commit -m &quot;feat: extract text from PDFs served at a url: reference&quot;
+</code></pre>
+<hr />
+<h2 id="task-15-declarative-custom-full-text-providers-json-api-loader">Task 15: Declarative custom full-text providers (JSON API + loader)</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/models.py</code> (add <code>FullTextProviderConfig</code>)
+- Create: <code>src/linkml_reference_validator/etl/fulltext/json_api.py</code>
+- Create: <code>src/linkml_reference_validator/etl/fulltext/loader.py</code>
+- Test: <code>tests/test_fulltext_loader.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test</strong></li>
+</ul>
+<p>Create <code>tests/test_fulltext_loader.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Tests for declarative custom full-text providers.&quot;&quot;&quot;
+
+import pytest
+from unittest.mock import patch, MagicMock
+
+from linkml_reference_validator.models import (
+    FullTextProviderConfig,
+    ReferenceValidationConfig,
+    ReferenceIdentifiers,
+)
+from linkml_reference_validator.etl.fulltext.json_api import JSONAPIFullTextProvider
+from linkml_reference_validator.etl.fulltext.loader import (
+    load_custom_full_text_providers,
+    register_custom_full_text_providers,
+)
+from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+
+
+def test_config_dataclass():
+    cfg = FullTextProviderConfig(
+        name=&quot;myrepo&quot;,
+        url_template=&quot;https://api.example.org/ft/{doi}&quot;,
+        location_field=&quot;$.pdf_url&quot;,
+        format_hint=&quot;pdf&quot;,
+    )
+    assert cfg.name == &quot;myrepo&quot;
+    assert cfg.location_field == &quot;$.pdf_url&quot;
+
+
+@patch(&quot;linkml_reference_validator.etl.fulltext.json_api.requests.get&quot;)
+def test_json_api_provider_locates_url(mock_get):
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {&quot;pdf_url&quot;: &quot;https://api.example.org/x.pdf&quot;}
+    mock_get.return_value = mock_response
+
+    cfg = FullTextProviderConfig(
+        name=&quot;myrepo&quot;,
+        url_template=&quot;https://api.example.org/ft/{doi}&quot;,
+        location_field=&quot;$.pdf_url&quot;,
+        format_hint=&quot;pdf&quot;,
+    )
+    provider = JSONAPIFullTextProvider(cfg)
+    loc = provider.locate(ReferenceIdentifiers(doi=&quot;10.1/x&quot;), ReferenceValidationConfig())
+    assert loc.url == &quot;https://api.example.org/x.pdf&quot;
+    assert loc.format_hint == &quot;pdf&quot;
+    assert loc.provider == &quot;myrepo&quot;
+
+
+def test_loader_reads_yaml_file(tmp_path):
+    yaml_file = tmp_path / &quot;providers.yaml&quot;
+    yaml_file.write_text(
+        &quot;full_text_providers:\n&quot;
+        &quot;  myrepo:\n&quot;
+        &quot;    url_template: https://api.example.org/ft/{doi}\n&quot;
+        &quot;    location_field: $.pdf_url\n&quot;
+        &quot;    format_hint: pdf\n&quot;
+    )
+    configs = load_custom_full_text_providers(providers_file=yaml_file)
+    assert len(configs) == 1
+    assert configs[0].name == &quot;myrepo&quot;
+
+
+def test_register_custom_provider(tmp_path):
+    yaml_file = tmp_path / &quot;providers.yaml&quot;
+    yaml_file.write_text(
+        &quot;full_text_providers:\n&quot;
+        &quot;  myrepo2:\n&quot;
+        &quot;    url_template: https://api.example.org/ft/{doi}\n&quot;
+        &quot;    location_field: $.pdf_url\n&quot;
+    )
+    count = register_custom_full_text_providers(providers_file=yaml_file)
+    assert count == 1
+    assert FullTextProviderRegistry.get(&quot;myrepo2&quot;) is not None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_loader.py -v</code>
+Expected: FAIL with <code>ImportError</code> for <code>FullTextProviderConfig</code> / module not found.</p>
+<ul>
+<li>[ ] <strong>Step 3: Add the config dataclass</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/models.py</code>, after <code>JSONAPISourceConfig</code>:</p>
+<pre><code class="language-python">@dataclass
+class FullTextProviderConfig:
+    &quot;&quot;&quot;Configuration for a declarative custom full-text provider.
+
+    Mirrors JSONAPISourceConfig but resolves a downloadable full-text location
+    (or inline text) rather than metadata.
+
+    Examples:
+        &gt;&gt;&gt; cfg = FullTextProviderConfig(
+        ...     name=&quot;myrepo&quot;,
+        ...     url_template=&quot;https://api.example.org/ft/{doi}&quot;,
+        ...     location_field=&quot;$.pdf_url&quot;,
+        ...     format_hint=&quot;pdf&quot;,
+        ... )
+        &gt;&gt;&gt; cfg.name
+        'myrepo'
+    &quot;&quot;&quot;
+
+    name: str
+    url_template: str               # supports {doi} / {pmid} / {pmcid} placeholders
+    location_field: Optional[str] = None  # JSONPath to a downloadable URL
+    text_field: Optional[str] = None      # JSONPath to inline text (alternative to a URL)
+    format_hint: Optional[str] = None
+    headers: dict[str, str] = field(default_factory=dict)  # ${VAR} interpolation
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Implement the declarative provider</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/json_api.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Declarative custom full-text provider driven by FullTextProviderConfig.&quot;&quot;&quot;
+
+import logging
+import os
+import re
+import time
+from typing import Optional
+
+import requests  # type: ignore
+from jsonpath_ng import parse as jsonpath_parse
+from jsonpath_ng.exceptions import JsonPathParserError
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    FullTextProviderConfig,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.etl.fulltext.base import FullTextProvider
+
+logger = logging.getLogger(__name__)
+
+
+class JSONAPIFullTextProvider(FullTextProvider):
+    &quot;&quot;&quot;A full-text provider whose behavior is defined by configuration.
+
+    The ``url_template`` may reference ``{doi}``, ``{pmid}``, or ``{pmcid}``.
+    &quot;&quot;&quot;
+
+    def __init__(self, provider_config: FullTextProviderConfig):
+        self._config = provider_config
+
+    @classmethod
+    def name(cls) -&gt; str:
+        return &quot;&quot;  # instances carry the real name; see _name
+
+    @property
+    def _name(self) -&gt; str:
+        return self._config.name
+
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[FullTextLocation]:
+        url = self._build_url(ids)
+        if url is None:
+            return None
+
+        time.sleep(config.rate_limit_delay)
+        headers = self._interpolate_headers(self._config.headers)
+        headers.setdefault(&quot;Accept&quot;, &quot;application/json&quot;)
+        response = requests.get(url, headers=headers, timeout=30)
+        if response.status_code != 200:
+            logger.debug(f&quot;Custom provider '{self._name}' returned {response.status_code}&quot;)
+            return None
+
+        data = response.json()
+
+        if self._config.text_field:
+            text = self._jsonpath(data, self._config.text_field)
+            if text:
+                return FullTextLocation(
+                    text=text, format_hint=self._config.format_hint or &quot;text&quot;, provider=self._name
+                )
+
+        if self._config.location_field:
+            location_url = self._jsonpath(data, self._config.location_field)
+            if location_url:
+                return FullTextLocation(
+                    url=location_url, format_hint=self._config.format_hint, provider=self._name
+                )
+
+        return None
+
+    def _build_url(self, ids: ReferenceIdentifiers) -&gt; Optional[str]:
+        template = self._config.url_template
+        values = {&quot;doi&quot;: ids.doi, &quot;pmid&quot;: ids.pmid, &quot;pmcid&quot;: ids.pmcid}
+        for key, value in values.items():
+            placeholder = &quot;{&quot; + key + &quot;}&quot;
+            if placeholder in template:
+                if not value:
+                    return None
+                template = template.replace(placeholder, value)
+        return template
+
+    def _jsonpath(self, data: dict, expression: str) -&gt; Optional[str]:
+        try:
+            parsed = jsonpath_parse(expression)
+        except JsonPathParserError as exc:
+            logger.warning(f&quot;Invalid JSONPath '{expression}': {exc}&quot;)
+            return None
+        matches = parsed.find(data)
+        if matches and matches[0].value is not None:
+            value = matches[0].value
+            return value if isinstance(value, str) else str(value)
+        return None
+
+    def _interpolate_headers(self, headers: dict[str, str]) -&gt; dict[str, str]:
+        pattern = re.compile(r&quot;\$\{([^}]+)\}&quot;)
+        result = {}
+        for key, value in headers.items():
+            result[key] = pattern.sub(lambda m: os.environ.get(m.group(1), &quot;&quot;), value)
+        return result
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 5: Implement the loader</strong></li>
+</ul>
+<p>Create <code>src/linkml_reference_validator/etl/fulltext/loader.py</code>:</p>
+<pre><code class="language-python">&quot;&quot;&quot;Load and register declarative custom full-text providers from YAML.
+
+Search order mirrors sources/loader.py:
+1. Explicit providers_file
+2. Project-level: .linkml-reference-validator-fulltext.yaml
+3. User-level: ~/.config/linkml-reference-validator/fulltext/*.yaml
+&quot;&quot;&quot;
+
+import logging
+from pathlib import Path
+from typing import Optional
+
+from ruamel.yaml import YAML
+
+from linkml_reference_validator.models import FullTextProviderConfig
+from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+from linkml_reference_validator.etl.fulltext.json_api import JSONAPIFullTextProvider
+
+logger = logging.getLogger(__name__)
+
+
+def load_custom_full_text_providers(
+    providers_file: Optional[Path] = None,
+) -&gt; list[FullTextProviderConfig]:
+    &quot;&quot;&quot;Load custom provider configs from the standard locations.&quot;&quot;&quot;
+    configs: list[FullTextProviderConfig] = []
+
+    if providers_file and providers_file.exists():
+        configs.extend(_load_from_file(providers_file))
+
+    project_file = Path(&quot;.linkml-reference-validator-fulltext.yaml&quot;)
+    if project_file.exists():
+        configs.extend(_load_from_file(project_file))
+
+    user_dir = Path.home() / &quot;.config&quot; / &quot;linkml-reference-validator&quot; / &quot;fulltext&quot;
+    if user_dir.exists():
+        for yaml_file in sorted(user_dir.glob(&quot;*.yaml&quot;)):
+            configs.extend(_load_from_file(yaml_file))
+
+    deduped: dict[str, FullTextProviderConfig] = {}
+    for cfg in configs:
+        deduped[cfg.name] = cfg
+    return list(deduped.values())
+
+
+def _load_from_file(file_path: Path) -&gt; list[FullTextProviderConfig]:
+    yaml = YAML(typ=&quot;safe&quot;)
+    data = yaml.load(file_path)
+    if not isinstance(data, dict):
+        logger.warning(f&quot;Invalid full-text providers file: {file_path}&quot;)
+        return []
+
+    providers_data = data.get(&quot;full_text_providers&quot;, data)
+    if not isinstance(providers_data, dict):
+        return []
+
+    configs: list[FullTextProviderConfig] = []
+    for name, body in providers_data.items():
+        if not isinstance(body, dict) or &quot;url_template&quot; not in body:
+            continue
+        configs.append(
+            FullTextProviderConfig(
+                name=name,
+                url_template=body[&quot;url_template&quot;],
+                location_field=body.get(&quot;location_field&quot;),
+                text_field=body.get(&quot;text_field&quot;),
+                format_hint=body.get(&quot;format_hint&quot;),
+                headers=body.get(&quot;headers&quot;, {}) if isinstance(body.get(&quot;headers&quot;), dict) else {},
+            )
+        )
+    return configs
+
+
+def register_custom_full_text_providers(
+    providers_file: Optional[Path] = None,
+) -&gt; int:
+    &quot;&quot;&quot;Load and register custom providers; return the number registered.&quot;&quot;&quot;
+    configs = load_custom_full_text_providers(providers_file)
+    for cfg in configs:
+        FullTextProviderRegistry.register_instance(cfg.name, JSONAPIFullTextProvider(cfg))
+        logger.info(f&quot;Registered custom full-text provider: {cfg.name}&quot;)
+    return len(configs)
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 6: Run tests + doctests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_fulltext_loader.py -v &amp;&amp; uv run pytest --doctest-modules src/linkml_reference_validator/etl/fulltext/json_api.py -q</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 7: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/models.py src/linkml_reference_validator/etl/fulltext tests/test_fulltext_loader.py
+git commit -m &quot;feat: add declarative custom full-text providers and YAML loader&quot;
+</code></pre>
+<hr />
+<h2 id="task-16-register-custom-providers-at-fetcher-init-cli-flag">Task 16: Register custom providers at fetcher init + CLI flag</h2>
+<p><strong>Files:</strong>
+- Modify: <code>src/linkml_reference_validator/etl/reference_fetcher.py</code> (register custom providers in <code>__init__</code>)
+- Modify: <code>src/linkml_reference_validator/cli/shared.py</code> (add a <code>FullTextOption</code>)
+- Modify: <code>src/linkml_reference_validator/cli/validate.py</code> (wire the flag into config)
+- Test: <code>tests/test_reference_fetcher.py</code>, <code>tests/test_cli.py</code></p>
+<ul>
+<li>[ ] <strong>Step 1: Write the failing test (fetcher registers custom providers)</strong></li>
+</ul>
+<p>Add to <code>tests/test_reference_fetcher.py</code>:</p>
+<pre><code class="language-python">def test_fetcher_registers_custom_full_text_providers(tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+
+    yaml_file = tmp_path / &quot;.linkml-reference-validator-fulltext.yaml&quot;
+    yaml_file.write_text(
+        &quot;full_text_providers:\n&quot;
+        &quot;  custom_at_init:\n&quot;
+        &quot;    url_template: https://api.example.org/ft/{doi}\n&quot;
+        &quot;    location_field: $.pdf_url\n&quot;
+    )
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / &quot;cache&quot;, rate_limit_delay=0.0, full_text_providers_file=yaml_file
+    )
+    ReferenceFetcher(config)
+    assert FullTextProviderRegistry.get(&quot;custom_at_init&quot;) is not None
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py::test_fetcher_registers_custom_full_text_providers -v</code>
+Expected: FAIL (<code>full_text_providers_file</code> not a config field).</p>
+<ul>
+<li>[ ] <strong>Step 3: Add the config field and registration</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/models.py</code>, add to <code>ReferenceValidationConfig</code> (after <code>download_pdfs</code>):</p>
+<pre><code class="language-python">    full_text_providers_file: Optional[Path] = Field(
+        default=None,
+        description=&quot;Optional path to a YAML file defining custom full-text providers.&quot;,
+    )
+</code></pre>
+<p>In <code>src/linkml_reference_validator/etl/reference_fetcher.py</code>, import the loader and call it in <code>__init__</code>:</p>
+<pre><code class="language-python">from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
+</code></pre>
+<pre><code class="language-python">        self.config = config
+        self._cache: dict[str, ReferenceContent] = {}
+        self._acquirer = ContentAcquirer()
+        register_custom_full_text_providers(config.full_text_providers_file)
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 4: Run the fetcher test</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_reference_fetcher.py::test_fetcher_registers_custom_full_text_providers -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Write the failing CLI test</strong></li>
+</ul>
+<p>Inspect an existing validate-command test in <code>tests/test_cli.py</code> to copy its invocation style (the <code>typer.testing.CliRunner</code> usage). Then add a test asserting <code>--no-full-text</code> sets <code>fetch_full_text=False</code>. Use the same patching approach the existing CLI tests use to capture the constructed config (e.g. patch <code>ReferenceFetcher</code> or the validator and inspect the <code>config</code> passed). Concretely:</p>
+<pre><code class="language-python">def test_validate_no_full_text_flag(tmp_path, monkeypatch):
+    from typer.testing import CliRunner
+    from linkml_reference_validator.cli import app  # adjust import to match existing CLI tests
+
+    captured = {}
+
+    import linkml_reference_validator.cli.validate as validate_mod
+
+    real_config_cls = validate_mod.ReferenceValidationConfig
+
+    def _capture(**kwargs):
+        cfg = real_config_cls(**kwargs)
+        captured[&quot;fetch_full_text&quot;] = cfg.fetch_full_text
+        return cfg
+
+    monkeypatch.setattr(validate_mod, &quot;ReferenceValidationConfig&quot;, _capture)
+
+    sample = tmp_path / &quot;data.yaml&quot;
+    sample.write_text(&quot;id: x\n&quot;)
+
+    runner = CliRunner()
+    runner.invoke(app, [&quot;validate&quot;, str(sample), &quot;--no-full-text&quot;])
+    assert captured.get(&quot;fetch_full_text&quot;) is False
+</code></pre>
+<blockquote>
+<p>Adjust the import of <code>app</code> and the command arguments to match the existing tests in <code>tests/test_cli.py</code>. If the validate command does not currently build <code>ReferenceValidationConfig</code> directly in <code>validate.py</code>, capture at whatever call site constructs it.</p>
+</blockquote>
+<ul>
+<li>[ ] <strong>Step 6: Run test to verify it fails</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_cli.py::test_validate_no_full_text_flag -v</code>
+Expected: FAIL (flag unknown / <code>fetch_full_text</code> not toggled).</p>
+<ul>
+<li>[ ] <strong>Step 7: Add the CLI option</strong></li>
+</ul>
+<p>In <code>src/linkml_reference_validator/cli/shared.py</code>, add:</p>
+<pre><code class="language-python">FullTextOption = Annotated[
+    bool,
+    typer.Option(
+        &quot;--full-text/--no-full-text&quot;,
+        help=&quot;Fetch full text (PDF/HTML/XML) via the provider chain (default: on)&quot;,
+    ),
+]
+</code></pre>
+<p>In <code>src/linkml_reference_validator/cli/validate.py</code>, add a <code>full_text: FullTextOption = True</code> parameter to the validate command signature and pass <code>fetch_full_text=full_text</code> into the <code>ReferenceValidationConfig(...)</code> construction.</p>
+<ul>
+<li>[ ] <strong>Step 8: Run tests to verify they pass</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_cli.py tests/test_reference_fetcher.py -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 9: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add src/linkml_reference_validator/models.py src/linkml_reference_validator/etl/reference_fetcher.py src/linkml_reference_validator/cli/shared.py src/linkml_reference_validator/cli/validate.py tests/test_cli.py tests/test_reference_fetcher.py
+git commit -m &quot;feat: register custom full-text providers at init and add --no-full-text CLI flag&quot;
+</code></pre>
+<hr />
+<h2 id="task-17-end-to-end-integration-test-full-quality-gate">Task 17: End-to-end integration test + full quality gate</h2>
+<p><strong>Files:</strong>
+- Test: <code>tests/test_e2e_integration.py</code> (add a chain-level test)</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the integration test</strong></li>
+</ul>
+<p>Add to <code>tests/test_e2e_integration.py</code> a test that exercises metadata → chain fall-through → PDF extraction with all HTTP mocked. It registers a metadata-only stub source for a <code>TESTDOI</code> prefix is unnecessary; instead drive <code>_enrich_with_full_text</code> directly through <code>fetch</code> by mocking the DOI source and the chain:</p>
+<pre><code class="language-python">def test_full_chain_doi_falls_through_to_pdf(tmp_path):
+    from unittest.mock import patch
+    from linkml_reference_validator.models import (
+        ReferenceValidationConfig,
+        ReferenceContent,
+        FullTextLocation,
+    )
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.fulltext.base import FullTextProvider, FullTextProviderRegistry
+
+    class _MissProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return &quot;miss&quot;
+
+        def locate(self, ids, config):
+            return None
+
+    class _PdfProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return &quot;hit_pdf&quot;
+
+        def locate(self, ids, config):
+            return FullTextLocation(url=&quot;https://oa/x.pdf&quot;, format_hint=&quot;pdf&quot;, provider=&quot;hit_pdf&quot;, oa_status=&quot;gold&quot;)
+
+    FullTextProviderRegistry.register(_MissProvider)
+    FullTextProviderRegistry.register(_PdfProvider)
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / &quot;cache&quot;,
+        rate_limit_delay=0.0,
+        full_text_providers=[&quot;miss&quot;, &quot;hit_pdf&quot;],
+    )
+    fetcher = ReferenceFetcher(config)
+
+    metadata = ReferenceContent(
+        reference_id=&quot;DOI:10.1/x&quot;, doi=&quot;10.1/x&quot;, title=&quot;P&quot;, content=&quot;abstract&quot;, content_type=&quot;abstract_only&quot;
+    )
+
+    with patch.object(fetcher, &quot;_load_from_disk&quot;, return_value=None), \
+         patch(&quot;linkml_reference_validator.etl.reference_fetcher.ReferenceSourceRegistry.get_source&quot;) as mock_get_source, \
+         patch.object(fetcher._acquirer, &quot;fetch_bytes&quot;, return_value=(b&quot;%PDF-bytes&quot;, &quot;application/pdf&quot;)), \
+         patch(&quot;linkml_reference_validator.etl.reference_fetcher.PDFExtractor&quot;) as MockPDF:
+        mock_source_class = mock_get_source.return_value
+        mock_source_class.return_value.fetch.return_value = metadata
+        MockPDF.return_value.extract.return_value = &quot;full text body &quot; * 60
+
+        result = fetcher.fetch(&quot;DOI:10.1/x&quot;)
+
+    assert result.content_type == &quot;full_text_pdf&quot;
+    assert result.full_text_provider == &quot;hit_pdf&quot;
+    assert result.oa_status == &quot;gold&quot;
+    assert &quot;full text body&quot; in result.content
+    # cached PDF written
+    assert result.local_pdf_path is not None
+    assert (config.cache_dir / result.local_pdf_path).exists()
+</code></pre>
+<ul>
+<li>[ ] <strong>Step 2: Run the integration test</strong></li>
+</ul>
+<p>Run: <code>uv run pytest tests/test_e2e_integration.py::test_full_chain_doi_falls_through_to_pdf -v</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 3: Run the full quality gate</strong></li>
+</ul>
+<p>Run: <code>just test</code>
+Expected: pytest (all tests), mypy, and ruff all PASS. Fix any type/lint issues (e.g. add <code># type: ignore</code> on third-party imports consistent with the existing code, or annotate the <code>extractor</code> variable in <code>_materialize</code> as <code>Optional[Extractor]</code>).</p>
+<ul>
+<li>[ ] <strong>Step 4: Run doctests</strong></li>
+</ul>
+<p>Run: <code>just doctest</code>
+Expected: PASS.</p>
+<ul>
+<li>[ ] <strong>Step 5: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add tests/test_e2e_integration.py
+git commit -m &quot;test: end-to-end full-text chain integration (metadata -&gt; chain -&gt; PDF)&quot;
+</code></pre>
+<hr />
+<h2 id="task-18-documentation">Task 18: Documentation</h2>
+<p><strong>Files:</strong>
+- Create: <code>docs/how-to/fetch-full-text-and-pdfs.md</code>
+- Modify: <code>docs/index.md</code> or the nav in <code>mkdocs.yml</code> (add a link, following existing nav structure)</p>
+<ul>
+<li>[ ] <strong>Step 1: Write the how-to doc</strong></li>
+</ul>
+<p>Create <code>docs/how-to/fetch-full-text-and-pdfs.md</code> documenting:
+- What the provider chain is and the default order (<code>pmc → unpaywall → openalex</code>).
+- Config keys: <code>fetch_full_text</code>, <code>full_text_providers</code>, <code>pdf_backend</code>, <code>download_pdfs</code>, <code>full_text_providers_file</code>, and reuse of <code>email</code> / <code>max_supplementary_file_size</code>.
+- The <code>--full-text/--no-full-text</code> CLI flag.
+- A YAML example for a custom provider:</p>
+<pre><code class="language-yaml">full_text_providers:
+  myrepo:
+    url_template: https://api.example.org/fulltext/{doi}
+    location_field: $.links.pdf
+    format_hint: pdf
+    headers:
+      Authorization: Bearer ${MYREPO_TOKEN}
+</code></pre>
+<ul>
+<li>
+<p>Provenance fields written to cached references (<code>full_text_provider</code>, <code>oa_status</code>, <code>license</code>, <code>local_pdf_path</code>).</p>
+</li>
+<li>
+<p>[ ] <strong>Step 2: Add to nav</strong></p>
+</li>
+</ul>
+<p>Add a nav entry in <code>mkdocs.yml</code> under the existing how-to section pointing at <code>how-to/fetch-full-text-and-pdfs.md</code> (match the existing nav indentation/structure).</p>
+<ul>
+<li>[ ] <strong>Step 3: Verify docs build</strong></li>
+</ul>
+<p>Run: <code>uv run mkdocs build -q</code>
+Expected: builds without errors/warnings about the new page.</p>
+<ul>
+<li>[ ] <strong>Step 4: Commit</strong></li>
+</ul>
+<pre><code class="language-bash">git add docs/how-to/fetch-full-text-and-pdfs.md mkdocs.yml
+git commit -m &quot;docs: how-to for full-text and PDF fetching&quot;
+</code></pre>
+<hr />
+<h2 id="self-review-notes-for-the-implementer">Self-Review Notes (for the implementer)</h2>
+<ul>
+<li><strong>Spec coverage:</strong> download+extract PDF (Tasks 5, 12, 14), pluggable extractor (Task 5), default-on OA chain for DOIs (Tasks 8, 9, 12, 16), generic URL→PDF (Task 14), custom endpoints (Task 15), identifier crosswalk (Task 11), PMC-as-provider (Task 10), provenance + caching (Tasks 1, 12, 13), config (Tasks 2, 16), CLI (Task 16), docs (Task 18). All spec sections map to a task.</li>
+<li><strong><code>try/except</code> policy:</strong> the only <code>try/except</code> blocks are the external-system boundaries — Entrez/elink (pre-existing pattern, reused in PMC provider) and the orchestrator's per-provider / download / extract guards (so one bad provider or corrupt PDF falls through to the next). Pure helpers stay clean.</li>
+<li><strong>Type consistency:</strong> <code>FullTextLocation</code> fields (<code>url/text/format_hint/oa_status/license/provider/version</code>), <code>ReferenceIdentifiers</code> (<code>doi/pmid/pmcid/url</code>), provider <code>name()</code>/<code>locate()</code>, extractor <code>formats()</code>/<code>extract()</code>, and <code>resolve_format</code>'s <code>(content_type, url, format_hint)</code> ordering are used identically across tasks.</li>
+<li><strong>Open implementation-time choices (carried from the spec):</strong> default <code>pdf_backend</code> is <code>pypdf</code>; <code>MIN_FULL_TEXT_CHARS = 500</code> (PMC keeps its own <code>&gt;1000</code> threshold); both are single-point constants and easy to tune.</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      
+    
+  </body>
+</html>

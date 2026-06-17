@@ -41,6 +41,10 @@
          <lastmod>2026-06-17</lastmod>
     </url>
     <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/how-to/fetch-full-text-and-pdfs/</loc>
+         <lastmod>2026-06-17</lastmod>
+    </url>
+    <url>
          <loc>https://linkml.github.io/linkml-reference-validator/how-to/repair-validation-errors/</loc>
          <lastmod>2026-06-17</lastmod>
     </url>
@@ -98,6 +102,14 @@
     </url>
     <url>
          <loc>https://linkml.github.io/linkml-reference-validator/reference/cli/</loc>
+         <lastmod>2026-06-17</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/superpowers/plans/2026-06-12-modular-pdf-fulltext-fetching/</loc>
+         <lastmod>2026-06-17</lastmod>
+    </url>
+    <url>
+         <loc>https://linkml.github.io/linkml-reference-validator/superpowers/specs/2026-06-12-modular-pdf-fulltext-fetching-design/</loc>
          <lastmod>2026-06-17</lastmod>
     </url>
     <url>

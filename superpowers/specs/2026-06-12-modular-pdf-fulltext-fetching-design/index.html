@@ -8,28 +8,24 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-entrez/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/superpowers/specs/2026-06-12-modular-pdf-fulltext-fetching-design/">
       
       
-        <link rel="prev" href="../validate-obo-files/">
-      
-      
-        <link rel="next" href="../validate-clinical-trials/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>Validating Entrez Accessions - linkml-reference-validator</title>
+        <title>Modular PDF & Full-Text Fetching Framework — Design - linkml-reference-validator</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -48,7 +44,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -66,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-entrez-accessions" class="md-skip">
+        <a href="#modular-pdf-full-text-fetching-framework-design" class="md-skip">
           Skip to content
         </a>
       
@@ -82,7 +78,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -102,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating Entrez Accessions
+              Modular PDF &amp; Full-Text Fetching Framework — Design
             
           </span>
         </div>
@@ -192,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -249,7 +245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../setup-guide/" class="md-nav__link">
+      <a href="../../../setup-guide/" class="md-nav__link">
         
   
   
@@ -276,7 +272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../../quickstart/" class="md-nav__link">
         
   
   
@@ -350,7 +346,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/complete-workflow/" class="md-nav__link">
+      <a href="../../../tutorials/complete-workflow/" class="md-nav__link">
         
   
   
@@ -378,7 +374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/01_getting_started/" class="md-nav__link">
+      <a href="../../../notebooks/01_getting_started/" class="md-nav__link">
         
   
   
@@ -406,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/02_advanced_usage/" class="md-nav__link">
+      <a href="../../../notebooks/02_advanced_usage/" class="md-nav__link">
         
   
   
@@ -434,7 +430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/04_obo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/04_obo_validation/" class="md-nav__link">
         
   
   
@@ -462,7 +458,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/05_geo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/05_geo_validation/" class="md-nav__link">
         
   
   
@@ -490,7 +486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/03_python_api/" class="md-nav__link">
+      <a href="../../../notebooks/03_python_api/" class="md-nav__link">
         
   
   
@@ -522,20 +518,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -556,7 +550,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -574,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-obo-files/" class="md-nav__link">
+      <a href="../../../how-to/validate-obo-files/" class="md-nav__link">
         
   
   
@@ -599,37 +593,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating Entrez Accessions
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-entrez/" class="md-nav__link">
         
   
   
@@ -645,236 +612,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GEO (GSE or GDS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validating with Title Check
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioProject
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioSample
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accepted Identifier Formats
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prefix Aliases and Normalization
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-caching Entrez Records
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting and Email
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excerpt Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How GEO Accession-to-UID Conversion Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -887,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-clinical-trials/" class="md-nav__link">
+      <a href="../../../how-to/validate-clinical-trials/" class="md-nav__link">
         
   
   
@@ -915,7 +652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-dois/" class="md-nav__link">
+      <a href="../../../how-to/validate-dois/" class="md-nav__link">
         
   
   
@@ -943,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-urls/" class="md-nav__link">
+      <a href="../../../how-to/validate-urls/" class="md-nav__link">
         
   
   
@@ -971,7 +708,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-titles/" class="md-nav__link">
+      <a href="../../../how-to/validate-titles/" class="md-nav__link">
         
   
   
@@ -999,7 +736,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../use-local-files-and-urls/" class="md-nav__link">
+      <a href="../../../how-to/use-local-files-and-urls/" class="md-nav__link">
         
   
   
@@ -1027,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fetch-full-text-and-pdfs/" class="md-nav__link">
+      <a href="../../../how-to/fetch-full-text-and-pdfs/" class="md-nav__link">
         
   
   
@@ -1055,7 +792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../add-reference-source/" class="md-nav__link">
+      <a href="../../../how-to/add-reference-source/" class="md-nav__link">
         
   
   
@@ -1083,7 +820,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skip-unsupported-references/" class="md-nav__link">
+      <a href="../../../how-to/skip-unsupported-references/" class="md-nav__link">
         
   
   
@@ -1111,7 +848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../repair-validation-errors/" class="md-nav__link">
+      <a href="../../../how-to/repair-validation-errors/" class="md-nav__link">
         
   
   
@@ -1193,7 +930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/how-it-works/" class="md-nav__link">
+      <a href="../../../concepts/how-it-works/" class="md-nav__link">
         
   
   
@@ -1221,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/content-types/" class="md-nav__link">
+      <a href="../../../concepts/content-types/" class="md-nav__link">
         
   
   
@@ -1249,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
+      <a href="../../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -1331,7 +1068,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cli/" class="md-nav__link">
+      <a href="../../../reference/cli/" class="md-nav__link">
         
   
   
@@ -1366,7 +1103,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../troubleshooting/" class="md-nav__link">
+      <a href="../../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1393,7 +1130,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../todo/" class="md-nav__link">
+      <a href="../../../todo/" class="md-nav__link">
         
   
   
@@ -1440,10 +1177,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Problem
       
     </span>
   </a>
@@ -1451,22 +1188,44 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
+  <a href="#goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
+        Goals
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Usage">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Architecture">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
+  <a href="#stage-1-metadata-resolution-unchanged" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GEO (GSE or GDS)
+        Stage 1 — Metadata resolution (unchanged)
       
     </span>
   </a>
@@ -1474,10 +1233,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
+  <a href="#stage-2-identifier-crosswalk" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validating with Title Check
+        Stage 2 — Identifier crosswalk
       
     </span>
   </a>
@@ -1485,10 +1244,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
+  <a href="#stage-3-full-text-provider-chain" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BioProject
+        Stage 3 — Full-text provider chain
       
     </span>
   </a>
@@ -1496,10 +1255,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
+  <a href="#stage-4-acquire-extract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BioSample
+        Stage 4 — Acquire + extract
       
     </span>
   </a>
@@ -1512,10 +1271,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
+  <a href="#orchestration-extended-referencefetcherfetch" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accepted Identifier Formats
+        Orchestration (extended ReferenceFetcher.fetch)
       
     </span>
   </a>
@@ -1523,10 +1282,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
+  <a href="#data-model-changes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prefix Aliases and Normalization
+        Data-model changes
       
     </span>
   </a>
@@ -1534,10 +1293,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
+  <a href="#config-additions-referencevalidationconfig" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-caching Entrez Records
+        Config additions (ReferenceValidationConfig)
       
     </span>
   </a>
@@ -1545,10 +1304,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
+  <a href="#module-layout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rate Limiting and Email
+        Module layout
       
     </span>
   </a>
@@ -1556,10 +1315,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
+  <a href="#testing-strategy-tdd-per-repo-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Content Availability
+        Testing strategy (TDD, per repo rules)
       
     </span>
   </a>
@@ -1567,60 +1326,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
+  <a href="#risks-mitigations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excerpt Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration File
+        Risks &amp; mitigations
       
     </span>
   </a>
@@ -1628,21 +1337,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
+  <a href="#open-implementation-time-decisions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How GEO Accession-to-UID Conversion Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
+        Open implementation-time decisions
       
     </span>
   </a>
@@ -1669,168 +1367,274 @@
   
 
 
-<h1 id="validating-entrez-accessions">Validating Entrez Accessions</h1>
-<p>This guide shows how to validate supporting text against NCBI Entrez records for GEO, BioProject, and BioSample.</p>
-<h2 id="overview">Overview</h2>
-<p>These sources use the NCBI Entrez E-utilities:</p>
-<ul>
-<li><strong>GEO</strong> (GSE/GDS): Uses <code>esearch</code> to convert accessions to UIDs, then <code>esummary</code> from the <code>gds</code> database</li>
-<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): Uses <code>esummary</code> from the <code>bioproject</code> database</li>
-<li><strong>BioSample</strong> (SAMN/SAME/SAMD): Uses <code>esummary</code> from the <code>biosample</code> database</li>
-</ul>
-<p>The validator uses the returned summary/description fields as the content for matching.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="geo-gse-or-gds">GEO (GSE or GDS)</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;RNA-seq analysis of cardiac tissue&quot; \
-  GEO:GSE12345
-</code></pre>
-<h3 id="validating-with-title-check">Validating with Title Check</h3>
-<p>You can also validate that the reference title matches your expected title:</p>
-<pre><code class="language-bash"># This will validate both the excerpt AND the title
-linkml-reference-validator validate text \
-  &quot;Airway epithelial brushings&quot; \
-  GEO:GSE67472 \
-  --title &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<p>If the title doesn't match, validation will fail with a "title mismatch" error.</p>
-<h3 id="bioproject">BioProject</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Whole genome sequencing project for strain X&quot; \
-  BioProject:PRJNA12345
-</code></pre>
-<h3 id="biosample">BioSample</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Human liver biopsy sample description&quot; \
-  BioSample:SAMN12345678
-</code></pre>
-<h2 id="accepted-identifier-formats">Accepted Identifier Formats</h2>
-<p>You can use either prefixed or bare accessions:</p>
-<pre><code>GEO:GSE12345
-GDS12345
-BioProject:PRJNA12345
-PRJEB12345
-BioSample:SAMN12345678
-SAME1234567
-</code></pre>
-<h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
-<p>Prefixes are case-insensitive and can be normalized with a configuration map. This
-is useful when data uses alternate prefix styles such as <code>geo:</code> or <code>NCBIGeo:</code>.</p>
-<p>Create <code>.linkml-reference-validator.yaml</code> with a <code>validation</code> section:</p>
-<pre><code class="language-yaml">validation:
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>You can also configure this programmatically:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    reference_prefix_map={&quot;geo&quot;: &quot;GEO&quot;, &quot;NCBIGeo&quot;: &quot;GEO&quot;}
-)
-</code></pre>
-<p>Pass the config file to CLI commands with <code>--config .linkml-reference-validator.yaml</code>.</p>
-<h2 id="pre-caching-entrez-records">Pre-caching Entrez Records</h2>
-<p>For offline validation or to speed up repeated validations:</p>
-<pre><code class="language-bash">linkml-reference-validator cache reference GEO:GSE12345
-linkml-reference-validator cache reference BioProject:PRJNA12345
-linkml-reference-validator cache reference BioSample:SAMN12345678
-</code></pre>
-<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
-<h2 id="rate-limiting-and-email">Rate Limiting and Email</h2>
-<p>NCBI requires a valid contact email for Entrez API usage. Configure it in your settings:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    email=&quot;you@example.org&quot;,
-    rate_limit_delay=0.5,
-)
-</code></pre>
-<h2 id="content-availability">Content Availability</h2>
-<p>Entrez summaries vary by record. If a summary field is missing, the validator will return
-<code>content_type: unavailable</code> and matching may fail.</p>
-<h2 id="validation-failure-scenarios">Validation Failure Scenarios</h2>
-<p>The validator catches several types of errors:</p>
-<h3 id="excerpt-not-found">Excerpt Not Found</h3>
-<p>When the quoted text is not in the reference content:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;text that is not in the dataset&quot; \
-    GEO:GSE67472
-
-Result:
-  Valid: False
-  Message: Text part not found as substring: 'text that is not in the dataset'
-</code></pre>
-<h3 id="title-mismatch">Title Mismatch</h3>
-<p>When the expected title doesn't match the actual reference title:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Airway epithelial brushings&quot; \
-    GEO:GSE67472 \
-    --title &quot;Wrong Title Here&quot;
-
-Result:
-  Valid: False
-  Message: Title mismatch for GEO:GSE67472
-    Expected: &quot;Wrong Title Here&quot;
-    Actual: &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<h3 id="reference-not-found">Reference Not Found</h3>
-<p>When the accession doesn't exist:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Some text&quot; \
-    GEO:GSE99999999999
-
-Result:
-  Valid: False
-  Message: Could not fetch reference GEO:GSE99999999999
-</code></pre>
-<h2 id="configuration-file">Configuration File</h2>
-<p>Create <code>.linkml-reference-validator.yaml</code> in your project root for persistent configuration:</p>
-<pre><code class="language-yaml">validation:
-  # NCBI requires a valid email for Entrez API usage
-  email: you@example.org
-
-  # Rate limiting (seconds between API calls)
-  rate_limit_delay: 0.5
-
-  # Cache directory for offline use
-  cache_dir: references_cache
-
-  # Map alternate prefixes to canonical forms
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>Pass the config to CLI commands:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text&quot; \
-  GEO:GSE67472 \
-  --config .linkml-reference-validator.yaml
-</code></pre>
-<h2 id="how-geo-accession-to-uid-conversion-works">How GEO Accession-to-UID Conversion Works</h2>
-<p>The GDS Entrez database requires numeric UIDs, not accession numbers like GSE67472.
-The GEOSource automatically handles this conversion:</p>
+<h1 id="modular-pdf-full-text-fetching-framework-design">Modular PDF &amp; Full-Text Fetching Framework — Design</h1>
+<p><strong>Date:</strong> 2026-06-12
+<strong>Status:</strong> Approved (design phase)
+<strong>Approach:</strong> A — two-layer (prefix-keyed metadata sources + ordered full-text provider chain + extractor registry)</p>
+<h2 id="problem">Problem</h2>
+<p>Today the fetcher dispatches <strong>one source per identifier prefix</strong> (<code>PMID</code>, <code>DOI</code>, <code>file</code>, <code>url</code>) with first-match-wins, and each source bakes in its own ad-hoc fallback (<code>DOISource</code>: Crossref→DataCite; <code>PMIDSource</code>: abstract→PMC-XML→PMC-HTML). Two gaps:</p>
 <ol>
-<li>
-<p><strong>esearch</strong>: Searches for the accession and returns the numeric UID
-   <code>esearch(db="gds", term="GSE67472[Accession]") → "200067472"</code></p>
-</li>
-<li>
-<p><strong>esummary</strong>: Uses the UID to fetch the dataset metadata
-   <code>esummary(db="gds", id="200067472") → {title, summary, ...}</code></p>
-</li>
+<li><strong>No PDF handling.</strong> <code>ReferenceContent.content</code> is always text/abstract. <code>SupplementaryFile</code> records <code>application/pdf</code> metadata but nothing downloads or text-extracts a PDF.</li>
+<li><strong>No general, shared fallback chain.</strong> Falling back to Unpaywall, OpenAlex, or custom endpoints to locate open-access full text would mean copy-pasting fallback logic into each source.</li>
 </ol>
-<p>This conversion happens transparently - you just use the GSE/GDS accession.</p>
-<h2 id="see-also">See Also</h2>
+<p>We want to (a) download a PDF and extract its text into <code>content</code> so supporting-text validation runs against full text, and (b) provide a modular, ordered, configurable provider chain for locating full text.</p>
+<h2 id="goals">Goals</h2>
 <ul>
-<li><a href="../add-reference-source/">Adding a New Reference Source</a></li>
-<li><a href="../validate-titles/">Validating Titles</a></li>
-<li><a href="../../quickstart/">Quickstart</a></li>
-<li><a href="../../reference/cli/">CLI Reference</a></li>
+<li>Locate full text for a reference via an <strong>ordered, configurable chain</strong> of providers, trying each until one yields usable text.</li>
+<li><strong>Download + extract</strong> PDFs (and HTML/XML) into <code>content</code>, keeping the downloaded PDF cached.</li>
+<li>Built-in providers: <strong>PMC, Unpaywall, OpenAlex</strong>; <strong>custom endpoints</strong> declarable in YAML (mirroring the existing <code>JSONAPISourceConfig</code> pattern).</li>
+<li><strong>Pluggable PDF extraction backend</strong> behind one interface (default chosen at implementation; swappable to docling/grobid later).</li>
+<li>Handle <strong>generic URL→PDF</strong>: a bare URL pointing at a PDF is detected and text-extracted.</li>
+<li>Default-on for DOIs; reuse the existing <code>email</code> and <code>max_file_size</code> config.</li>
+</ul>
+<h2 id="non-goals">Non-goals</h2>
+<ul>
+<li>Replacing the existing prefix-keyed metadata sources or their tests (additive change).</li>
+<li>Unifying metadata and full-text resolution into a single provider interface (rejected Approach B — YAGNI).</li>
+<li>Paywall circumvention. Only open-access / legitimately reachable locations are fetched.</li>
+<li>Parsing supplementary data files (spreadsheets, etc.) — out of scope.</li>
+</ul>
+<h2 id="architecture">Architecture</h2>
+<p>A reference flows through four stages; the fallback chain is stage 3.</p>
+<pre><code>reference_id
+  └─► 1. Metadata resolution   (existing prefix-keyed ReferenceSource — unchanged)
+        → ReferenceContent (metadata + native full text, if any)
+  └─► 2. Identifier crosswalk   (build {doi, pmid, pmcid, url})
+  └─► 3. Full-text provider chain (ordered, try-until-success)
+        pmc → unpaywall → openalex → custom…  → FullTextLocation (url+format | inline text)
+  └─► 4. Acquire + extract       (download w/ size cap → format-keyed Extractor → text)
+        → assemble: content, content_type, provenance, cached PDF
+</code></pre>
+<p>Stage 3+4 run only when the metadata stage did <strong>not</strong> already yield full text
+(<code>content_type</code> in <code>{abstract_only, unavailable, no_pmc, pmc_restricted, summary}</code>)
+<strong>and</strong> <code>fetch_full_text</code> is enabled.</p>
+<h3 id="stage-1-metadata-resolution-unchanged">Stage 1 — Metadata resolution (unchanged)</h3>
+<p>Existing <code>ReferenceSource</code> / <code>ReferenceSourceRegistry</code> dispatch is untouched. Sources
+still return a <code>ReferenceContent</code> with metadata and whatever full text they natively
+obtain. <code>PMIDSource</code>'s PMC logic is <strong>refactored out</strong> into a <code>PMCFullTextProvider</code>
+(stage 3) so PMID full text flows through the same chain; <code>PMIDSource</code> keeps producing
+metadata + abstract.</p>
+<h3 id="stage-2-identifier-crosswalk">Stage 2 — Identifier crosswalk</h3>
+<pre><code class="language-python">@dataclass
+class ReferenceIdentifiers:
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    pmcid: Optional[str] = None
+    url: Optional[str] = None
+</code></pre>
+<p>Built primarily from data already on hand: PubMed esummary returns the DOI;
+<code>_get_pmcid</code> (elink) already resolves PMCID. Gaps are filled <strong>lazily</strong> — the NCBI ID
+Converter is only called if a DOI-keyed provider needs a DOI we don't yet have — so the
+happy path costs no extra API calls.</p>
+<h3 id="stage-3-full-text-provider-chain">Stage 3 — Full-text provider chain</h3>
+<pre><code class="language-python">class FullTextProvider(ABC):
+    @classmethod
+    @abstractmethod
+    def name(cls) -&gt; str: ...
+
+    @abstractmethod
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -&gt; Optional[&quot;FullTextLocation&quot;]:
+        &quot;&quot;&quot;Return a downloadable location (or inline text), or None if unavailable.&quot;&quot;&quot;
+</code></pre>
+<pre><code class="language-python">@dataclass
+class FullTextLocation:
+    url: Optional[str] = None          # downloadable URL (PDF/HTML/XML)
+    text: Optional[str] = None         # inline text, if the provider returns it directly
+    format_hint: Optional[str] = None  # &quot;pdf&quot; | &quot;html&quot; | &quot;xml&quot; | &quot;text&quot;
+    oa_status: Optional[str] = None    # &quot;gold&quot; | &quot;green&quot; | &quot;bronze&quot; | ...
+    license: Optional[str] = None
+    provider: str = &quot;&quot;                 # producing provider name
+    version: Optional[str] = None      # &quot;publishedVersion&quot; | &quot;acceptedVersion&quot; | ...
+</code></pre>
+<p>A <code>FullTextProviderRegistry</code> resolves an ordered list of provider <strong>names</strong> (from config)
+to provider instances. The orchestrator calls <code>locate()</code> on each in order, stopping at
+the first that returns a location yielding usable text.</p>
+<p>Built-in providers:</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Needs</th>
+<th>Endpoint / source</th>
+<th>Reads</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pmc</code></td>
+<td>pmcid</td>
+<td>Entrez efetch (PMC XML) → PMC HTML fallback</td>
+<td>JATS body → text (refactored from <code>pmid.py</code>)</td>
+</tr>
+<tr>
+<td><code>unpaywall</code></td>
+<td>doi+email</td>
+<td><code>https://api.unpaywall.org/v2/{doi}?email={email}</code></td>
+<td><code>best_oa_location.url_for_pdf</code> / <code>.url</code>, oa status</td>
+</tr>
+<tr>
+<td><code>openalex</code></td>
+<td>doi (email polite)</td>
+<td><code>https://api.openalex.org/works/doi:{doi}</code></td>
+<td><code>best_oa_location.pdf_url</code>, <code>open_access</code></td>
+</tr>
+</tbody>
+</table>
+<p>Custom providers are declarative, mirroring <code>JSONAPISourceConfig</code>:</p>
+<pre><code class="language-python">@dataclass
+class FullTextProviderConfig:
+    name: str
+    url_template: str               # e.g. &quot;https://api.example.org/fulltext/{doi}&quot;
+    location_field: str             # JSONPath to the PDF/text URL
+    format_hint: Optional[str] = None
+    text_field: Optional[str] = None  # JSONPath to inline text (alt. to a URL)
+    headers: dict[str, str] = field(default_factory=dict)  # ${VAR} interpolation
+</code></pre>
+<p>Loaded from YAML via a new <code>full_text_providers:</code> section / files, mirroring
+<code>load_custom_sources</code> (user-level dir, project-level file, and the main config).</p>
+<h3 id="stage-4-acquire-extract">Stage 4 — Acquire + extract</h3>
+<pre><code class="language-python">class ContentAcquirer:
+    def fetch_bytes(
+        self, url: str, config: ReferenceValidationConfig
+    ) -&gt; tuple[bytes, Optional[str]]:
+        &quot;&quot;&quot;Stream-download with the configured size cap; return (bytes, content_type).&quot;&quot;&quot;
+</code></pre>
+<p>Streaming download honoring the existing <code>max_file_size</code> (50MB default) cap; aborts if
+the cap is exceeded. Format is resolved by HTTP <code>Content-Type</code> → URL suffix →
+provider <code>format_hint</code>.</p>
+<pre><code class="language-python">class Extractor(ABC):
+    @classmethod
+    @abstractmethod
+    def formats(cls) -&gt; list[str]: ...  # e.g. [&quot;pdf&quot;], [&quot;html&quot;], [&quot;xml&quot;]
+
+    @abstractmethod
+    def extract(self, data: bytes, *, content_type: Optional[str] = None) -&gt; Optional[str]: ...
+</code></pre>
+<p>An <code>ExtractorRegistry</code> maps format → extractor. Built-ins:</p>
+<ul>
+<li><code>PDFExtractor</code> — delegates to a pluggable <code>PDFTextBackend</code> protocol. One default backend
+  ships (selected at implementation); selectable via <code>pdf_backend</code> config. Swappable to
+  docling / grobid later without touching callers.</li>
+<li><code>HTMLExtractor</code> — BeautifulSoup (already a dependency); strips boilerplate, returns
+  article text.</li>
+<li><code>XMLExtractor</code> — JATS/PMC body extraction, refactored from <code>pmid.py</code>.</li>
+</ul>
+<p><strong>Generic URL→PDF:</strong> <code>URLSource</code> / the acquirer sniffs <code>Content-Type</code>; PDF bytes are routed
+through <code>PDFExtractor</code> rather than returned as raw text. A <code>url:</code> reference <em>is</em> its own
+location, so it skips the DOI provider chain.</p>
+<h2 id="orchestration-extended-referencefetcherfetch">Orchestration (extended <code>ReferenceFetcher.fetch</code>)</h2>
+<ol>
+<li>Normalize id → metadata dispatch (existing) → <code>ReferenceContent</code>.</li>
+<li>If <code>fetch_full_text</code> and the content lacks full text (<code>content_type</code> in the set above):
+   a. Build <code>ReferenceIdentifiers</code> from the content (+ lazy crosswalk).
+   b. For each provider in <code>full_text_providers</code> order, call <code>locate()</code>.
+   c. First non-<code>None</code> location: if <code>text</code> present use it directly; else
+      <code>acquirer.fetch_bytes(url)</code> → <code>ExtractorRegistry.get(format).extract(...)</code>.
+   d. If extracted text passes a length threshold, <strong>stop</strong>; record provenance and set
+      <code>content_type</code> to <code>full_text_pdf</code> / <code>full_text_html</code> / <code>full_text_xml</code>.</li>
+<li>Cache: extracted text → existing markdown cache (format unchanged); downloaded PDF →
+   <code>references_cache/files/&lt;safe_id&gt;.pdf</code>, path recorded in <code>local_pdf_path</code>.</li>
+</ol>
+<h2 id="data-model-changes">Data-model changes</h2>
+<p><code>ReferenceContent</code> gains a minimal provenance set (explicit fields → clean frontmatter
+serialization rather than burying in <code>metadata</code>):</p>
+<pre><code class="language-python">full_text_provider: Optional[str] = None
+full_text_url: Optional[str] = None
+oa_status: Optional[str] = None
+license: Optional[str] = None
+local_pdf_path: Optional[str] = None
+</code></pre>
+<p>New <code>content_type</code> values: <code>full_text_pdf</code>, <code>full_text_html</code> (<code>full_text_xml</code> already used).
+New dataclasses: <code>ReferenceIdentifiers</code>, <code>FullTextLocation</code>, <code>FullTextProviderConfig</code>.</p>
+<p>The cache writer (<code>_save_to_disk</code>) and reader (<code>_load_markdown_format</code>) are extended to
+round-trip the new frontmatter fields.</p>
+<h2 id="config-additions-referencevalidationconfig">Config additions (<code>ReferenceValidationConfig</code>)</h2>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>fetch_full_text</code></td>
+<td><code>True</code></td>
+<td>Master switch for stages 3–4.</td>
+</tr>
+<tr>
+<td><code>full_text_providers</code></td>
+<td><code>["pmc", "unpaywall", "openalex"]</code></td>
+<td>Ordered provider chain (default-on for DOIs).</td>
+</tr>
+<tr>
+<td><code>pdf_backend</code></td>
+<td>(impl default)</td>
+<td>Selects the <code>PDFTextBackend</code>.</td>
+</tr>
+<tr>
+<td><code>download_pdfs</code></td>
+<td><code>True</code></td>
+<td>Whether to persist the downloaded PDF.</td>
+</tr>
+<tr>
+<td><code>files_cache_dir</code></td>
+<td><code>references_cache/files</code></td>
+<td>Binary cache location for PDFs.</td>
+</tr>
+</tbody>
+</table>
+<p>Reuses existing <code>email</code> (Unpaywall/OpenAlex polite pool) and <code>max_file_size</code> (download cap).</p>
+<h2 id="module-layout">Module layout</h2>
+<pre><code>etl/
+  reference_fetcher.py     # orchestration (extended)
+  identifiers.py           # ReferenceIdentifiers + crosswalk (new)
+  acquire.py               # ContentAcquirer (new)
+  fulltext/
+    __init__.py            # FullTextProviderRegistry
+    base.py                # FullTextProvider ABC, FullTextLocation
+    pmc.py                 # PMCFullTextProvider (refactored from pmid.py)
+    unpaywall.py           # UnpaywallProvider (new)
+    openalex.py            # OpenAlexProvider (new)
+    json_api.py            # declarative custom provider (new)
+    loader.py              # load custom providers from YAML (new)
+  extract/
+    __init__.py            # ExtractorRegistry
+    base.py                # Extractor ABC
+    pdf.py                 # PDFExtractor + PDFTextBackend protocol
+    html.py                # HTMLExtractor
+    xml.py                 # XMLExtractor (refactored JATS logic)
+</code></pre>
+<h2 id="testing-strategy-tdd-per-repo-rules">Testing strategy (TDD, per repo rules)</h2>
+<ul>
+<li><strong>Providers:</strong> unit tests against <strong>recorded real</strong> API responses (Unpaywall/OpenAlex
+  JSON fixtures) — no fake-logic mocks; parsing of <code>FullTextLocation</code> fields verified.</li>
+<li><strong>Extractors:</strong> tiny real PDF/HTML/XML fixtures; assert extracted text content.</li>
+<li><strong>Acquirer:</strong> size-cap enforcement; content-type/format resolution precedence.</li>
+<li><strong>Orchestration:</strong> chain ordering, fall-through when earlier providers miss, disabled
+  switch, metadata-only → provider-supplied text, and the URL→PDF path.</li>
+<li><strong>Crosswalk:</strong> lazy fill-in; no extra calls on the happy path.</li>
+<li><strong>Doctests</strong> on pure helpers (crosswalk parsing, format detection, location parsing).</li>
+<li><strong>CLI:</strong> flag to force/skip full text and surface provenance; CLI tests included.</li>
+</ul>
+<h2 id="risks-mitigations">Risks &amp; mitigations</h2>
+<ul>
+<li><strong>PDF backend dependency weight</strong> → hidden behind <code>PDFTextBackend</code>; default is
+  lightweight, heavier backends opt-in.</li>
+<li><strong>Rogue/huge downloads</strong> → existing <code>max_file_size</code> cap enforced during streaming.</li>
+<li><strong>Provider rate limits / etiquette</strong> → reuse <code>rate_limit_delay</code> and send <code>email</code> for
+  Unpaywall/OpenAlex polite pools.</li>
+<li><strong>Extraction quality varies by PDF</strong> → length threshold gates acceptance; chain
+  continues to the next provider if extraction is too thin.</li>
+</ul>
+<h2 id="open-implementation-time-decisions">Open implementation-time decisions</h2>
+<ul>
+<li>Concrete default <code>PDFTextBackend</code> (e.g. pymupdf) — pick during implementation.</li>
+<li>Usable-text length threshold value.</li>
+<li>Exact JSONPath defaults for the declarative custom-provider config.</li>
 </ul>
 
 
@@ -1883,10 +1687,10 @@ The GEOSource automatically handles this conversion:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

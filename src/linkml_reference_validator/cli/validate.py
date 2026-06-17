@@ -227,7 +227,10 @@ def text_file_command(
 
 @validate_app.command(name="data")
 def data_command(
-    data_file: Annotated[Path, typer.Argument(help="Path to data file (YAML/JSON)")],
+    data_files: Annotated[
+        list[Path],
+        typer.Argument(help="Path(s) to data file(s) (YAML/JSON)"),
+    ],
     schema_file: Annotated[
         Path,
         typer.Option("--schema", "-s", help="Path to LinkML schema file"),
@@ -246,9 +249,16 @@ def data_command(
     This command validates that quoted text (supporting_text) in your data
     actually appears in the referenced publications using deterministic substring matching.
 
+    Accepts one or more data files; each is validated independently against the
+    same schema. The schema is parsed (and the Validator built) once and reused
+    across all files, so validating many files in a single invocation is far
+    faster than spawning one process per file.
+
     Examples:
 
         linkml-reference-validator validate data data.yaml --schema schema.yaml
+
+        linkml-reference-validator validate data a.yaml b.yaml c.yaml --schema schema.yaml
 
         linkml-reference-validator validate data data.yaml --schema schema.yaml --target-class Statement --verbose
     """
@@ -279,47 +289,64 @@ def data_command(
 
     plugin = ReferenceValidationPlugin(config=config)
 
-    typer.echo(f"Validating {data_file} against schema {schema_file}")
     typer.echo(f"Cache directory: {config.cache_dir}")
 
+    # Build the Validator once (parsing the schema is the expensive step) and reuse
+    # it for every data file.
     validator = Validator(
         schema=str(schema_file),
         validation_plugins=[plugin],
     )
 
     yaml = YAML(typ="safe")
-    with open(data_file) as f:
-        data = yaml.load(f)
+    total_results = 0
+    files_with_issues = 0
 
-    # Validate each instance
-    all_results = []
-    if isinstance(data, list):
-        for instance in data:
-            report = validator.validate(instance, target_class=target_class)
-            all_results.extend(report.results)
-    elif isinstance(data, dict):
-        report = validator.validate(data, target_class=target_class)
-        all_results = report.results
-    else:
-        typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
-        raise typer.Exit(1)
+    for data_file in data_files:
+        typer.echo(f"\nValidating {data_file} against schema {schema_file}")
 
-    if all_results:
-        typer.echo(f"\nValidation Issues ({len(all_results)}):")
-        for result in all_results:
-            severity = result.severity.value if hasattr(result.severity, "value") else result.severity
-            typer.echo(f"  [{severity}] {result.message}")
-            if hasattr(result, "instantiates") and result.instantiates:
-                typer.echo(f"    Location: {result.instantiates}")
-            # Show reference ID if available in instance data
-            if hasattr(result, "instance") and result.instance:
-                if isinstance(result.instance, dict) and "reference_id" in result.instance:
-                    typer.echo(f"    Reference: {result.instance['reference_id']}")
+        with open(data_file) as f:
+            data = yaml.load(f)
+
+        # Validate each instance in this file
+        file_results = []
+        if isinstance(data, list):
+            for instance in data:
+                report = validator.validate(instance, target_class=target_class)
+                file_results.extend(report.results)
+        elif isinstance(data, dict):
+            report = validator.validate(data, target_class=target_class)
+            file_results = report.results
+        else:
+            typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
+            files_with_issues += 1
+            continue
+
+        if file_results:
+            typer.echo(f"  Validation Issues ({len(file_results)}):")
+            for result in file_results:
+                severity = result.severity.value if hasattr(result.severity, "value") else result.severity
+                typer.echo(f"    [{severity}] {result.message}")
+                if hasattr(result, "instantiates") and result.instantiates:
+                    typer.echo(f"      Location: {result.instantiates}")
+                # Show reference ID if available in instance data
+                if hasattr(result, "instance") and result.instance:
+                    if isinstance(result.instance, dict) and "reference_id" in result.instance:
+                        typer.echo(f"      Reference: {result.instance['reference_id']}")
+            files_with_issues += 1
+
+        total_results += len(file_results)
 
     typer.echo("\nValidation Summary:")
-    typer.echo(f"  Issues found: {len(all_results)}")
+    typer.echo(f"  Files validated: {len(data_files)}")
+    typer.echo(f"  Total checks: {total_results}")
 
-    if all_results:
+    # Exit non-zero if any file had a problem. This includes files that failed
+    # validation *and* files that could not be read as a list/mapping (counted in
+    # files_with_issues but contributing no validation results) -- otherwise a
+    # malformed file would be silently reported as passing.
+    if files_with_issues:
+        typer.echo(f"  Issues found in {files_with_issues} file(s) ({total_results} validation issue(s))")
         raise typer.Exit(1)
     else:
         typer.echo("  All validations passed!")

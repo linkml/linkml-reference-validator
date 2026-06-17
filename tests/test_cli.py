@@ -264,6 +264,176 @@ has_evidence:
     assert "Issues found" in result.stdout or "ERROR" in result.stdout
 
 
+def test_validate_data_command_multiple_files(tmp_path, fixtures_dir):
+    """validate-data accepts multiple data files in one invocation.
+
+    Each file is validated independently (the schema/Validator is built once and
+    reused), and any invalid file makes the overall run fail.
+    """
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for fixture_file in fixtures_dir.glob("*.txt"):
+        (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
+
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text("""
+id: https://example.org/test
+name: test
+prefixes:
+  linkml: https://w3id.org/linkml/
+  test: https://example.org/test/
+default_prefix: test
+
+classes:
+  Evidence:
+    attributes:
+      reference:
+        range: Reference
+        implements:
+          - linkml:authoritative_reference
+      supporting_text:
+        range: string
+        implements:
+          - linkml:excerpt
+
+  Reference:
+    attributes:
+      id:
+        identifier: true
+        range: string
+      title:
+        range: string
+
+  Statement:
+    tree_root: true
+    attributes:
+      text:
+        range: string
+      has_evidence:
+        range: Evidence
+        multivalued: true
+""")
+
+    good_file = tmp_path / "good.yaml"
+    good_file.write_text("""
+text: "Test statement"
+has_evidence:
+  - reference:
+      id: "PMID:TEST001"
+      title: "Protein X functions in cell cycle regulation"
+    supporting_text: "Protein X functions in cell cycle regulation and plays a critical role in DNA repair mechanisms"
+""")
+
+    bad_file = tmp_path / "bad.yaml"
+    bad_file.write_text("""
+text: "Test statement"
+has_evidence:
+  - reference:
+      id: "PMID:TEST001"
+      title: "Protein X functions in cell cycle regulation"
+    supporting_text: "This text is definitely not in the reference at all"
+""")
+
+    result = runner.invoke(
+        app,
+        [
+            "validate-data",
+            str(good_file),
+            str(bad_file),
+            "--schema",
+            str(schema_file),
+            "--cache-dir",
+            str(cache_dir),
+        ],
+    )
+
+    # One of the two files is invalid -> overall failure.
+    assert result.exit_code == 1, result.stdout
+    # Both files were processed.
+    assert "good.yaml" in result.stdout
+    assert "bad.yaml" in result.stdout
+    # The invalid file's issue is reported.
+    assert "ERROR" in result.stdout or "Issues" in result.stdout
+
+
+def test_validate_data_command_multiple_valid_files(tmp_path, fixtures_dir):
+    """Multiple valid data files in one invocation all pass."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for fixture_file in fixtures_dir.glob("*.txt"):
+        (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
+
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text("""
+id: https://example.org/test
+name: test
+prefixes:
+  linkml: https://w3id.org/linkml/
+  test: https://example.org/test/
+default_prefix: test
+
+classes:
+  Evidence:
+    attributes:
+      reference:
+        range: Reference
+        implements:
+          - linkml:authoritative_reference
+      supporting_text:
+        range: string
+        implements:
+          - linkml:excerpt
+
+  Reference:
+    attributes:
+      id:
+        identifier: true
+        range: string
+      title:
+        range: string
+
+  Statement:
+    tree_root: true
+    attributes:
+      text:
+        range: string
+      has_evidence:
+        range: Evidence
+        multivalued: true
+""")
+
+    valid_text = """
+text: "Test statement"
+has_evidence:
+  - reference:
+      id: "PMID:TEST001"
+      title: "Protein X functions in cell cycle regulation"
+    supporting_text: "Protein X functions in cell cycle regulation and plays a critical role in DNA repair mechanisms"
+"""
+    f1 = tmp_path / "a.yaml"
+    f1.write_text(valid_text)
+    f2 = tmp_path / "b.yaml"
+    f2.write_text(valid_text)
+
+    result = runner.invoke(
+        app,
+        [
+            "validate-data",
+            str(f1),
+            str(f2),
+            "--schema",
+            str(schema_file),
+            "--cache-dir",
+            str(cache_dir),
+        ],
+    )
+
+    assert result.exit_code == 0, result.stdout
+    assert "All validations passed" in result.stdout
+    assert "a.yaml" in result.stdout
+    assert "b.yaml" in result.stdout
+
+
 def test_validate_data_verbose_mode(tmp_path, fixtures_dir):
     """Test validate-data with verbose flag."""
     # Set up cache

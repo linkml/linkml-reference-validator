@@ -138,14 +138,10 @@ class PMIDSource(ReferenceSource):
         doi = str(record_dict.get("DOI", "")) if record_dict.get("DOI") else ""
 
         abstract = self._fetch_abstract(pmid, config)
-        full_text, content_type = self._fetch_pmc_fulltext(pmid, config)
         keywords = self._fetch_mesh_terms(pmid, config)
 
-        if full_text:
-            content: Optional[str] = f"{abstract}\n\n{full_text}" if abstract else full_text
-        else:
-            content = abstract
-            content_type = "abstract_only" if abstract else "unavailable"
+        content: Optional[str] = abstract
+        content_type = "abstract_only" if abstract else "unavailable"
 
         metadata: dict = {}
         extra = extract_extra_fields(

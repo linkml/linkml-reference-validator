@@ -130,3 +130,41 @@ def test_validation_report_add_results():
     assert report.error_count == 1
     assert report.warning_count == 1
     assert report.is_valid is False  # Has errors
+
+
+def test_reference_identifiers_defaults():
+    from linkml_reference_validator.models import ReferenceIdentifiers
+
+    ids = ReferenceIdentifiers(doi="10.1/x")
+    assert ids.doi == "10.1/x"
+    assert ids.pmid is None
+    assert ids.pmcid is None
+    assert ids.url is None
+
+
+def test_full_text_location_defaults():
+    from linkml_reference_validator.models import FullTextLocation
+
+    loc = FullTextLocation(url="https://x/y.pdf", format_hint="pdf", provider="unpaywall")
+    assert loc.url == "https://x/y.pdf"
+    assert loc.text is None
+    assert loc.format_hint == "pdf"
+    assert loc.provider == "unpaywall"
+
+
+def test_reference_content_provenance_fields():
+    from linkml_reference_validator.models import ReferenceContent
+
+    ref = ReferenceContent(
+        reference_id="DOI:10.1/x",
+        content="full text",
+        content_type="full_text_pdf",
+        full_text_provider="unpaywall",
+        full_text_url="https://x/y.pdf",
+        oa_status="gold",
+        license="cc-by",
+        local_pdf_path="files/DOI_10.1_x.pdf",
+    )
+    assert ref.full_text_provider == "unpaywall"
+    assert ref.oa_status == "gold"
+    assert ref.local_pdf_path == "files/DOI_10.1_x.pdf"

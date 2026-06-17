@@ -614,3 +614,46 @@ def test_validate_text_file_summary_mode(tmp_path, cli_cache_dir):
     # Summary mode should show counts but not individual lines
     assert "Validation Summary" in result.stdout
     assert "Total validations" in result.stdout
+
+
+def test_validate_no_full_text_flag(tmp_path, monkeypatch):
+    """The --no-full-text flag must set fetch_full_text=False on the built config.
+
+    The real ``validate text`` command does not construct
+    ``ReferenceValidationConfig`` directly; it loads the config via
+    ``load_validation_config`` and then hands it to ``SupportingTextValidator``.
+    We therefore capture the config at that real construction/consumption site by
+    patching ``SupportingTextValidator`` in the validate module.
+    """
+    import linkml_reference_validator.cli.validate as validate_mod
+
+    captured = {}
+
+    real_validator_cls = validate_mod.SupportingTextValidator
+
+    class _CapturingValidator(real_validator_cls):
+        def __init__(self, config, *args, **kwargs):
+            captured["fetch_full_text"] = config.fetch_full_text
+            super().__init__(config, *args, **kwargs)
+
+    monkeypatch.setattr(validate_mod, "SupportingTextValidator", _CapturingValidator)
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+
+    result = runner.invoke(
+        app,
+        [
+            "validate",
+            "text",
+            "some text to validate",
+            "PMID:TEST001",
+            "--cache-dir",
+            str(cache_dir),
+            "--no-full-text",
+        ],
+    )
+
+    # The command may exit 0 or 1 depending on match; we only assert config wiring.
+    assert "fetch_full_text" in captured, result.stdout
+    assert captured["fetch_full_text"] is False

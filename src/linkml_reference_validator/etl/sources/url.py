@@ -12,13 +12,12 @@ Examples:
 
 import logging
 import re
-import time
 from typing import Optional
-
-import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
+from linkml_reference_validator.etl.acquire import ContentAcquirer
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -68,18 +67,31 @@ class URLSource(ReferenceSource):
             >>> # ref = source.fetch("https://example.com", config)
         """
         url = identifier.strip()
-        time.sleep(config.rate_limit_delay)
 
-        headers = {
-            "User-Agent": f"linkml-reference-validator/1.0 (mailto:{config.email})",
-        }
-
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code != 200:
-            logger.warning(f"Failed to fetch URL:{url} - status {response.status_code}")
+        # Stream through ContentAcquirer so the size cap, rate-limit delay, and
+        # User-Agent are applied uniformly. A url: pointing at a large PDF would
+        # otherwise be buffered entirely into memory by a plain requests.get.
+        data, content_type = ContentAcquirer().fetch_bytes(url, config)
+        if data is None:
+            # non-200 or the size cap was exceeded (the acquirer logs the reason)
             return None
 
-        content = response.text
+        content_type_header = (content_type or "").lower()
+        is_pdf = data[:5] == b"%PDF-" or "application/pdf" in content_type_header
+
+        if is_pdf:
+            text = PDFExtractor(backend=config.pdf_backend).extract(
+                data, content_type="application/pdf"
+            )
+            return ReferenceContent(
+                reference_id=f"url:{url}",
+                title=url,
+                content=text,
+                content_type="full_text_pdf" if text else "unavailable",
+                full_text_url=url,
+            )
+
+        content = self._decode(data, content_type_header)
         title = self._extract_title(content, url)
 
         return ReferenceContent(
@@ -88,6 +100,25 @@ class URLSource(ReferenceSource):
             content=content,
             content_type="url",
         )
+
+    def _decode(self, data: bytes, content_type: str) -> str:
+        """Decode HTML/text bytes using the content-type charset, defaulting to UTF-8.
+
+        Examples:
+            >>> URLSource()._decode(b"caf\\xc3\\xa9", "text/html; charset=utf-8")
+            'café'
+            >>> URLSource()._decode(b"hi", "text/html")
+            'hi'
+        """
+        charset = "utf-8"
+        if "charset=" in content_type:
+            candidate = content_type.split("charset=", 1)[1].split(";")[0].strip()
+            if candidate:
+                charset = candidate
+        try:  # external system boundary: charset is server-declared and may be invalid
+            return data.decode(charset, errors="replace")
+        except LookupError:
+            return data.decode("utf-8", errors="replace")
 
     def _extract_title(self, content: str, url: str) -> str:
         """Extract title from HTML content or use URL.

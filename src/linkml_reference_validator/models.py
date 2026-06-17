@@ -454,6 +454,33 @@ class ReferenceValidationConfig(BaseModel):
             "Default is 50MB (50 * 1024 * 1024 bytes)."
         ),
     )
+    fetch_full_text: bool = Field(
+        default=True,
+        description=(
+            "If True, attempt to obtain full text via the full_text_providers chain "
+            "when a metadata source does not already return full text."
+        ),
+    )
+    full_text_providers: list[str] = Field(
+        default_factory=lambda: ["pmc", "unpaywall", "openalex"],
+        description=(
+            "Ordered list of full-text provider names to try until one yields usable "
+            "full text. Names map to built-in providers (pmc, unpaywall, openalex) or "
+            "custom providers loaded from YAML."
+        ),
+    )
+    pdf_backend: str = Field(
+        default="pypdf",
+        description="Name of the PDF text-extraction backend to use (e.g. 'pypdf').",
+    )
+    download_pdfs: bool = Field(
+        default=True,
+        description="If True, persist downloaded PDFs to the files cache directory.",
+    )
+    full_text_providers_file: Optional[Path] = Field(
+        default=None,
+        description="Optional path to a YAML file defining custom full-text providers.",
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.
@@ -466,6 +493,23 @@ class ReferenceValidationConfig(BaseModel):
         """
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         return self.cache_dir
+
+    def get_files_cache_dir(self) -> Path:
+        """Create and return the binary-files cache directory (for downloaded PDFs).
+
+        Examples:
+            >>> import tempfile
+            >>> from pathlib import Path
+            >>> config = ReferenceValidationConfig(cache_dir=Path(tempfile.mkdtemp()))
+            >>> d = config.get_files_cache_dir()
+            >>> d.name
+            'files'
+            >>> d.exists()
+            True
+        """
+        files_dir = self.cache_dir / "files"
+        files_dir.mkdir(parents=True, exist_ok=True)
+        return files_dir
 
 
 @dataclass
@@ -513,6 +557,32 @@ class JSONAPISourceConfig:
 
 
 @dataclass
+class FullTextProviderConfig:
+    """Configuration for a declarative custom full-text provider.
+
+    Mirrors JSONAPISourceConfig but resolves a downloadable full-text location
+    (or inline text) rather than metadata.
+
+    Examples:
+        >>> cfg = FullTextProviderConfig(
+        ...     name="myrepo",
+        ...     url_template="https://api.example.org/ft/{doi}",
+        ...     location_field="$.pdf_url",
+        ...     format_hint="pdf",
+        ... )
+        >>> cfg.name
+        'myrepo'
+    """
+
+    name: str
+    url_template: str               # supports {doi} / {pmid} / {pmcid} placeholders
+    location_field: Optional[str] = None  # JSONPath to a downloadable URL
+    text_field: Optional[str] = None      # JSONPath to inline text (alternative to a URL)
+    format_hint: Optional[str] = None
+    headers: dict[str, str] = field(default_factory=dict)  # ${VAR} interpolation
+
+
+@dataclass
 class SupplementaryFile:
     """Metadata for a supplementary file associated with a reference.
 
@@ -540,6 +610,51 @@ class SupplementaryFile:
     checksum: Optional[str] = None  # e.g., "md5:88c66d378d886fea4969949c5877802f"
     description: Optional[str] = None
     local_path: Optional[str] = None  # Relative path if downloaded
+
+
+@dataclass
+class ReferenceIdentifiers:
+    """Cross-walked identifiers for a single reference.
+
+    Used by full-text providers, several of which are keyed on DOI regardless of
+    the original reference prefix.
+
+    Examples:
+        >>> ids = ReferenceIdentifiers(doi="10.1038/x", pmid="123")
+        >>> ids.doi
+        '10.1038/x'
+        >>> ids.pmcid is None
+        True
+    """
+
+    doi: Optional[str] = None
+    pmid: Optional[str] = None
+    pmcid: Optional[str] = None
+    url: Optional[str] = None
+
+
+@dataclass
+class FullTextLocation:
+    """A located full-text resource for a reference.
+
+    A provider returns either a downloadable ``url`` (PDF/HTML/XML) or inline
+    ``text`` it has already extracted.
+
+    Examples:
+        >>> loc = FullTextLocation(url="https://x/y.pdf", format_hint="pdf")
+        >>> loc.format_hint
+        'pdf'
+        >>> loc.text is None
+        True
+    """
+
+    url: Optional[str] = None
+    text: Optional[str] = None
+    format_hint: Optional[str] = None  # "pdf" | "html" | "xml" | "text"
+    oa_status: Optional[str] = None    # "gold" | "green" | "bronze" | ...
+    license: Optional[str] = None
+    provider: str = ""
+    version: Optional[str] = None      # "publishedVersion" | "acceptedVersion" | ...
 
 
 @dataclass
@@ -577,6 +692,15 @@ class ReferenceContent:
     keywords: Optional[list[str]] = None  # MeSH terms, subjects, tags
     supplementary_files: Optional[list[SupplementaryFile]] = None
     metadata: dict = field(default_factory=dict)
+    full_text_provider: Optional[str] = None
+    full_text_url: Optional[str] = None
+    oa_status: Optional[str] = None
+    license: Optional[str] = None
+    local_pdf_path: Optional[str] = None
+    # True once the full-text chain has been run to a clean (error-free) conclusion
+    # for this record. Distinguishes "the abstract is all that exists" from "we
+    # haven't successfully tried yet", so a transient outage isn't cached forever.
+    full_text_attempted: bool = False
 
 
 @dataclass

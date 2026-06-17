@@ -38,6 +38,23 @@ repair:
     assert config.reference_prefix_map == {}
 
 
+def test_full_text_config_defaults():
+    from linkml_reference_validator.models import ReferenceValidationConfig
+
+    config = ReferenceValidationConfig()
+    assert config.fetch_full_text is True
+    assert config.full_text_providers == ["pmc", "unpaywall", "openalex"]
+    assert config.pdf_backend == "pypdf"
+    assert config.download_pdfs is True
+
+
+def test_files_cache_dir(tmp_path):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache")
+    files_dir = config.get_files_cache_dir()
+    assert files_dir == tmp_path / "cache" / "files"
+    assert files_dir.exists()
 def test_load_validation_config_literal_bracket_patterns(tmp_path):
     """Should load literal bracket patterns from validation config."""
     config_file = tmp_path / ".linkml-reference-validator.yaml"

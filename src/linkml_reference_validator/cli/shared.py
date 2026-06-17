@@ -45,6 +45,14 @@ ConfigFileOption = Annotated[
     ),
 ]
 
+FullTextOption = Annotated[
+    bool,
+    typer.Option(
+        "--full-text/--no-full-text",
+        help="Fetch full text (PDF/HTML/XML) via the provider chain (default: on)",
+    ),
+]
+
 
 def setup_logging(verbose: bool) -> None:
     """Configure logging based on verbosity flag.

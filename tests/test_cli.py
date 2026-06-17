@@ -434,6 +434,59 @@ has_evidence:
     assert "b.yaml" in result.stdout
 
 
+@pytest.mark.parametrize(
+    "bad_content",
+    [
+        pytest.param("", id="empty-file"),
+        pytest.param("just a bare string\n", id="scalar-file"),
+    ],
+)
+def test_validate_data_command_malformed_file_fails(tmp_path, bad_content):
+    """A data file that isn't a list or mapping is a failure, not a silent pass.
+
+    Such a file can't be validated, so the command must exit non-zero rather than
+    reporting "All validations passed!" -- otherwise a malformed file would be
+    silently greenlit in CI (the very use case this multi-file mode targets).
+    """
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+
+    schema_file = tmp_path / "test_schema.yaml"
+    schema_file.write_text("""
+id: https://example.org/test
+name: test
+prefixes:
+  linkml: https://w3id.org/linkml/
+  test: https://example.org/test/
+default_prefix: test
+
+classes:
+  Statement:
+    tree_root: true
+    attributes:
+      text:
+        range: string
+""")
+
+    bad_file = tmp_path / "bad.yaml"
+    bad_file.write_text(bad_content)
+
+    result = runner.invoke(
+        app,
+        [
+            "validate-data",
+            str(bad_file),
+            "--schema",
+            str(schema_file),
+            "--cache-dir",
+            str(cache_dir),
+        ],
+    )
+
+    assert result.exit_code == 1, result.stdout
+    assert "All validations passed" not in result.stdout
+
+
 def test_validate_data_verbose_mode(tmp_path, fixtures_dir):
     """Test validate-data with verbose flag."""
     # Set up cache

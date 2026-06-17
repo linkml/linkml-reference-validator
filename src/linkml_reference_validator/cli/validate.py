@@ -334,8 +334,12 @@ def data_command(
     typer.echo(f"  Files validated: {len(data_files)}")
     typer.echo(f"  Total checks: {total_results}")
 
-    if total_results:
-        typer.echo(f"  Issues found: {total_results} in {files_with_issues} file(s)")
+    # Exit non-zero if any file had a problem. This includes files that failed
+    # validation *and* files that could not be read as a list/mapping (counted in
+    # files_with_issues but contributing no validation results) -- otherwise a
+    # malformed file would be silently reported as passing.
+    if files_with_issues:
+        typer.echo(f"  Issues found in {files_with_issues} file(s) ({total_results} validation issue(s))")
         raise typer.Exit(1)
     else:
         typer.echo("  All validations passed!")

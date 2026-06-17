@@ -1,0 +1,23 @@
+name: "Test Microbial Community"
+description: "A test community for deep nesting validation"
+members:
+  - taxon_name: "Species A"
+    role: "primary_producer"
+    evidence:
+      - reference: "PMID:TEST001"
+        snippet: "Protein X functions in cell cycle regulation"
+        confidence: 0.95
+  - taxon_name: "Species B"
+    role: "cross_feeder"
+    evidence:
+      - reference: "PMID:TEST002"
+        snippet: "Protein Y inhibits apoptosis"
+        confidence: 0.9
+interactions:
+  - interaction_name: "cross-feeding"
+    source_taxon: "Species A"
+    target_taxon: "Species B"
+    evidence:
+      - reference: "PMID:TEST001"
+        snippet: "plays a critical role in DNA repair"
+        confidence: 0.85

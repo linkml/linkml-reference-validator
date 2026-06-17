@@ -1,0 +1,17 @@
+name: "Test Microbial Community"
+description: "A test community with fabricated snippets"
+members:
+  - taxon_name: "Species A"
+    role: "primary_producer"
+    evidence:
+      - reference: "PMID:TEST001"
+        snippet: "this text is completely fabricated and not in the reference"
+        confidence: 0.5
+interactions:
+  - interaction_name: "cross-feeding"
+    source_taxon: "Species A"
+    target_taxon: "Species B"
+    evidence:
+      - reference: "PMID:TEST002"
+        snippet: "another fabricated snippet not found anywhere"
+        confidence: 0.3

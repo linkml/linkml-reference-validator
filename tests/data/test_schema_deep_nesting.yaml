@@ -1,0 +1,74 @@
+id: https://example.org/test-deep-nesting
+name: test-deep-nesting
+description: >-
+  Test schema for deeply nested evidence validation.
+  Models the pattern: Root -> Container -> EvidenceItem,
+  where EvidenceItem has implements annotations but is
+  2 levels deep from the tree root.
+
+imports:
+  - linkml:types
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  oa: http://www.w3.org/ns/oa#
+  dcterms: http://purl.org/dc/terms/
+  test: https://example.org/test/
+
+default_prefix: test
+
+classes:
+  Community:
+    tree_root: true
+    description: Root class with no evidence fields
+    attributes:
+      name:
+        range: string
+      description:
+        range: string
+      members:
+        description: Organisms in the community
+        range: MemberRecord
+        multivalued: true
+      interactions:
+        description: Ecological interactions (another nesting path)
+        range: Interaction
+        multivalued: true
+
+  MemberRecord:
+    description: An intermediate container with nested evidence
+    attributes:
+      taxon_name:
+        range: string
+      role:
+        range: string
+      evidence:
+        range: EvidenceItem
+        multivalued: true
+
+  Interaction:
+    description: Another intermediate container (second nesting path)
+    attributes:
+      interaction_name:
+        range: string
+      source_taxon:
+        range: string
+      target_taxon:
+        range: string
+      evidence:
+        range: EvidenceItem
+        multivalued: true
+
+  EvidenceItem:
+    description: Evidence with reference and excerpt annotations
+    attributes:
+      reference:
+        range: string
+        implements:
+          - linkml:authoritative_reference
+      snippet:
+        range: string
+        implements:
+          - linkml:excerpt
+      confidence:
+        range: float

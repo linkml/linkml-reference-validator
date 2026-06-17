@@ -71,3 +71,27 @@ def test_register_custom_provider(tmp_path):
     count = register_custom_full_text_providers(providers_file=yaml_file)
     assert count == 1
     assert FullTextProviderRegistry.get("myrepo2") is not None
+
+
+def test_custom_provider_warns_on_unset_env_var(caplog, monkeypatch):
+    """A header referencing an unset env var warns (instead of silently empty)."""
+    import logging
+    from linkml_reference_validator.models import FullTextProviderConfig
+    from linkml_reference_validator.etl.fulltext.json_api import JSONAPIFullTextProvider
+
+    monkeypatch.delenv("MISSING_FT_KEY", raising=False)
+    provider = JSONAPIFullTextProvider(
+        FullTextProviderConfig(
+            name="needs_key",
+            url_template="https://api.example.org/ft/{doi}",
+            location_field="$.pdf_url",
+            headers={"Authorization": "Bearer ${MISSING_FT_KEY}"},
+        )
+    )
+
+    with caplog.at_level(logging.WARNING):
+        result = provider._interpolate_headers({"Authorization": "Bearer ${MISSING_FT_KEY}"})
+
+    assert result["Authorization"] == "Bearer "
+    assert "MISSING_FT_KEY" in caplog.text
+    assert "needs_key" in caplog.text

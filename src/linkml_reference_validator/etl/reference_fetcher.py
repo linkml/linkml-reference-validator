@@ -12,12 +12,13 @@ from typing import Optional
 from ruamel.yaml import YAML  # type: ignore
 
 from linkml_reference_validator.models import (
+    FullTextLocation,
     ReferenceContent,
     ReferenceValidationConfig,
     SupplementaryFile,
 )
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
-from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format
+from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
@@ -36,6 +37,9 @@ NEEDS_FULL_TEXT_TYPES = {
     "summary",
 }
 
+# Global floor for "did we actually get full text, or just a few stray characters?"
+# Individual providers may set a stricter floor (e.g. PMC uses 2x this in pmc.py,
+# since a PMC XML/HTML hit under ~1k chars is almost always a stub, not the body).
 MIN_FULL_TEXT_CHARS = 500
 
 _FORMAT_TO_CONTENT_TYPE = {
@@ -83,6 +87,10 @@ class ReferenceFetcher:
         self.config = config
         self._cache: dict[str, ReferenceContent] = {}
         self._acquirer = ContentAcquirer()
+        # Build the PDF extractor once: this validates config.pdf_backend up front
+        # (an unknown backend raises here, at init, rather than mid-fetch) and avoids
+        # re-instantiating the backend on every download.
+        self._pdf_extractor = PDFExtractor(backend=config.pdf_backend)
         register_custom_full_text_providers(config.full_text_providers_file)
 
     def fetch(
@@ -120,6 +128,10 @@ class ReferenceFetcher:
         if not force_refresh:
             cached = self._load_from_disk(normalized_reference_id)
             if cached:
+                # A record cached as abstract_only may predate full-text support, or
+                # reflect a prior transient failure. Give the chain one more chance
+                # per process if it was never cleanly attempted.
+                cached = self._maybe_retry_full_text(cached)
                 self._cache[normalized_reference_id] = cached
                 return cached
 
@@ -161,10 +173,40 @@ class ReferenceFetcher:
         """
         return content.content_type in NEEDS_FULL_TEXT_TYPES
 
+    def _maybe_retry_full_text(self, content: ReferenceContent) -> ReferenceContent:
+        """Re-run the full-text chain for a cached record that never cleanly tried.
+
+        Leaves a record alone once it already has full text, when full-text fetching
+        is disabled, or when a prior clean run already concluded none is available
+        (``full_text_attempted``). When a retry changes the record it is re-saved so
+        the result persists. This is what lets a one-off provider outage recover on a
+        later run instead of being cached as permanent absence (PR #48 review #1).
+        """
+        if (
+            not self.config.fetch_full_text
+            or not self._needs_full_text(content)
+            or content.full_text_attempted
+        ):
+            return content
+
+        before = (content.content, content.content_type, content.full_text_attempted)
+        content = self._enrich_with_full_text(content)
+        after = (content.content, content.content_type, content.full_text_attempted)
+        if after != before:
+            self._save_to_disk(content)
+        return content
+
     def _enrich_with_full_text(self, content: ReferenceContent) -> ReferenceContent:
-        """Walk the provider chain; merge the first usable full text into content."""
+        """Walk the provider chain; merge the first usable full text into content.
+
+        If no provider yields usable full text but the chain was consulted without a
+        transient error, mark ``full_text_attempted`` so the record is not re-queried
+        on every later run. A provider/download error leaves the flag unset so a
+        subsequent run retries (PR #48 review #1).
+        """
         ids = build_identifiers(content)
         abstract = content.content
+        had_error = False
 
         for provider_name in self.config.full_text_providers:
             provider = FullTextProviderRegistry.get(provider_name)
@@ -176,12 +218,15 @@ class ReferenceFetcher:
                 location = provider.locate(ids, self.config)
             except Exception as exc:
                 logger.warning(f"Provider '{provider_name}' failed for {content.reference_id}: {exc}")
+                had_error = True
                 continue
 
             if location is None:
                 continue
 
-            text, fmt, pdf_bytes = self._materialize(location)
+            text, fmt, pdf_bytes, error = self._materialize(location)
+            if error:
+                had_error = True
             if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
                 continue
 
@@ -191,49 +236,62 @@ class ReferenceFetcher:
             content.full_text_url = location.url
             content.oa_status = location.oa_status
             content.license = location.license
+            content.full_text_attempted = True
             if pdf_bytes is not None and self.config.download_pdfs:
                 content.local_pdf_path = self._save_pdf(content.reference_id, pdf_bytes)
             return content
 
+        # No usable full text: only record a definitive attempt if nothing went wrong,
+        # so a transient failure stays retryable on the next run.
+        if not had_error:
+            content.full_text_attempted = True
         return content
 
-    def _materialize(self, location) -> tuple[Optional[str], Optional[str], Optional[bytes]]:
-        """Turn a FullTextLocation into (text, format, pdf_bytes_if_any)."""
+    def _materialize(
+        self, location: FullTextLocation
+    ) -> tuple[Optional[str], Optional[str], Optional[bytes], bool]:
+        """Turn a FullTextLocation into ``(text, format, pdf_bytes_if_any, error)``.
+
+        ``error`` is True only when a download or extraction *raised* — a transient
+        condition worth retrying — not when the resource was merely absent or unusable.
+        """
         if location.text:
-            return location.text, location.format_hint or "text", None
+            return location.text, location.format_hint or "text", None, False
 
         if not location.url:
-            return None, None, None
+            return None, None, None, False
 
         try:  # external system boundary
             data, content_type = self._acquirer.fetch_bytes(location.url, self.config)
         except Exception as exc:
             logger.warning(f"Download failed for {location.url}: {exc}")
-            return None, None, None
+            return None, None, None, True
 
         if data is None:
-            return None, None, None
+            return None, None, None, False
 
-        fmt = resolve_format(content_type, location.url, location.format_hint)
+        # Trust the actual bytes over the server content-type / provider hint: a
+        # url_for_pdf that really returns an HTML landing page must not reach pypdf.
+        fmt = sniff_format(data) or resolve_format(content_type, location.url, location.format_hint)
         if fmt is None:
-            return None, None, None
+            return None, None, None, False
 
         extractor: Optional[Extractor]
         if fmt == "pdf":
-            extractor = PDFExtractor(backend=self.config.pdf_backend)
+            extractor = self._pdf_extractor
         else:
             extractor = ExtractorRegistry.get(fmt)
         if extractor is None:
-            return None, fmt, None
+            return None, fmt, None, False
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
             text = extractor.extract(data, content_type=content_type)
         except Exception as exc:
             logger.warning(f"Extraction failed for {location.url}: {exc}")
-            return None, fmt, None
+            return None, fmt, None, True
 
         pdf_bytes = data if fmt == "pdf" else None
-        return text, fmt, pdf_bytes
+        return text, fmt, pdf_bytes, False
 
     def _save_pdf(self, reference_id: str, data: bytes) -> str:
         """Persist a downloaded PDF and return its path relative to the cache dir."""
@@ -434,6 +492,8 @@ class ReferenceFetcher:
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
+        if reference.full_text_attempted:
+            lines.append("full_text_attempted: true")
         if reference.full_text_provider:
             lines.append(f"full_text_provider: {reference.full_text_provider}")
         if reference.full_text_url:
@@ -591,6 +651,7 @@ class ReferenceFetcher:
             oa_status=frontmatter.get("oa_status"),
             license=frontmatter.get("license"),
             local_pdf_path=frontmatter.get("local_pdf_path"),
+            full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),
         )
 
     def _extract_content_from_markdown(self, body: str) -> str:

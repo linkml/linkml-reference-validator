@@ -201,14 +201,13 @@ class TestURLSource:
         assert source.can_handle("url:http://example.com/page")
         assert not source.can_handle("PMID:12345")
 
-    @patch("linkml_reference_validator.etl.sources.url.requests.get")
-    def test_fetch_url_html(self, mock_get, source, config):
-        """Should fetch HTML content from URL."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "<html><head><title>Test Page</title></head><body>Content here</body></html>"
-        mock_response.headers = {"content-type": "text/html"}
-        mock_get.return_value = mock_response
+    @patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+    def test_fetch_url_html(self, MockAcquirer, source, config):
+        """Should fetch HTML content from URL (streamed through the acquirer)."""
+        MockAcquirer.return_value.fetch_bytes.return_value = (
+            b"<html><head><title>Test Page</title></head><body>Content here</body></html>",
+            "text/html",
+        )
 
         result = source.fetch("https://example.com/page", config)
 
@@ -217,39 +216,35 @@ class TestURLSource:
         assert "Content here" in result.content
         assert result.content_type == "url"
 
-    @patch("linkml_reference_validator.etl.sources.url.requests.get")
-    def test_fetch_url_plain_text(self, mock_get, source, config):
+    @patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+    def test_fetch_url_plain_text(self, MockAcquirer, source, config):
         """Should fetch plain text content from URL."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "Plain text content from URL"
-        mock_response.headers = {"content-type": "text/plain"}
-        mock_get.return_value = mock_response
+        MockAcquirer.return_value.fetch_bytes.return_value = (
+            b"Plain text content from URL",
+            "text/plain",
+        )
 
         result = source.fetch("https://example.com/text.txt", config)
 
         assert result is not None
         assert "Plain text content from URL" in result.content
 
-    @patch("linkml_reference_validator.etl.sources.url.requests.get")
-    def test_fetch_url_not_found(self, mock_get, source, config):
-        """Should return None for 404 responses."""
-        mock_response = MagicMock()
-        mock_response.status_code = 404
-        mock_get.return_value = mock_response
+    @patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+    def test_fetch_url_not_found(self, MockAcquirer, source, config):
+        """Should return None when the acquirer yields nothing (non-200 / over cap)."""
+        MockAcquirer.return_value.fetch_bytes.return_value = (None, None)
 
         result = source.fetch("https://example.com/notfound", config)
 
         assert result is None
 
-    @patch("linkml_reference_validator.etl.sources.url.requests.get")
-    def test_fetch_url_extracts_title(self, mock_get, source, config):
+    @patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+    def test_fetch_url_extracts_title(self, MockAcquirer, source, config):
         """Should extract title from HTML."""
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.text = "<html><head><title>Page Title Here</title></head><body>Content</body></html>"
-        mock_response.headers = {"content-type": "text/html"}
-        mock_get.return_value = mock_response
+        MockAcquirer.return_value.fetch_bytes.return_value = (
+            b"<html><head><title>Page Title Here</title></head><body>Content</body></html>",
+            "text/html",
+        )
 
         result = source.fetch("https://example.com", config)
 
@@ -257,22 +252,17 @@ class TestURLSource:
         assert result.title == "Page Title Here"
 
 
-@patch("linkml_reference_validator.etl.sources.url.requests.get")
-def test_fetch_url_pdf_extracts_text(mock_get, tmp_path):
+def test_fetch_url_pdf_extracts_text(tmp_path):
     from linkml_reference_validator.models import ReferenceValidationConfig
     from linkml_reference_validator.etl.sources.url import URLSource
     from unittest.mock import patch as _patch
 
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.headers = {"content-type": "application/pdf"}
-    mock_response.content = b"%PDF-1.4 fake bytes"
-    mock_get.return_value = mock_response
-
     config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
     source = URLSource()
 
-    with _patch("linkml_reference_validator.etl.sources.url.PDFExtractor") as MockPDF:
+    with _patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as MockAcquirer, \
+         _patch("linkml_reference_validator.etl.sources.url.PDFExtractor") as MockPDF:
+        MockAcquirer.return_value.fetch_bytes.return_value = (b"%PDF-1.4 fake bytes", "application/pdf")
         MockPDF.return_value.extract.return_value = "extracted pdf text"
         result = source.fetch("https://x/y.pdf", config)
 

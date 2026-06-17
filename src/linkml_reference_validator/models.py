@@ -697,6 +697,10 @@ class ReferenceContent:
     oa_status: Optional[str] = None
     license: Optional[str] = None
     local_pdf_path: Optional[str] = None
+    # True once the full-text chain has been run to a clean (error-free) conclusion
+    # for this record. Distinguishes "the abstract is all that exists" from "we
+    # haven't successfully tried yet", so a transient outage isn't cached forever.
+    full_text_attempted: bool = False
 
 
 @dataclass

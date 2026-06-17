@@ -25,6 +25,9 @@ from linkml_reference_validator.etl.extract.xml import XMLExtractor
 
 logger = logging.getLogger(__name__)
 
+# 2x the global MIN_FULL_TEXT_CHARS floor (reference_fetcher.py): a PMC XML/HTML
+# response under ~1k chars is almost always a stub (title + abstract, or a stripped
+# landing page) rather than the article body, so we reject it and fall through.
 _MIN_PMC_FULLTEXT_CHARS = 1000
 
 

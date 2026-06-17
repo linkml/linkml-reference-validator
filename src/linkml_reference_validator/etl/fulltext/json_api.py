@@ -111,8 +111,25 @@ class JSONAPIFullTextProvider(FullTextProvider):
         return None
 
     def _interpolate_headers(self, headers: dict[str, str]) -> dict[str, str]:
+        """Substitute ``${VAR}`` references with environment variables.
+
+        Warns (rather than silently substituting an empty string) when a referenced
+        variable is unset, so a missing/misspelled API key surfaces as a clear log
+        line instead of a confusing downstream 401.
+        """
         pattern = re.compile(r"\$\{([^}]+)\}")
-        result = {}
-        for key, value in headers.items():
-            result[key] = pattern.sub(lambda m: os.environ.get(m.group(1), ""), value)
-        return result
+
+        def replace_env(match: "re.Match[str]") -> str:
+            var_name = match.group(1)
+            value = os.environ.get(var_name)
+            if value is None:
+                logger.warning(
+                    "Custom provider '%s' header references unset environment "
+                    "variable '%s'; substituting an empty string",
+                    self._name,
+                    var_name,
+                )
+                return ""
+            return value
+
+        return {key: pattern.sub(replace_env, value) for key, value in headers.items()}

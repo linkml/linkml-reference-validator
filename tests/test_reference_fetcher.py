@@ -5,8 +5,13 @@ from unittest.mock import patch, MagicMock
 from linkml_reference_validator.models import (
     ReferenceValidationConfig,
     ReferenceContent,
+    FullTextLocation,
 )
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+)
 
 
 @pytest.fixture
@@ -275,14 +280,13 @@ def test_fetch_local_file(fetcher, tmp_path):
     assert result.content_type == "local_file"
 
 
-@patch("linkml_reference_validator.etl.sources.url.requests.get")
-def test_fetch_url(mock_get, fetcher):
+@patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+def test_fetch_url(MockAcquirer, fetcher):
     """Test fetching content from a URL."""
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.text = "<html><head><title>Web Page</title></head><body>Page content here.</body></html>"
-    mock_response.headers = {"content-type": "text/html"}
-    mock_get.return_value = mock_response
+    MockAcquirer.return_value.fetch_bytes.return_value = (
+        b"<html><head><title>Web Page</title></head><body>Page content here.</body></html>",
+        "text/html",
+    )
 
     result = fetcher.fetch("url:https://example.com/page")
 
@@ -292,12 +296,10 @@ def test_fetch_url(mock_get, fetcher):
     assert result.content_type == "url"
 
 
-@patch("linkml_reference_validator.etl.sources.url.requests.get")
-def test_fetch_url_http_error(mock_get, fetcher):
-    """Test fetching URL that returns HTTP error."""
-    mock_response = MagicMock()
-    mock_response.status_code = 404
-    mock_get.return_value = mock_response
+@patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+def test_fetch_url_http_error(MockAcquirer, fetcher):
+    """Test fetching URL that the acquirer rejects (non-200 / over cap)."""
+    MockAcquirer.return_value.fetch_bytes.return_value = (None, None)
 
     result = fetcher.fetch("url:https://example.com/not-found")
 
@@ -313,19 +315,18 @@ def test_url_cache_path(fetcher):
     assert path.name == "url_https___example.com_path_param_value.md"
 
 
-@patch("linkml_reference_validator.etl.sources.url.requests.get")
-def test_save_and_load_url_from_disk(mock_get, fetcher, tmp_path):
+@patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+def test_save_and_load_url_from_disk(MockAcquirer, fetcher, tmp_path):
     """Test saving and loading URL reference from disk cache."""
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.text = """
+    MockAcquirer.return_value.fetch_bytes.return_value = (
+        b"""
     <html>
         <head><title>Cached URL Content</title></head>
         <body><p>This content should be cached.</p></body>
     </html>
-    """
-    mock_response.headers = {"content-type": "text/html"}
-    mock_get.return_value = mock_response
+    """,
+        "text/html",
+    )
 
     # First fetch - this should save to disk
     result1 = fetcher.fetch("url:https://example.com/cached")
@@ -334,12 +335,12 @@ def test_save_and_load_url_from_disk(mock_get, fetcher, tmp_path):
     # Clear memory cache
     fetcher._cache.clear()
 
-    # Second fetch - should load from disk without making HTTP request
+    # Second fetch - should load from disk without acquiring anything
     with patch(
-        "linkml_reference_validator.etl.sources.url.requests.get"
+        "linkml_reference_validator.etl.sources.url.ContentAcquirer"
     ) as mock_no_request:
         result2 = fetcher.fetch("url:https://example.com/cached")
-        mock_no_request.assert_not_called()
+        mock_no_request.return_value.fetch_bytes.assert_not_called()
 
     assert result2 is not None
     assert result2.reference_id == "url:https://example.com/cached"
@@ -392,14 +393,13 @@ def test_normalize_bare_https_url(fetcher):
     )
 
 
-@patch("linkml_reference_validator.etl.sources.url.requests.get")
-def test_fetch_bare_https_url(mock_get, fetcher):
+@patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
+def test_fetch_bare_https_url(MockAcquirer, fetcher):
     """Test that bare HTTPS URLs are fetched correctly."""
-    mock_response = MagicMock()
-    mock_response.status_code = 200
-    mock_response.text = "<html><head><title>Bare URL Test</title></head><body>Content from bare URL.</body></html>"
-    mock_response.headers = {"content-type": "text/html"}
-    mock_get.return_value = mock_response
+    MockAcquirer.return_value.fetch_bytes.return_value = (
+        b"<html><head><title>Bare URL Test</title></head><body>Content from bare URL.</body></html>",
+        "text/html",
+    )
 
     # Fetch using bare URL (no url: prefix)
     result = fetcher.fetch("https://example.com/page")
@@ -820,9 +820,10 @@ def test_enrich_downloads_and_extracts_pdf(tmp_path):
         reference_id="DOI:10.1/x", doi="10.1/x", content="abstract", content_type="abstract_only"
     )
 
+    # The fetcher builds (and reuses) a single PDFExtractor at init; patch its
+    # extract so we exercise the download/sniff/enrich path without real pypdf.
     with patch.object(fetcher._acquirer, "fetch_bytes", return_value=(b"%PDF-fake", "application/pdf")), \
-         patch("linkml_reference_validator.etl.reference_fetcher.PDFExtractor") as MockPDF:
-        MockPDF.return_value.extract.return_value = "extracted pdf text " * 50
+         patch.object(fetcher._pdf_extractor, "extract", return_value="extracted pdf text " * 50):
         enriched = fetcher._enrich_with_full_text(content)
 
     assert enriched.content_type == "full_text_pdf"
@@ -876,3 +877,119 @@ def test_fetcher_registers_custom_full_text_providers(tmp_path):
     )
     ReferenceFetcher(config)
     assert FullTextProviderRegistry.get("custom_at_init") is not None
+
+
+# ---------------------------------------------------------------------------
+# Full-text chain: transient failures must not be cached as permanent absence
+# (PR #48 review, issue #1)
+# ---------------------------------------------------------------------------
+
+
+class _ScriptedProvider(FullTextProvider):
+    """A provider whose locate() replays a scripted list of behaviours.
+
+    Each call pops the next behaviour: an Exception is raised (simulating a
+    provider/API outage), anything else is returned (a FullTextLocation or None).
+    """
+
+    def __init__(self, behaviours):
+        self._behaviours = list(behaviours)
+        self.calls = 0
+
+    @classmethod
+    def name(cls):
+        return "scripted"
+
+    def locate(self, ids, config):
+        self.calls += 1
+        behaviour = self._behaviours.pop(0) if self._behaviours else None
+        if isinstance(behaviour, Exception):
+            raise behaviour
+        return behaviour
+
+
+def _full_text_config(tmp_path):
+    return ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        fetch_full_text=True,
+        full_text_providers=["scripted"],
+    )
+
+
+def test_transient_full_text_failure_is_retried_on_next_run(tmp_path):
+    """A provider outage on one run must not bake in 'abstract_only' forever."""
+    provider = _ScriptedProvider(
+        [
+            RuntimeError("PMC outage"),
+            FullTextLocation(text="F" * 600, format_hint="text", provider="scripted"),
+        ]
+    )
+    FullTextProviderRegistry.register_instance("scripted", provider)
+    config = _full_text_config(tmp_path)
+
+    # Seed the disk cache with an abstract-only record (as a prior fetch would have).
+    seed = ReferenceContent(
+        reference_id="DOI:10.1/x", content="abstract", content_type="abstract_only"
+    )
+    ReferenceFetcher(config)._save_to_disk(seed)
+
+    # Run 1 (fresh process): provider is down -> stays abstract_only, NOT attempted.
+    r1 = ReferenceFetcher(config).fetch("DOI:10.1/x")
+    assert r1.content_type == "abstract_only"
+    assert r1.full_text_attempted is False
+
+    # Run 2 (fresh process): provider recovers -> full text is fetched.
+    r2 = ReferenceFetcher(config).fetch("DOI:10.1/x")
+    assert "F" * 600 in (r2.content or "")
+    assert r2.content_type.startswith("full_text")
+
+
+def test_clean_exhaustion_marks_attempted_and_is_not_retried(tmp_path):
+    """When the chain runs cleanly but finds nothing, record it and don't re-run."""
+    provider = _ScriptedProvider([None, None])
+    FullTextProviderRegistry.register_instance("scripted", provider)
+    config = _full_text_config(tmp_path)
+
+    seed = ReferenceContent(
+        reference_id="DOI:10.1/y", content="abstract", content_type="abstract_only"
+    )
+    ReferenceFetcher(config)._save_to_disk(seed)
+
+    r1 = ReferenceFetcher(config).fetch("DOI:10.1/y")
+    assert r1.full_text_attempted is True
+    assert provider.calls == 1
+
+    # Next run must NOT re-run the chain (attempted=True persisted to disk).
+    r2 = ReferenceFetcher(config).fetch("DOI:10.1/y")
+    assert r2.full_text_attempted is True
+    assert provider.calls == 1
+
+
+def test_full_text_attempted_round_trips_through_disk_cache(tmp_path):
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+    ref = ReferenceContent(
+        reference_id="DOI:10.1/z",
+        content="abstract",
+        content_type="abstract_only",
+        full_text_attempted=True,
+    )
+    fetcher._save_to_disk(ref)
+    loaded = fetcher._load_from_disk("DOI:10.1/z")
+    assert loaded.full_text_attempted is True
+
+
+def test_materialize_trusts_sniffed_format_over_hint(tmp_path):
+    """A 'pdf' hint pointing at an HTML landing page must route to HTML, not pypdf."""
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    fetcher = ReferenceFetcher(config)
+    html_landing = b"<!DOCTYPE html><html><body>" + b"text " * 200 + b"</body></html>"
+    with patch.object(
+        fetcher._acquirer, "fetch_bytes", return_value=(html_landing, "application/pdf")
+    ):
+        loc = FullTextLocation(url="https://x/paper", format_hint="pdf")
+        text, fmt, pdf_bytes, error = fetcher._materialize(loc)
+    assert fmt == "html"
+    assert pdf_bytes is None
+    assert error is False

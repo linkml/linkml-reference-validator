@@ -4,8 +4,36 @@ import importlib
 import sys
 from importlib import util as importlib_util
 
+import pytest
 
-def test_cli_imports_without_linkml(monkeypatch):
+_PREFIX = "linkml_reference_validator"
+
+
+@pytest.fixture
+def restore_lrv_modules():
+    """Snapshot and restore ``linkml_reference_validator`` modules around a test.
+
+    These tests deliberately delete the package from ``sys.modules`` and re-import
+    it under a simulated "no linkml" condition. Without restoring afterwards, the
+    re-imported module objects leak into ``sys.modules`` and break later tests that
+    patch attributes on (or hold references to) the original module objects.
+    """
+    saved = {
+        name: mod
+        for name, mod in sys.modules.items()
+        if name == _PREFIX or name.startswith(_PREFIX + ".")
+    }
+    try:
+        yield
+    finally:
+        for name in [
+            n for n in sys.modules if n == _PREFIX or n.startswith(_PREFIX + ".")
+        ]:
+            del sys.modules[name]
+        sys.modules.update(saved)
+
+
+def test_cli_imports_without_linkml(monkeypatch, restore_lrv_modules):
     """Importing the CLI should not require `linkml` to be installed."""
 
     real_find_spec = importlib_util.find_spec
@@ -26,7 +54,7 @@ def test_cli_imports_without_linkml(monkeypatch):
     assert getattr(cli, "app", None) is not None
 
 
-def test_plugins_package_imports_without_linkml(monkeypatch):
+def test_plugins_package_imports_without_linkml(monkeypatch, restore_lrv_modules):
     """Importing `linkml_reference_validator.plugins` should not require `linkml`."""
 
     real_find_spec = importlib_util.find_spec

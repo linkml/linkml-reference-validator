@@ -27,6 +27,39 @@ _SUFFIX_FORMATS = {
 }
 
 
+def sniff_format(data: bytes) -> Optional[str]:
+    """Identify a format from the leading bytes of a payload, or ``None`` if unknown.
+
+    Magic-byte detection is more reliable than the server content-type or a provider
+    hint, both of which publishers frequently get wrong (e.g. a PDF served as
+    ``text/html``, or a ``url_for_pdf`` that actually returns an HTML landing page).
+
+    Examples:
+        >>> sniff_format(b"%PDF-1.7\\n...")
+        'pdf'
+        >>> sniff_format(b"<!DOCTYPE html><html>...")
+        'html'
+        >>> sniff_format(b"  \\n<html>...")
+        'html'
+        >>> sniff_format(b"<?xml version='1.0'?><article/>")
+        'xml'
+        >>> sniff_format(b"just some text") is None
+        True
+        >>> sniff_format(b"") is None
+        True
+    """
+    if not data:
+        return None
+    if data[:5] == b"%PDF-":
+        return "pdf"
+    head = data[:512].lstrip().lower()
+    if head.startswith(b"<!doctype html") or head.startswith(b"<html"):
+        return "html"
+    if head.startswith(b"<?xml"):
+        return "xml"
+    return None
+
+
 def resolve_format(
     content_type: Optional[str], url: Optional[str], format_hint: Optional[str]
 ) -> Optional[str]:
@@ -77,23 +110,25 @@ class ContentAcquirer:
         headers = {
             "User-Agent": f"linkml-reference-validator/1.0 (mailto:{config.email})",
         }
-        response = requests.get(url, headers=headers, timeout=60, stream=True)
-        if response.status_code != 200:
-            logger.warning(f"Download failed for {url} - status {response.status_code}")
-            return None, None
+        # ``with`` guarantees the streamed connection is released on every path,
+        # including the early return when the size cap is exceeded mid-stream.
+        with requests.get(url, headers=headers, timeout=60, stream=True) as response:
+            if response.status_code != 200:
+                logger.warning(f"Download failed for {url} - status {response.status_code}")
+                return None, None
 
-        content_type = response.headers.get("content-type")
-        max_size = config.max_supplementary_file_size
+            content_type = response.headers.get("content-type")
+            max_size = config.max_supplementary_file_size
 
-        chunks = bytearray()
-        for chunk in response.iter_content(chunk_size=8192):
-            if not chunk:
-                continue
-            chunks.extend(chunk)
-            if max_size and len(chunks) > max_size:
-                logger.warning(
-                    f"Download for {url} exceeded size cap ({max_size} bytes); skipping"
-                )
-                return None, content_type
+            chunks = bytearray()
+            for chunk in response.iter_content(chunk_size=8192):
+                if not chunk:
+                    continue
+                chunks.extend(chunk)
+                if max_size and len(chunks) > max_size:
+                    logger.warning(
+                        f"Download for {url} exceeded size cap ({max_size} bytes); skipping"
+                    )
+                    return None, content_type
 
-        return bytes(chunks), content_type
+            return bytes(chunks), content_type

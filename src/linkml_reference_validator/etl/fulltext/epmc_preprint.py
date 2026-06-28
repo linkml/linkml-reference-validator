@@ -31,7 +31,6 @@ from linkml_reference_validator.etl.fulltext.base import (
 logger = logging.getLogger(__name__)
 
 _EPMC_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
-_FULLTEXT_REPO_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/fulltextRepo"
 
 
 @FullTextProviderRegistry.register
@@ -92,14 +91,14 @@ class EuropePMCPreprintProvider(FullTextProvider):
             >>> p._build_query(ReferenceIdentifiers(doi="10.1101/x"))
             'DOI:"10.1101/x" AND SRC:PPR'
             >>> p._build_query(ReferenceIdentifiers(pprid="PPR42"))
-            'PPR42 AND SRC:PPR'
+            'EXT_ID:PPR42 AND SRC:PPR'
             >>> p._build_query(ReferenceIdentifiers(pmid="123")) is None
             True
         """
         if ids.doi:
             return f'DOI:"{ids.doi}" AND SRC:PPR'
         if ids.pprid:
-            return f"{ids.pprid} AND SRC:PPR"
+            return f"EXT_ID:{ids.pprid} AND SRC:PPR"
         return None
 
     def _first_ppr_result(self, data: dict) -> Optional[dict]:
@@ -117,9 +116,12 @@ class EuropePMCPreprintProvider(FullTextProvider):
     def _extract_pdf_url(self, result: dict) -> Optional[str]:
         """Find the fulltextRepo PDF URL for a preprint core record.
 
-        Prefers a ``documentStyle == "pdf"`` entry in ``fullTextUrlList``; falls
-        back to constructing the ``fulltextRepo`` URL from the preprint id when the
-        record flags ``hasPDF == "Y"`` but lists no usable PDF entry.
+        Returns the ``documentStyle == "pdf"`` entry from ``fullTextUrlList`` (the
+        Europe PMC ``fulltextRepo`` PDF). The full URL must be taken verbatim from
+        the record: the working endpoint includes a per-record ``fileName`` query
+        parameter that cannot be reconstructed from the preprint id alone (a
+        ``fileName``-less request 500s), so a record without a usable PDF entry
+        yields no location rather than a guessed URL.
         """
         full_text_urls = result.get("fullTextUrlList", {}).get("fullTextUrl", [])
         for entry in full_text_urls:
@@ -130,8 +132,5 @@ class EuropePMCPreprintProvider(FullTextProvider):
                 continue
             if entry.get("documentStyle") == "pdf" or "fulltextRepo" in url:
                 return url
-
-        if result.get("hasPDF") == "Y" and result.get("id"):
-            return f"{_FULLTEXT_REPO_URL}?pprId={result['id']}&type=FILE&mimeType=application/pdf"
 
         return None

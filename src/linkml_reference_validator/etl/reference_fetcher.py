@@ -495,7 +495,9 @@ class ReferenceFetcher:
         if reference.is_preprint is not None:
             lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
         if reference.peer_review_status:
-            lines.append(f"peer_review_status: {reference.peer_review_status}")
+            lines.append(
+                f"peer_review_status: {self._quote_yaml_value(reference.peer_review_status)}"
+            )
         if reference.full_text_attempted:
             lines.append("full_text_attempted: true")
         if reference.full_text_provider:

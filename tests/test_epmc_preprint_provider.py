@@ -130,19 +130,17 @@ def test_locate_non_ppr_source_ignored(mock_get, config):
 
 
 @patch("linkml_reference_validator.etl.fulltext.epmc_preprint.requests.get")
-def test_locate_constructs_fulltextrepo_url_when_list_absent(mock_get, config):
-    # Some core records flag hasPDF=Y but omit a usable pdf entry in the list;
-    # fall back to constructing the fulltextRepo URL from the preprint id.
+def test_locate_no_pdf_entry_returns_none(mock_get, config):
+    # The fulltextRepo PDF URL carries a per-record fileName parameter that cannot
+    # be reconstructed from the preprint id (a fileName-less request 500s), so a
+    # record with no usable PDF entry must yield no location, not a guessed URL.
     result = _core_result(fullTextUrlList={"fullTextUrl": []})
     mock_get.return_value = _mock_search([result])
 
     loc = EuropePMCPreprintProvider().locate(
         ReferenceIdentifiers(doi="10.1101/2024.01.01.573333"), config
     )
-    assert loc is not None
-    assert "fulltextRepo" in loc.url
-    assert "PPR123456" in loc.url
-    assert loc.format_hint == "pdf"
+    assert loc is None
 
 
 @patch("linkml_reference_validator.etl.fulltext.epmc_preprint.requests.get")

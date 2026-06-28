@@ -71,7 +71,7 @@ class PPRSource(ReferenceSource):
         time.sleep(config.rate_limit_delay)
 
         params = {
-            "query": f"{ppr_id} AND SRC:PPR",
+            "query": f"EXT_ID:{ppr_id} AND SRC:PPR",
             "format": "json",
             "resultType": "core",
             "pageSize": "1",

@@ -66,7 +66,7 @@ def test_posted_content_without_subtype_is_marked(mock_get, source, config):
 
 
 @patch("linkml_reference_validator.etl.sources.doi.requests.get")
-def test_journal_article_is_not_marked_preprint(mock_get, source, config):
+def test_journal_article_is_marked_not_preprint(mock_get, source, config):
     mock_get.return_value = _crossref_response(
         {
             "type": "journal-article",
@@ -80,7 +80,24 @@ def test_journal_article_is_not_marked_preprint(mock_get, source, config):
     result = source.fetch("10.1038/s41586-023-12345", config)
 
     assert result is not None
-    # We only positively assert preprint status; peer-reviewed papers are left
-    # unannotated rather than asserted as "peer_reviewed".
+    # Crossref's type is authoritative, so a known non-preprint is recorded as
+    # is_preprint=False (lets the preprint full-text provider skip it). We still
+    # don't positively assert "peer_reviewed" as a review status.
+    assert result.is_preprint is False
+    assert result.peer_review_status is None
+
+
+@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+def test_typeless_crossref_record_leaves_preprint_unknown(mock_get, source, config):
+    mock_get.return_value = _crossref_response(
+        {
+            "title": ["A typeless record"],
+            "published-online": {"date-parts": [[2024]]},
+        }
+    )
+
+    result = source.fetch("10.1234/typeless", config)
+
+    assert result is not None
     assert result.is_preprint is None
     assert result.peer_review_status is None

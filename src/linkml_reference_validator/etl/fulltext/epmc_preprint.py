@@ -49,6 +49,12 @@ class EuropePMCPreprintProvider(FullTextProvider):
     def locate(
         self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
     ) -> Optional[FullTextLocation]:
+        # Skip the Europe PMC round-trip for records the metadata source already
+        # confirmed are peer-reviewed (is_preprint False). A None ("unknown", e.g.
+        # a PMID or DataCite record) is still attempted.
+        if ids.is_preprint is False:
+            return None
+
         query = self._build_query(ids)
         if query is None:
             return None

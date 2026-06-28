@@ -77,12 +77,20 @@ class PPRSource(ReferenceSource):
             "pageSize": "1",
             "email": config.email,
         }
-        response = requests.get(_EPMC_SEARCH_URL, params=params, timeout=30)
-        if response.status_code != 200:
-            logger.warning(f"Europe PMC returned {response.status_code} for PPR:{ppr_id}")
+        # External system boundary: a network blip or a non-JSON body must yield a
+        # graceful skip (None) for this one reference, as the PMID and
+        # ClinicalTrials sources do, rather than aborting the whole validation run.
+        try:
+            response = requests.get(_EPMC_SEARCH_URL, params=params, timeout=30)
+            if response.status_code != 200:
+                logger.warning(f"Europe PMC returned {response.status_code} for PPR:{ppr_id}")
+                return None
+            data = response.json()
+        except Exception as exc:
+            logger.warning(f"Failed to fetch PPR:{ppr_id} from Europe PMC: {exc}")
             return None
 
-        result = self._first_ppr_result(response.json())
+        result = self._first_ppr_result(data)
         if result is None:
             logger.warning(f"No Europe PMC preprint found for PPR:{ppr_id}")
             return None

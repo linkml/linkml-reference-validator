@@ -44,7 +44,7 @@ def build_identifiers(content: ReferenceContent) -> ReferenceIdentifiers:
     """
     prefix, identifier = _split_reference_id(content.reference_id)
 
-    ids = ReferenceIdentifiers(doi=content.doi or None)
+    ids = ReferenceIdentifiers(doi=content.doi or None, is_preprint=content.is_preprint)
 
     if prefix and identifier:
         upper = prefix.upper()

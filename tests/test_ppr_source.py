@@ -106,6 +106,16 @@ def test_fetch_http_error_returns_none(mock_get, source, config):
 
 
 @patch("linkml_reference_validator.etl.sources.ppr.requests.get")
+def test_fetch_network_exception_returns_none(mock_get, source, config):
+    # A raised network error must degrade gracefully (skip this reference),
+    # not propagate and abort the whole validation run.
+    import requests
+
+    mock_get.side_effect = requests.exceptions.ConnectionError("boom")
+    assert source.fetch("PPR123456", config) is None
+
+
+@patch("linkml_reference_validator.etl.sources.ppr.requests.get")
 def test_fetch_normalizes_bare_numeric_id(mock_get, source, config):
     # A user may write "PPR:123456" without the "PPR" prefix on the id itself.
     mock_get.return_value = _mock_search(_core_result())

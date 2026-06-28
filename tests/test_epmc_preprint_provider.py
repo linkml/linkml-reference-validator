@@ -74,6 +74,28 @@ def test_locate_without_doi_or_pprid_returns_none(config):
 
 
 @patch("linkml_reference_validator.etl.fulltext.epmc_preprint.requests.get")
+def test_locate_skips_confirmed_non_preprint_without_network(mock_get, config):
+    # A record the metadata source confirmed is peer-reviewed (is_preprint False)
+    # must short-circuit before any Europe PMC request.
+    loc = EuropePMCPreprintProvider().locate(
+        ReferenceIdentifiers(doi="10.1038/x", is_preprint=False), config
+    )
+    assert loc is None
+    mock_get.assert_not_called()
+
+
+@patch("linkml_reference_validator.etl.fulltext.epmc_preprint.requests.get")
+def test_locate_attempts_when_preprint_status_unknown(mock_get, config):
+    # is_preprint None (e.g. a PMID/DataCite record) is still attempted.
+    mock_get.return_value = _mock_search([_core_result()])
+    loc = EuropePMCPreprintProvider().locate(
+        ReferenceIdentifiers(doi="10.1101/2024.01.01.573333", is_preprint=None), config
+    )
+    assert loc is not None
+    mock_get.assert_called_once()
+
+
+@patch("linkml_reference_validator.etl.fulltext.epmc_preprint.requests.get")
 def test_locate_by_doi_returns_pdf_location(mock_get, config):
     mock_get.return_value = _mock_search([_core_result()])
 

@@ -42,3 +42,15 @@ def test_build_from_ppr_reference_carries_doi_metadata():
     ids = build_identifiers(content)
     assert ids.pprid == "PPR123456"
     assert ids.doi == "10.1101/2024.01.01.573333"
+
+
+def test_build_carries_is_preprint_flag():
+    assert build_identifiers(
+        ReferenceContent(reference_id="DOI:10.1/x", is_preprint=True)
+    ).is_preprint is True
+    assert build_identifiers(
+        ReferenceContent(reference_id="DOI:10.1/x", is_preprint=False)
+    ).is_preprint is False
+    assert build_identifiers(
+        ReferenceContent(reference_id="PMID:123")
+    ).is_preprint is None

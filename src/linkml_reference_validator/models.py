@@ -635,6 +635,10 @@ class ReferenceIdentifiers:
     pmcid: Optional[str] = None
     url: Optional[str] = None
     pprid: Optional[str] = None  # Europe PMC preprint id (SRC:PPR), e.g. "PPR123456"
+    # Carried from the metadata source so a preprint-specific provider can skip a
+    # record already known to be peer-reviewed (False) without a wasted lookup.
+    # None means "unknown", which providers must still attempt.
+    is_preprint: Optional[bool] = None
 
 
 @dataclass

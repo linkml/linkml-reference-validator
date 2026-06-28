@@ -107,12 +107,12 @@ type or a Europe PMC `SRC:PPR` record — the cached reference records it:
 
 | Field | Description |
 |-------|-------------|
-| `is_preprint` | `true` when the reference is a preprint; left unset otherwise. |
+| `is_preprint` | `true` for a preprint, `false` when the source authoritatively classifies it as not a preprint (e.g. a Crossref `journal-article`), and unset when the type is unknown. |
 | `peer_review_status` | `preprint` for preprints; left unset otherwise. |
 
 Downstream knowledge bases can use these fields to apply policies such as "a
-preprint may not be the sole support for a claim". Peer-reviewed papers are
-left unannotated rather than positively asserted as `peer_reviewed`.
+preprint may not be the sole support for a claim". A non-preprint is not
+positively asserted as `peer_reviewed`; `peer_review_status` stays unset.
 
 ## CLI flag
 

@@ -39,6 +39,8 @@ def build_identifiers(content: ReferenceContent) -> ReferenceIdentifiers:
         >>> ids = build_identifiers(ReferenceContent(reference_id="PMID:9", doi="10.1/z"))
         >>> ids.pmid, ids.doi
         ('9', '10.1/z')
+        >>> build_identifiers(ReferenceContent(reference_id="PPR:PPR42")).pprid
+        'PPR42'
     """
     prefix, identifier = _split_reference_id(content.reference_id)
 
@@ -50,6 +52,8 @@ def build_identifiers(content: ReferenceContent) -> ReferenceIdentifiers:
             ids.pmid = identifier
         elif upper == "PMCID":
             ids.pmcid = identifier
+        elif upper == "PPR":
+            ids.pprid = identifier
         elif upper == "DOI" and not ids.doi:
             ids.doi = identifier
         elif prefix.lower() == "url":

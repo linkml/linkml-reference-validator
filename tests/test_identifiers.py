@@ -29,3 +29,16 @@ def test_build_from_url_reference():
     content = ReferenceContent(reference_id="url:https://x/y.pdf")
     ids = build_identifiers(content)
     assert ids.url == "https://x/y.pdf"
+
+
+def test_build_from_ppr_reference():
+    content = ReferenceContent(reference_id="PPR:PPR123456")
+    ids = build_identifiers(content)
+    assert ids.pprid == "PPR123456"
+
+
+def test_build_from_ppr_reference_carries_doi_metadata():
+    content = ReferenceContent(reference_id="PPR:PPR123456", doi="10.1101/2024.01.01.573333")
+    ids = build_identifiers(content)
+    assert ids.pprid == "PPR123456"
+    assert ids.doi == "10.1101/2024.01.01.573333"

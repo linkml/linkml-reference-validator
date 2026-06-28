@@ -374,10 +374,36 @@ reference:
 - `PMID:12345678`
 - `12345678` (assumes PMID)
 
-### Coming Soon
+#### Preprints
 
-- **DOI** - `DOI:10.1038/nature12345`
-- **URLs** - Web pages and online documents
+Preprints are supported as first-class references:
+
+```yaml
+reference:
+  id: DOI:10.1101/2024.01.01.573333   # by DOI
+  supporting_text: "the kinase phosphorylates the substrate in vitro"
+```
+
+```yaml
+reference:
+  id: PPR:PPR123456                    # by Europe PMC preprint id
+  supporting_text: "the kinase phosphorylates the substrate in vitro"
+```
+
+**Fetches:**
+- Abstract and metadata (title, authors, server, year, DOI)
+- Full-text body via the Europe PMC `fulltextRepo` PDF route (`epmc_preprint`
+  provider), for the Europe-PMC-ingested subset
+- `is_preprint` / `peer_review_status` flags, so downstream KBs can apply
+  "not sole support" policies
+
+**ID Formats:**
+- `DOI:10.1101/...` (Crossref `posted-content` is detected as a preprint)
+- `PPR:PPR123456` (Europe PMC `SRC:PPR` id)
+- NIH Preprint Pilot preprints carry real PMIDs and resolve via the `PMID:` path
+
+See the [full-text guide](docs/how-to/fetch-full-text-and-pdfs.md#preprints) for
+details and coverage caveats.
 
 ---
 

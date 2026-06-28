@@ -140,6 +140,8 @@ class DOISource(ReferenceSource):
             abstract = (abstract + "\n\n" + format_extra_fields_for_content(extra)) if abstract else format_extra_fields_for_content(extra)
             metadata["extra_fields_captured"] = list(extra.keys())
 
+        is_preprint = self._is_crossref_preprint(message)
+
         return ReferenceContent(
             reference_id=f"DOI:{doi}",
             title=title,
@@ -151,7 +153,30 @@ class DOISource(ReferenceSource):
             doi=doi,
             keywords=keywords,
             metadata=metadata,
+            is_preprint=True if is_preprint else None,
+            peer_review_status="preprint" if is_preprint else None,
         )
+
+    def _is_crossref_preprint(self, message: dict) -> bool:
+        """Return True if a Crossref work is a preprint.
+
+        Crossref models preprints as ``type: "posted-content"`` (usually with
+        ``subtype: "preprint"``). This is the authoritative signal; a DOI-prefix
+        heuristic is unreliable because, e.g., the ``10.1101`` prefix also covers
+        peer-reviewed Cold Spring Harbor journals.
+
+        Examples:
+            >>> source = DOISource()
+            >>> source._is_crossref_preprint({"type": "posted-content", "subtype": "preprint"})
+            True
+            >>> source._is_crossref_preprint({"type": "posted-content"})
+            True
+            >>> source._is_crossref_preprint({"type": "journal-article"})
+            False
+        """
+        if message.get("type") == "posted-content":
+            return True
+        return str(message.get("subtype", "")).lower() == "preprint"
 
     def _fetch_from_datacite(
         self, doi: str, config: ReferenceValidationConfig

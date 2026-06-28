@@ -120,6 +120,43 @@ def test_load_from_disk_not_found(fetcher):
     assert result is None
 
 
+def test_save_and_load_preprint_metadata(fetcher, tmp_path):
+    """Preprint status round-trips through the disk cache frontmatter."""
+    ref = ReferenceContent(
+        reference_id="DOI:10.1101/2024.01.01.573333",
+        title="A preprint",
+        content="Early findings.",
+        content_type="abstract_only",
+        doi="10.1101/2024.01.01.573333",
+        is_preprint=True,
+        peer_review_status="preprint",
+    )
+
+    fetcher._save_to_disk(ref)
+    loaded = fetcher._load_from_disk("DOI:10.1101/2024.01.01.573333")
+
+    assert loaded is not None
+    assert loaded.is_preprint is True
+    assert loaded.peer_review_status == "preprint"
+
+
+def test_save_and_load_non_preprint_leaves_status_unset(fetcher, tmp_path):
+    """A record with no preprint status must not gain one via the cache."""
+    ref = ReferenceContent(
+        reference_id="PMID:12345678",
+        title="A paper",
+        content="Results.",
+        content_type="abstract_only",
+    )
+
+    fetcher._save_to_disk(ref)
+    loaded = fetcher._load_from_disk("PMID:12345678")
+
+    assert loaded is not None
+    assert loaded.is_preprint is None
+    assert loaded.peer_review_status is None
+
+
 def test_save_and_load_with_brackets_in_title(fetcher, tmp_path):
     """Test saving and loading reference with brackets in title.
 

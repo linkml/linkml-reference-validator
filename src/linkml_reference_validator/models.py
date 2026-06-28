@@ -462,11 +462,12 @@ class ReferenceValidationConfig(BaseModel):
         ),
     )
     full_text_providers: list[str] = Field(
-        default_factory=lambda: ["pmc", "unpaywall", "openalex"],
+        default_factory=lambda: ["pmc", "epmc_preprint", "unpaywall", "openalex"],
         description=(
             "Ordered list of full-text provider names to try until one yields usable "
-            "full text. Names map to built-in providers (pmc, unpaywall, openalex) or "
-            "custom providers loaded from YAML."
+            "full text. Names map to built-in providers (pmc, epmc_preprint, unpaywall, "
+            "openalex) or custom providers loaded from YAML. The epmc_preprint provider "
+            "fetches preprint body text via the Europe PMC fulltextRepo PDF route."
         ),
     )
     pdf_backend: str = Field(
@@ -625,12 +626,15 @@ class ReferenceIdentifiers:
         '10.1038/x'
         >>> ids.pmcid is None
         True
+        >>> ReferenceIdentifiers(pprid="PPR123456").pprid
+        'PPR123456'
     """
 
     doi: Optional[str] = None
     pmid: Optional[str] = None
     pmcid: Optional[str] = None
     url: Optional[str] = None
+    pprid: Optional[str] = None  # Europe PMC preprint id (SRC:PPR), e.g. "PPR123456"
 
 
 @dataclass
@@ -679,6 +683,16 @@ class ReferenceContent:
         ... )
         >>> len(ref.supplementary_files)
         1
+        >>> ref = ReferenceContent(
+        ...     reference_id="DOI:10.1101/2024.01.01.573333",
+        ...     title="A preprint",
+        ...     is_preprint=True,
+        ...     peer_review_status="preprint",
+        ... )
+        >>> ref.is_preprint
+        True
+        >>> ref.peer_review_status
+        'preprint'
     """
 
     reference_id: str
@@ -697,6 +711,13 @@ class ReferenceContent:
     oa_status: Optional[str] = None
     license: Optional[str] = None
     local_pdf_path: Optional[str] = None
+    # Preprint / peer-review status, surfaced so downstream KBs can apply policies
+    # such as "a preprint may not be the sole support for a claim". Left as None
+    # when the publication type is unknown; only asserted when positively detected
+    # (e.g. Crossref type "posted-content"/subtype "preprint", or a Europe PMC
+    # SRC:PPR record).
+    is_preprint: Optional[bool] = None
+    peer_review_status: Optional[str] = None  # e.g. "preprint", "peer_reviewed"
     # True once the full-text chain has been run to a clean (error-free) conclusion
     # for this record. Distinguishes "the abstract is all that exists" from "we
     # haven't successfully tried yet", so a transient outage isn't cached forever.

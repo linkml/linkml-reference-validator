@@ -43,7 +43,7 @@ def test_full_text_config_defaults():
 
     config = ReferenceValidationConfig()
     assert config.fetch_full_text is True
-    assert config.full_text_providers == ["pmc", "unpaywall", "openalex"]
+    assert config.full_text_providers == ["pmc", "epmc_preprint", "unpaywall", "openalex"]
     assert config.pdf_backend == "pypdf"
     assert config.download_pdfs is True
 

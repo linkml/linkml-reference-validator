@@ -492,6 +492,12 @@ class ReferenceFetcher:
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
         lines.append(f"content_type: {reference.content_type}")
+        if reference.is_preprint is not None:
+            lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
+        if reference.peer_review_status:
+            lines.append(
+                f"peer_review_status: {self._quote_yaml_value(reference.peer_review_status)}"
+            )
         if reference.full_text_attempted:
             lines.append("full_text_attempted: true")
         if reference.full_text_provider:
@@ -651,6 +657,8 @@ class ReferenceFetcher:
             oa_status=frontmatter.get("oa_status"),
             license=frontmatter.get("license"),
             local_pdf_path=frontmatter.get("local_pdf_path"),
+            is_preprint=frontmatter.get("is_preprint"),
+            peer_review_status=frontmatter.get("peer_review_status"),
             full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),
         )
 

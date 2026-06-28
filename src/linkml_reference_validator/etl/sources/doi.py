@@ -140,6 +140,8 @@ class DOISource(ReferenceSource):
             abstract = (abstract + "\n\n" + format_extra_fields_for_content(extra)) if abstract else format_extra_fields_for_content(extra)
             metadata["extra_fields_captured"] = list(extra.keys())
 
+        is_preprint = self._crossref_preprint_status(message)
+
         return ReferenceContent(
             reference_id=f"DOI:{doi}",
             title=title,
@@ -151,7 +153,39 @@ class DOISource(ReferenceSource):
             doi=doi,
             keywords=keywords,
             metadata=metadata,
+            is_preprint=is_preprint,
+            peer_review_status="preprint" if is_preprint else None,
         )
+
+    def _crossref_preprint_status(self, message: dict) -> Optional[bool]:
+        """Classify a Crossref work as preprint / not-preprint / unknown.
+
+        Crossref models preprints as ``type: "posted-content"`` (usually with
+        ``subtype: "preprint"``). The ``type`` is authoritative, so a known
+        non-preprint type returns ``False`` (recorded so a preprint-specific
+        full-text provider can skip the record without a wasted lookup). Only an
+        entirely typeless record is left ``None`` ("unknown"). A DOI-prefix
+        heuristic is deliberately not used because, e.g., the ``10.1101`` prefix
+        also covers peer-reviewed Cold Spring Harbor journals.
+
+        Examples:
+            >>> source = DOISource()
+            >>> source._crossref_preprint_status({"type": "posted-content", "subtype": "preprint"})
+            True
+            >>> source._crossref_preprint_status({"type": "posted-content"})
+            True
+            >>> source._crossref_preprint_status({"type": "journal-article"})
+            False
+            >>> source._crossref_preprint_status({}) is None
+            True
+        """
+        if message.get("type") == "posted-content":
+            return True
+        if str(message.get("subtype", "")).lower() == "preprint":
+            return True
+        if message.get("type"):
+            return False
+        return None
 
     def _fetch_from_datacite(
         self, doi: str, config: ReferenceValidationConfig

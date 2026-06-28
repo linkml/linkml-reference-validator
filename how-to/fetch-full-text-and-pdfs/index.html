@@ -863,6 +863,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#preprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Preprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-text-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full-text retrieval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preprint-peer-review-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preprint / peer-review status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cli-flag" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1340,6 +1379,45 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#preprints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preprints
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Preprints">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-text-retrieval" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full-text retrieval
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#preprint-peer-review-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Preprint / peer-review status
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#cli-flag" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1418,11 +1496,13 @@ alongside the reference.</p>
 <h2 id="the-provider-chain">The provider chain</h2>
 <p>The validator tries providers in order until one returns usable full text.
 The default order is:</p>
-<pre><code>pmc → unpaywall → openalex
+<pre><code>pmc → epmc_preprint → unpaywall → openalex
 </code></pre>
 <ul>
 <li><strong><code>pmc</code></strong> — PubMed Central open-access subset (XML/HTML full text for many
   biomedical articles).</li>
+<li><strong><code>epmc_preprint</code></strong> — Europe PMC preprint body text via the <code>fulltextRepo</code>
+  PDF route (see <a href="#preprints">Preprints</a> below).</li>
 <li><strong><code>unpaywall</code></strong> — Unpaywall open-access lookup by DOI (often a publisher or
   repository PDF).</li>
 <li><strong><code>openalex</code></strong> — OpenAlex open-access location (PDF/HTML).</li>
@@ -1450,7 +1530,7 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 </tr>
 <tr>
 <td><code>full_text_providers</code></td>
-<td><code>[pmc, unpaywall, openalex]</code></td>
+<td><code>[pmc, epmc_preprint, unpaywall, openalex]</code></td>
 <td>Ordered list of provider names to try until one yields usable full text.</td>
 </tr>
 <tr>
@@ -1494,11 +1574,61 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 fetch_full_text: true
 full_text_providers:
   - pmc
+  - epmc_preprint
   - unpaywall
   - openalex
 pdf_backend: pypdf
 download_pdfs: true
 </code></pre>
+<h2 id="preprints">Preprints</h2>
+<p>Preprints are first-class references. They are increasingly cited for early
+mechanistic findings, but they sit in two distinct universes that need
+different handling:</p>
+<ul>
+<li><strong>NIH Preprint Pilot</strong> — a subset of preprints carry real PMIDs, so they
+  resolve through the normal <code>PMID:</code> path with no special handling.</li>
+<li><strong>Europe PMC <code>SRC:PPR</code></strong> — the much larger preprint firehose is DOI-only
+  (no PMIDs). These resolve by DOI through Crossref, or directly by their
+  Europe PMC preprint id using the <code>PPR:</code> prefix (e.g. <code>PPR:PPR123456</code>).</li>
+</ul>
+<h3 id="full-text-retrieval">Full-text retrieval</h3>
+<p>Preprint bodies are <strong>not</strong> served by the PMC <code>fullTextXML</code> endpoint — even the
+~7% with a PMCID expose only abstract/title/supplementary in PMC, and direct
+<code>biorxiv.org/...full.pdf</code> links sit behind a bot challenge. The route that
+works for automated clients is the Europe PMC <code>fulltextRepo</code> PDF, used by the
+<code>epmc_preprint</code> provider: it resolves a preprint by DOI (or <code>SRC:PPR</code> id),
+finds the open <code>fulltextRepo</code> PDF URL, and downloads it. The PDF's <code>%PDF-</code>
+magic bytes are validated before extraction, so a stale-filename error blob is
+rejected rather than fed to the PDF parser, and the chain falls through
+gracefully.</p>
+<p>Coverage note: the <code>epmc_preprint</code> route covers the Europe-PMC-ingested
+preprint subset. The newest openRxiv DOIs (prefix <code>10.64898</code>) are not yet in
+Europe PMC, so very recent preprints may resolve to metadata only until they
+are ingested.</p>
+<h3 id="preprint-peer-review-status">Preprint / peer-review status</h3>
+<p>When a reference is detected as a preprint — via the Crossref <code>posted-content</code>
+type or a Europe PMC <code>SRC:PPR</code> record — the cached reference records it:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>is_preprint</code></td>
+<td><code>true</code> for a preprint, <code>false</code> when the source authoritatively classifies it as not a preprint (e.g. a Crossref <code>journal-article</code>), and unset when the type is unknown.</td>
+</tr>
+<tr>
+<td><code>peer_review_status</code></td>
+<td><code>preprint</code> for preprints; left unset otherwise.</td>
+</tr>
+</tbody>
+</table>
+<p>Downstream knowledge bases can use these fields to apply policies such as "a
+preprint may not be the sole support for a claim". A non-preprint is not
+positively asserted as <code>peer_reviewed</code>; <code>peer_review_status</code> stays unset.</p>
 <h2 id="cli-flag">CLI flag</h2>
 <p>Every <code>validate</code> subcommand accepts a <code>--full-text/--no-full-text</code> flag that
 toggles <code>fetch_full_text</code> for that run (default: on):</p>
@@ -1548,7 +1678,7 @@ the text came from. These provenance fields are written alongside the content:</
 <tbody>
 <tr>
 <td><code>full_text_provider</code></td>
-<td>Name of the provider that supplied the full text (e.g. <code>pmc</code>, <code>unpaywall</code>, or a custom name).</td>
+<td>Name of the provider that supplied the full text (e.g. <code>pmc</code>, <code>epmc_preprint</code>, <code>unpaywall</code>, or a custom name).</td>
 </tr>
 <tr>
 <td><code>oa_status</code></td>

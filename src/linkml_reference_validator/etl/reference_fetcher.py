@@ -7,7 +7,7 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from ruamel.yaml import YAML  # type: ignore
 
@@ -596,6 +596,25 @@ class ReferenceFetcher:
         else:
             return self._load_legacy_format(content_text, reference_id)
 
+    @staticmethod
+    def _as_optional_list(value: Any) -> Optional[list]:
+        """Normalise a frontmatter value into an optional list.
+
+        YAML may parse a single-item field as a scalar rather than a list;
+        this coerces such values back to a list and maps empties to None.
+
+        Examples:
+            >>> ReferenceFetcher._as_optional_list(["a", "b"])
+            ['a', 'b']
+            >>> ReferenceFetcher._as_optional_list("solo")
+            ['solo']
+            >>> ReferenceFetcher._as_optional_list(None) is None
+            True
+        """
+        if not value:
+            return None
+        return value if isinstance(value, list) else [value]
+
     def _load_markdown_format(
         self, content_text: str, reference_id: str
     ) -> Optional[ReferenceContent]:
@@ -619,29 +638,11 @@ class ReferenceFetcher:
 
         content = self._extract_content_from_markdown(body)
 
-        authors = frontmatter.get("authors")
-        if authors and isinstance(authors, list):
-            authors = authors
-        elif authors:
-            authors = [authors]
-        else:
-            authors = None
-
-        keywords = frontmatter.get("keywords")
-        if keywords and isinstance(keywords, list):
-            keywords = keywords
-        elif keywords:
-            keywords = [keywords]
-        else:
-            keywords = None
-
-        publication_types = frontmatter.get("publication_types")
-        if publication_types and isinstance(publication_types, list):
-            publication_types = publication_types
-        elif publication_types:
-            publication_types = [publication_types]
-        else:
-            publication_types = None
+        authors = self._as_optional_list(frontmatter.get("authors"))
+        keywords = self._as_optional_list(frontmatter.get("keywords"))
+        publication_types = self._as_optional_list(
+            frontmatter.get("publication_types")
+        )
 
         # Parse supplementary files
         supplementary_files = self._parse_supplementary_files(

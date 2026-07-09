@@ -365,6 +365,24 @@ class TestPMIDSource:
 
         assert source._parse_publication_types(soup) is None
 
+    def test_parse_publication_types_empty_list(self, source):
+        """A present-but-empty PublicationTypeList should yield None."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PublicationTypeList></PublicationTypeList>", "xml"
+        )
+
+        assert source._parse_publication_types(soup) is None
+
+    def test_parse_mesh_terms_empty_list(self, source):
+        """A present-but-empty MeshHeadingList should yield None."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup("<MeshHeadingList></MeshHeadingList>", "xml")
+
+        assert source._parse_mesh_terms(soup) is None
+
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.esummary")
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")

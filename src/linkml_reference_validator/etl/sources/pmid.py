@@ -137,8 +137,10 @@ class PMIDSource(ReferenceSource):
         year = str(pub_date)[:4] if pub_date else ""
         doi = str(record_dict.get("DOI", "")) if record_dict.get("DOI") else ""
 
-        abstract = self._fetch_abstract(pmid, config)
+        # A single efetch of the article XML backs the abstract, MeSH terms,
+        # and publication types, so we don't round-trip to NCBI three times.
         article_xml = self._fetch_pubmed_xml(pmid, config)
+        abstract = self._parse_abstract(article_xml) if article_xml else None
         keywords = self._parse_mesh_terms(article_xml) if article_xml else None
         publication_types = (
             self._parse_publication_types(article_xml) if article_xml else None
@@ -188,29 +190,47 @@ class PMIDSource(ReferenceSource):
         """
         return [str(author) for author in author_list if author]
 
-    def _fetch_abstract(
-        self, pmid: str, config: ReferenceValidationConfig
-    ) -> Optional[str]:
-        """Fetch abstract for a PMID.
+    def _parse_abstract(self, soup: BeautifulSoup) -> Optional[str]:
+        """Parse the abstract from a PubMed article XML document.
+
+        Reconstructs the abstract prose from ``Abstract/AbstractText`` nodes.
+        Structured abstracts label each section (e.g. ``Label="METHODS"``);
+        the label is preserved as a ``"METHODS:"`` prefix and sections are
+        joined by blank lines, mirroring how PubMed renders them as text.
 
         Args:
-            pmid: PubMed ID
-            config: Configuration for rate limiting
+            soup: Parsed PubMed article XML
 
         Returns:
-            Abstract text if available
+            Abstract text if available, otherwise None
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<Abstract>
+            ...   <AbstractText Label="METHODS">We ran a trial.</AbstractText>
+            ...   <AbstractText Label="RESULTS">It worked.</AbstractText>
+            ... </Abstract>'''
+            >>> PMIDSource()._parse_abstract(BeautifulSoup(xml, "xml"))
+            'METHODS: We ran a trial.\\n\\nRESULTS: It worked.'
+            >>> xml = '<Abstract><AbstractText>A summary.</AbstractText></Abstract>'
+            >>> PMIDSource()._parse_abstract(BeautifulSoup(xml, "xml"))
+            'A summary.'
         """
-        time.sleep(config.rate_limit_delay)
+        abstract = soup.find("Abstract")
 
-        handle = Entrez.efetch(db="pubmed", id=pmid,
-                               rettype="abstract", retmode="text")
-        abstract_text = handle.read()
-        handle.close()
+        if not abstract:
+            return None
 
-        if abstract_text and len(abstract_text) > 50:
-            return str(abstract_text)
+        sections = []
+        for node in abstract.find_all("AbstractText"):
+            text = node.get_text().strip()
+            if not text:
+                continue
+            label = node.get("Label")
+            sections.append(f"{label}: {text}" if label else text)
 
-        return None
+        joined = "\n\n".join(sections)
+        return joined if joined else None
 
     def _fetch_pubmed_xml(
         self, pmid: str, config: ReferenceValidationConfig

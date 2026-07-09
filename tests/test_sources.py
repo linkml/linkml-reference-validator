@@ -326,6 +326,10 @@ class TestPMIDSource:
         <MedlineCitation>
           <Article>
             <ArticleTitle>An illustrative case</ArticleTitle>
+            <Abstract>
+              <AbstractText Label="METHODS">We describe the case.</AbstractText>
+              <AbstractText Label="RESULTS">The patient recovered.</AbstractText>
+            </Abstract>
             <PublicationTypeList>
               <PublicationType UI="D016428">Journal Article</PublicationType>
               <PublicationType UI="D002363">Case Reports</PublicationType>
@@ -383,13 +387,56 @@ class TestPMIDSource:
 
         assert source._parse_mesh_terms(soup) is None
 
+    # --- Abstract parsing (issue #56 note 2: fold into single XML fetch) ---
+
+    def test_parse_abstract_structured(self, source):
+        """Structured abstracts should keep their section labels."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(self._ARTICLE_XML, "xml")
+
+        assert source._parse_abstract(soup) == (
+            "METHODS: We describe the case.\n\nRESULTS: The patient recovered."
+        )
+
+    def test_parse_abstract_unstructured(self, source):
+        """A single unlabelled AbstractText should return its prose verbatim."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<Abstract><AbstractText>Just one paragraph.</AbstractText></Abstract>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "Just one paragraph."
+
+    def test_parse_abstract_absent(self, source):
+        """Should return None when there is no Abstract element."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticleSet><PubmedArticle/></PubmedArticleSet>", "xml"
+        )
+
+        assert source._parse_abstract(soup) is None
+
+    def test_parse_abstract_empty(self, source):
+        """An Abstract with only empty AbstractText should yield None."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<Abstract><AbstractText></AbstractText></Abstract>", "xml"
+        )
+
+        assert source._parse_abstract(soup) is None
+
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.esummary")
     @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")
-    def test_fetch_populates_publication_types(
+    def test_fetch_uses_single_efetch(
         self, mock_read, mock_esummary, mock_efetch, source, config
     ):
-        """fetch() should surface publication types on the ReferenceContent."""
+        """fetch() should derive abstract, MeSH, and pub types from one efetch."""
         mock_read.return_value = [
             {
                 "Title": "An illustrative case",
@@ -400,19 +447,19 @@ class TestPMIDSource:
             }
         ]
 
-        def _efetch(*args, **kwargs):
-            handle = MagicMock()
-            if kwargs.get("rettype") == "abstract":
-                handle.read.return_value = "x" * 100
-            else:
-                handle.read.return_value = self._ARTICLE_XML
-            return handle
-
-        mock_efetch.side_effect = _efetch
+        handle = MagicMock()
+        handle.read.return_value = self._ARTICLE_XML
+        mock_efetch.return_value = handle
 
         ref = source.fetch("12345678", config)
 
+        # A single article-XML fetch backs all three fields — no second call.
+        assert mock_efetch.call_count == 1
         assert ref is not None
+        assert ref.content == (
+            "METHODS: We describe the case.\n\nRESULTS: The patient recovered."
+        )
+        assert ref.content_type == "abstract_only"
         assert ref.publication_types == [
             "Journal Article",
             "Case Reports",

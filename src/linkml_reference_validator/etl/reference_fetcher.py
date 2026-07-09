@@ -7,7 +7,7 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 import logging
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from ruamel.yaml import YAML  # type: ignore
 
@@ -491,6 +491,10 @@ class ReferenceFetcher:
             lines.append("keywords:")
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
+        if reference.publication_types:
+            lines.append("publication_types:")
+            for publication_type in reference.publication_types:
+                lines.append(f"- {self._quote_yaml_value(publication_type)}")
         lines.append(f"content_type: {reference.content_type}")
         if reference.is_preprint is not None:
             lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
@@ -592,6 +596,25 @@ class ReferenceFetcher:
         else:
             return self._load_legacy_format(content_text, reference_id)
 
+    @staticmethod
+    def _as_optional_list(value: Any) -> Optional[list]:
+        """Normalise a frontmatter value into an optional list.
+
+        YAML may parse a single-item field as a scalar rather than a list;
+        this coerces such values back to a list and maps empties to None.
+
+        Examples:
+            >>> ReferenceFetcher._as_optional_list(["a", "b"])
+            ['a', 'b']
+            >>> ReferenceFetcher._as_optional_list("solo")
+            ['solo']
+            >>> ReferenceFetcher._as_optional_list(None) is None
+            True
+        """
+        if not value:
+            return None
+        return value if isinstance(value, list) else [value]
+
     def _load_markdown_format(
         self, content_text: str, reference_id: str
     ) -> Optional[ReferenceContent]:
@@ -615,21 +638,11 @@ class ReferenceFetcher:
 
         content = self._extract_content_from_markdown(body)
 
-        authors = frontmatter.get("authors")
-        if authors and isinstance(authors, list):
-            authors = authors
-        elif authors:
-            authors = [authors]
-        else:
-            authors = None
-
-        keywords = frontmatter.get("keywords")
-        if keywords and isinstance(keywords, list):
-            keywords = keywords
-        elif keywords:
-            keywords = [keywords]
-        else:
-            keywords = None
+        authors = self._as_optional_list(frontmatter.get("authors"))
+        keywords = self._as_optional_list(frontmatter.get("keywords"))
+        publication_types = self._as_optional_list(
+            frontmatter.get("publication_types")
+        )
 
         # Parse supplementary files
         supplementary_files = self._parse_supplementary_files(
@@ -650,6 +663,7 @@ class ReferenceFetcher:
             year=str(frontmatter.get("year")) if frontmatter.get("year") else None,
             doi=frontmatter.get("doi"),
             keywords=keywords,
+            publication_types=publication_types,
             supplementary_files=supplementary_files,
             metadata=metadata,
             full_text_provider=frontmatter.get("full_text_provider"),

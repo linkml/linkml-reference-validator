@@ -138,7 +138,11 @@ class PMIDSource(ReferenceSource):
         doi = str(record_dict.get("DOI", "")) if record_dict.get("DOI") else ""
 
         abstract = self._fetch_abstract(pmid, config)
-        keywords = self._fetch_mesh_terms(pmid, config)
+        article_xml = self._fetch_pubmed_xml(pmid, config)
+        keywords = self._parse_mesh_terms(article_xml) if article_xml else None
+        publication_types = (
+            self._parse_publication_types(article_xml) if article_xml else None
+        )
 
         content: Optional[str] = abstract
         content_type = "abstract_only" if abstract else "unavailable"
@@ -164,6 +168,7 @@ class PMIDSource(ReferenceSource):
             year=year,
             doi=doi,
             keywords=keywords,
+            publication_types=publication_types,
             metadata=metadata,
         )
 
@@ -207,22 +212,20 @@ class PMIDSource(ReferenceSource):
 
         return None
 
-    def _fetch_mesh_terms(
+    def _fetch_pubmed_xml(
         self, pmid: str, config: ReferenceValidationConfig
-    ) -> Optional[list[str]]:
-        """Fetch MeSH terms for a PMID from PubMed XML.
+    ) -> Optional[BeautifulSoup]:
+        """Fetch and parse the PubMed article XML for a PMID.
+
+        A single efetch call backs both MeSH terms and publication types, so we
+        don't round-trip to NCBI twice for the same document.
 
         Args:
             pmid: PubMed ID
             config: Configuration for rate limiting
 
         Returns:
-            List of MeSH terms if available
-
-        Examples:
-            >>> source = PMIDSource()
-            >>> # Would return MeSH terms like:
-            >>> # ['Adaptation, Physiological/genetics', 'Climate Change', ...]
+            Parsed BeautifulSoup document, or None if nothing was returned
         """
         time.sleep(config.rate_limit_delay)
 
@@ -234,7 +237,28 @@ class PMIDSource(ReferenceSource):
         if isinstance(xml_content, bytes):
             xml_content = xml_content.decode("utf-8")
 
-        soup = BeautifulSoup(xml_content, "xml")
+        if not xml_content:
+            return None
+
+        return BeautifulSoup(xml_content, "xml")
+
+    def _parse_mesh_terms(self, soup: BeautifulSoup) -> Optional[list[str]]:
+        """Parse MeSH terms from a PubMed article XML document.
+
+        Args:
+            soup: Parsed PubMed article XML
+
+        Returns:
+            List of MeSH terms if available
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<MeshHeadingList><MeshHeading>
+            ...   <DescriptorName>Climate Change</DescriptorName>
+            ... </MeshHeading></MeshHeadingList>'''
+            >>> PMIDSource()._parse_mesh_terms(BeautifulSoup(xml, "xml"))
+            ['Climate Change']
+        """
         mesh_list = soup.find("MeshHeadingList")
 
         if not mesh_list:
@@ -253,6 +277,44 @@ class PMIDSource(ReferenceSource):
                 terms.append(term)
 
         return terms if terms else None
+
+    def _parse_publication_types(
+        self, soup: BeautifulSoup
+    ) -> Optional[list[str]]:
+        """Parse PublicationTypeList from a PubMed article XML document.
+
+        Publication types are MeSH publication-type descriptors
+        (https://www.nlm.nih.gov/mesh/pubtypes.html) that classify the source,
+        e.g. "Case Reports", "Clinical Trial", "Review". Nearly every record
+        carries the generic "Journal Article" type; it is retained as-is.
+
+        Args:
+            soup: Parsed PubMed article XML
+
+        Returns:
+            List of publication type labels if available
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<PublicationTypeList>
+            ...   <PublicationType UI="D016428">Journal Article</PublicationType>
+            ...   <PublicationType UI="D002363">Case Reports</PublicationType>
+            ... </PublicationTypeList>'''
+            >>> PMIDSource()._parse_publication_types(BeautifulSoup(xml, "xml"))
+            ['Journal Article', 'Case Reports']
+        """
+        type_list = soup.find("PublicationTypeList")
+
+        if not type_list:
+            return None
+
+        types = [
+            text
+            for pt in type_list.find_all("PublicationType")
+            if (text := pt.get_text().strip())
+        ]
+
+        return types if types else None
 
     def _fetch_pmc_fulltext(
         self, pmid: str, config: ReferenceValidationConfig

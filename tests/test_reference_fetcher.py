@@ -140,6 +140,23 @@ def test_save_and_load_preprint_metadata(fetcher, tmp_path):
     assert loaded.peer_review_status == "preprint"
 
 
+def test_save_and_load_publication_types(fetcher, tmp_path):
+    """Publication types round-trip through the disk cache frontmatter."""
+    ref = ReferenceContent(
+        reference_id="PMID:12345678",
+        title="An illustrative case",
+        content="Case description.",
+        content_type="abstract_only",
+        publication_types=["Journal Article", "Case Reports"],
+    )
+
+    fetcher._save_to_disk(ref)
+    loaded = fetcher._load_from_disk("PMID:12345678")
+
+    assert loaded is not None
+    assert loaded.publication_types == ["Journal Article", "Case Reports"]
+
+
 def test_save_and_load_non_preprint_leaves_status_unset(fetcher, tmp_path):
     """A record with no preprint status must not gain one via the cache."""
     ref = ReferenceContent(

@@ -708,6 +708,10 @@ class ReferenceContent:
     year: Optional[str] = None
     doi: Optional[str] = None
     keywords: Optional[list[str]] = None  # MeSH terms, subjects, tags
+    # PubMed PublicationTypeList values (https://www.nlm.nih.gov/mesh/pubtypes.html),
+    # e.g. ["Journal Article", "Case Reports", "Clinical Trial"]. These classify the
+    # source so downstream KBs can reason about evidence type. None when unknown.
+    publication_types: Optional[list[str]] = None
     supplementary_files: Optional[list[SupplementaryFile]] = None
     metadata: dict = field(default_factory=dict)
     full_text_provider: Optional[str] = None

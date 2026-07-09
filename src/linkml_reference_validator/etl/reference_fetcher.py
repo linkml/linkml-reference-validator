@@ -491,6 +491,10 @@ class ReferenceFetcher:
             lines.append("keywords:")
             for keyword in reference.keywords:
                 lines.append(f"- {self._quote_yaml_value(keyword)}")
+        if reference.publication_types:
+            lines.append("publication_types:")
+            for publication_type in reference.publication_types:
+                lines.append(f"- {self._quote_yaml_value(publication_type)}")
         lines.append(f"content_type: {reference.content_type}")
         if reference.is_preprint is not None:
             lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
@@ -631,6 +635,14 @@ class ReferenceFetcher:
         else:
             keywords = None
 
+        publication_types = frontmatter.get("publication_types")
+        if publication_types and isinstance(publication_types, list):
+            publication_types = publication_types
+        elif publication_types:
+            publication_types = [publication_types]
+        else:
+            publication_types = None
+
         # Parse supplementary files
         supplementary_files = self._parse_supplementary_files(
             frontmatter.get("supplementary_files")
@@ -650,6 +662,7 @@ class ReferenceFetcher:
             year=str(frontmatter.get("year")) if frontmatter.get("year") else None,
             doi=frontmatter.get("doi"),
             keywords=keywords,
+            publication_types=publication_types,
             supplementary_files=supplementary_files,
             metadata=metadata,
             full_text_provider=frontmatter.get("full_text_provider"),

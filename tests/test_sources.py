@@ -318,6 +318,90 @@ class TestPMIDSource:
         assert result is None
         handle.close.assert_called_once()
 
+    # --- Publication types (issue #56) -----------------------------------
+
+    _ARTICLE_XML = """<?xml version="1.0"?>
+    <PubmedArticleSet>
+      <PubmedArticle>
+        <MedlineCitation>
+          <Article>
+            <ArticleTitle>An illustrative case</ArticleTitle>
+            <PublicationTypeList>
+              <PublicationType UI="D016428">Journal Article</PublicationType>
+              <PublicationType UI="D002363">Case Reports</PublicationType>
+              <PublicationType UI="D016449">Randomized Controlled Trial</PublicationType>
+            </PublicationTypeList>
+          </Article>
+          <MeshHeadingList>
+            <MeshHeading>
+              <DescriptorName UI="D000001">Calcimycin</DescriptorName>
+            </MeshHeading>
+          </MeshHeadingList>
+        </MedlineCitation>
+      </PubmedArticle>
+    </PubmedArticleSet>
+    """
+
+    def test_parse_publication_types(self, source):
+        """Should extract every PublicationType value from article XML."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(self._ARTICLE_XML, "xml")
+        types = source._parse_publication_types(soup)
+
+        assert types == [
+            "Journal Article",
+            "Case Reports",
+            "Randomized Controlled Trial",
+        ]
+
+    def test_parse_publication_types_absent(self, source):
+        """Should return None when there is no PublicationTypeList."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticleSet><PubmedArticle/></PubmedArticleSet>", "xml"
+        )
+
+        assert source._parse_publication_types(soup) is None
+
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.esummary")
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")
+    def test_fetch_populates_publication_types(
+        self, mock_read, mock_esummary, mock_efetch, source, config
+    ):
+        """fetch() should surface publication types on the ReferenceContent."""
+        mock_read.return_value = [
+            {
+                "Title": "An illustrative case",
+                "AuthorList": ["Smith J"],
+                "Source": "J Test",
+                "PubDate": "2020 Jan",
+                "DOI": "10.1/x",
+            }
+        ]
+
+        def _efetch(*args, **kwargs):
+            handle = MagicMock()
+            if kwargs.get("rettype") == "abstract":
+                handle.read.return_value = "x" * 100
+            else:
+                handle.read.return_value = self._ARTICLE_XML
+            return handle
+
+        mock_efetch.side_effect = _efetch
+
+        ref = source.fetch("12345678", config)
+
+        assert ref is not None
+        assert ref.publication_types == [
+            "Journal Article",
+            "Case Reports",
+            "Randomized Controlled Trial",
+        ]
+        assert ref.keywords == ["Calcimycin"]
+
 
 class TestDOISource:
     """Tests for DOISource (refactored from ReferenceFetcher)."""

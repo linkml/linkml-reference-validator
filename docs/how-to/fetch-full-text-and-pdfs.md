@@ -46,9 +46,11 @@ your config YAML or on the `ReferenceValidationConfig` object):
 |-----|---------|-------------|
 | `fetch_full_text` | `true` | Attempt to obtain full text via the provider chain when a metadata source does not already return full text. |
 | `full_text_providers` | `[pmc, epmc_preprint, unpaywall, openalex]` | Ordered list of provider names to try until one yields usable full text. |
+| `private_cache_dir` | `~/.cache/linkml-reference-validator/private` | Separate research cache for closed/user-library full text; never read by validation. |
 | `pdf_backend` | `pypdf` | Name of the PDF text-extraction backend. |
 | `download_pdfs` | `true` | If true, persist downloaded PDFs to the files cache directory. |
 | `full_text_providers_file` | `null` | Optional path to a YAML file defining custom full-text providers. |
+| `zotero_base_url` | `http://localhost:23119/api/users/0` | Read-only Zotero local API library used by the opt-in `zotero` provider. |
 
 Two existing keys are also reused by the full-text machinery:
 
@@ -70,6 +72,106 @@ full_text_providers:
 pdf_backend: pypdf
 download_pdfs: true
 ```
+
+## Private manuscripts in Zotero
+
+The opt-in **`zotero`** provider can find non-open manuscripts that are already
+in your personal Zotero library. It matches exact DOI, PMID, or PMCID identifiers;
+it does not automatically accept fuzzy title matches.
+
+Zotero must be running, and its local API must be enabled in Zotero's advanced
+settings. Inventory the reference cache before changing it:
+
+```bash
+linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --dry-run
+```
+
+The report distinguishes `found`, `not_found`, `already_full_text`, and `error`.
+Dry-run is the default and never changes cache files. After reviewing exact
+matches, apply usable text with:
+
+```bash
+linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --apply
+```
+
+Apply mode does **not** modify `references_cache`. It writes the enriched entry
+to a separate research cache at `~/.cache/linkml-reference-validator/private`
+by default. Agents may inspect that cache for background context, but ordinary
+validation never reads it and never cites it as evidence. Validation therefore
+has the same inputs locally, in CI, and on another contributor's machine.
+
+To keep the research cache in a private repository or another secured location:
+
+```bash
+linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --private-cache-dir /path/to/private-reference-cache \
+  --apply
+```
+
+The same location can be configured for all commands:
+
+```yaml
+cache_dir: references_cache
+private_cache_dir: /path/to/private-reference-cache
+```
+
+Zotero-indexed text is preferred. If Zotero has not indexed an attachment, the
+provider downloads it from Zotero's local PDF endpoint and sends it through the
+normal PDF extractor. The source attachment key and `user_library` access type
+are persisted, but the ephemeral localhost URL is not.
+
+!!! warning "Keep research caches private"
+
+    Private cache entries contain extracted manuscript text and may contain a
+    copied PDF. Do not place this cache in a public repository or share it
+    unless you have permission to redistribute that content.
+
+Do not add `zotero` to `full_text_providers`. Even if it is configured there,
+ordinary validation rejects its `user_library` result and continues to public
+providers. Use `cache enrich` when you want to search Zotero.
+
+Support for reproducible validation backed by private manuscripts is a future,
+separate feature. The proposed design is a trusted offline job that emits a
+minimal signed excerpt attestation into the public cache. The validator would
+verify the signature using a checked-in public key; neither agents nor CI would
+have the signing key or permission to generate those files directly.
+
+## Export a cache to a Zotero collection
+
+Export references that still need full text as metadata-only CSL JSON:
+
+```bash
+linkml-reference-validator cache export \
+  --cache-dir references_cache \
+  --format csl-json \
+  --needs-full-text \
+  --output project-zotero.json
+```
+
+The default `--needs-full-text` mode excludes cache entries that already contain
+full text. It also excludes non-publication identifiers, deduplicates by
+normalized DOI and then PMID, and exports only an explicit metadata allowlist:
+title, authors, journal, year, DOI, PMID, and PubMed URL. Cached article text,
+excerpts, provenance, PDFs, and local paths are never exported. Use `--all` only
+when you deliberately want eligible records that already have full text.
+
+The exporter refuses to replace an existing output file unless `--force` is
+given. Review the reported counts, then in Zotero choose **File → Import → A
+file**, select the JSON file, and place the imported items in a project-specific
+collection. Zotero supports CSL JSON as a standard import format. After import,
+select the collection and run **Find Full Text**, then rerun `cache enrich`.
+
+See [Zotero's standardized-format import instructions](https://www.zotero.org/support/kb/importing_standardized_formats).
+For the complete workflow with screenshots, see
+[Export a Reference Cache to Zotero](export-cache-to-zotero.md).
 
 ## Preprints
 

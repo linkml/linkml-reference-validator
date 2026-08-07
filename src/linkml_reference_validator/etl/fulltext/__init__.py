@@ -10,6 +10,7 @@ from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
 from linkml_reference_validator.etl.fulltext.epmc_preprint import EuropePMCPreprintProvider
 from linkml_reference_validator.etl.fulltext.unpaywall import UnpaywallProvider
 from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
+from linkml_reference_validator.etl.fulltext.zotero import ZoteroFullTextProvider
 
 __all__ = [
     "FullTextProvider",
@@ -18,4 +19,5 @@ __all__ = [
     "EuropePMCPreprintProvider",
     "UnpaywallProvider",
     "OpenAlexProvider",
+    "ZoteroFullTextProvider",
 ]

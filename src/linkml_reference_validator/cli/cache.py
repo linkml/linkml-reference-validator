@@ -1,11 +1,19 @@
 """Cache subcommands for linkml-reference-validator."""
 
+import json
 import logging
+from pathlib import Path
+from typing import Optional
 
 import typer
 from typing_extensions import Annotated
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.csl_export import (
+    export_identity,
+    reference_to_csl_json,
+)
+from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from .shared import (
     CacheDirOption,
     VerboseOption,
@@ -16,6 +24,7 @@ from .shared import (
 )
 
 logger = logging.getLogger(__name__)
+MAX_CONSECUTIVE_PROVIDER_ERRORS = 3
 
 # Option for showing file content
 ContentOption = Annotated[
@@ -40,6 +49,67 @@ cache_app = typer.Typer(
     help="Manage reference cache",
     no_args_is_help=True,
 )
+
+ProviderOption = Annotated[
+    str,
+    typer.Option(
+        "--provider",
+        help="Registered full-text provider to use (for example: zotero)",
+    ),
+]
+
+DryRunOption = Annotated[
+    bool,
+    typer.Option(
+        "--dry-run/--apply",
+        help="Report matches without changing cache files, or apply usable matches",
+    ),
+]
+
+PrivateCacheDirOption = Annotated[
+    Optional[Path],
+    typer.Option(
+        "--private-cache-dir",
+        help=(
+            "Destination for private full text. Defaults outside the project to "
+            "~/.cache/linkml-reference-validator/private"
+        ),
+    ),
+]
+
+ExportOutputOption = Annotated[
+    Path,
+    typer.Option(
+        "--output",
+        "-o",
+        help="Destination CSL JSON file for Zotero import",
+    ),
+]
+
+ExportFormatOption = Annotated[
+    str,
+    typer.Option(
+        "--format",
+        help="Bibliographic export format (currently: csl-json)",
+    ),
+]
+
+NeedsFullTextOption = Annotated[
+    bool,
+    typer.Option(
+        "--needs-full-text/--all",
+        help="Export only records needing full text, or all publication records",
+    ),
+]
+
+ExportForceOption = Annotated[
+    bool,
+    typer.Option(
+        "--force",
+        "-f",
+        help="Replace the output file if it already exists",
+    ),
+]
 
 
 @cache_app.command(name="reference")
@@ -141,3 +211,163 @@ def lookup_command(
         typer.echo(cache_path.read_text(encoding="utf-8"))
     else:
         typer.echo(str(cache_path.absolute()))
+
+
+@cache_app.command(name="enrich")
+def enrich_command(
+    provider: ProviderOption = "zotero",
+    config_file: ConfigFileOption = None,
+    cache_dir: CacheDirOption = None,
+    private_cache_dir: PrivateCacheDirOption = None,
+    dry_run: DryRunOption = True,
+    verbose: VerboseOption = False,
+):
+    """Inventory or enrich cached references from one full-text provider.
+
+    Dry-run is the default and never changes cache files. Use ``--apply`` only
+    after reviewing matches; private full text may be copyrighted and should not
+    be committed or shared.
+
+    Examples:
+
+        linkml-reference-validator cache enrich --provider zotero --dry-run
+
+        linkml-reference-validator cache enrich --provider zotero --apply
+    """
+    setup_logging(verbose)
+
+    if FullTextProviderRegistry.get(provider) is None:
+        typer.echo(f"Unknown full-text provider: {provider}", err=True)
+        raise typer.Exit(2)
+
+    config = load_validation_config(config_file)
+    if cache_dir:
+        config.cache_dir = cache_dir
+    if private_cache_dir:
+        config.private_cache_dir = private_cache_dir
+    fetcher = ReferenceFetcher(config)
+
+    found = 0
+    applied = 0
+    errors = 0
+    scanned = 0
+    consecutive_errors = 0
+    for reference in fetcher.iter_cached_references():
+        scanned += 1
+        if not fetcher.needs_full_text(reference):
+            typer.echo(f"{reference.reference_id}\talready_full_text\t-")
+            continue
+        try:  # provider is an external-system boundary
+            location = fetcher.locate_full_text(reference, provider)
+        except Exception as exc:
+            errors += 1
+            consecutive_errors += 1
+            typer.echo(f"{reference.reference_id}\terror\t{exc}")
+            if consecutive_errors >= MAX_CONSECUTIVE_PROVIDER_ERRORS:
+                typer.echo(
+                    "Stopping after "
+                    f"{MAX_CONSECUTIVE_PROVIDER_ERRORS} consecutive provider errors; "
+                    "check that the provider is available.",
+                    err=True,
+                )
+                break
+            continue
+
+        consecutive_errors = 0
+
+        if location is None:
+            typer.echo(f"{reference.reference_id}\tnot_found\t-")
+            continue
+
+        found += 1
+        source = f"{location.provider or provider}:{location.source_item_id or '-'}"
+        if dry_run:
+            typer.echo(f"{reference.reference_id}\tfound\t{source}")
+            continue
+
+        if fetcher.apply_full_text_location(
+            reference, location, provider, private=True
+        ):
+            applied += 1
+            typer.echo(f"{reference.reference_id}\tapplied\t{source}")
+        else:
+            typer.echo(f"{reference.reference_id}\tunusable\t{source}")
+
+    typer.echo(f"Scanned: {scanned}")
+    typer.echo(f"Found: {found}")
+    if not dry_run:
+        typer.echo(f"Applied: {applied}")
+        typer.echo(f"Private cache: {config.private_cache_dir.expanduser()}")
+    if errors:
+        typer.echo(f"Errors: {errors}", err=True)
+        raise typer.Exit(1)
+
+
+@cache_app.command(name="export")
+def export_command(
+    output: ExportOutputOption,
+    export_format: ExportFormatOption = "csl-json",
+    needs_full_text: NeedsFullTextOption = True,
+    config_file: ConfigFileOption = None,
+    cache_dir: CacheDirOption = None,
+    force: ExportForceOption = False,
+    verbose: VerboseOption = False,
+):
+    """Export public bibliographic metadata for import into Zotero.
+
+    The export is an allowlisted CSL JSON projection. It never contains cached
+    article text, excerpts, PDFs, local paths, or private-cache data. By default,
+    only DOI/PMID records that still need full text are included.
+    """
+    setup_logging(verbose)
+
+    if export_format != "csl-json":
+        typer.echo(f"Unsupported export format: {export_format}", err=True)
+        raise typer.Exit(2)
+    if output.exists() and not force:
+        typer.echo(
+            f"Output already exists: {output}. Use --force to replace it.",
+            err=True,
+        )
+        raise typer.Exit(2)
+
+    config = load_validation_config(config_file)
+    if cache_dir:
+        config.cache_dir = cache_dir
+    fetcher = ReferenceFetcher(config)
+    records: list[dict[str, object]] = []
+    seen: set[str] = set()
+    duplicates = 0
+    skipped_full_text = 0
+    skipped_identifier = 0
+    scanned = 0
+    for reference in fetcher.iter_cached_references():
+        scanned += 1
+        if needs_full_text and not fetcher.needs_full_text(reference):
+            skipped_full_text += 1
+            continue
+        identity = export_identity(reference)
+        if identity is None:
+            skipped_identifier += 1
+            continue
+        if identity in seen:
+            duplicates += 1
+            continue
+        record = reference_to_csl_json(reference)
+        if record is None:
+            skipped_identifier += 1
+            continue
+        seen.add(identity)
+        records.append(record)
+
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(
+        json.dumps(records, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    typer.echo(f"Scanned: {scanned}")
+    typer.echo(f"Exported: {len(records)}")
+    typer.echo(f"Duplicates: {duplicates}")
+    typer.echo(f"Skipped with full text: {skipped_full_text}")
+    typer.echo(f"Skipped without DOI/PMID: {skipped_identifier}")
+    typer.echo(f"Output: {output}")

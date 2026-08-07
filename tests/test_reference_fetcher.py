@@ -120,6 +120,199 @@ def test_load_from_disk_not_found(fetcher):
     assert result is None
 
 
+def test_private_cache_does_not_overlay_public_validation_cache(tmp_path):
+    """Validation reads only the public cache when a private entry also exists."""
+    public_dir = tmp_path / "public"
+    private_dir = tmp_path / "private"
+    public_fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=public_dir,
+            private_cache_dir=private_dir,
+            fetch_full_text=False,
+        )
+    )
+    public_fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="DOI:10.1000/hit",
+            doi="10.1000/hit",
+            content="public abstract",
+            content_type="abstract_only",
+        )
+    )
+    public_fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="DOI:10.1000/hit",
+            doi="10.1000/hit",
+            content="closed full text",
+            content_type="full_text",
+            full_text_access_type="user_library",
+        ),
+        private=True,
+    )
+
+    loaded = public_fetcher._load_from_disk("DOI:10.1000/hit")
+
+    assert loaded is not None
+    assert loaded.content == "public abstract"
+    assert loaded.full_text_access_type is None
+
+
+def test_normal_fetch_never_writes_user_library_text_to_public_cache(tmp_path):
+    """Validation skips private evidence and continues to a public provider."""
+
+    class _PrivateProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            """Return the test provider name."""
+            return "private_fetch"
+
+        def locate(self, ids, config):
+            """Return a private manuscript for the fixture DOI."""
+            return FullTextLocation(
+                text="closed manuscript text " * 30,
+                format_hint="text",
+                provider=self.name(),
+                access_type="user_library",
+                source_item_id="PRIVATE1",
+            )
+
+    class _PublicProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            """Return the test provider name."""
+            return "public_fetch"
+
+        def locate(self, ids, config):
+            """Return public evidence for the fixture DOI."""
+            return FullTextLocation(
+                text="public full text " * 30,
+                format_hint="text",
+                provider=self.name(),
+                access_type="open",
+            )
+
+    public_dir = tmp_path / "public"
+    private_dir = tmp_path / "private"
+    config = ReferenceValidationConfig(
+        cache_dir=public_dir,
+        private_cache_dir=private_dir,
+        rate_limit_delay=0.0,
+        full_text_providers=["private_fetch", "public_fetch"],
+    )
+    FullTextProviderRegistry.register(_PrivateProvider)
+    FullTextProviderRegistry.register(_PublicProvider)
+    fetcher = ReferenceFetcher(config)
+    metadata = ReferenceContent(
+        reference_id="DOI:10.1000/private",
+        doi="10.1000/private",
+        content="public abstract",
+        content_type="abstract_only",
+    )
+
+    with patch(
+        "linkml_reference_validator.etl.reference_fetcher.ReferenceSourceRegistry.get_source"
+    ) as get_source:
+        get_source.return_value.return_value.fetch.return_value = metadata
+        result = fetcher.fetch("DOI:10.1000/private")
+
+    assert result is not None
+    assert result.content == "public abstract\n\n" + "public full text " * 30
+    assert "closed manuscript text" not in result.content
+    assert result.full_text_access_type == "open"
+    public_path = public_dir / "DOI_10.1000_private.md"
+    assert public_path.exists()
+    assert "public full text" in public_path.read_text(encoding="utf-8")
+    private_path = private_dir / "DOI_10.1000_private.md"
+    assert not private_path.exists()
+
+
+def test_applying_private_enrichment_does_not_enter_validation_memory_cache(tmp_path):
+    """A fetcher reused after private enrichment still returns public evidence."""
+    public_dir = tmp_path / "public"
+    private_dir = tmp_path / "private"
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=public_dir,
+            private_cache_dir=private_dir,
+            fetch_full_text=False,
+        )
+    )
+    public = ReferenceContent(
+        reference_id="PMID:123",
+        content="public abstract",
+        content_type="abstract_only",
+    )
+    fetcher._save_to_disk(public)
+
+    applied = fetcher.apply_full_text_location(
+        public,
+        FullTextLocation(
+            text="closed manuscript text " * 30,
+            format_hint="text",
+            provider="zotero",
+            access_type="user_library",
+            source_item_id="PRIVATE1",
+        ),
+        "zotero",
+        private=True,
+    )
+
+    assert applied is True
+    loaded = fetcher.fetch("PMID:123")
+    assert loaded is not None
+    assert loaded.content == "public abstract"
+    assert loaded.full_text_access_type is None
+
+
+def test_private_location_forces_private_persistence_without_flag(tmp_path):
+    """Private provenance is a safety floor even when a caller omits ``private``."""
+    public_dir = tmp_path / "public"
+    private_dir = tmp_path / "private"
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=public_dir,
+            private_cache_dir=private_dir,
+            fetch_full_text=False,
+        )
+    )
+    content = ReferenceContent(
+        reference_id="PMID:123", content="abstract", content_type="abstract_only"
+    )
+
+    applied = fetcher.apply_full_text_location(
+        content,
+        FullTextLocation(
+            text="closed manuscript text " * 30,
+            format_hint="text",
+            access_type="user_library",
+        ),
+        "zotero",
+    )
+
+    assert applied is True
+    assert not (public_dir / "PMID_123.md").exists()
+    assert (private_dir / "PMID_123.md").exists()
+
+
+def test_iter_cached_references_streams_in_sorted_order(tmp_path):
+    """Large caches are yielded one record at a time in deterministic order."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for filename, reference_id in (("B.md", "PMID:2"), ("A.md", "PMID:1")):
+        (cache_dir / filename).write_text(
+            f"---\nreference_id: {reference_id}\ncontent_type: abstract_only\n---\n",
+            encoding="utf-8",
+        )
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=cache_dir, fetch_full_text=False)
+    )
+
+    references = fetcher.iter_cached_references()
+
+    assert iter(references) is references
+    assert [reference.reference_id for reference in references] == ["PMID:1", "PMID:2"]
+
+
 def test_save_and_load_preprint_metadata(fetcher, tmp_path):
     """Preprint status round-trips through the disk cache frontmatter."""
     ref = ReferenceContent(
@@ -841,7 +1034,7 @@ def test_enrich_skips_when_already_full_text(tmp_path):
     content = ReferenceContent(
         reference_id="PMID:1", content="lots of full text", content_type="full_text_xml"
     )
-    assert fetcher._needs_full_text(content) is False
+    assert fetcher.needs_full_text(content) is False
 
 
 def test_enrich_downloads_and_extracts_pdf(tmp_path):
@@ -902,6 +1095,8 @@ def test_provenance_round_trips_through_cache(tmp_path):
         oa_status="gold",
         license="cc-by",
         local_pdf_path="files/DOI_10.1_x.pdf",
+        full_text_access_type="user_library",
+        full_text_source_item_id="ATTACHMENT1",
     )
     fetcher._save_to_disk(content)
     loaded = fetcher._load_from_disk("DOI:10.1/x")
@@ -912,6 +1107,8 @@ def test_provenance_round_trips_through_cache(tmp_path):
     assert loaded.oa_status == "gold"
     assert loaded.license == "cc-by"
     assert loaded.local_pdf_path == "files/DOI_10.1_x.pdf"
+    assert loaded.full_text_access_type == "user_library"
+    assert loaded.full_text_source_item_id == "ATTACHMENT1"
 
 
 def test_fetcher_registers_custom_full_text_providers(tmp_path):

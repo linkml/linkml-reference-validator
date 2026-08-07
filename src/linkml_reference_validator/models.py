@@ -363,6 +363,18 @@ class ReferenceValidationConfig(BaseModel):
         default=Path("references_cache"),
         description="Directory for caching downloaded references",
     )
+    private_cache_dir: Path = Field(
+        default_factory=lambda: Path.home()
+        / ".cache"
+        / "linkml-reference-validator"
+        / "private",
+        description=(
+            "Separate private research cache for user-library full text. It is "
+            "never read by ordinary validation and defaults "
+            "outside the current project so closed manuscripts are not added "
+            "to a checked-in public reference cache."
+        ),
+    )
     reference_base_dir: Optional[Path] = Field(
         default=None,
         description="Base directory for resolving relative file: references. If None, uses CWD.",
@@ -482,6 +494,13 @@ class ReferenceValidationConfig(BaseModel):
         default=None,
         description="Optional path to a YAML file defining custom full-text providers.",
     )
+    zotero_base_url: str = Field(
+        default="http://localhost:23119/api/users/0",
+        description=(
+            "Base URL for the read-only Zotero local API library. "
+            "Zotero must be running with local API access enabled."
+        ),
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.
@@ -510,6 +529,24 @@ class ReferenceValidationConfig(BaseModel):
         """
         files_dir = self.cache_dir / "files"
         files_dir.mkdir(parents=True, exist_ok=True)
+        return files_dir
+
+    def get_private_cache_dir(self) -> Path:
+        """Create and return the owner-only private research-cache directory."""
+        private_dir = self.private_cache_dir.expanduser()
+        private_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        mode = private_dir.stat().st_mode & 0o777
+        if mode & 0o077:
+            private_dir.chmod(mode & 0o700)
+        return private_dir
+
+    def get_private_files_cache_dir(self) -> Path:
+        """Create and return the owner-only private binary-files directory."""
+        files_dir = self.get_private_cache_dir() / "files"
+        files_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        mode = files_dir.stat().st_mode & 0o777
+        if mode & 0o077:
+            files_dir.chmod(mode & 0o700)
         return files_dir
 
 
@@ -663,6 +700,8 @@ class FullTextLocation:
     license: Optional[str] = None
     provider: str = ""
     version: Optional[str] = None      # "publishedVersion" | "acceptedVersion" | ...
+    access_type: Optional[str] = None  # "open" | "user_library" | "institutional"
+    source_item_id: Optional[str] = None
 
 
 @dataclass
@@ -719,6 +758,8 @@ class ReferenceContent:
     oa_status: Optional[str] = None
     license: Optional[str] = None
     local_pdf_path: Optional[str] = None
+    full_text_access_type: Optional[str] = None
+    full_text_source_item_id: Optional[str] = None
     # Preprint / peer-review status, surfaced so downstream KBs can apply policies
     # such as "a preprint may not be the sole support for a claim". Left as None
     # when the publication type is unknown; only asserted when positively detected

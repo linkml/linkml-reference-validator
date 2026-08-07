@@ -17,6 +17,19 @@ def test_config_defaults():
     assert config.cache_dir == Path("references_cache")
     assert config.rate_limit_delay == 0.5
     assert config.literal_bracket_patterns == []
+    assert config.private_cache_dir.is_absolute()
+    assert config.private_cache_dir.name == "private"
+
+
+def test_private_cache_does_not_broaden_existing_owner_permissions(tmp_path):
+    """Accessors restrict shared bits without adding owner permissions."""
+    private_dir = tmp_path / "private"
+    private_dir.mkdir(mode=0o500)
+    private_dir.chmod(0o500)
+    config = ReferenceValidationConfig(private_cache_dir=private_dir)
+
+    assert config.get_private_cache_dir() == private_dir
+    assert private_dir.stat().st_mode & 0o777 == 0o500
 
 
 def test_config_custom_values():

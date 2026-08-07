@@ -751,6 +751,12 @@ class ReferenceContent:
     # e.g. ["Journal Article", "Case Reports", "Clinical Trial"]. These classify the
     # source so downstream KBs can reason about evidence type. None when unknown.
     publication_types: Optional[list[str]] = None
+    # Adverse publication status asserted by the primary metadata provider. This
+    # first implementation records only PubMed-native retractions; absence means
+    # unknown/no adverse status supplied, not a permanent assertion of validity.
+    publication_status: Optional[str] = None
+    # PubMed records for notices that retract this publication.
+    retraction_notice_ids: Optional[list[str]] = None
     supplementary_files: Optional[list[SupplementaryFile]] = None
     metadata: dict = field(default_factory=dict)
     full_text_provider: Optional[str] = None

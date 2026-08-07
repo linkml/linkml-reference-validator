@@ -379,6 +379,50 @@ class TestPMIDSource:
 
         assert source._parse_publication_types(soup) is None
 
+    def test_parse_pubmed_retraction_status_and_notice(self, source):
+        """The retracted paper points to its notice without another API call."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            """<PubmedArticle>
+              <PublicationTypeList>
+                <PublicationType>Journal Article</PublicationType>
+                <PublicationType>Retracted Publication</PublicationType>
+              </PublicationTypeList>
+              <CommentsCorrectionsList>
+                <CommentsCorrections RefType="RetractionIn">
+                  <PMID Version="1">987654</PMID>
+                </CommentsCorrections>
+              </CommentsCorrectionsList>
+            </PubmedArticle>""",
+            "xml",
+        )
+
+        status, notice_ids = source._parse_retraction_metadata(soup)
+
+        assert status == "retracted"
+        assert notice_ids == ["PMID:987654"]
+
+    def test_retraction_notice_is_not_itself_a_retracted_publication(self, source):
+        """A notice about another paper must not be rejected as retracted itself."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            """<PubmedArticle>
+              <PublicationTypeList>
+                <PublicationType>Retraction Notice</PublicationType>
+              </PublicationTypeList>
+              <CommentsCorrectionsList>
+                <CommentsCorrections RefType="RetractionOf">
+                  <PMID>123456</PMID>
+                </CommentsCorrections>
+              </CommentsCorrectionsList>
+            </PubmedArticle>""",
+            "xml",
+        )
+
+        assert source._parse_retraction_metadata(soup) == (None, None)
+
     def test_parse_mesh_terms_empty_list(self, source):
         """A present-but-empty MeshHeadingList should yield None."""
         from bs4 import BeautifulSoup
@@ -466,6 +510,38 @@ class TestPMIDSource:
             "Randomized Controlled Trial",
         ]
         assert ref.keywords == ["Calcimycin"]
+
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.esummary")
+    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")
+    def test_fetch_sets_native_retraction_metadata(
+        self, mock_read, mock_esummary, mock_efetch, source, config
+    ):
+        """A normal PMID refresh persists PubMed's native retraction assertion."""
+        mock_read.return_value = [
+            {"Title": "Retracted study", "AuthorList": [], "Source": "J Test"}
+        ]
+        handle = MagicMock()
+        handle.read.return_value = """<PubmedArticle>
+          <MedlineCitation><Article>
+            <Abstract><AbstractText>Original abstract.</AbstractText></Abstract>
+            <PublicationTypeList>
+              <PublicationType>Retracted Publication</PublicationType>
+            </PublicationTypeList>
+          </Article></MedlineCitation>
+          <PubmedData><CommentsCorrectionsList>
+            <CommentsCorrections RefType="RetractionIn">
+              <PMID>987654</PMID>
+            </CommentsCorrections>
+          </CommentsCorrectionsList></PubmedData>
+        </PubmedArticle>"""
+        mock_efetch.return_value = handle
+
+        ref = source.fetch("123456", config)
+
+        assert ref is not None
+        assert ref.publication_status == "retracted"
+        assert ref.retraction_notice_ids == ["PMID:987654"]
 
 
 class TestDOISource:

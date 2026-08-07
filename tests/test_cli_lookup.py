@@ -7,8 +7,24 @@ from ruamel.yaml import YAML
 from typer.testing import CliRunner
 
 from linkml_reference_validator.cli import app
+from linkml_reference_validator.cli.lookup import _format_as_text, _reference_to_dict
+from linkml_reference_validator.models import ReferenceContent
 
 runner = CliRunner()
+
+
+def test_lookup_formats_surface_retraction_status():
+    """Machine-readable and human-readable lookup output warns about retraction."""
+    reference = ReferenceContent(
+        reference_id="PMID:123",
+        publication_status="retracted",
+        retraction_notice_ids=["PMID:987654"],
+    )
+
+    assert _reference_to_dict(reference)["publication_status"] == "retracted"
+    text = _format_as_text(reference)
+    assert "Publication status: retracted" in text
+    assert "Retraction notices: PMID:987654" in text
 
 
 @pytest.fixture

@@ -350,6 +350,54 @@ def test_save_and_load_publication_types(fetcher, tmp_path):
     assert loaded.publication_types == ["Journal Article", "Case Reports"]
 
 
+def test_save_and_load_retraction_metadata(fetcher):
+    """PubMed-native retraction metadata round-trips through the main cache file."""
+    ref = ReferenceContent(
+        reference_id="PMID:123456",
+        content="Retracted abstract.",
+        content_type="abstract_only",
+        publication_status="retracted",
+        retraction_notice_ids=["PMID:987654"],
+    )
+
+    fetcher._save_to_disk(ref)
+    loaded = fetcher._load_from_disk("PMID:123456")
+
+    assert loaded is not None
+    assert loaded.publication_status == "retracted"
+    assert loaded.retraction_notice_ids == ["PMID:987654"]
+
+
+def test_force_refresh_replaces_cache_with_source_retraction_metadata(fetcher):
+    """Refresh rewrites the primary file from the provider's current assertion."""
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:123456",
+            content="Old abstract.",
+            content_type="abstract_only",
+        )
+    )
+    refreshed = ReferenceContent(
+        reference_id="PMID:123456",
+        content="Current abstract.",
+        content_type="abstract_only",
+        publication_status="retracted",
+        retraction_notice_ids=["PMID:987654"],
+    )
+
+    with patch(
+        "linkml_reference_validator.etl.reference_fetcher.ReferenceSourceRegistry.get_source"
+    ) as get_source:
+        get_source.return_value.return_value.fetch.return_value = refreshed
+        result = fetcher.fetch("PMID:123456", force_refresh=True)
+
+    assert result is refreshed
+    cached = fetcher._load_from_disk("PMID:123456")
+    assert cached is not None
+    assert cached.publication_status == "retracted"
+    assert cached.retraction_notice_ids == ["PMID:987654"]
+
+
 def test_save_and_load_non_preprint_leaves_status_unset(fetcher, tmp_path):
     """A record with no preprint status must not gain one via the cache."""
     ref = ReferenceContent(

@@ -145,6 +145,11 @@ class PMIDSource(ReferenceSource):
         publication_types = (
             self._parse_publication_types(article_xml) if article_xml else None
         )
+        publication_status, retraction_notice_ids = (
+            self._parse_retraction_metadata(article_xml, publication_types)
+            if article_xml
+            else (None, None)
+        )
 
         content: Optional[str] = abstract
         content_type = "abstract_only" if abstract else "unavailable"
@@ -171,6 +176,8 @@ class PMIDSource(ReferenceSource):
             doi=doi,
             keywords=keywords,
             publication_types=publication_types,
+            publication_status=publication_status,
+            retraction_notice_ids=retraction_notice_ids,
             metadata=metadata,
         )
 
@@ -335,6 +342,44 @@ class PMIDSource(ReferenceSource):
         ]
 
         return types if types else None
+
+    def _parse_retraction_metadata(
+        self,
+        soup: BeautifulSoup,
+        publication_types: Optional[list[str]] = None,
+    ) -> tuple[Optional[str], Optional[list[str]]]:
+        """Return PubMed-native retraction status and linked notice PMIDs.
+
+        ``Retracted Publication`` identifies the affected paper, while
+        ``Retraction Notice`` identifies a notice about another paper. Only
+        ``RetractionIn`` relationships point from an affected publication to
+        its notice, so ``RetractionOf`` never marks the notice itself retracted.
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<PubmedArticle>
+            ... <PublicationType>Retracted Publication</PublicationType>
+            ... <CommentsCorrections RefType="RetractionIn"><PMID>9</PMID>
+            ... </CommentsCorrections></PubmedArticle>'''
+            >>> PMIDSource()._parse_retraction_metadata(BeautifulSoup(xml, "xml"))
+            ('retracted', ['PMID:9'])
+        """
+        types = publication_types or self._parse_publication_types(soup) or []
+        notice_ids: list[str] = []
+        for relation in soup.find_all("CommentsCorrections"):
+            if relation.get("RefType") != "RetractionIn":
+                continue
+            pmid = relation.find("PMID")
+            value = pmid.get_text().strip() if pmid else ""
+            normalized = f"PMID:{value}" if value.isdigit() else None
+            if normalized and normalized not in notice_ids:
+                notice_ids.append(normalized)
+
+        is_retracted = "Retracted Publication" in types or bool(notice_ids)
+        return (
+            "retracted" if is_retracted else None,
+            notice_ids or None,
+        )
 
     def _fetch_pmc_fulltext(
         self, pmid: str, config: ReferenceValidationConfig

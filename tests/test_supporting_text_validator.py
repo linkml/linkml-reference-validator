@@ -245,6 +245,67 @@ def test_validate_success(validator, mocker):
     assert result.severity == ValidationSeverity.INFO
 
 
+def test_validate_retracted_reference_fails_even_when_text_matches(validator, mocker):
+    """A retracted publication cannot provide ordinary supporting evidence."""
+    mocker.patch.object(
+        validator.fetcher,
+        "fetch",
+        return_value=ReferenceContent(
+            reference_id="PMID:123",
+            content="The protein functions in cell cycle regulation.",
+            publication_status="retracted",
+            retraction_notice_ids=["PMID:987654"],
+        ),
+    )
+
+    result = validator.validate("protein functions", "PMID:123")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert result.match_result is not None
+    assert result.match_result.found is True
+    assert "retracted" in result.message.lower()
+    assert "PMID:987654" in result.message
+
+
+def test_validate_recognizes_legacy_retracted_publication_type(validator, mocker):
+    """Existing caches are protected before they are refreshed to the new field."""
+    mocker.patch.object(
+        validator.fetcher,
+        "fetch",
+        return_value=ReferenceContent(
+            reference_id="PMID:123",
+            content="The protein functions in cell cycle regulation.",
+            publication_types=["Journal Article", "Retracted Publication"],
+        ),
+    )
+
+    result = validator.validate("protein functions", "PMID:123")
+
+    assert result.is_valid is False
+    assert "retracted" in result.message.lower()
+
+
+def test_validate_surfaces_retraction_when_content_is_unavailable(validator, mocker):
+    """Retraction is the actionable failure even when no abstract is available."""
+    mocker.patch.object(
+        validator.fetcher,
+        "fetch",
+        return_value=ReferenceContent(
+            reference_id="PMID:123",
+            content=None,
+            publication_status="retracted",
+            retraction_notice_ids=["PMID:987654"],
+        ),
+    )
+
+    result = validator.validate("protein functions", "PMID:123")
+
+    assert result.is_valid is False
+    assert "retracted" in result.message.lower()
+    assert "PMID:987654" in result.message
+
+
 def test_validate_not_found(validator, mocker):
     """Test validation when text not found."""
     mock_fetch = mocker.patch.object(validator.fetcher, "fetch")

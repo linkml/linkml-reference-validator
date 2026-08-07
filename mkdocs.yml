@@ -49,6 +49,7 @@ nav:
   - Concepts:
       - How It Works: concepts/how-it-works.md
       - Content Types: concepts/content-types.md
+      - Retracted Publications: concepts/retracted-publications.md
       - Editorial Conventions: concepts/editorial-conventions.md
   - Reference:
       - CLI Reference: reference/cli.md

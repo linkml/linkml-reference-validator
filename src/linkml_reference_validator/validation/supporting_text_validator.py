@@ -189,13 +189,31 @@ class SupportingTextValidator:
                 path=path,
             )
 
+        publication_types = reference.publication_types or []
+        is_retracted = (
+            reference.publication_status == "retracted"
+            or "Retracted Publication" in publication_types
+        )
+        notice_suffix = ""
+        if reference.retraction_notice_ids:
+            notice_suffix = "; notice: " + ", ".join(
+                reference.retraction_notice_ids
+            )
+
         if not reference.content:
+            if is_retracted:
+                message = (
+                    f"Reference {reference_id} is retracted and cannot support "
+                    f"ordinary evidence{notice_suffix}"
+                )
+            else:
+                message = f"No content available for reference: {reference_id}"
             return ValidationResult(
                 is_valid=False,
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.ERROR,
-                message=f"No content available for reference: {reference_id}",
+                message=message,
                 path=path,
             )
 
@@ -212,9 +230,15 @@ class SupportingTextValidator:
 
         match = self.find_text_in_reference(supporting_text, reference)
 
-        is_valid = match.found and title_valid
+        is_valid = match.found and title_valid and not is_retracted
 
-        if not is_valid:
+        if is_retracted:
+            match_context = "Supporting text was found, but " if match.found else ""
+            message = (
+                f"{match_context}reference {reference_id} is retracted and cannot "
+                f"support ordinary evidence{notice_suffix}"
+            )
+        elif not is_valid:
             if not title_valid:
                 message = title_message
             elif match.error_message:

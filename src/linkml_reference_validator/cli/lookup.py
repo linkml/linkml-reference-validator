@@ -72,6 +72,8 @@ def _reference_to_dict(reference: ReferenceContent) -> dict:
         "doi": reference.doi,
         "keywords": reference.keywords,
         "publication_types": reference.publication_types,
+        "publication_status": reference.publication_status,
+        "retraction_notice_ids": reference.retraction_notice_ids,
         "content_type": reference.content_type,
         "content": reference.content,
     }
@@ -188,6 +190,12 @@ def _format_as_text(reference: ReferenceContent) -> str:
         lines.append(f"Keywords: {', '.join(reference.keywords)}")
     if reference.publication_types:
         lines.append(f"Publication types: {', '.join(reference.publication_types)}")
+    if reference.publication_status:
+        lines.append(f"Publication status: {reference.publication_status}")
+    if reference.retraction_notice_ids:
+        lines.append(
+            f"Retraction notices: {', '.join(reference.retraction_notice_ids)}"
+        )
     lines.append(f"Content type: {reference.content_type}")
     if reference.supplementary_files:
         lines.append("")

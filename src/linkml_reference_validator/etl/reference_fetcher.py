@@ -611,6 +611,12 @@ class ReferenceFetcher:
             lines.append("publication_types:")
             for publication_type in reference.publication_types:
                 lines.append(f"- {self._quote_yaml_value(publication_type)}")
+        if reference.publication_status:
+            lines.append(f"publication_status: {reference.publication_status}")
+        if reference.retraction_notice_ids:
+            lines.append("retraction_notice_ids:")
+            for notice_id in reference.retraction_notice_ids:
+                lines.append(f"- {self._quote_yaml_value(notice_id)}")
         lines.append(f"content_type: {reference.content_type}")
         if reference.is_preprint is not None:
             lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
@@ -773,6 +779,9 @@ class ReferenceFetcher:
         publication_types = self._as_optional_list(
             frontmatter.get("publication_types")
         )
+        retraction_notice_ids = self._as_optional_list(
+            frontmatter.get("retraction_notice_ids")
+        )
 
         # Parse supplementary files
         supplementary_files = self._parse_supplementary_files(
@@ -794,6 +803,8 @@ class ReferenceFetcher:
             doi=frontmatter.get("doi"),
             keywords=keywords,
             publication_types=publication_types,
+            publication_status=frontmatter.get("publication_status"),
+            retraction_notice_ids=retraction_notice_ids,
             supplementary_files=supplementary_files,
             metadata=metadata,
             full_text_provider=frontmatter.get("full_text_provider"),

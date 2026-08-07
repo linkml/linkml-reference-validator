@@ -2,7 +2,9 @@
 
 import logging
 import time
+from pathlib import Path
 from typing import Optional
+from urllib.parse import unquote, urlparse
 
 import requests  # type: ignore
 
@@ -105,6 +107,15 @@ class ContentAcquirer:
         Returns ``(None, content_type)`` on non-200 responses or when the size cap
         is exceeded.
         """
+        return self._fetch_bytes(url, config, redirects_remaining=5)
+
+    def _fetch_bytes(
+        self,
+        url: str,
+        config: ReferenceValidationConfig,
+        redirects_remaining: int,
+    ) -> tuple[Optional[bytes], Optional[str]]:
+        """Download bytes while handling bounded HTTP and Zotero file redirects."""
         time.sleep(config.rate_limit_delay)
 
         headers = {
@@ -112,7 +123,36 @@ class ContentAcquirer:
         }
         # ``with`` guarantees the streamed connection is released on every path,
         # including the early return when the size cap is exceeded mid-stream.
-        with requests.get(url, headers=headers, timeout=60, stream=True) as response:
+        with requests.get(
+            url,
+            headers=headers,
+            timeout=60,
+            stream=True,
+            allow_redirects=False,
+        ) as response:
+            if response.status_code in {301, 302, 303, 307, 308}:
+                location = response.headers.get("location")
+                if not location or redirects_remaining == 0:
+                    logger.warning(f"Download redirect failed for {url}")
+                    return None, None
+
+                parsed_location = urlparse(location)
+                if parsed_location.scheme == "file":
+                    if not self._is_loopback_url(url):
+                        logger.warning(
+                            f"Refusing non-local redirect to a file URI from {url}"
+                        )
+                        return None, None
+                    return self._read_local_file(location, config)
+
+                if parsed_location.scheme in {"http", "https"}:
+                    return self._fetch_bytes(
+                        location, config, redirects_remaining=redirects_remaining - 1
+                    )
+
+                logger.warning(f"Unsupported redirect scheme for {url}")
+                return None, None
+
             if response.status_code != 200:
                 logger.warning(f"Download failed for {url} - status {response.status_code}")
                 return None, None
@@ -132,3 +172,37 @@ class ContentAcquirer:
                     return None, content_type
 
             return bytes(chunks), content_type
+
+    @staticmethod
+    def _is_loopback_url(url: str) -> bool:
+        """Return True only for an HTTP endpoint on the local machine."""
+        parsed = urlparse(url)
+        return parsed.scheme == "http" and parsed.hostname in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }
+
+    @staticmethod
+    def _read_local_file(
+        file_url: str, config: ReferenceValidationConfig
+    ) -> tuple[Optional[bytes], Optional[str]]:
+        """Read a local-API-authorized file URI under the normal size cap."""
+        parsed = urlparse(file_url)
+        if parsed.netloc not in {"", "localhost"}:
+            logger.warning("Refusing a non-local file URI")
+            return None, None
+
+        path = Path(unquote(parsed.path))
+        content_type = "application/pdf" if path.suffix.lower() == ".pdf" else None
+        if not path.is_file():
+            logger.warning(f"Local redirected file does not exist: {path}")
+            return None, content_type
+
+        max_size = config.max_supplementary_file_size
+        if max_size and path.stat().st_size > max_size:
+            logger.warning(
+                f"Local redirected file exceeded size cap ({max_size} bytes); skipping"
+            )
+            return None, content_type
+        return path.read_bytes(), content_type

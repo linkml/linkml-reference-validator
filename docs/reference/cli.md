@@ -761,6 +761,69 @@ linkml-reference-validator cache lookup PMID:16888623 --content
 linkml-reference-validator cache lookup PMID:16888623 --no-cache
 ```
 
+## cache export
+
+Export public bibliographic metadata to CSL JSON for Zotero import.
+
+```bash
+linkml-reference-validator cache export --output project-zotero.json [OPTIONS]
+```
+
+**Options:**
+
+- `--output PATH, -o PATH` - Required destination file
+- `--format TEXT` - Export format (default and currently supported: `csl-json`)
+- `--needs-full-text` - Export only publication records needing full text (default)
+- `--all` - Include eligible records that already contain full text
+- `--cache-dir PATH, -c PATH` - Public reference cache directory
+- `--force, -f` - Replace an existing output file
+- `--config PATH` - Validation configuration file
+- `--verbose, -v` - Enable detailed logging
+
+```bash
+linkml-reference-validator cache export \
+  --cache-dir references_cache \
+  --needs-full-text \
+  --output project-zotero.json
+```
+
+The output is a DOI/PMID-deduplicated metadata allowlist. It never includes
+cached article content, excerpts, PDFs, local paths, or private-cache data.
+
+---
+
+## cache enrich
+
+Inventory or enrich existing abstract-only cache entries through one full-text
+provider. This is primarily intended for opt-in private-library providers such
+as Zotero.
+
+```bash
+linkml-reference-validator cache enrich [OPTIONS]
+```
+
+**Options:**
+
+- `--provider TEXT` - Registered provider name (default: `zotero`)
+- `--cache-dir PATH, -c PATH` - Reference cache directory
+- `--private-cache-dir PATH` - Separate private research-cache destination (default: `~/.cache/linkml-reference-validator/private`)
+- `--dry-run` - Report matches without changing files (default)
+- `--apply` - Materialize usable matches into the private research cache
+- `--config PATH` - Validation configuration file
+- `--verbose, -v` - Enable detailed logging
+
+```bash
+# Safe inventory
+linkml-reference-validator cache enrich --provider zotero --dry-run
+
+# Apply reviewed exact matches
+linkml-reference-validator cache enrich --provider zotero --apply
+```
+
+The public source cache is never modified by this command, and validation never
+reads the private destination. Private-library content may be copyrighted; keep
+the research cache private.
+
 ---
 
 ## Reference ID Formats

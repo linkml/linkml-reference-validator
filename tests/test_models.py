@@ -17,6 +17,8 @@ def test_config_defaults():
     assert config.cache_dir == Path("references_cache")
     assert config.rate_limit_delay == 0.5
     assert config.literal_bracket_patterns == []
+    assert config.private_cache_dir.is_absolute()
+    assert config.private_cache_dir.name == "private"
 
 
 def test_config_custom_values():

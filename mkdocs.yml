@@ -42,6 +42,7 @@ nav:
       - Validating Reference Titles: how-to/validate-titles.md
       - Using Local Files and URLs: how-to/use-local-files-and-urls.md
       - Fetching Full Text and PDFs: how-to/fetch-full-text-and-pdfs.md
+      - Exporting a Cache to Zotero: how-to/export-cache-to-zotero.md
       - Adding a New Reference Source: how-to/add-reference-source.md
       - Skipping Unsupported References: how-to/skip-unsupported-references.md
       - Repairing Validation Errors: how-to/repair-validation-errors.md

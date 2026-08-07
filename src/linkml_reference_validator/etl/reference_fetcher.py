@@ -151,7 +151,7 @@ class ReferenceFetcher:
 
         if content:
             self._cache[normalized_reference_id] = content
-            self._save_to_disk(content)
+            self._save_by_access(content)
 
         return content
 
@@ -173,6 +173,10 @@ class ReferenceFetcher:
         """
         return content.content_type in NEEDS_FULL_TEXT_TYPES
 
+    def needs_full_text(self, content: ReferenceContent) -> bool:
+        """Return whether cache enrichment should seek a fuller manuscript."""
+        return self._needs_full_text(content)
+
     def _maybe_retry_full_text(self, content: ReferenceContent) -> ReferenceContent:
         """Re-run the full-text chain for a cached record that never cleanly tried.
 
@@ -193,16 +197,29 @@ class ReferenceFetcher:
         content = self._enrich_with_full_text(content)
         after = (content.content, content.content_type, content.full_text_attempted)
         if after != before:
-            self._save_to_disk(content)
+            self._save_by_access(content)
         return content
 
+    def _save_by_access(self, content: ReferenceContent) -> None:
+        """Persist content according to its access provenance.
+
+        Ordinary enrichment rejects private locations before this point. The
+        private branch remains a defensive safeguard for callers handling an
+        explicitly private ``ReferenceContent`` outside validation.
+        """
+        self._save_to_disk(
+            content, private=content.full_text_access_type == "user_library"
+        )
+
     def _enrich_with_full_text(self, content: ReferenceContent) -> ReferenceContent:
-        """Walk the provider chain; merge the first usable full text into content.
+        """Merge the first usable public full text from the provider chain.
 
         If no provider yields usable full text but the chain was consulted without a
         transient error, mark ``full_text_attempted`` so the record is not re-queried
         on every later run. A provider/download error leaves the flag unset so a
-        subsequent run retries (PR #48 review #1).
+        subsequent run retries (PR #48 review #1). Locations with an explicit
+        non-open access type are ignored: private-library material is available to
+        the separate cache-enrichment workflow, never to ordinary validation.
         """
         ids = build_identifiers(content)
         abstract = content.content
@@ -224,28 +241,104 @@ class ReferenceFetcher:
             if location is None:
                 continue
 
-            text, fmt, pdf_bytes, error = self._materialize(location)
-            if error:
-                had_error = True
-            if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
+            if location.access_type not in (None, "open"):
+                logger.info(
+                    "Ignoring non-public full text from provider '%s' for %s",
+                    provider_name,
+                    content.reference_id,
+                )
                 continue
 
-            content.content = f"{abstract}\n\n{text}" if abstract else text
-            content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
-            content.full_text_provider = location.provider or provider_name
-            content.full_text_url = location.url
-            content.oa_status = location.oa_status
-            content.license = location.license
-            content.full_text_attempted = True
-            if pdf_bytes is not None and self.config.download_pdfs:
-                content.local_pdf_path = self._save_pdf(content.reference_id, pdf_bytes)
-            return content
+            applied, error = self._apply_full_text_location(
+                content, abstract, location, provider_name
+            )
+            if error:
+                had_error = True
+            if applied:
+                return content
 
         # No usable full text: only record a definitive attempt if nothing went wrong,
         # so a transient failure stays retryable on the next run.
         if not had_error:
             content.full_text_attempted = True
         return content
+
+    def locate_full_text(
+        self, content: ReferenceContent, provider_name: str
+    ) -> Optional[FullTextLocation]:
+        """Locate full text for cached content using exactly one provider.
+
+        This is the inventory primitive used by ``cache enrich --dry-run``. It
+        deliberately ignores ``full_text_attempted`` because a newly configured
+        private library may contain a manuscript that public providers missed.
+
+        Raises:
+            ValueError: If ``provider_name`` is not registered.
+        """
+        provider = FullTextProviderRegistry.get(provider_name)
+        if provider is None:
+            raise ValueError(f"Unknown full-text provider: {provider_name}")
+        return provider.locate(build_identifiers(content), self.config)
+
+    def apply_full_text_location(
+        self,
+        content: ReferenceContent,
+        location: FullTextLocation,
+        provider_name: str,
+        private: bool = False,
+    ) -> bool:
+        """Materialize one located resource, update content, and persist it."""
+        abstract = content.content
+        applied, _ = self._apply_full_text_location(
+            content, abstract, location, provider_name, private=private
+        )
+        if applied:
+            if not private:
+                self._cache[content.reference_id] = content
+            self._save_to_disk(content, private=private)
+        return applied
+
+    def iter_cached_references(self) -> list[ReferenceContent]:
+        """Load modern Markdown cache entries in deterministic path order."""
+        references: list[ReferenceContent] = []
+        for cache_path in sorted(self.config.get_cache_dir().glob("*.md")):
+            content_text = cache_path.read_text(encoding="utf-8")
+            reference = self._load_markdown_format(content_text, cache_path.stem)
+            if reference is not None:
+                references.append(reference)
+        return references
+
+    def _apply_full_text_location(
+        self,
+        content: ReferenceContent,
+        abstract: Optional[str],
+        location: FullTextLocation,
+        provider_name: str,
+        private: bool = False,
+    ) -> tuple[bool, bool]:
+        """Apply one location and return ``(applied, transient_error)``."""
+        text, fmt, pdf_bytes, error = self._materialize(location)
+        if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
+            return False, error
+
+        content.content = f"{abstract}\n\n{text}" if abstract else text
+        content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
+        content.full_text_provider = location.provider or provider_name
+        # Ephemeral private-library endpoints are not durable provenance and may
+        # contain session-specific access information.
+        content.full_text_url = (
+            None if location.access_type == "user_library" else location.url
+        )
+        content.oa_status = location.oa_status
+        content.license = location.license
+        content.full_text_access_type = location.access_type
+        content.full_text_source_item_id = location.source_item_id
+        content.full_text_attempted = True
+        if pdf_bytes is not None and self.config.download_pdfs:
+            content.local_pdf_path = self._save_pdf(
+                content.reference_id, pdf_bytes, private=private
+            )
+        return True, error
 
     def _materialize(
         self, location: FullTextLocation
@@ -293,14 +386,23 @@ class ReferenceFetcher:
         pdf_bytes = data if fmt == "pdf" else None
         return text, fmt, pdf_bytes, False
 
-    def _save_pdf(self, reference_id: str, data: bytes) -> str:
+    def _save_pdf(
+        self, reference_id: str, data: bytes, private: bool = False
+    ) -> str:
         """Persist a downloaded PDF and return its path relative to the cache dir."""
         safe_id = (
             reference_id.replace(":", "_").replace("/", "_").replace("?", "_").replace("=", "_")
         )
-        files_dir = self.config.get_files_cache_dir()
+        files_dir = (
+            self.config.get_private_files_cache_dir()
+            if private
+            else self.config.get_files_cache_dir()
+        )
         pdf_path = files_dir / f"{safe_id}.pdf"
         pdf_path.write_bytes(data)
+        if private:
+            pdf_path.chmod(0o600)
+            return str(pdf_path.relative_to(self.config.get_private_cache_dir()))
         return str(pdf_path.relative_to(self.config.cache_dir))
 
     def _parse_reference_id(self, reference_id: str) -> tuple[str, str]:
@@ -410,8 +512,17 @@ class ReferenceFetcher:
             >>> path.name
             'url_https___example.com_book_chapter1.md'
         """
-        safe_id = reference_id.replace(":", "_").replace("/", "_").replace("?", "_").replace("=", "_")
-        cache_dir = self.config.get_cache_dir()
+        return self._cache_path(reference_id, self.config.get_cache_dir())
+
+    @staticmethod
+    def _cache_path(reference_id: str, cache_dir: Path) -> Path:
+        """Return a cache path under an already selected cache directory."""
+        safe_id = (
+            reference_id.replace(":", "_")
+            .replace("/", "_")
+            .replace("?", "_")
+            .replace("=", "_")
+        )
         return cache_dir / f"{safe_id}.md"
 
     def _quote_yaml_value(self, value: str) -> str:
@@ -464,13 +575,20 @@ class ReferenceFetcher:
 
         return value
 
-    def _save_to_disk(self, reference: ReferenceContent) -> None:
+    def _save_to_disk(
+        self, reference: ReferenceContent, private: bool = False
+    ) -> None:
         """Save reference content to disk cache as markdown with YAML frontmatter.
 
         Args:
             reference: Reference content to save
         """
-        cache_path = self.get_cache_path(reference.reference_id)
+        cache_path = self._cache_path(
+            reference.reference_id,
+            self.config.get_private_cache_dir()
+            if private
+            else self.config.get_cache_dir(),
+        )
 
         lines = []
         lines.append("---")
@@ -514,6 +632,16 @@ class ReferenceFetcher:
             lines.append(f"license: {self._quote_yaml_value(reference.license)}")
         if reference.local_pdf_path:
             lines.append(f"local_pdf_path: {self._quote_yaml_value(reference.local_pdf_path)}")
+        if reference.full_text_access_type:
+            lines.append(
+                "full_text_access_type: "
+                f"{self._quote_yaml_value(reference.full_text_access_type)}"
+            )
+        if reference.full_text_source_item_id:
+            lines.append(
+                "full_text_source_item_id: "
+                f"{self._quote_yaml_value(reference.full_text_source_item_id)}"
+            )
         if reference.metadata and "extra_fields_captured" in reference.metadata:
             extra_fields = reference.metadata.get("extra_fields_captured")
             if isinstance(extra_fields, list):
@@ -567,12 +695,16 @@ class ReferenceFetcher:
             lines.append(reference.content)
 
         cache_path.write_text("\n".join(lines), encoding="utf-8")
+        if private:
+            cache_path.chmod(0o600)
         logger.info(f"Cached {reference.reference_id} to {cache_path}")
 
     def _load_from_disk(self, reference_id: str) -> Optional[ReferenceContent]:
-        """Load reference content from disk cache.
+        """Load reference content from the public validation cache.
 
         Supports both new markdown format with YAML frontmatter and legacy text format.
+        Private research caches are intentionally excluded so validation results are
+        reproducible across local machines and CI.
 
         Args:
             reference_id: Reference identifier
@@ -671,6 +803,8 @@ class ReferenceFetcher:
             oa_status=frontmatter.get("oa_status"),
             license=frontmatter.get("license"),
             local_pdf_path=frontmatter.get("local_pdf_path"),
+            full_text_access_type=frontmatter.get("full_text_access_type"),
+            full_text_source_item_id=frontmatter.get("full_text_source_item_id"),
             is_preprint=frontmatter.get("is_preprint"),
             peer_review_status=frontmatter.get("peer_review_status"),
             full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),

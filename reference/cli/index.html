@@ -796,6 +796,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../../how-to/export-cache-to-zotero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exporting a Cache to Zotero
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../how-to/add-reference-source/" class="md-nav__link">
         
   
@@ -1888,6 +1916,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cache-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-enrich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache enrich
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-id-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2871,6 +2921,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cache-export" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache export
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-enrich" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache enrich
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-id-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3607,6 +3679,54 @@ Successfully cached PMID:16888623
 <p><strong>Refresh then show path:</strong></p>
 <pre><code class="language-bash">linkml-reference-validator cache lookup PMID:16888623 --no-cache
 </code></pre>
+<h2 id="cache-export">cache export</h2>
+<p>Export public bibliographic metadata to CSL JSON for Zotero import.</p>
+<pre><code class="language-bash">linkml-reference-validator cache export --output project-zotero.json [OPTIONS]
+</code></pre>
+<p><strong>Options:</strong></p>
+<ul>
+<li><code>--output PATH, -o PATH</code> - Required destination file</li>
+<li><code>--format TEXT</code> - Export format (default and currently supported: <code>csl-json</code>)</li>
+<li><code>--needs-full-text</code> - Export only publication records needing full text (default)</li>
+<li><code>--all</code> - Include eligible records that already contain full text</li>
+<li><code>--cache-dir PATH, -c PATH</code> - Public reference cache directory</li>
+<li><code>--force, -f</code> - Replace an existing output file</li>
+<li><code>--config PATH</code> - Validation configuration file</li>
+<li><code>--verbose, -v</code> - Enable detailed logging</li>
+</ul>
+<pre><code class="language-bash">linkml-reference-validator cache export \
+  --cache-dir references_cache \
+  --needs-full-text \
+  --output project-zotero.json
+</code></pre>
+<p>The output is a DOI/PMID-deduplicated metadata allowlist. It never includes
+cached article content, excerpts, PDFs, local paths, or private-cache data.</p>
+<hr />
+<h2 id="cache-enrich">cache enrich</h2>
+<p>Inventory or enrich existing abstract-only cache entries through one full-text
+provider. This is primarily intended for opt-in private-library providers such
+as Zotero.</p>
+<pre><code class="language-bash">linkml-reference-validator cache enrich [OPTIONS]
+</code></pre>
+<p><strong>Options:</strong></p>
+<ul>
+<li><code>--provider TEXT</code> - Registered provider name (default: <code>zotero</code>)</li>
+<li><code>--cache-dir PATH, -c PATH</code> - Reference cache directory</li>
+<li><code>--private-cache-dir PATH</code> - Separate private research-cache destination (default: <code>~/.cache/linkml-reference-validator/private</code>)</li>
+<li><code>--dry-run</code> - Report matches without changing files (default)</li>
+<li><code>--apply</code> - Materialize usable matches into the private research cache</li>
+<li><code>--config PATH</code> - Validation configuration file</li>
+<li><code>--verbose, -v</code> - Enable detailed logging</li>
+</ul>
+<pre><code class="language-bash"># Safe inventory
+linkml-reference-validator cache enrich --provider zotero --dry-run
+
+# Apply reviewed exact matches
+linkml-reference-validator cache enrich --provider zotero --apply
+</code></pre>
+<p>The public source cache is never modified by this command, and validation never
+reads the private destination. Private-library content may be copyrighted; keep
+the research cache private.</p>
 <hr />
 <h2 id="reference-id-formats">Reference ID Formats</h2>
 <h3 id="pubmed-pmid">PubMed (PMID)</h3>

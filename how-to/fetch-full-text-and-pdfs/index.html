@@ -14,7 +14,7 @@
         <link rel="prev" href="../use-local-files-and-urls/">
       
       
-        <link rel="next" href="../add-reference-source/">
+        <link rel="next" href="../export-cache-to-zotero/">
       
       
         
@@ -863,6 +863,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#private-manuscripts-in-zotero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private manuscripts in Zotero
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-a-cache-to-a-zotero-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export a cache to a Zotero collection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#preprints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -949,6 +971,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export-cache-to-zotero/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exporting a Cache to Zotero
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -1379,6 +1429,28 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#private-manuscripts-in-zotero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Private manuscripts in Zotero
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#export-a-cache-to-a-zotero-collection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Export a cache to a Zotero collection
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#preprints" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1534,6 +1606,11 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 <td>Ordered list of provider names to try until one yields usable full text.</td>
 </tr>
 <tr>
+<td><code>private_cache_dir</code></td>
+<td><code>~/.cache/linkml-reference-validator/private</code></td>
+<td>Separate research cache for closed/user-library full text; never read by validation.</td>
+</tr>
+<tr>
 <td><code>pdf_backend</code></td>
 <td><code>pypdf</code></td>
 <td>Name of the PDF text-extraction backend.</td>
@@ -1547,6 +1624,11 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 <td><code>full_text_providers_file</code></td>
 <td><code>null</code></td>
 <td>Optional path to a YAML file defining custom full-text providers.</td>
+</tr>
+<tr>
+<td><code>zotero_base_url</code></td>
+<td><code>http://localhost:23119/api/users/0</code></td>
+<td>Read-only Zotero local API library used by the opt-in <code>zotero</code> provider.</td>
 </tr>
 </tbody>
 </table>
@@ -1580,6 +1662,80 @@ full_text_providers:
 pdf_backend: pypdf
 download_pdfs: true
 </code></pre>
+<h2 id="private-manuscripts-in-zotero">Private manuscripts in Zotero</h2>
+<p>The opt-in <strong><code>zotero</code></strong> provider can find non-open manuscripts that are already
+in your personal Zotero library. It matches exact DOI, PMID, or PMCID identifiers;
+it does not automatically accept fuzzy title matches.</p>
+<p>Zotero must be running, and its local API must be enabled in Zotero's advanced
+settings. Inventory the reference cache before changing it:</p>
+<pre><code class="language-bash">linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --dry-run
+</code></pre>
+<p>The report distinguishes <code>found</code>, <code>not_found</code>, <code>already_full_text</code>, and <code>error</code>.
+Dry-run is the default and never changes cache files. After reviewing exact
+matches, apply usable text with:</p>
+<pre><code class="language-bash">linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --apply
+</code></pre>
+<p>Apply mode does <strong>not</strong> modify <code>references_cache</code>. It writes the enriched entry
+to a separate research cache at <code>~/.cache/linkml-reference-validator/private</code>
+by default. Agents may inspect that cache for background context, but ordinary
+validation never reads it and never cites it as evidence. Validation therefore
+has the same inputs locally, in CI, and on another contributor's machine.</p>
+<p>To keep the research cache in a private repository or another secured location:</p>
+<pre><code class="language-bash">linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --private-cache-dir /path/to/private-reference-cache \
+  --apply
+</code></pre>
+<p>The same location can be configured for all commands:</p>
+<pre><code class="language-yaml">cache_dir: references_cache
+private_cache_dir: /path/to/private-reference-cache
+</code></pre>
+<p>Zotero-indexed text is preferred. If Zotero has not indexed an attachment, the
+provider downloads it from Zotero's local PDF endpoint and sends it through the
+normal PDF extractor. The source attachment key and <code>user_library</code> access type
+are persisted, but the ephemeral localhost URL is not.</p>
+<p>!!! warning "Keep research caches private"</p>
+<pre><code>Private cache entries contain extracted manuscript text and may contain a
+copied PDF. Do not place this cache in a public repository or share it
+unless you have permission to redistribute that content.
+</code></pre>
+<p>Do not add <code>zotero</code> to <code>full_text_providers</code>. Even if it is configured there,
+ordinary validation rejects its <code>user_library</code> result and continues to public
+providers. Use <code>cache enrich</code> when you want to search Zotero.</p>
+<p>Support for reproducible validation backed by private manuscripts is a future,
+separate feature. The proposed design is a trusted offline job that emits a
+minimal signed excerpt attestation into the public cache. The validator would
+verify the signature using a checked-in public key; neither agents nor CI would
+have the signing key or permission to generate those files directly.</p>
+<h2 id="export-a-cache-to-a-zotero-collection">Export a cache to a Zotero collection</h2>
+<p>Export references that still need full text as metadata-only CSL JSON:</p>
+<pre><code class="language-bash">linkml-reference-validator cache export \
+  --cache-dir references_cache \
+  --format csl-json \
+  --needs-full-text \
+  --output project-zotero.json
+</code></pre>
+<p>The default <code>--needs-full-text</code> mode excludes cache entries that already contain
+full text. It also excludes non-publication identifiers, deduplicates by
+normalized DOI and then PMID, and exports only an explicit metadata allowlist:
+title, authors, journal, year, DOI, PMID, and PubMed URL. Cached article text,
+excerpts, provenance, PDFs, and local paths are never exported. Use <code>--all</code> only
+when you deliberately want eligible records that already have full text.</p>
+<p>The exporter refuses to replace an existing output file unless <code>--force</code> is
+given. Review the reported counts, then in Zotero choose <strong>File → Import → A
+file</strong>, select the JSON file, and place the imported items in a project-specific
+collection. Zotero supports CSL JSON as a standard import format. After import,
+select the collection and run <strong>Find Full Text</strong>, then rerun <code>cache enrich</code>.</p>
+<p>See <a href="https://www.zotero.org/support/kb/importing_standardized_formats">Zotero's standardized-format import instructions</a>.
+For the complete workflow with screenshots, see
+<a href="../export-cache-to-zotero/">Export a Reference Cache to Zotero</a>.</p>
 <h2 id="preprints">Preprints</h2>
 <p>Preprints are first-class references. They are increasingly cited for early
 mechanistic findings, but they sit in two distinct universes that need

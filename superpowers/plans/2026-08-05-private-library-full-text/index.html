@@ -8,28 +8,24 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-entrez/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/superpowers/plans/2026-08-05-private-library-full-text/">
       
       
-        <link rel="prev" href="../validate-obo-files/">
-      
-      
-        <link rel="next" href="../validate-clinical-trials/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>Validating Entrez Accessions - linkml-reference-validator</title>
+        <title>Private Library Full-Text Integration — Implementation Plan - linkml-reference-validator</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -48,7 +44,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -66,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-entrez-accessions" class="md-skip">
+        <a href="#private-library-full-text-integration-implementation-plan" class="md-skip">
           Skip to content
         </a>
       
@@ -82,7 +78,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -102,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating Entrez Accessions
+              Private Library Full-Text Integration — Implementation Plan
             
           </span>
         </div>
@@ -192,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -249,7 +245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../setup-guide/" class="md-nav__link">
+      <a href="../../../setup-guide/" class="md-nav__link">
         
   
   
@@ -276,7 +272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../../quickstart/" class="md-nav__link">
         
   
   
@@ -350,7 +346,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/complete-workflow/" class="md-nav__link">
+      <a href="../../../tutorials/complete-workflow/" class="md-nav__link">
         
   
   
@@ -378,7 +374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/01_getting_started/" class="md-nav__link">
+      <a href="../../../notebooks/01_getting_started/" class="md-nav__link">
         
   
   
@@ -406,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/02_advanced_usage/" class="md-nav__link">
+      <a href="../../../notebooks/02_advanced_usage/" class="md-nav__link">
         
   
   
@@ -434,7 +430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/04_obo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/04_obo_validation/" class="md-nav__link">
         
   
   
@@ -462,7 +458,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/05_geo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/05_geo_validation/" class="md-nav__link">
         
   
   
@@ -490,7 +486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/03_python_api/" class="md-nav__link">
+      <a href="../../../notebooks/03_python_api/" class="md-nav__link">
         
   
   
@@ -522,20 +518,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -556,7 +550,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -574,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-obo-files/" class="md-nav__link">
+      <a href="../../../how-to/validate-obo-files/" class="md-nav__link">
         
   
   
@@ -599,37 +593,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating Entrez Accessions
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-entrez/" class="md-nav__link">
         
   
   
@@ -645,236 +612,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GEO (GSE or GDS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validating with Title Check
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioProject
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioSample
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accepted Identifier Formats
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prefix Aliases and Normalization
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-caching Entrez Records
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting and Email
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excerpt Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How GEO Accession-to-UID Conversion Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -887,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-clinical-trials/" class="md-nav__link">
+      <a href="../../../how-to/validate-clinical-trials/" class="md-nav__link">
         
   
   
@@ -915,7 +652,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-dois/" class="md-nav__link">
+      <a href="../../../how-to/validate-dois/" class="md-nav__link">
         
   
   
@@ -943,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-urls/" class="md-nav__link">
+      <a href="../../../how-to/validate-urls/" class="md-nav__link">
         
   
   
@@ -971,7 +708,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-titles/" class="md-nav__link">
+      <a href="../../../how-to/validate-titles/" class="md-nav__link">
         
   
   
@@ -999,7 +736,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../use-local-files-and-urls/" class="md-nav__link">
+      <a href="../../../how-to/use-local-files-and-urls/" class="md-nav__link">
         
   
   
@@ -1027,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fetch-full-text-and-pdfs/" class="md-nav__link">
+      <a href="../../../how-to/fetch-full-text-and-pdfs/" class="md-nav__link">
         
   
   
@@ -1055,7 +792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export-cache-to-zotero/" class="md-nav__link">
+      <a href="../../../how-to/export-cache-to-zotero/" class="md-nav__link">
         
   
   
@@ -1083,7 +820,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../add-reference-source/" class="md-nav__link">
+      <a href="../../../how-to/add-reference-source/" class="md-nav__link">
         
   
   
@@ -1111,7 +848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skip-unsupported-references/" class="md-nav__link">
+      <a href="../../../how-to/skip-unsupported-references/" class="md-nav__link">
         
   
   
@@ -1139,7 +876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../repair-validation-errors/" class="md-nav__link">
+      <a href="../../../how-to/repair-validation-errors/" class="md-nav__link">
         
   
   
@@ -1221,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/how-it-works/" class="md-nav__link">
+      <a href="../../../concepts/how-it-works/" class="md-nav__link">
         
   
   
@@ -1249,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/content-types/" class="md-nav__link">
+      <a href="../../../concepts/content-types/" class="md-nav__link">
         
   
   
@@ -1277,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
+      <a href="../../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -1359,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cli/" class="md-nav__link">
+      <a href="../../../reference/cli/" class="md-nav__link">
         
   
   
@@ -1394,7 +1131,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../troubleshooting/" class="md-nav__link">
+      <a href="../../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1421,7 +1158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../todo/" class="md-nav__link">
+      <a href="../../../todo/" class="md-nav__link">
         
   
   
@@ -1468,33 +1205,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#phase-1-zotero-local-api-minimum-viable-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Phase 1: Zotero local API minimum viable workflow
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
+    <nav class="md-nav" aria-label="Phase 1: Zotero local API minimum viable workflow">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
+  <a href="#1-generalize-full-text-locations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GEO (GSE or GDS)
+        1. Generalize full-text locations
       
     </span>
   </a>
@@ -1502,10 +1228,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
+  <a href="#2-add-a-zotero-api-client-and-exact-identifier-index" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validating with Title Check
+        2. Add a Zotero API client and exact identifier index
       
     </span>
   </a>
@@ -1513,10 +1239,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
+  <a href="#3-add-zoterofulltextprovider" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BioProject
+        3. Add ZoteroFullTextProvider
       
     </span>
   </a>
@@ -1524,10 +1250,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
+  <a href="#4-add-cache-enrich" class="md-nav__link">
     <span class="md-ellipsis">
       
-        BioSample
+        4. Add cache enrich
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-positive-local-smoke-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Positive local smoke test
       
     </span>
   </a>
@@ -1540,77 +1277,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
+  <a href="#phase-2-zotero-web-api" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Accepted Identifier Formats
+        Phase 2: Zotero Web API
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prefix Aliases and Normalization
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-caching Entrez Records
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting and Email
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
+    <nav class="md-nav" aria-label="Phase 2: Zotero Web API">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
+  <a href="#6-add-authenticated-read-only-web-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Excerpt Not Found
+        6. Add authenticated read-only web mode
       
     </span>
   </a>
@@ -1618,21 +1300,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
+  <a href="#7-operational-documentation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
+        7. Operational documentation
       
     </span>
   </a>
@@ -1645,32 +1316,166 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
+  <a href="#phase-3-paperpile-local-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Configuration File
+        Phase 3: Paperpile local sync
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 3: Paperpile local sync">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#8-build-a-generic-local-library-index" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Build a generic local library index
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#9-add-paperpilefulltextprovider-for-local-files" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How GEO Accession-to-UID Conversion Works
+        9. Add PaperpileFullTextProvider for local files
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#10-measure-matching-quality" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Also
+        10. Measure matching quality
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-4-paperpile-via-google-drive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4: Paperpile via Google Drive
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 4: Paperpile via Google Drive">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-add-a-read-only-drive-adapter" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Add a read-only Drive adapter
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-5-privacy-hardening-and-signed-attestations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5: Privacy hardening and signed attestations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 5: Privacy hardening and signed attestations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#12-separate-private-content-from-shareable-cache-metadata" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Separate private content from shareable cache metadata
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-specify-and-implement-offline-signed-excerpt-attestations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. Specify and implement offline signed excerpt attestations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#phase-6-browse-a-cache-in-zotero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 6: Browse a cache in Zotero
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Phase 6: Browse a cache in Zotero">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#14-export-cache-metadata-for-zotero-import" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Export cache metadata for Zotero import
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#15-consider-an-opt-in-zotero-collection-sync" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Consider an opt-in Zotero collection sync
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#definition-of-done-for-the-minimal-first-task" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Definition of done for the minimal first task
       
     </span>
   </a>
@@ -1697,168 +1502,152 @@
   
 
 
-<h1 id="validating-entrez-accessions">Validating Entrez Accessions</h1>
-<p>This guide shows how to validate supporting text against NCBI Entrez records for GEO, BioProject, and BioSample.</p>
-<h2 id="overview">Overview</h2>
-<p>These sources use the NCBI Entrez E-utilities:</p>
+<h1 id="private-library-full-text-integration-implementation-plan">Private Library Full-Text Integration — Implementation Plan</h1>
+<p><strong>Date:</strong> 2026-08-05
+<strong>Design:</strong> <a href="../../specs/2026-08-05-private-library-full-text-design/">Private Library Full-Text Integration</a></p>
+<p>All implementation tasks follow test-driven development: add a failing test,
+implement the smallest production change, then run the focused test and the full
+<code>just test</code> suite. Network tests use realistic recorded/constructed API responses;
+live tests remain opt-in.</p>
+<h2 id="phase-1-zotero-local-api-minimum-viable-workflow">Phase 1: Zotero local API minimum viable workflow</h2>
+<h3 id="1-generalize-full-text-locations">1. Generalize full-text locations</h3>
+<p>Add tests for materializing a local PDF path, rejecting a path over the size cap,
+rejecting a non-PDF file with a <code>.pdf</code> suffix, and passing ephemeral request
+headers without persisting them.</p>
+<p>Then:</p>
 <ul>
-<li><strong>GEO</strong> (GSE/GDS): Uses <code>esearch</code> to convert accessions to UIDs, then <code>esummary</code> from the <code>gds</code> database</li>
-<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): Uses <code>esummary</code> from the <code>bioproject</code> database</li>
-<li><strong>BioSample</strong> (SAMN/SAME/SAMD): Uses <code>esummary</code> from the <code>biosample</code> database</li>
+<li>add <code>local_path</code>, <code>headers</code>, <code>access_type</code>, and <code>source_item_id</code> to
+  <code>FullTextLocation</code>;</li>
+<li>teach <code>ReferenceFetcher._materialize()</code> to read a local file under the same size
+  and format-sniffing rules as HTTP content;</li>
+<li>teach <code>ContentAcquirer</code> to accept per-location headers;</li>
+<li>add private provenance fields to <code>ReferenceContent</code> and cache round-tripping;</li>
+<li>ensure secrets and localhost URLs are not written to frontmatter.</li>
 </ul>
-<p>The validator uses the returned summary/description fields as the content for matching.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="geo-gse-or-gds">GEO (GSE or GDS)</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;RNA-seq analysis of cardiac tissue&quot; \
-  GEO:GSE12345
-</code></pre>
-<h3 id="validating-with-title-check">Validating with Title Check</h3>
-<p>You can also validate that the reference title matches your expected title:</p>
-<pre><code class="language-bash"># This will validate both the excerpt AND the title
-linkml-reference-validator validate text \
-  &quot;Airway epithelial brushings&quot; \
-  GEO:GSE67472 \
-  --title &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<p>If the title doesn't match, validation will fail with a "title mismatch" error.</p>
-<h3 id="bioproject">BioProject</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Whole genome sequencing project for strain X&quot; \
-  BioProject:PRJNA12345
-</code></pre>
-<h3 id="biosample">BioSample</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Human liver biopsy sample description&quot; \
-  BioSample:SAMN12345678
-</code></pre>
-<h2 id="accepted-identifier-formats">Accepted Identifier Formats</h2>
-<p>You can use either prefixed or bare accessions:</p>
-<pre><code>GEO:GSE12345
-GDS12345
-BioProject:PRJNA12345
-PRJEB12345
-BioSample:SAMN12345678
-SAME1234567
-</code></pre>
-<h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
-<p>Prefixes are case-insensitive and can be normalized with a configuration map. This
-is useful when data uses alternate prefix styles such as <code>geo:</code> or <code>NCBIGeo:</code>.</p>
-<p>Create <code>.linkml-reference-validator.yaml</code> with a <code>validation</code> section:</p>
-<pre><code class="language-yaml">validation:
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>You can also configure this programmatically:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    reference_prefix_map={&quot;geo&quot;: &quot;GEO&quot;, &quot;NCBIGeo&quot;: &quot;GEO&quot;}
-)
-</code></pre>
-<p>Pass the config file to CLI commands with <code>--config .linkml-reference-validator.yaml</code>.</p>
-<h2 id="pre-caching-entrez-records">Pre-caching Entrez Records</h2>
-<p>For offline validation or to speed up repeated validations:</p>
-<pre><code class="language-bash">linkml-reference-validator cache reference GEO:GSE12345
-linkml-reference-validator cache reference BioProject:PRJNA12345
-linkml-reference-validator cache reference BioSample:SAMN12345678
-</code></pre>
-<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
-<h2 id="rate-limiting-and-email">Rate Limiting and Email</h2>
-<p>NCBI requires a valid contact email for Entrez API usage. Configure it in your settings:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    email=&quot;you@example.org&quot;,
-    rate_limit_delay=0.5,
-)
-</code></pre>
-<h2 id="content-availability">Content Availability</h2>
-<p>Entrez summaries vary by record. If a summary field is missing, the validator will return
-<code>content_type: unavailable</code> and matching may fail.</p>
-<h2 id="validation-failure-scenarios">Validation Failure Scenarios</h2>
-<p>The validator catches several types of errors:</p>
-<h3 id="excerpt-not-found">Excerpt Not Found</h3>
-<p>When the quoted text is not in the reference content:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;text that is not in the dataset&quot; \
-    GEO:GSE67472
-
-Result:
-  Valid: False
-  Message: Text part not found as substring: 'text that is not in the dataset'
-</code></pre>
-<h3 id="title-mismatch">Title Mismatch</h3>
-<p>When the expected title doesn't match the actual reference title:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Airway epithelial brushings&quot; \
-    GEO:GSE67472 \
-    --title &quot;Wrong Title Here&quot;
-
-Result:
-  Valid: False
-  Message: Title mismatch for GEO:GSE67472
-    Expected: &quot;Wrong Title Here&quot;
-    Actual: &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<h3 id="reference-not-found">Reference Not Found</h3>
-<p>When the accession doesn't exist:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Some text&quot; \
-    GEO:GSE99999999999
-
-Result:
-  Valid: False
-  Message: Could not fetch reference GEO:GSE99999999999
-</code></pre>
-<h2 id="configuration-file">Configuration File</h2>
-<p>Create <code>.linkml-reference-validator.yaml</code> in your project root for persistent configuration:</p>
-<pre><code class="language-yaml">validation:
-  # NCBI requires a valid email for Entrez API usage
-  email: you@example.org
-
-  # Rate limiting (seconds between API calls)
-  rate_limit_delay: 0.5
-
-  # Cache directory for offline use
-  cache_dir: references_cache
-
-  # Map alternate prefixes to canonical forms
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>Pass the config to CLI commands:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text&quot; \
-  GEO:GSE67472 \
-  --config .linkml-reference-validator.yaml
-</code></pre>
-<h2 id="how-geo-accession-to-uid-conversion-works">How GEO Accession-to-UID Conversion Works</h2>
-<p>The GDS Entrez database requires numeric UIDs, not accession numbers like GSE67472.
-The GEOSource automatically handles this conversion:</p>
-<ol>
-<li>
-<p><strong>esearch</strong>: Searches for the accession and returns the numeric UID
-   <code>esearch(db="gds", term="GSE67472[Accession]") → "200067472"</code></p>
-</li>
-<li>
-<p><strong>esummary</strong>: Uses the UID to fetch the dataset metadata
-   <code>esummary(db="gds", id="200067472") → {title, summary, ...}</code></p>
-</li>
-</ol>
-<p>This conversion happens transparently - you just use the GSE/GDS accession.</p>
-<h2 id="see-also">See Also</h2>
+<h3 id="2-add-a-zotero-api-client-and-exact-identifier-index">2. Add a Zotero API client and exact identifier index</h3>
+<p>Add contract tests using representative Zotero v3 JSON for:</p>
 <ul>
-<li><a href="../add-reference-source/">Adding a New Reference Source</a></li>
-<li><a href="../validate-titles/">Validating Titles</a></li>
-<li><a href="../../quickstart/">Quickstart</a></li>
-<li><a href="../../reference/cli/">CLI Reference</a></li>
+<li>local API availability detection;</li>
+<li>paginated top-level item loading;</li>
+<li>DOI normalization;</li>
+<li>PMID/PMCID extraction from structured fields and <code>extra</code>;</li>
+<li>incremental index refresh metadata;</li>
+<li>duplicate and ambiguous identifiers;</li>
+<li>child attachment selection;</li>
+<li>indexed-full-text success and PDF fallback.</li>
+</ul>
+<p>Then implement a small read-only client rather than coupling HTTP and matching
+logic directly inside the provider. The default base URL is
+<code>http://localhost:23119/api</code>; web mode remains disabled in this phase.</p>
+<h3 id="3-add-zoterofulltextprovider">3. Add <code>ZoteroFullTextProvider</code></h3>
+<p>Add provider tests showing:</p>
+<ul>
+<li>no identifier returns <code>None</code>;</li>
+<li>an exact DOI/PMID hit returns Zotero indexed text when usable;</li>
+<li>short or absent indexed text returns the PDF file location;</li>
+<li>ambiguity returns no location and a diagnostic;</li>
+<li>connection errors remain retryable in the provider chain;</li>
+<li>provenance is <code>provider=zotero</code> and <code>access_type=user_library</code> with no OA claim.</li>
+</ul>
+<p>Register <code>zotero</code> for the explicit <code>cache enrich</code> workflow. Ordinary validation
+must reject its <code>user_library</code> locations even if it is accidentally included in
+the configured provider chain.</p>
+<h3 id="4-add-cache-enrich">4. Add <code>cache enrich</code></h3>
+<p>Add CLI tests first for dry-run, apply, misses, ambiguity, provider-unavailable,
+and stable tabular output. Implement:</p>
+<pre><code class="language-text">cache enrich --provider zotero --cache-dir PATH [--dry-run]
+</code></pre>
+<p>The command enumerates Markdown cache files, loads them through <code>ReferenceFetcher</code>,
+and runs only the selected private provider even if <code>full_text_attempted</code> is
+already true. Apply mode reuses the normal materialization path but writes an
+owner-only private research cache outside the project by default.</p>
+<h3 id="5-positive-local-smoke-test">5. Positive local smoke test</h3>
+<p>Run the dry-run command against a temporary cache entry whose DOI is known to
+exist in the local Zotero library while Zotero is running. Verify:</p>
+<ul>
+<li>exact DOI match;</li>
+<li>at least 500 extracted characters;</li>
+<li>cache provenance and checksum;</li>
+<li>no credential or private URL leakage;</li>
+<li>the source Zotero library remains unchanged.</li>
+</ul>
+<p>The checked-in test suite must not depend on the developer's personal library.</p>
+<h2 id="phase-2-zotero-web-api">Phase 2: Zotero Web API</h2>
+<h3 id="6-add-authenticated-read-only-web-mode">6. Add authenticated read-only web mode</h3>
+<p>Test and implement user/group library configuration, pagination, <code>since</code>-based
+index refresh, backoff/rate-limit headers, attachment download authentication,
+and Zotero storage/WebDAV absence behavior.</p>
+<p>Credentials come from <code>ZOTERO_API_KEY</code> or a credential callback. Add explicit
+configuration for user/group library ID; never accept API keys in URLs.</p>
+<h3 id="7-operational-documentation">7. Operational documentation</h3>
+<p>Document how to enable the local API, create a read-only Zotero key, scan before
+applying, protect private caches, and keep private content out of validation.</p>
+<h2 id="phase-3-paperpile-local-sync">Phase 3: Paperpile local sync</h2>
+<h3 id="8-build-a-generic-local-library-index">8. Build a generic local library index</h3>
+<p>Extract identifier normalization and match reporting from the Zotero client into
+a source-neutral index. Add BibTeX ingestion with tests for DOI, PMID, title,
+year, author, duplicate keys, and malformed entries. Add a cacheable PDF probe
+that reads metadata/first-page text only once per file and stores its checksum.</p>
+<h3 id="9-add-paperpilefulltextprovider-for-local-files">9. Add <code>PaperpileFullTextProvider</code> for local files</h3>
+<p>Test and implement configuration for:</p>
+<ul>
+<li>a local Paperpile/Google Drive PDF root;</li>
+<li>a Paperpile automatic BibTeX export file or HTTPS download link;</li>
+<li>an optional manual Paperpile JSON export.</li>
+</ul>
+<p>Only exact DOI/PMID matches apply automatically. Title/year/author candidates are
+reported by <code>cache enrich --dry-run</code> and require explicit user confirmation in a
+future task.</p>
+<h3 id="10-measure-matching-quality">10. Measure matching quality</h3>
+<p>Run dry-run evaluation on a representative private cache and record precision,
+coverage, ambiguity, and unmatched reasons separately. Do not weaken matching
+thresholds to improve coverage. Use findings to decide whether guarded metadata
+matching should ever be enabled for apply mode.</p>
+<h2 id="phase-4-paperpile-via-google-drive">Phase 4: Paperpile via Google Drive</h2>
+<h3 id="11-add-a-read-only-drive-adapter">11. Add a read-only Drive adapter</h3>
+<p>Test with Google Drive API fixtures, then implement OAuth read-only listing and
+download, incremental change tracking, native Google shortcut handling, and
+streamed size limits. Reuse the Paperpile BibTeX identity index from Phase 3.</p>
+<p>This phase must not mutate Drive or Paperpile. Tokens use the system credential
+store and are excluded from logs and config serialization.</p>
+<h2 id="phase-5-privacy-hardening-and-signed-attestations">Phase 5: Privacy hardening and signed attestations</h2>
+<h3 id="12-separate-private-content-from-shareable-cache-metadata">12. Separate private content from shareable cache metadata</h3>
+<p>Completed in the first implementation: private content uses an owner-only
+research cache outside the project by default. Validation reads only the public
+cache, and its ordinary provider chain rejects explicitly non-open locations.</p>
+<h3 id="13-specify-and-implement-offline-signed-excerpt-attestations">13. Specify and implement offline signed excerpt attestations</h3>
+<p>Define a canonical, versioned <code>excerpts.yaml</code> schema and bind each record to its
+reference ID, claim hash, normalized excerpt hash, private source checksum,
+location, result, generator version, timestamp, and key ID. A trusted offline
+job reads the private cache and signs with Ed25519. Only the verification key is
+checked in; agents and CI cannot write trusted attestations. Add tests for valid,
+tampered, wrong-reference, wrong-claim, unknown-key, expired-key, and unsigned
+artifacts before enabling this optional validation mode.</p>
+<h2 id="phase-6-browse-a-cache-in-zotero">Phase 6: Browse a cache in Zotero</h2>
+<h3 id="14-export-cache-metadata-for-zotero-import">14. Export cache metadata for Zotero import</h3>
+<p>Implemented <code>cache export --format csl-json</code> with deterministic DOI/PMID
+deduplication and missing-full-text filtering. It exports an explicit
+bibliographic metadata allowlist and always excludes cached text, excerpts,
+provenance, PDFs, private-cache data, and local paths. The command refuses to
+overwrite an output file without <code>--force</code>.</p>
+<h3 id="15-consider-an-opt-in-zotero-collection-sync">15. Consider an opt-in Zotero collection sync</h3>
+<p>Only after export is stable, design an idempotent write integration that creates
+or updates a dedicated Zotero collection through the documented write API. It
+must require explicit write authorization and a dry-run diff; it must never
+alter unrelated Zotero items or attach private files implicitly.</p>
+<h2 id="definition-of-done-for-the-minimal-first-task">Definition of done for the minimal first task</h2>
+<ul>
+<li><code>cache enrich --provider zotero --dry-run</code> inventories an existing reference
+  cache without modifying it.</li>
+<li>Exact DOI/PMID matches identify PDF attachments in the supported Zotero local
+  API.</li>
+<li>Apply mode extracts usable text into the private research cache without changing the
+  public source cache.</li>
+<li>Normal validation ignores the private research cache and rejects private
+  provider results.</li>
+<li>Misses and ambiguities are visible and safe.</li>
+<li>No private API, direct SQLite dependency, secret persistence, or library write.</li>
+<li>Focused tests, doctests, mypy, Ruff, and the full <code>just test</code> suite pass.</li>
 </ul>
 
 
@@ -1911,10 +1700,10 @@ The GEOSource automatically handles this conversion:</p>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

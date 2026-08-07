@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-entrez/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/export-cache-to-zotero/">
       
       
-        <link rel="prev" href="../validate-obo-files/">
+        <link rel="prev" href="../fetch-full-text-and-pdfs/">
       
       
-        <link rel="next" href="../validate-clinical-trials/">
+        <link rel="next" href="../add-reference-source/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Validating Entrez Accessions - linkml-reference-validator</title>
+        <title>Exporting a Cache to Zotero - linkml-reference-validator</title>
       
     
     
@@ -66,7 +66,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-entrez-accessions" class="md-skip">
+        <a href="#export-a-reference-cache-to-zotero" class="md-skip">
           Skip to content
         </a>
       
@@ -102,7 +102,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating Entrez Accessions
+              Exporting a Cache to Zotero
             
           </span>
         </div>
@@ -599,37 +599,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating Entrez Accessions
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../validate-entrez/" class="md-nav__link">
         
   
   
@@ -645,236 +618,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GEO (GSE or GDS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validating with Title Check
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioProject
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioSample
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accepted Identifier Formats
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Prefix Aliases and Normalization
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-caching Entrez Records
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting and Email
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excerpt Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How GEO Accession-to-UID Conversion Works
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1052,10 +795,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../export-cache-to-zotero/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Exporting a Cache to Zotero
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1071,6 +841,92 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-export-metadata-from-the-public-cache" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Export metadata from the public cache
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-import-the-file-into-zotero" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Import the file into Zotero
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-ask-zotero-to-find-pdfs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Ask Zotero to find PDFs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-inventory-the-enriched-zotero-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Inventory the enriched Zotero library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-validate-reproducibly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Validate reproducibly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1468,10 +1324,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#1-export-metadata-from-the-public-cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        1. Export metadata from the public cache
       
     </span>
   </a>
@@ -1479,71 +1335,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
+  <a href="#2-import-the-file-into-zotero" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#geo-gse-or-gds" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GEO (GSE or GDS)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#validating-with-title-check" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validating with Title Check
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#bioproject" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioProject
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#biosample" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        BioSample
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#accepted-identifier-formats" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Accepted Identifier Formats
+        2. Import the file into Zotero
       
     </span>
   </a>
@@ -1551,10 +1346,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#prefix-aliases-and-normalization" class="md-nav__link">
+  <a href="#3-ask-zotero-to-find-pdfs" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Prefix Aliases and Normalization
+        3. Ask Zotero to find PDFs
       
     </span>
   </a>
@@ -1562,10 +1357,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-caching-entrez-records" class="md-nav__link">
+  <a href="#4-inventory-the-enriched-zotero-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-caching Entrez Records
+        4. Inventory the enriched Zotero library
       
     </span>
   </a>
@@ -1573,93 +1368,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#rate-limiting-and-email" class="md-nav__link">
+  <a href="#5-validate-reproducibly" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Rate Limiting and Email
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#validation-failure-scenarios" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validation Failure Scenarios
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Validation Failure Scenarios">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#excerpt-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Excerpt Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#title-mismatch" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Title Mismatch
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#reference-not-found" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Reference Not Found
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#configuration-file" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Configuration File
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#how-geo-accession-to-uid-conversion-works" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How GEO Accession-to-UID Conversion Works
+        5. Validate reproducibly
       
     </span>
   </a>
@@ -1670,7 +1382,7 @@
   <a href="#see-also" class="md-nav__link">
     <span class="md-ellipsis">
       
-        See Also
+        See also
       
     </span>
   </a>
@@ -1697,168 +1409,113 @@
   
 
 
-<h1 id="validating-entrez-accessions">Validating Entrez Accessions</h1>
-<p>This guide shows how to validate supporting text against NCBI Entrez records for GEO, BioProject, and BioSample.</p>
-<h2 id="overview">Overview</h2>
-<p>These sources use the NCBI Entrez E-utilities:</p>
+<h1 id="export-a-reference-cache-to-zotero">Export a Reference Cache to Zotero</h1>
+<p>This workflow turns a checked-in public reference cache into a Zotero collection,
+asks Zotero to find available PDFs, and then inventories the resulting attachments
+without putting closed manuscripts into the project repository.</p>
+<p>The three stores remain separate:</p>
+<table>
+<thead>
+<tr>
+<th>Store</th>
+<th>Purpose</th>
+<th style="text-align: right;">Safe to commit?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Project <code>references_cache</code></td>
+<td>Reproducible public validation evidence</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr>
+<td>Zotero library</td>
+<td>User-managed references and PDF attachments</td>
+<td style="text-align: right;">No</td>
+</tr>
+<tr>
+<td>Private research cache</td>
+<td>Extracted user-library text for agent context</td>
+<td style="text-align: right;">No</td>
+</tr>
+</tbody>
+</table>
+<p>Normal validation reads only the first store.</p>
+<h2 id="1-export-metadata-from-the-public-cache">1. Export metadata from the public cache</h2>
+<p>Run the exporter from the <code>linkml-reference-validator</code> checkout. For dismech:</p>
+<pre><code class="language-bash">uv run linkml-reference-validator cache export \
+  --cache-dir /Users/cjm/repos/dismech/references_cache \
+  --needs-full-text \
+  --output /Users/cjm/Downloads/dismech-zotero.json
+</code></pre>
+<p><code>--needs-full-text</code> is the default. It excludes cache entries that already have
+full text, excludes non-publication identifiers, and deduplicates by normalized
+DOI and then PMID. The CSL JSON output uses an explicit metadata allowlist:</p>
 <ul>
-<li><strong>GEO</strong> (GSE/GDS): Uses <code>esearch</code> to convert accessions to UIDs, then <code>esummary</code> from the <code>gds</code> database</li>
-<li><strong>BioProject</strong> (PRJNA/PRJEB/PRJDB): Uses <code>esummary</code> from the <code>bioproject</code> database</li>
-<li><strong>BioSample</strong> (SAMN/SAME/SAMD): Uses <code>esummary</code> from the <code>biosample</code> database</li>
+<li>title and authors;</li>
+<li>journal and year;</li>
+<li>DOI; or</li>
+<li>PMID and its public PubMed URL.</li>
 </ul>
-<p>The validator uses the returned summary/description fields as the content for matching.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="geo-gse-or-gds">GEO (GSE or GDS)</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;RNA-seq analysis of cardiac tissue&quot; \
-  GEO:GSE12345
-</code></pre>
-<h3 id="validating-with-title-check">Validating with Title Check</h3>
-<p>You can also validate that the reference title matches your expected title:</p>
-<pre><code class="language-bash"># This will validate both the excerpt AND the title
-linkml-reference-validator validate text \
-  &quot;Airway epithelial brushings&quot; \
-  GEO:GSE67472 \
-  --title &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<p>If the title doesn't match, validation will fail with a "title mismatch" error.</p>
-<h3 id="bioproject">BioProject</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Whole genome sequencing project for strain X&quot; \
-  BioProject:PRJNA12345
-</code></pre>
-<h3 id="biosample">BioSample</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Human liver biopsy sample description&quot; \
-  BioSample:SAMN12345678
-</code></pre>
-<h2 id="accepted-identifier-formats">Accepted Identifier Formats</h2>
-<p>You can use either prefixed or bare accessions:</p>
-<pre><code>GEO:GSE12345
-GDS12345
-BioProject:PRJNA12345
-PRJEB12345
-BioSample:SAMN12345678
-SAME1234567
-</code></pre>
-<h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
-<p>Prefixes are case-insensitive and can be normalized with a configuration map. This
-is useful when data uses alternate prefix styles such as <code>geo:</code> or <code>NCBIGeo:</code>.</p>
-<p>Create <code>.linkml-reference-validator.yaml</code> with a <code>validation</code> section:</p>
-<pre><code class="language-yaml">validation:
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>You can also configure this programmatically:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    reference_prefix_map={&quot;geo&quot;: &quot;GEO&quot;, &quot;NCBIGeo&quot;: &quot;GEO&quot;}
-)
-</code></pre>
-<p>Pass the config file to CLI commands with <code>--config .linkml-reference-validator.yaml</code>.</p>
-<h2 id="pre-caching-entrez-records">Pre-caching Entrez Records</h2>
-<p>For offline validation or to speed up repeated validations:</p>
-<pre><code class="language-bash">linkml-reference-validator cache reference GEO:GSE12345
-linkml-reference-validator cache reference BioProject:PRJNA12345
-linkml-reference-validator cache reference BioSample:SAMN12345678
-</code></pre>
-<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
-<h2 id="rate-limiting-and-email">Rate Limiting and Email</h2>
-<p>NCBI requires a valid contact email for Entrez API usage. Configure it in your settings:</p>
-<pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig
-
-config = ReferenceValidationConfig(
-    email=&quot;you@example.org&quot;,
-    rate_limit_delay=0.5,
-)
-</code></pre>
-<h2 id="content-availability">Content Availability</h2>
-<p>Entrez summaries vary by record. If a summary field is missing, the validator will return
-<code>content_type: unavailable</code> and matching may fail.</p>
-<h2 id="validation-failure-scenarios">Validation Failure Scenarios</h2>
-<p>The validator catches several types of errors:</p>
-<h3 id="excerpt-not-found">Excerpt Not Found</h3>
-<p>When the quoted text is not in the reference content:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;text that is not in the dataset&quot; \
-    GEO:GSE67472
-
-Result:
-  Valid: False
-  Message: Text part not found as substring: 'text that is not in the dataset'
-</code></pre>
-<h3 id="title-mismatch">Title Mismatch</h3>
-<p>When the expected title doesn't match the actual reference title:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Airway epithelial brushings&quot; \
-    GEO:GSE67472 \
-    --title &quot;Wrong Title Here&quot;
-
-Result:
-  Valid: False
-  Message: Title mismatch for GEO:GSE67472
-    Expected: &quot;Wrong Title Here&quot;
-    Actual: &quot;Airway epithelial gene expression in asthma versus healthy controls&quot;
-</code></pre>
-<h3 id="reference-not-found">Reference Not Found</h3>
-<p>When the accession doesn't exist:</p>
-<pre><code class="language-bash">$ linkml-reference-validator validate text \
-    &quot;Some text&quot; \
-    GEO:GSE99999999999
-
-Result:
-  Valid: False
-  Message: Could not fetch reference GEO:GSE99999999999
-</code></pre>
-<h2 id="configuration-file">Configuration File</h2>
-<p>Create <code>.linkml-reference-validator.yaml</code> in your project root for persistent configuration:</p>
-<pre><code class="language-yaml">validation:
-  # NCBI requires a valid email for Entrez API usage
-  email: you@example.org
-
-  # Rate limiting (seconds between API calls)
-  rate_limit_delay: 0.5
-
-  # Cache directory for offline use
-  cache_dir: references_cache
-
-  # Map alternate prefixes to canonical forms
-  reference_prefix_map:
-    geo: GEO
-    NCBIGeo: GEO
-    NCBIBioProject: BIOPROJECT
-    NCBIBioSample: BIOSAMPLE
-</code></pre>
-<p>Pass the config to CLI commands:</p>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Some text&quot; \
-  GEO:GSE67472 \
-  --config .linkml-reference-validator.yaml
-</code></pre>
-<h2 id="how-geo-accession-to-uid-conversion-works">How GEO Accession-to-UID Conversion Works</h2>
-<p>The GDS Entrez database requires numeric UIDs, not accession numbers like GSE67472.
-The GEOSource automatically handles this conversion:</p>
+<p>It never contains cached article text, excerpts, provenance, PDFs, local paths,
+or private-cache data. The command refuses to replace an existing output file;
+use <code>--force</code> only after checking the destination. Use <code>--all</code> if you explicitly
+want eligible references that already contain full text.</p>
+<h2 id="2-import-the-file-into-zotero">2. Import the file into Zotero</h2>
+<p>In Zotero:</p>
 <ol>
-<li>
-<p><strong>esearch</strong>: Searches for the accession and returns the numeric UID
-   <code>esearch(db="gds", term="GSE67472[Accession]") → "200067472"</code></p>
-</li>
-<li>
-<p><strong>esummary</strong>: Uses the UID to fetch the dataset metadata
-   <code>esummary(db="gds", id="200067472") → {title, summary, ...}</code></p>
-</li>
+<li>Choose <strong>File → Import</strong>.</li>
+<li>Choose <strong>A file</strong>.</li>
+<li>Select <code>dismech-zotero.json</code>.</li>
+<li>Keep the imported records in a project-specific collection such as
+   <strong>dismech</strong>.</li>
 </ol>
-<p>This conversion happens transparently - you just use the GSE/GDS accession.</p>
-<h2 id="see-also">See Also</h2>
+<p>CSL JSON is a standard format supported by Zotero. Importing the file adds only
+bibliographic records; it does not copy anything from the validator's caches.</p>
+<h2 id="3-ask-zotero-to-find-pdfs">3. Ask Zotero to find PDFs</h2>
+<p>Select one or more top-level journal articles in the center item list,
+right-click the selection, and choose <strong>Find Full Text</strong>. It is a built-in Zotero
+command, not a plugin.</p>
+<p><img alt="Zotero Find Full Text processing a batch of imported references" src="../../assets/zotero-find-full-text.png" /></p>
+<p>The command appears for an eligible parent item that has a DOI and does not
+already have a file attachment. It may also be unavailable in a group library
+where files cannot be added. If it is absent, first test a single article in
+your personal library and confirm that its DOI field is populated.</p>
+<p>For a large import, start with a modest batch rather than all records at once.
+Publishers can temporarily rate-limit repeated requests, and a later retry may
+find additional files. Zotero reports <strong>Full Text PDF</strong> or <strong>No file found</strong> for
+each attempted item.</p>
+<h2 id="4-inventory-the-enriched-zotero-library">4. Inventory the enriched Zotero library</h2>
+<p>Once Zotero finishes, scan the project cache again:</p>
+<pre><code class="language-bash">uv run linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir /Users/cjm/repos/dismech/references_cache \
+  --dry-run
+</code></pre>
+<p>This read-only scan matches exact DOI, PMID, or PMCID identifiers and reports
+which cached references now have usable Zotero text or PDF attachments. It does
+not invoke <strong>Find Full Text</strong> and does not modify Zotero.</p>
+<p>After reviewing the matches, materialize them into the separate private research
+cache:</p>
+<pre><code class="language-bash">uv run linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir /Users/cjm/repos/dismech/references_cache \
+  --apply
+</code></pre>
+<p>Apply mode leaves <code>references_cache</code> unchanged. Private content goes to
+<code>~/.cache/linkml-reference-validator/private</code> by default with owner-only
+permissions. Agents may inspect it for context, but validation cannot use it as
+evidence.</p>
+<h2 id="5-validate-reproducibly">5. Validate reproducibly</h2>
+<p>Run validation normally. Results remain reproducible because the validator
+reads the public project cache and accepts only public full-text provider results.
+Neither the contents of Zotero nor the machine-specific private cache affect
+validation.</p>
+<h2 id="see-also">See also</h2>
 <ul>
-<li><a href="../add-reference-source/">Adding a New Reference Source</a></li>
-<li><a href="../validate-titles/">Validating Titles</a></li>
-<li><a href="../../quickstart/">Quickstart</a></li>
-<li><a href="../../reference/cli/">CLI Reference</a></li>
+<li><a href="../fetch-full-text-and-pdfs/">Fetching Full Text and PDFs</a></li>
+<li><a href="https://www.zotero.org/support/kb/importing_standardized_formats">Zotero: importing standardized formats</a></li>
+<li><a href="https://www.zotero.org/support/attaching_files">Zotero: adding files to a library</a></li>
 </ul>
 
 

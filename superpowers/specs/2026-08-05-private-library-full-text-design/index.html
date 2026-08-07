@@ -8,28 +8,24 @@
       
       
       
-        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/how-to/validate-dois/">
+        <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/superpowers/specs/2026-08-05-private-library-full-text-design/">
       
       
-        <link rel="prev" href="../validate-clinical-trials/">
-      
-      
-        <link rel="next" href="../validate-urls/">
       
       
         
       
       
-      <link rel="icon" href="../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/images/favicon.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.0">
     
     
       
-        <title>Validating DOIs - linkml-reference-validator</title>
+        <title>Private Library Full-Text Integration — Design - linkml-reference-validator</title>
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.618322db.min.css">
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.618322db.min.css">
       
       
 
@@ -48,7 +44,7 @@
       
     
     
-    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -66,7 +62,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#validating-text-against-dois" class="md-skip">
+        <a href="#private-library-full-text-integration-design" class="md-skip">
           Skip to content
         </a>
       
@@ -82,7 +78,7 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-header__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -102,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Validating DOIs
+              Private Library Full-Text Integration — Design
             
           </span>
         </div>
@@ -192,7 +188,7 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
+    <a href="../../.." title="linkml-reference-validator" class="md-nav__button md-logo" aria-label="linkml-reference-validator" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
@@ -222,7 +218,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../.." class="md-nav__link">
+      <a href="../../.." class="md-nav__link">
         
   
   
@@ -249,7 +245,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../setup-guide/" class="md-nav__link">
+      <a href="../../../setup-guide/" class="md-nav__link">
         
   
   
@@ -276,7 +272,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../quickstart/" class="md-nav__link">
+      <a href="../../../quickstart/" class="md-nav__link">
         
   
   
@@ -350,7 +346,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../tutorials/complete-workflow/" class="md-nav__link">
+      <a href="../../../tutorials/complete-workflow/" class="md-nav__link">
         
   
   
@@ -378,7 +374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/01_getting_started/" class="md-nav__link">
+      <a href="../../../notebooks/01_getting_started/" class="md-nav__link">
         
   
   
@@ -406,7 +402,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/02_advanced_usage/" class="md-nav__link">
+      <a href="../../../notebooks/02_advanced_usage/" class="md-nav__link">
         
   
   
@@ -434,7 +430,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/04_obo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/04_obo_validation/" class="md-nav__link">
         
   
   
@@ -462,7 +458,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/05_geo_validation/" class="md-nav__link">
+      <a href="../../../notebooks/05_geo_validation/" class="md-nav__link">
         
   
   
@@ -490,7 +486,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../notebooks/03_python_api/" class="md-nav__link">
+      <a href="../../../notebooks/03_python_api/" class="md-nav__link">
         
   
   
@@ -522,20 +518,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -556,7 +550,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -574,7 +568,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-obo-files/" class="md-nav__link">
+      <a href="../../../how-to/validate-obo-files/" class="md-nav__link">
         
   
   
@@ -602,7 +596,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-entrez/" class="md-nav__link">
+      <a href="../../../how-to/validate-entrez/" class="md-nav__link">
         
   
   
@@ -630,7 +624,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-clinical-trials/" class="md-nav__link">
+      <a href="../../../how-to/validate-clinical-trials/" class="md-nav__link">
         
   
   
@@ -655,37 +649,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Validating DOIs
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../../how-to/validate-dois/" class="md-nav__link">
         
   
   
@@ -701,242 +668,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Basic Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Basic Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#validate-a-single-quote" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Validate a Single Quote
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#doi-format" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DOI Format
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#supported-repository-dois" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Supported Repository DOIs
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Supported Repository DOIs">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#looking-up-repository-dois" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Looking Up Repository DOIs
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#downloading-supplementary-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Downloading Supplementary Files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publisher-dois-vs-repository-dois" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publisher DOIs vs Repository DOIs
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#pre-caching-dois" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Pre-caching DOIs
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-dois-in-data-files" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using DOIs in Data Files
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#repairing-doi-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Repairing DOI References
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#doi-vs-pmid-when-to-use-each" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        DOI vs PMID: When to Use Each
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Content Availability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#content-type-unavailable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Content type: unavailable"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#failed-to-fetch-doi" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Failed to fetch DOI"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-limiting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -949,7 +680,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-urls/" class="md-nav__link">
+      <a href="../../../how-to/validate-urls/" class="md-nav__link">
         
   
   
@@ -977,7 +708,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../validate-titles/" class="md-nav__link">
+      <a href="../../../how-to/validate-titles/" class="md-nav__link">
         
   
   
@@ -1005,7 +736,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../use-local-files-and-urls/" class="md-nav__link">
+      <a href="../../../how-to/use-local-files-and-urls/" class="md-nav__link">
         
   
   
@@ -1033,7 +764,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../fetch-full-text-and-pdfs/" class="md-nav__link">
+      <a href="../../../how-to/fetch-full-text-and-pdfs/" class="md-nav__link">
         
   
   
@@ -1061,7 +792,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../export-cache-to-zotero/" class="md-nav__link">
+      <a href="../../../how-to/export-cache-to-zotero/" class="md-nav__link">
         
   
   
@@ -1089,7 +820,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../add-reference-source/" class="md-nav__link">
+      <a href="../../../how-to/add-reference-source/" class="md-nav__link">
         
   
   
@@ -1117,7 +848,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../skip-unsupported-references/" class="md-nav__link">
+      <a href="../../../how-to/skip-unsupported-references/" class="md-nav__link">
         
   
   
@@ -1145,7 +876,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../repair-validation-errors/" class="md-nav__link">
+      <a href="../../../how-to/repair-validation-errors/" class="md-nav__link">
         
   
   
@@ -1227,7 +958,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/how-it-works/" class="md-nav__link">
+      <a href="../../../concepts/how-it-works/" class="md-nav__link">
         
   
   
@@ -1255,7 +986,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/content-types/" class="md-nav__link">
+      <a href="../../../concepts/content-types/" class="md-nav__link">
         
   
   
@@ -1283,7 +1014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../concepts/editorial-conventions/" class="md-nav__link">
+      <a href="../../../concepts/editorial-conventions/" class="md-nav__link">
         
   
   
@@ -1365,7 +1096,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../reference/cli/" class="md-nav__link">
+      <a href="../../../reference/cli/" class="md-nav__link">
         
   
   
@@ -1400,7 +1131,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../troubleshooting/" class="md-nav__link">
+      <a href="../../../troubleshooting/" class="md-nav__link">
         
   
   
@@ -1427,7 +1158,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../todo/" class="md-nav__link">
+      <a href="../../../todo/" class="md-nav__link">
         
   
   
@@ -1474,10 +1205,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#problem" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Problem
       
     </span>
   </a>
@@ -1485,22 +1216,66 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#basic-usage" class="md-nav__link">
+  <a href="#goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Basic Usage
+        Goals
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Basic Usage">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#existing-architecture-fit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Existing architecture fit
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity-matching-policy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity matching policy
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#zotero-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Zotero design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Zotero design">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#validate-a-single-quote" class="md-nav__link">
+  <a href="#supported-access-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Validate a Single Quote
+        Supported access modes
       
     </span>
   </a>
@@ -1508,10 +1283,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#doi-format" class="md-nav__link">
+  <a href="#lookup-algorithm" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DOI Format
+        Lookup algorithm
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#observed-local-feasibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Observed local feasibility
       
     </span>
   </a>
@@ -1524,22 +1310,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-repository-dois" class="md-nav__link">
+  <a href="#paperpile-design" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported Repository DOIs
+        Paperpile design
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Supported Repository DOIs">
+    <nav class="md-nav" aria-label="Paperpile design">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#looking-up-repository-dois" class="md-nav__link">
+  <a href="#phased-access-modes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Looking Up Repository DOIs
+        Phased access modes
       
     </span>
   </a>
@@ -1547,21 +1333,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#downloading-supplementary-files" class="md-nav__link">
+  <a href="#paperpile-matching" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Downloading Supplementary Files
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publisher-dois-vs-repository-dois" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publisher DOIs vs Repository DOIs
+        Paperpile matching
       
     </span>
   </a>
@@ -1574,10 +1349,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#pre-caching-dois" class="md-nav__link">
+  <a href="#browsing-a-cache-as-a-library" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Pre-caching DOIs
+        Browsing a cache as a library
       
     </span>
   </a>
@@ -1585,10 +1360,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-dois-in-data-files" class="md-nav__link">
+  <a href="#cache-and-rights-policy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using DOIs in Data Files
+        Cache and rights policy
       
     </span>
   </a>
@@ -1596,10 +1371,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#repairing-doi-references" class="md-nav__link">
+  <a href="#future-signed-excerpt-attestations" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Repairing DOI References
+        Future signed excerpt attestations
       
     </span>
   </a>
@@ -1607,10 +1382,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#doi-vs-pmid-when-to-use-each" class="md-nav__link">
+  <a href="#cli-shape" class="md-nav__link">
     <span class="md-ellipsis">
       
-        DOI vs PMID: When to Use Each
+        CLI shape
       
     </span>
   </a>
@@ -1618,10 +1393,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#content-availability" class="md-nav__link">
+  <a href="#security-and-operational-rules" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Content Availability
+        Security and operational rules
       
     </span>
   </a>
@@ -1629,60 +1404,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#troubleshooting" class="md-nav__link">
+  <a href="#sources" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Troubleshooting
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Troubleshooting">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#content-type-unavailable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Content type: unavailable"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#failed-to-fetch-doi" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        "Failed to fetch DOI"
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#rate-limiting" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Rate Limiting
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#see-also" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        See Also
+        Sources
       
     </span>
   </a>
@@ -1709,281 +1434,318 @@
   
 
 
-<h1 id="validating-text-against-dois">Validating Text Against DOIs</h1>
-<p>This guide shows how to validate supporting text against publications using Digital Object Identifiers (DOIs).</p>
-<h2 id="overview">Overview</h2>
-<p>DOIs are persistent identifiers for digital objects, commonly used for journal articles and data repositories. The validator fetches publication metadata from:</p>
-<ol>
-<li><strong>Crossref API</strong> - Primary source for journal articles</li>
-<li><strong>DataCite API</strong> - Fallback for repository DOIs (Zenodo, Figshare, Dryad, OSTI)</li>
-</ol>
-<p>This dual-source approach ensures broad coverage across both scholarly publications and data repositories.</p>
-<h2 id="basic-usage">Basic Usage</h2>
-<h3 id="validate-a-single-quote">Validate a Single Quote</h3>
-<pre><code class="language-bash">linkml-reference-validator validate text \
-  &quot;Nanometre-scale thermometry&quot; \
-  DOI:10.1038/nature12373
-</code></pre>
-<p><strong>Output:</strong></p>
-<pre><code>Validating text against DOI:10.1038/nature12373...
-  Text: Nanometre-scale thermometry
-
-Result:
-  Valid: True
-  Message: Supporting text validated successfully in DOI:10.1038/nature12373
-</code></pre>
-<h3 id="doi-format">DOI Format</h3>
-<p>DOIs should be prefixed with <code>DOI:</code>:</p>
-<pre><code>DOI:10.1038/nature12373
-DOI:10.1126/science.1234567
-DOI:10.1016/j.cell.2023.01.001
-</code></pre>
-<p>The DOI itself follows the standard format: <code>10.prefix/suffix</code></p>
-<h2 id="supported-repository-dois">Supported Repository DOIs</h2>
-<p>The validator supports DOIs from data repositories via the DataCite API:</p>
-<table>
-<thead>
-<tr>
-<th>Repository</th>
-<th>DOI Prefix</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Zenodo</td>
-<td><code>10.5281/zenodo.*</code></td>
-<td><code>DOI:10.5281/zenodo.7961621</code></td>
-</tr>
-<tr>
-<td>Figshare</td>
-<td><code>10.6084/m9.figshare.*</code></td>
-<td><code>DOI:10.6084/m9.figshare.123456</code></td>
-</tr>
-<tr>
-<td>Dryad</td>
-<td><code>10.5061/dryad.*</code></td>
-<td><code>DOI:10.5061/dryad.abc123</code></td>
-</tr>
-<tr>
-<td>OSTI</td>
-<td><code>10.2172/*</code></td>
-<td><code>DOI:10.2172/1234567</code></td>
-</tr>
-</tbody>
-</table>
-<h3 id="looking-up-repository-dois">Looking Up Repository DOIs</h3>
-<pre><code class="language-bash">linkml-reference-validator lookup DOI:10.5281/zenodo.7961621
-</code></pre>
-<p>For Zenodo DOIs, the output includes supplementary file metadata:</p>
-<pre><code>Reference: DOI:10.5281/zenodo.7961621
-Title: Gene Ontology Curators AI Workshop
-Authors: Dickinson R, Carbon S, Mungall CJ
-...
-Content type: abstract_only
-
---- Supplementary Files (3) ---
-  - Dickinson_Varenna2022.pdf (1,975,995 bytes)
-  - workshop_slides.pptx (2,345,678 bytes)
-  - data_analysis.xlsx (123,456 bytes)
-</code></pre>
-<h3 id="downloading-supplementary-files">Downloading Supplementary Files</h3>
-<p>By default, only metadata about supplementary files is captured. To download the actual files:</p>
-<pre><code class="language-bash">linkml-reference-validator lookup -D DOI:10.5281/zenodo.7961621
-</code></pre>
-<p>Downloaded files are stored in:</p>
-<pre><code>references_cache/
-  files/
-    DOI_10.5281_zenodo.7961621/
-      Dickinson_Varenna2022.pdf
-      workshop_slides.pptx
-      data_analysis.xlsx
-</code></pre>
-<h3 id="publisher-dois-vs-repository-dois">Publisher DOIs vs Repository DOIs</h3>
-<p><strong>Important:</strong> Supplementary file support only works for <strong>repository DOIs</strong> (Zenodo, Figshare, Dryad), not for publisher DOIs (Elsevier, Springer, Nature, etc.).</p>
-<table>
-<thead>
-<tr>
-<th>DOI Type</th>
-<th>Example</th>
-<th>Supplementary Files</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Repository</strong> (Zenodo)</td>
-<td><code>10.5281/zenodo.7961621</code></td>
-<td>✅ File metadata + download</td>
-</tr>
-<tr>
-<td><strong>Repository</strong> (Figshare)</td>
-<td><code>10.6084/m9.figshare.123456</code></td>
-<td>✅ File metadata + download</td>
-</tr>
-<tr>
-<td><strong>Publisher</strong> (Elsevier)</td>
-<td><code>10.1016/j.neuron.2011.05.021</code></td>
-<td>❌ Not available</td>
-</tr>
-<tr>
-<td><strong>Publisher</strong> (Nature)</td>
-<td><code>10.1038/nature12373</code></td>
-<td>❌ Not available</td>
-</tr>
-</tbody>
-</table>
-<p><strong>Why the difference?</strong></p>
+<h1 id="private-library-full-text-integration-design">Private Library Full-Text Integration — Design</h1>
+<p><strong>Date:</strong> 2026-08-05
+<strong>Status:</strong> Partially implemented; validation isolation revised
+<strong>Approach:</strong> Keep user-authorized manuscript libraries in a separate research
+workflow, outside the reproducible public validation path.</p>
+<h2 id="problem">Problem</h2>
+<p>The validator can obtain open full text from PMC, Europe PMC, Unpaywall, and
+OpenAlex, but many references are available only through a user's lawful
+subscription or personal manuscript library. The user may already have the PDF
+in Zotero or Paperpile even when every open-access provider misses.</p>
+<p>The first useful workflow is:</p>
+<blockquote>
+<p>Given an existing reference cache, report which abstract-only references have
+an exact-identity PDF match in the user's Zotero library, then optionally enrich
+those cache entries from the matched PDFs.</p>
+</blockquote>
+<p>Earlier mentions of "Zenodo library" meant <strong>Zotero</strong>. This design concerns
+Zotero and Paperpile personal libraries; existing Zenodo repository support is
+unrelated.</p>
+<h2 id="goals">Goals</h2>
 <ul>
-<li><strong>Repository APIs</strong> (Zenodo, Figshare) are designed for data sharing and provide open, documented file APIs</li>
-<li><strong>Publisher APIs</strong> (Elsevier, Springer) require paid institutional access or text-mining agreements</li>
-<li>Even when articles are in PMC, supplementary files are often not available via the OA API</li>
+<li>Search user-authorized libraries in an explicit cache-enrichment workflow.</li>
+<li>Match references conservatively, preferring exact DOI, PMID, or PMCID matches.</li>
+<li>Reuse the existing PDF acquisition, extraction, minimum-text, and cache logic.</li>
+<li>Record that content came from a private/user library without claiming it is
+  open access.</li>
+<li>Keep credentials out of configuration files and logs.</li>
+<li>Provide a dry-run inventory command before changing cached references.</li>
+<li>Support Zotero first, then Paperpile without depending on undocumented APIs.</li>
+<li>Keep validation deterministic: it reads only the public project cache and
+  accepts evidence only from public providers.</li>
 </ul>
-<p><strong>Workarounds for publisher supplementary files:</strong></p>
+<h2 id="non-goals">Non-goals</h2>
+<ul>
+<li>Bypassing publisher authentication, DRM, or paywalls.</li>
+<li>Redistributing private PDFs or derived full text.</li>
+<li>Writing to Zotero, Paperpile, Google Drive, or Zenodo.</li>
+<li>Depending on Zotero's private SQLite schema for the production integration.</li>
+<li>Depending on reverse-engineered Paperpile web endpoints.</li>
+<li>Using fuzzy-only matches automatically.</li>
+</ul>
+<h2 id="existing-architecture-fit">Existing architecture fit</h2>
+<p>The current pipeline already separates metadata resolution from full-text
+location:</p>
+<pre><code class="language-text">reference ID
+  -&gt; metadata source
+  -&gt; ReferenceIdentifiers
+  -&gt; ordered FullTextProvider chain
+  -&gt; acquire PDF/HTML/XML
+  -&gt; extract text
+  -&gt; save content and provenance in the reference cache
+</code></pre>
+<p>Private libraries run beside, not inside, the validation pipeline:</p>
+<pre><code class="language-text">Zotero/Paperpile -&gt; cache enrich -&gt; private research cache -&gt; agent context only
+
+public reference cache -&gt; public provider chain -&gt; validation evidence
+</code></pre>
+<p>The existing <code>FullTextProvider.locate()</code> interface is nearly sufficient. Two
+small generalizations are needed:</p>
 <ol>
-<li><strong>Manual download</strong>: Download supplementary files from the publisher website and use <code>file:</code> references</li>
-<li><strong>Data repository</strong>: Check if the authors deposited data separately in Zenodo/Figshare/Dryad</li>
-<li><strong>PubMed Central</strong>: For some OA articles, supplementary files may be available via PMC</li>
+<li><code>ReferenceIdentifiers</code> needs matching metadata (<code>title</code>, <code>year</code>, and
+   optionally first author) for diagnostic candidates and future guarded
+   fallback matching.</li>
+<li><code>FullTextLocation</code> needs either a local path or request headers. Zotero's
+   local API can return text or a localhost file URL, but Zotero Web API and
+   Google Drive downloads require authenticated headers. A local synced
+   Paperpile PDF should not be routed through <code>requests</code>.</li>
 </ol>
-<h2 id="pre-caching-dois">Pre-caching DOIs</h2>
-<p>For offline validation or to speed up repeated validations:</p>
-<pre><code class="language-bash">linkml-reference-validator cache reference DOI:10.1038/nature12373
+<p>The preferred model is:</p>
+<pre><code class="language-python">@dataclass
+class FullTextLocation:
+    url: Optional[str] = None
+    local_path: Optional[Path] = None
+    text: Optional[str] = None
+    headers: dict[str, str] = field(default_factory=dict, repr=False)
+    format_hint: Optional[str] = None
+    provider: str = &quot;&quot;
+    access_type: Optional[str] = None  # open | user_library | institutional
+    source_item_id: Optional[str] = None
 </code></pre>
-<p><strong>Output:</strong></p>
-<pre><code>Fetching DOI:10.1038/nature12373...
-Successfully cached DOI:10.1038/nature12373
-  Title: Nanometre-scale thermometry in a living cell
-  Authors: G. Kucsko, P. C. Maurer, N. Y. Yao
-  Content type: abstract_only
-  Content length: 1234 characters
-</code></pre>
-<p>Cached references are stored in <code>references_cache/</code> as markdown files with YAML frontmatter.</p>
-<h2 id="using-dois-in-data-files">Using DOIs in Data Files</h2>
-<p>DOIs work the same as PMIDs in LinkML data files:</p>
-<p><strong>schema.yaml:</strong></p>
-<pre><code class="language-yaml">id: https://example.org/my-schema
-name: my-schema
-
-prefixes:
-  linkml: https://w3id.org/linkml/
-
-classes:
-  Statement:
-    attributes:
-      id:
-        identifier: true
-      supporting_text:
-        slot_uri: linkml:excerpt
-      reference:
-        slot_uri: linkml:authoritative_reference
-</code></pre>
-<p><strong>data.yaml:</strong></p>
-<pre><code class="language-yaml">- id: stmt1
-  supporting_text: Nanometre-scale thermometry
-  reference: DOI:10.1038/nature12373
-- id: stmt2
-  supporting_text: MUC1 oncoprotein blocks nuclear targeting
-  reference: PMID:16888623
-</code></pre>
-<p><strong>Validate:</strong></p>
-<pre><code class="language-bash">linkml-reference-validator validate data \
-  data.yaml \
-  --schema schema.yaml \
-  --target-class Statement
-</code></pre>
-<p>You can mix DOIs and PMIDs in the same data file.</p>
-<h2 id="repairing-doi-references">Repairing DOI References</h2>
-<p>The repair command also works with DOIs:</p>
-<pre><code class="language-bash">linkml-reference-validator repair text \
-  &quot;Nanometre scale thermometry&quot; \
-  DOI:10.1038/nature12373
-</code></pre>
-<h2 id="doi-vs-pmid-when-to-use-each">DOI vs PMID: When to Use Each</h2>
+<p>At most one of <code>url</code>, <code>local_path</code>, and <code>text</code> should be populated. Header
+values must never be serialized into the cache.</p>
+<h2 id="identity-matching-policy">Identity matching policy</h2>
+<p>Wrong-paper matches are more harmful than misses. Matching therefore has
+explicit confidence levels:</p>
 <table>
 <thead>
 <tr>
-<th>Feature</th>
-<th>PMID</th>
-<th>DOI</th>
+<th>Match</th>
+<th style="text-align: right;">Automatic use</th>
+<th>Notes</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Source</td>
-<td>NCBI PubMed</td>
-<td>Crossref + DataCite</td>
+<td>Normalized DOI equality</td>
+<td style="text-align: right;">Yes</td>
+<td>Strip DOI URL/prefix, whitespace, and case</td>
 </tr>
 <tr>
-<td>Coverage</td>
-<td>Biomedical literature</td>
-<td>All scholarly content + data repos</td>
+<td>PMID or PMCID equality</td>
+<td style="text-align: right;">Yes</td>
+<td>Use structured library fields or a parsed explicit identifier</td>
 </tr>
 <tr>
-<td>Full text</td>
-<td>Via PMC when available</td>
-<td>Metadata only</td>
+<td>DOI equality found in PDF metadata/text</td>
+<td style="text-align: right;">Yes, after identifier validation</td>
+<td>Useful for an unindexed local folder</td>
 </tr>
 <tr>
-<td>Abstract</td>
-<td>Usually available</td>
-<td>Depends on publisher/repo</td>
+<td>Title + year + first author</td>
+<td style="text-align: right;">Report only initially</td>
+<td>May become opt-in after measuring false positives</td>
 </tr>
 <tr>
-<td>Keywords</td>
-<td>MeSH terms</td>
-<td>Subjects (if available)</td>
-</tr>
-<tr>
-<td>Supplementary files</td>
-<td>No</td>
-<td>Yes (Zenodo, etc.)</td>
+<td>Title similarity alone</td>
+<td style="text-align: right;">No</td>
+<td>Diagnostic candidate only</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Use PMID when:</strong>
-- Working with biomedical/life science literature
-- Full text access is important
-- The article is indexed in PubMed
-- You need MeSH term keywords</p>
-<p><strong>Use DOI when:</strong>
-- The article is not in PubMed
-- Working with non-biomedical journals
-- Working with data repositories (Zenodo, Figshare, Dryad)
-- You need supplementary file metadata</p>
-<h2 id="content-availability">Content Availability</h2>
-<p>Unlike PMIDs which often provide abstracts, DOI metadata from Crossref may have limited content:</p>
-<ul>
-<li><strong>Title</strong>: Always available</li>
-<li><strong>Authors</strong>: Usually available</li>
-<li><strong>Abstract</strong>: Depends on publisher policy</li>
-<li><strong>Full text</strong>: Not available via Crossref</li>
-</ul>
-<p>If the abstract is not available, validation will be limited to matching against the title and other metadata.</p>
-<h2 id="troubleshooting">Troubleshooting</h2>
-<h3 id="content-type-unavailable">"Content type: unavailable"</h3>
-<p>This means Crossref returned metadata but no abstract. The DOI was fetched successfully, but validation may fail if your text doesn't match the title.</p>
-<p><strong>Solution:</strong> Consider using the PMID if the article is in PubMed.</p>
-<h3 id="failed-to-fetch-doi">"Failed to fetch DOI"</h3>
-<p>The DOI may be invalid or both APIs (Crossref and DataCite) may have failed.</p>
-<p><strong>How DOI resolution works:</strong>
-1. First, the validator tries Crossref API
-2. If Crossref returns 404, it falls back to DataCite API
-3. If both fail, the error is reported</p>
-<p><strong>Check:</strong>
-1. Verify the DOI format (should be <code>10.prefix/suffix</code>)
-2. Test the DOI at https://doi.org/YOUR_DOI
-3. Try again later if APIs are rate-limiting
-4. For repository DOIs (Zenodo, etc.), ensure the record is public</p>
-<h3 id="rate-limiting">Rate Limiting</h3>
-<p>The validator automatically respects Crossref rate limits. For bulk operations, consider:</p>
+<p>Ambiguous exact matches are not failures: choose a usable PDF only if all exact
+matches identify the same parent work; otherwise report <code>ambiguous</code> and make no
+cache change.</p>
+<h2 id="zotero-design">Zotero design</h2>
+<h3 id="supported-access-modes">Supported access modes</h3>
 <ol>
-<li>Pre-caching references before validation</li>
-<li>Using a polite pool (add your email in config for higher limits)</li>
+<li><strong>Local API (first implementation).</strong> Zotero exposes a read-only API at
+   <code>http://localhost:23119/api/</code>. It uses the local database and requires no
+   authentication for reads. The Zotero desktop application must be running and
+   local API access enabled.</li>
+<li><strong>Web API (second implementation).</strong> Private libraries require a read-only API
+   key. The key is read from an environment variable or secret store. File
+   attachments can be downloaded from <code>/items/&lt;attachmentKey&gt;/file</code>.</li>
 </ol>
-<h2 id="see-also">See Also</h2>
+<p>The supported APIs are preferable to reading <code>zotero.sqlite</code>: direct database
+access couples the validator to private schema details, can see inconsistent
+state, and complicates linked-file path resolution.</p>
+<h3 id="lookup-algorithm">Lookup algorithm</h3>
+<p>Zotero's API quick search does not provide reliable field-specific DOI search.
+The provider should build a lightweight local index of top-level item JSON:</p>
+<pre><code class="language-text">normalized DOI -&gt; Zotero parent item key(s)
+PMID            -&gt; Zotero parent item key(s)
+PMCID           -&gt; Zotero parent item key(s)
+</code></pre>
+<p>For the local API the index can be loaded once per process. For the Web API it
+must be paginated and persisted using Zotero library versions and <code>since</code> so
+later refreshes are incremental.</p>
+<p>For a matched parent item:</p>
+<ol>
+<li>Request <code>/items/&lt;parentKey&gt;/children</code>.</li>
+<li>Select PDF attachments deterministically: primary attachment first, then the
+   newest non-supplement attachment.</li>
+<li>Prefer <code>/items/&lt;attachmentKey&gt;/fulltext</code>, because Zotero may already have
+   indexed the PDF.</li>
+<li>If indexed text is absent or too short, download <code>/items/&lt;attachmentKey&gt;/file</code>
+   and use the existing PDF extractor.</li>
+<li>Return provider <code>zotero</code>, access type <code>user_library</code>, and the attachment key.</li>
+</ol>
+<h3 id="observed-local-feasibility">Observed local feasibility</h3>
+<p>On the development machine, <code>/Users/cjm/Zotero/zotero.sqlite</code> exists and contains
+283 PDF attachments. The supported local API was not reachable during this
+design pass because Zotero was not running. The sole reference in this checkout's
+<code>references_cache</code> (<code>PMID:23456789</code>, DOI <code>10.1002/cncr.27976</code>) has no exact DOI
+match in that local library. This confirms there is enough local test data for a
+provider, but a different cached reference is needed for a real positive smoke
+test.</p>
+<h2 id="paperpile-design">Paperpile design</h2>
+<p>No documented public Paperpile library API was found. The supported integration
+should compose two official export/sync mechanisms:</p>
 <ul>
-<li><a href="../../quickstart/">Quickstart</a> - Getting started with validation</li>
-<li><a href="../../reference/cli/">CLI Reference</a> - Complete command documentation</li>
-<li><a href="../validate-obo-files/">Validating OBO Files</a> - Working with ontology files</li>
+<li>A continuously updated BibTeX export, available through a download link,
+  Google Drive, or GitHub, supplies DOI and citation metadata.</li>
+<li>Google Drive sync supplies PDFs and supplementary files in the user's
+  Paperpile folder.</li>
+</ul>
+<p>Paperpile also offers a manual JSON export containing attachment metadata, but
+the export excludes the PDF bytes and is not documented as a continuously
+synced API. It is useful as an optional richer index, not as the primary
+automation contract.</p>
+<h3 id="phased-access-modes">Phased access modes</h3>
+<ol>
+<li><strong>Local synced folder.</strong> Point the validator at a read-only local Paperpile
+   Google Drive folder plus a synced BibTeX file. This needs no Google OAuth and
+   is easy to test.</li>
+<li><strong>Google Drive API.</strong> Use OAuth read-only access to find and download files for
+   environments without Drive for desktop. Match them against the synced BibTeX
+   index. Tokens stay in the platform keychain/secret store, never YAML.</li>
+<li><strong>Paperpile API only if officially documented.</strong> Do not build on observed
+   browser traffic or private endpoints.</li>
+</ol>
+<h3 id="paperpile-matching">Paperpile matching</h3>
+<p>Build an index from BibTeX DOI/PMID/title/year fields. Associate PDF files using,
+in order:</p>
+<ol>
+<li>an attachment path present in an explicitly supplied Paperpile JSON export;</li>
+<li>DOI found in the PDF metadata or first pages;</li>
+<li>a deterministic Paperpile filename/title match, confirmed by year and author.</li>
+</ol>
+<p>Only exact identifiers should auto-enrich in the first release. Metadata-based
+matches appear in the dry-run report for user review.</p>
+<h2 id="browsing-a-cache-as-a-library">Browsing a cache as a library</h2>
+<p>Cache-to-Zotero export is a useful companion feature. The safest first version
+should generate a standard CSL JSON or RIS file for manual import into a new
+Zotero collection. Each cache entry can
+export title, authors, year, DOI/PMID, content type, provider, and cache path.
+Private PDFs and extracted full text should be excluded by default; the Zotero
+provider already links an enriched entry back to its source attachment key.</p>
+<p>A later <code>cache sync-zotero</code> command could create/update a dedicated collection
+through Zotero's write API, but that mutates the user's library and needs explicit
+authorization, stable cache-to-item identifiers, idempotency, and conflict tests.</p>
+<h2 id="cache-and-rights-policy">Cache and rights policy</h2>
+<p>Private source content must not be labeled with an OA status. Add these persisted
+provenance fields:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Example</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>full_text_provider</code></td>
+<td><code>zotero</code></td>
+<td>Existing provider provenance</td>
+</tr>
+<tr>
+<td><code>full_text_access_type</code></td>
+<td><code>user_library</code></td>
+<td>Separates lawful private access from OA</td>
+</tr>
+<tr>
+<td><code>full_text_source_item_id</code></td>
+<td>Zotero attachment key</td>
+<td>Auditable source identity</td>
+</tr>
+<tr>
+<td><code>full_text_source_checksum</code></td>
+<td>SHA-256</td>
+<td>Detects replacement without exposing credentials</td>
+</tr>
+</tbody>
+</table>
+<p>Because the Markdown cache contains extracted text, private content is stored in
+a separate research cache at <code>~/.cache/linkml-reference-validator/private</code> by
+default, with owner-only directory and file permissions. Users may explicitly
+point it at a private repository. Validation never reads this cache. A private
+provider result is also rejected by the ordinary provider chain, which then
+continues to public providers.</p>
+<h2 id="future-signed-excerpt-attestations">Future signed excerpt attestations</h2>
+<p>Private-backed validation, if enabled later, must be reproducible without giving
+the manuscript or a signing credential to an agent or CI. A trusted offline job
+would be the only writer of an artifact such as
+<code>CACHEDIR/PMID_12345678/excerpts.yaml</code>. It would:</p>
+<ol>
+<li>read the private research cache and the claims to validate;</li>
+<li>select only the minimal supporting or contradicting excerpt;</li>
+<li>record the reference ID, claim hash, normalized excerpt hash, source-file
+   checksum, location, outcome, tool version, timestamp, and signing-key ID;</li>
+<li>sign a canonical serialization with an offline Ed25519 private key; and</li>
+<li>copy the attestation—not the PDF or full extracted text—into the public cache.</li>
+</ol>
+<p>The repository contains only the public verification key. The validator accepts
+an attestation only when its signature is valid and all bound identifiers and
+hashes match the current claim. Editing or moving fields invalidates the
+signature. Agents are forbidden from writing these artifacts directly and, more
+importantly, cannot create a valid one because they never receive the private
+key. Unsigned or invalid artifacts are ignored by default and become hard errors
+when a future private-attestation mode is explicitly requested.</p>
+<p>The exact excerpt length and redistribution policy need review before this mode
+is implemented. Until then, signed attestations are design-only and all
+validation evidence comes from the public cache.</p>
+<h2 id="cli-shape">CLI shape</h2>
+<p>The first command is an inventory-first operation:</p>
+<pre><code class="language-bash">linkml-reference-validator cache enrich \
+  --provider zotero \
+  --cache-dir references_cache \
+  --dry-run
+</code></pre>
+<p>Output is one row per cached reference:</p>
+<pre><code class="language-text">REFERENCE          RESULT      MATCH       ATTACHMENT
+PMID:12345678      found       doi         zotero:ABCD1234
+DOI:10.example/x   not_found   -           -
+DOI:10.example/y   ambiguous   title/year  -
+</code></pre>
+<p>Without <code>--dry-run</code>, exact matches are written to the separate private research cache
+through the same materialization path used by other providers. The public source
+cache is never modified. The command exits nonzero only for
+configuration/provider errors, not ordinary library misses.</p>
+<h2 id="security-and-operational-rules">Security and operational rules</h2>
+<ul>
+<li>Read-only by default; no library or Drive writes.</li>
+<li>Tokens only through environment variables or a credential provider.</li>
+<li>Redact authorization headers and signed URLs from logs and cache frontmatter.</li>
+<li>Never serialize a localhost/session URL as a durable source URL.</li>
+<li>Apply existing download size limits to local files as well as HTTP downloads.</li>
+<li>Verify <code>%PDF-</code> magic bytes and compute SHA-256 before extraction.</li>
+<li>Preserve provider errors as retryable; a normal library miss is definitive for
+  that index version.</li>
+<li>Do not fall through to a lower-confidence private match automatically.</li>
+</ul>
+<h2 id="sources">Sources</h2>
+<ul>
+<li><a href="https://www.zotero.org/support/dev/web_api/v3/basics">Zotero Web API v3 and local API</a></li>
+<li><a href="https://www.zotero.org/support/dev/web_api/v3/file_upload">Zotero attachment file download</a></li>
+<li><a href="https://www.zotero.org/support/dev/web_api/v3/fulltext_content">Zotero full-text content API</a></li>
+<li><a href="https://paperpile.com/h/sync-bibtex-files/">Paperpile automatic BibTeX sync</a></li>
+<li><a href="https://paperpile.com/h/export-library-data/">Paperpile library data export</a></li>
+<li><a href="https://paperpile.com/h/sync-google-drive/">Paperpile Google Drive sync</a></li>
+<li><a href="https://developers.zenodo.org/">Zenodo REST API</a></li>
 </ul>
 
 
@@ -2036,10 +1798,10 @@ classes:
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["content.tabs.link"], "search": "../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["content.tabs.link"], "search": "../../../assets/javascripts/workers/search.7a47a382.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../../assets/javascripts/bundle.e71a0d61.min.js"></script>
+      <script src="../../../assets/javascripts/bundle.e71a0d61.min.js"></script>
       
     
   </body>

@@ -69,6 +69,7 @@ def test_fetch_bytes_returns_content_and_type(mock_get, tmp_path):
     data, ctype = ContentAcquirer().fetch_bytes("https://x/y.pdf", config)
     assert data == b"%PDF-"
     assert ctype == "application/pdf"
+    assert mock_get.call_args.kwargs["allow_redirects"] is True
 
 
 @patch("linkml_reference_validator.etl.acquire.requests.get")
@@ -179,18 +180,14 @@ def test_fetch_bytes_refuses_remote_redirect_to_local_file(mock_get, tmp_path):
 
 
 @patch("linkml_reference_validator.etl.acquire.requests.get")
-def test_fetch_bytes_follows_bounded_http_redirect(mock_get, tmp_path):
-    """Disabling requests redirects for Zotero preserves ordinary HTTP redirects."""
-    redirected = _cm_response(
-        status_code=302,
-        headers={"location": "https://cdn.example/paper.pdf"},
-    )
+def test_fetch_bytes_delegates_ordinary_http_redirects_to_requests(mock_get, tmp_path):
+    """Requests retains its redirect budget, relative URL, and cookie handling."""
     downloaded = _cm_response(
         status_code=200,
         headers={"content-type": "application/pdf"},
     )
     downloaded.iter_content.return_value = [b"%PDF-content"]
-    mock_get.side_effect = [redirected, downloaded]
+    mock_get.return_value = downloaded
     config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
 
     data, content_type = ContentAcquirer().fetch_bytes(
@@ -199,4 +196,29 @@ def test_fetch_bytes_follows_bounded_http_redirect(mock_get, tmp_path):
 
     assert data == b"%PDF-content"
     assert content_type == "application/pdf"
-    assert mock_get.call_count == 2
+    assert mock_get.call_count == 1
+    assert mock_get.call_args.kwargs["allow_redirects"] is True
+
+
+@patch("linkml_reference_validator.etl.acquire.requests.get")
+def test_fetch_bytes_resolves_relative_zotero_redirect(mock_get, tmp_path):
+    """Relative local-API redirects are resolved without leaving loopback."""
+    downloaded = _cm_response(
+        status_code=200,
+        headers={"content-type": "application/pdf"},
+    )
+    downloaded.iter_content.return_value = [b"%PDF-content"]
+    mock_get.side_effect = [
+        _cm_response(status_code=302, headers={"location": "/download/PDF1"}),
+        downloaded,
+    ]
+    config = ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+
+    data, content_type = ContentAcquirer().fetch_bytes(
+        "http://localhost:23119/api/users/0/items/PDF1/file", config
+    )
+
+    assert data == b"%PDF-content"
+    assert content_type == "application/pdf"
+    assert mock_get.call_args_list[0].kwargs["allow_redirects"] is False
+    assert mock_get.call_args_list[1].args[0] == "http://localhost:23119/download/PDF1"

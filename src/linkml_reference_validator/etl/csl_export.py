@@ -3,26 +3,8 @@
 import re
 from typing import Optional
 
+from linkml_reference_validator.etl.identifiers import normalize_doi
 from linkml_reference_validator.models import ReferenceContent
-
-
-def normalize_doi(value: Optional[str]) -> Optional[str]:
-    """Return a lowercase bare DOI suitable for identity matching.
-
-    Examples:
-        >>> normalize_doi("https://doi.org/10.1000/Example")
-        '10.1000/example'
-        >>> normalize_doi(None) is None
-        True
-    """
-    if not value:
-        return None
-    normalized = value.strip().lower()
-    for prefix in ("https://doi.org/", "http://doi.org/", "doi:"):
-        if normalized.startswith(prefix):
-            normalized = normalized[len(prefix) :]
-            break
-    return normalized or None
 
 
 def reference_pmid(reference: ReferenceContent) -> Optional[str]:
@@ -84,7 +66,8 @@ def reference_to_csl_json(reference: ReferenceContent) -> Optional[dict[str, obj
             record["issued"] = {"date-parts": [[int(match.group(1))]]}
     if doi:
         record["DOI"] = doi
-    elif pmid:
+    if pmid:
         record["PMID"] = pmid
+    if pmid and not doi:
         record["URL"] = f"https://pubmed.ncbi.nlm.nih.gov/{pmid}/"
     return record

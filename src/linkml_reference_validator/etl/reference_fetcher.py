@@ -6,6 +6,7 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 
 import logging
 import re
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any, Optional
 
@@ -146,7 +147,7 @@ class ReferenceFetcher:
         source = source_class()
         content = source.fetch(identifier, self.config)
 
-        if content and self.config.fetch_full_text and self._needs_full_text(content):
+        if content and self.config.fetch_full_text and self.needs_full_text(content):
             content = self._enrich_with_full_text(content)
 
         if content:
@@ -155,27 +156,23 @@ class ReferenceFetcher:
 
         return content
 
-    def _needs_full_text(self, content: ReferenceContent) -> bool:
+    def needs_full_text(self, content: ReferenceContent) -> bool:
         """Return True if the content lacks full text and the chain should run.
 
         Examples:
             >>> config = ReferenceValidationConfig()
             >>> fetcher = ReferenceFetcher(config)
             >>> from linkml_reference_validator.models import ReferenceContent
-            >>> fetcher._needs_full_text(
+            >>> fetcher.needs_full_text(
             ...     ReferenceContent(reference_id="DOI:1", content_type="abstract_only")
             ... )
             True
-            >>> fetcher._needs_full_text(
+            >>> fetcher.needs_full_text(
             ...     ReferenceContent(reference_id="DOI:1", content_type="full_text_xml")
             ... )
             False
         """
         return content.content_type in NEEDS_FULL_TEXT_TYPES
-
-    def needs_full_text(self, content: ReferenceContent) -> bool:
-        """Return whether cache enrichment should seek a fuller manuscript."""
-        return self._needs_full_text(content)
 
     def _maybe_retry_full_text(self, content: ReferenceContent) -> ReferenceContent:
         """Re-run the full-text chain for a cached record that never cleanly tried.
@@ -188,7 +185,7 @@ class ReferenceFetcher:
         """
         if (
             not self.config.fetch_full_text
-            or not self._needs_full_text(content)
+            or not self.needs_full_text(content)
             or content.full_text_attempted
         ):
             return content
@@ -208,7 +205,8 @@ class ReferenceFetcher:
         explicitly private ``ReferenceContent`` outside validation.
         """
         self._save_to_disk(
-            content, private=content.full_text_access_type == "user_library"
+            content,
+            private=content.full_text_access_type not in (None, "open"),
         )
 
     def _enrich_with_full_text(self, content: ReferenceContent) -> ReferenceContent:
@@ -288,25 +286,25 @@ class ReferenceFetcher:
         private: bool = False,
     ) -> bool:
         """Materialize one located resource, update content, and persist it."""
+        private = private or location.access_type not in (None, "open")
         abstract = content.content
         applied, _ = self._apply_full_text_location(
             content, abstract, location, provider_name, private=private
         )
         if applied:
             if not private:
-                self._cache[content.reference_id] = content
+                normalized_id = self.normalize_reference_id(content.reference_id)
+                self._cache[normalized_id] = content
             self._save_to_disk(content, private=private)
         return applied
 
-    def iter_cached_references(self) -> list[ReferenceContent]:
-        """Load modern Markdown cache entries in deterministic path order."""
-        references: list[ReferenceContent] = []
+    def iter_cached_references(self) -> Iterator[ReferenceContent]:
+        """Yield modern Markdown cache entries in deterministic path order."""
         for cache_path in sorted(self.config.get_cache_dir().glob("*.md")):
             content_text = cache_path.read_text(encoding="utf-8")
             reference = self._load_markdown_format(content_text, cache_path.stem)
             if reference is not None:
-                references.append(reference)
-        return references
+                yield reference
 
     def _apply_full_text_location(
         self,
@@ -324,10 +322,10 @@ class ReferenceFetcher:
         content.content = f"{abstract}\n\n{text}" if abstract else text
         content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
         content.full_text_provider = location.provider or provider_name
-        # Ephemeral private-library endpoints are not durable provenance and may
-        # contain session-specific access information.
+        # Non-public endpoints are not durable provenance and may contain
+        # session-specific access information.
         content.full_text_url = (
-            None if location.access_type == "user_library" else location.url
+            None if location.access_type not in (None, "open") else location.url
         )
         content.oa_status = location.oa_status
         content.license = location.license

@@ -5,6 +5,8 @@ import json
 from typer.testing import CliRunner
 
 from linkml_reference_validator.cli import app
+from linkml_reference_validator.etl.csl_export import reference_to_csl_json
+from linkml_reference_validator.models import ReferenceContent
 
 
 def _write_reference(
@@ -167,6 +169,18 @@ def test_cache_export_all_includes_records_that_already_have_full_text(tmp_path)
 
     assert result.exit_code == 0, result.output
     assert json.loads(output.read_text(encoding="utf-8"))[0]["DOI"] == "10.1000/full"
+
+
+def test_csl_record_includes_doi_and_pmid_when_both_are_known():
+    """Zotero receives every useful exact identifier for a publication."""
+    record = reference_to_csl_json(
+        ReferenceContent(reference_id="PMID:123", doi="doi:10.1000/BOTH")
+    )
+
+    assert record is not None
+    assert record["DOI"] == "10.1000/both"
+    assert record["PMID"] == "123"
+    assert "URL" not in record
 
 
 def test_cache_export_refuses_to_overwrite_without_force(tmp_path):

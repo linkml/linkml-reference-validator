@@ -16,6 +16,7 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
 )
+from linkml_reference_validator.etl.identifiers import normalize_doi
 from linkml_reference_validator.models import (
     FullTextLocation,
     ReferenceIdentifiers,
@@ -35,32 +36,19 @@ class ZoteroAPIError(RuntimeError):
     """Raised when Zotero's API cannot complete a read operation."""
 
 
-def normalize_doi(value: Optional[str]) -> Optional[str]:
-    """Return a canonical DOI for exact matching.
-
-    Examples:
-        >>> normalize_doi(" https://doi.org/10.1000/ABC ")
-        '10.1000/abc'
-        >>> normalize_doi("doi:10.1000/ABC")
-        '10.1000/abc'
-        >>> normalize_doi(None) is None
-        True
-    """
-    if not value:
-        return None
-    normalized = value.strip().lower()
-    normalized = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", normalized)
-    normalized = re.sub(r"^doi\s*:\s*", "", normalized)
-    return normalized or None
-
-
 class ZoteroClient:
     """Small read-only client for the Zotero v3 item API."""
 
-    def __init__(self, base_url: str, session: Optional[requests.Session] = None):
+    def __init__(
+        self,
+        base_url: str,
+        session: Optional[requests.Session] = None,
+        page_size: int = 100,
+    ):
         """Initialize the client with a library base URL and optional session."""
         self.base_url = base_url.rstrip("/")
         self._session = session or requests.Session()
+        self._page_size = page_size
         self._identifier_index: Optional[dict[tuple[str, str], set[str]]] = None
 
     def find_parent_keys(self, ids: ReferenceIdentifiers) -> set[str]:
@@ -127,9 +115,7 @@ class ZoteroClient:
         if self._identifier_index is not None:
             return self._identifier_index
 
-        items = self._get_json("items/top")
-        if not isinstance(items, list):
-            raise ZoteroAPIError("Zotero items response was not a list")
+        items = self._get_paginated_items("items/top")
 
         index: dict[tuple[str, str], set[str]] = defaultdict(set)
         for item in items:
@@ -157,6 +143,32 @@ class ZoteroClient:
         self._identifier_index = dict(index)
         return self._identifier_index
 
+    def _get_paginated_items(self, path: str) -> list[object]:
+        """GET every page from a Zotero collection endpoint."""
+        items: list[object] = []
+        start = 0
+        while True:
+            response = self._session.get(
+                f"{self.base_url}/{path.lstrip('/')}",
+                headers={"Zotero-API-Version": "3"},
+                params={"limit": self._page_size, "start": start},
+                timeout=30,
+            )
+            self._require_success(response.status_code, path)
+            page = response.json()
+            if not isinstance(page, list):
+                raise ZoteroAPIError("Zotero items response was not a list")
+            items.extend(page)
+
+            total_header = response.headers.get("Total-Results")
+            total = int(total_header) if total_header is not None else None
+            start += len(page)
+            if not page or (total is not None and start >= total):
+                break
+            if total is None and len(page) < self._page_size:
+                break
+        return items
+
     def _get_json(self, path: str) -> object:
         """GET a Zotero JSON resource and require a successful response."""
         response = self._session.get(
@@ -183,6 +195,8 @@ class ZoteroFullTextProvider(FullTextProvider):
     def __init__(self, client: Optional[ZoteroClient] = None):
         """Initialize with an optional client for testing or custom embedding."""
         self._client = client
+        self._client_is_injected = client is not None
+        self._client_base_url = client.base_url if client is not None else None
 
     @classmethod
     def name(cls) -> str:
@@ -193,7 +207,13 @@ class ZoteroFullTextProvider(FullTextProvider):
         self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
     ) -> Optional[FullTextLocation]:
         """Return indexed text or a PDF endpoint for an exact Zotero match."""
-        client = self._client or ZoteroClient(config.zotero_base_url)
+        if self._client is None or (
+            not self._client_is_injected
+            and self._client_base_url != config.zotero_base_url.rstrip("/")
+        ):
+            self._client = ZoteroClient(config.zotero_base_url)
+            self._client_base_url = config.zotero_base_url.rstrip("/")
+        client = self._client
         parent_keys = client.find_parent_keys(ids)
         if len(parent_keys) != 1:
             return None
@@ -203,11 +223,15 @@ class ZoteroFullTextProvider(FullTextProvider):
         if not attachments:
             return None
 
-        attachment = attachments[0]
-        data = attachment["data"]
-        attachment_key = data.get("key") or attachment.get("key")
-        if not isinstance(attachment_key, str):
+        keyed_attachments = []
+        for attachment in attachments:
+            data = attachment["data"]
+            attachment_key = data.get("key") or attachment.get("key")
+            if isinstance(attachment_key, str):
+                keyed_attachments.append((attachment_key, attachment))
+        if not keyed_attachments:
             return None
+        attachment_key, _ = min(keyed_attachments, key=lambda pair: pair[0])
 
         text = client.indexed_full_text(attachment_key)
         if text and len(text.strip()) >= MIN_ZOTERO_INDEXED_TEXT_CHARS:

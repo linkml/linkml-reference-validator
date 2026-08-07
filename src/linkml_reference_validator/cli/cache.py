@@ -24,6 +24,7 @@ from .shared import (
 )
 
 logger = logging.getLogger(__name__)
+MAX_CONSECUTIVE_PROVIDER_ERRORS = 3
 
 # Option for showing file content
 ContentOption = Annotated[
@@ -249,8 +250,10 @@ def enrich_command(
     found = 0
     applied = 0
     errors = 0
-    references = fetcher.iter_cached_references()
-    for reference in references:
+    scanned = 0
+    consecutive_errors = 0
+    for reference in fetcher.iter_cached_references():
+        scanned += 1
         if not fetcher.needs_full_text(reference):
             typer.echo(f"{reference.reference_id}\talready_full_text\t-")
             continue
@@ -258,8 +261,19 @@ def enrich_command(
             location = fetcher.locate_full_text(reference, provider)
         except Exception as exc:
             errors += 1
+            consecutive_errors += 1
             typer.echo(f"{reference.reference_id}\terror\t{exc}")
+            if consecutive_errors >= MAX_CONSECUTIVE_PROVIDER_ERRORS:
+                typer.echo(
+                    "Stopping after "
+                    f"{MAX_CONSECUTIVE_PROVIDER_ERRORS} consecutive provider errors; "
+                    "check that the provider is available.",
+                    err=True,
+                )
+                break
             continue
+
+        consecutive_errors = 0
 
         if location is None:
             typer.echo(f"{reference.reference_id}\tnot_found\t-")
@@ -279,7 +293,7 @@ def enrich_command(
         else:
             typer.echo(f"{reference.reference_id}\tunusable\t{source}")
 
-    typer.echo(f"Scanned: {len(references)}")
+    typer.echo(f"Scanned: {scanned}")
     typer.echo(f"Found: {found}")
     if not dry_run:
         typer.echo(f"Applied: {applied}")
@@ -321,14 +335,14 @@ def export_command(
     if cache_dir:
         config.cache_dir = cache_dir
     fetcher = ReferenceFetcher(config)
-    references = fetcher.iter_cached_references()
-
     records: list[dict[str, object]] = []
     seen: set[str] = set()
     duplicates = 0
     skipped_full_text = 0
     skipped_identifier = 0
-    for reference in references:
+    scanned = 0
+    for reference in fetcher.iter_cached_references():
+        scanned += 1
         if needs_full_text and not fetcher.needs_full_text(reference):
             skipped_full_text += 1
             continue
@@ -351,7 +365,7 @@ def export_command(
         json.dumps(records, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
-    typer.echo(f"Scanned: {len(references)}")
+    typer.echo(f"Scanned: {scanned}")
     typer.echo(f"Exported: {len(records)}")
     typer.echo(f"Duplicates: {duplicates}")
     typer.echo(f"Skipped with full text: {skipped_full_text}")

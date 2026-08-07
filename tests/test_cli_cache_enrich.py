@@ -31,6 +31,22 @@ class _PrivateHitProvider(FullTextProvider):
         )
 
 
+class _UnavailableProvider(FullTextProvider):
+    """Provider representing a Zotero API that is entirely unavailable."""
+
+    calls = 0
+
+    @classmethod
+    def name(cls) -> str:
+        """Return the provider name used by the fail-fast test."""
+        return "unavailable_provider"
+
+    def locate(self, ids, config):
+        """Raise the same connection failure for every attempted reference."""
+        type(self).calls += 1
+        raise ConnectionError("connection refused")
+
+
 def _write_cached_reference(cache_dir, reference_id: str, doi: str) -> None:
     """Write a minimal valid Markdown cache entry."""
     safe_id = reference_id.replace(":", "_").replace("/", "_")
@@ -180,3 +196,32 @@ def test_cache_enrich_skips_references_that_already_have_full_text(tmp_path):
     assert result.exit_code == 0, result.output
     assert "DOI:10.1000/hit\talready_full_text\t-" in result.output
     assert path.read_bytes() == original
+
+
+def test_cache_enrich_fails_fast_after_repeated_provider_errors(tmp_path):
+    """A dead Zotero service does not produce one error for every cache entry."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for number in range(5):
+        _write_cached_reference(
+            cache_dir, f"DOI:10.1000/{number}", f"10.1000/{number}"
+        )
+    _UnavailableProvider.calls = 0
+    FullTextProviderRegistry.register(_UnavailableProvider)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "cache",
+            "enrich",
+            "--provider",
+            "unavailable_provider",
+            "--cache-dir",
+            str(cache_dir),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert _UnavailableProvider.calls == 3
+    assert "Stopping after 3 consecutive provider errors" in result.output
+    assert "Scanned: 3" in result.output

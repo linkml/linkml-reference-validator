@@ -4,7 +4,8 @@ import logging
 import time
 from pathlib import Path
 from typing import Optional
-from urllib.parse import unquote, urlparse
+from urllib.parse import urljoin, urlparse
+from urllib.request import url2pathname
 
 import requests  # type: ignore
 
@@ -123,12 +124,13 @@ class ContentAcquirer:
         }
         # ``with`` guarantees the streamed connection is released on every path,
         # including the early return when the size cap is exceeded mid-stream.
+        manual_redirects = self._is_loopback_url(url)
         with requests.get(
             url,
             headers=headers,
             timeout=60,
             stream=True,
-            allow_redirects=False,
+            allow_redirects=not manual_redirects,
         ) as response:
             if response.status_code in {301, 302, 303, 307, 308}:
                 location = response.headers.get("location")
@@ -136,18 +138,21 @@ class ContentAcquirer:
                     logger.warning(f"Download redirect failed for {url}")
                     return None, None
 
-                parsed_location = urlparse(location)
+                resolved_location = urljoin(url, location)
+                parsed_location = urlparse(resolved_location)
                 if parsed_location.scheme == "file":
                     if not self._is_loopback_url(url):
                         logger.warning(
                             f"Refusing non-local redirect to a file URI from {url}"
                         )
                         return None, None
-                    return self._read_local_file(location, config)
+                    return self._read_local_file(resolved_location, config)
 
                 if parsed_location.scheme in {"http", "https"}:
                     return self._fetch_bytes(
-                        location, config, redirects_remaining=redirects_remaining - 1
+                        resolved_location,
+                        config,
+                        redirects_remaining=redirects_remaining - 1,
                     )
 
                 logger.warning(f"Unsupported redirect scheme for {url}")
@@ -193,7 +198,7 @@ class ContentAcquirer:
             logger.warning("Refusing a non-local file URI")
             return None, None
 
-        path = Path(unquote(parsed.path))
+        path = Path(url2pathname(parsed.path))
         content_type = "application/pdf" if path.suffix.lower() == ".pdf" else None
         if not path.is_file():
             logger.warning(f"Local redirected file does not exist: {path}")

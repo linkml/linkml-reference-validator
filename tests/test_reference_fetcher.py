@@ -264,6 +264,55 @@ def test_applying_private_enrichment_does_not_enter_validation_memory_cache(tmp_
     assert loaded.full_text_access_type is None
 
 
+def test_private_location_forces_private_persistence_without_flag(tmp_path):
+    """Private provenance is a safety floor even when a caller omits ``private``."""
+    public_dir = tmp_path / "public"
+    private_dir = tmp_path / "private"
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=public_dir,
+            private_cache_dir=private_dir,
+            fetch_full_text=False,
+        )
+    )
+    content = ReferenceContent(
+        reference_id="PMID:123", content="abstract", content_type="abstract_only"
+    )
+
+    applied = fetcher.apply_full_text_location(
+        content,
+        FullTextLocation(
+            text="closed manuscript text " * 30,
+            format_hint="text",
+            access_type="user_library",
+        ),
+        "zotero",
+    )
+
+    assert applied is True
+    assert not (public_dir / "PMID_123.md").exists()
+    assert (private_dir / "PMID_123.md").exists()
+
+
+def test_iter_cached_references_streams_in_sorted_order(tmp_path):
+    """Large caches are yielded one record at a time in deterministic order."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for filename, reference_id in (("B.md", "PMID:2"), ("A.md", "PMID:1")):
+        (cache_dir / filename).write_text(
+            f"---\nreference_id: {reference_id}\ncontent_type: abstract_only\n---\n",
+            encoding="utf-8",
+        )
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=cache_dir, fetch_full_text=False)
+    )
+
+    references = fetcher.iter_cached_references()
+
+    assert iter(references) is references
+    assert [reference.reference_id for reference in references] == ["PMID:1", "PMID:2"]
+
+
 def test_save_and_load_preprint_metadata(fetcher, tmp_path):
     """Preprint status round-trips through the disk cache frontmatter."""
     ref = ReferenceContent(
@@ -985,7 +1034,7 @@ def test_enrich_skips_when_already_full_text(tmp_path):
     content = ReferenceContent(
         reference_id="PMID:1", content="lots of full text", content_type="full_text_xml"
     )
-    assert fetcher._needs_full_text(content) is False
+    assert fetcher.needs_full_text(content) is False
 
 
 def test_enrich_downloads_and_extracts_pdf(tmp_path):

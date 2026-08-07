@@ -14,6 +14,25 @@ from linkml_reference_validator.models import ReferenceContent, ReferenceIdentif
 logger = logging.getLogger(__name__)
 
 
+def normalize_doi(value: Optional[str]) -> Optional[str]:
+    """Return a lowercase bare DOI suitable for exact identity matching.
+
+    Examples:
+        >>> normalize_doi(" https://doi.org/10.1000/Example ")
+        '10.1000/example'
+        >>> normalize_doi("doi:10.1000/ABC")
+        '10.1000/abc'
+        >>> normalize_doi(None) is None
+        True
+    """
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    normalized = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", normalized)
+    normalized = re.sub(r"^doi\s*:\s*", "", normalized)
+    return normalized or None
+
+
 def _split_reference_id(reference_id: str) -> tuple[Optional[str], Optional[str]]:
     """Split a reference id into (prefix, identifier).
 

@@ -535,14 +535,18 @@ class ReferenceValidationConfig(BaseModel):
         """Create and return the owner-only private research-cache directory."""
         private_dir = self.private_cache_dir.expanduser()
         private_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        private_dir.chmod(0o700)
+        mode = private_dir.stat().st_mode & 0o777
+        if mode & 0o077:
+            private_dir.chmod(mode & 0o700)
         return private_dir
 
     def get_private_files_cache_dir(self) -> Path:
         """Create and return the owner-only private binary-files directory."""
         files_dir = self.get_private_cache_dir() / "files"
         files_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        files_dir.chmod(0o700)
+        mode = files_dir.stat().st_mode & 0o777
+        if mode & 0o077:
+            files_dir.chmod(mode & 0o700)
         return files_dir
 
 

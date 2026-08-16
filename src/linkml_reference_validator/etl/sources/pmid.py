@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup  # type: ignore
 import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
@@ -421,22 +422,11 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
-        if isinstance(xml_content, bytes):
-            xml_content = xml_content.decode("utf-8")
-
-        if "cannot be obtained" in xml_content.lower() or "restricted" in xml_content.lower():
-            return None
-
-        soup = BeautifulSoup(xml_content, "xml")
-        body = soup.find("body")
-
-        if body:
-            paragraphs = body.find_all("p")
-            if paragraphs:
-                text = "\n\n".join(p.get_text() for p in paragraphs)
-                return text
-
-        return None
+        # Delegated to the shared extractor so body parsing and PMC
+        # placeholder detection cannot drift from the rest of the ETL layer.
+        # This module used to carry its own copy, which discarded any article
+        # whose markup mentioned "restricted" anywhere at all.
+        return XMLExtractor().extract(xml_content)
 
     def _fetch_pmc_html(
         self, pmcid: str, config: ReferenceValidationConfig

@@ -357,6 +357,10 @@ class ReferenceValidationConfig(BaseModel):
         ... )
         >>> config.literal_bracket_patterns
         ['\\d', '^[A-Z]$']
+        >>> ReferenceValidationConfig().min_excerpt_length
+        0
+        >>> ReferenceValidationConfig(min_excerpt_length=20).min_excerpt_length
+        20
     """
 
     cache_dir: Path = Field(
@@ -409,6 +413,19 @@ class ReferenceValidationConfig(BaseModel):
             "If any pattern matches, the bracketed text is treated as literal source "
             "text and preserved during supporting text validation. "
             "If no patterns are configured, all bracketed text is stripped."
+        ),
+    )
+    min_excerpt_length: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Minimum number of non-whitespace characters of quoted text required "
+            "in an excerpt. A short excerpt matches almost any reference by "
+            "chance, so it is weak evidence even when the match succeeds. "
+            "Editorial brackets and '...' separators do not count towards the "
+            "length. Whitespace is ignored so that PDF-to-text extraction "
+            "artifacts do not change the count. Set to 0 to disable the check; "
+            "empty and whitespace-only excerpts are always rejected regardless."
         ),
     )
     reference_prefix_map: dict[str, str] = Field(

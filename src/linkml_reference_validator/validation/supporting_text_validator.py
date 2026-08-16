@@ -200,15 +200,16 @@ class SupportingTextValidator:
             >>> result.is_valid
             False
         """
-        # A blank excerpt is a defect in the data regardless of what it cites,
-        # so reject it before skip-prefix handling or any reference lookup.
-        if is_blank_text(supporting_text):
+        # An insubstantial excerpt is a defect in the data regardless of what it
+        # cites, so reject it before skip-prefix handling or any lookup.
+        content_problem = self.check_excerpt_content(supporting_text)
+        if content_problem:
             return ValidationResult(
                 is_valid=False,
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.ERROR,
-                message=f"{EMPTY_SUPPORTING_TEXT_MESSAGE}: {reference_id}",
+                message=f"{content_problem}: {reference_id}",
                 path=path,
             )
 
@@ -324,12 +325,13 @@ class SupportingTextValidator:
             >>> validator.find_text_in_reference("", ref).found
             False
         """
-        # Checked before content, so a blank excerpt is always diagnosed as
-        # blank rather than blamed on the reference.
-        if is_blank_text(supporting_text):
+        # Checked before content, so a thin excerpt is always diagnosed as thin
+        # rather than blamed on the reference.
+        content_problem = self.check_excerpt_content(supporting_text)
+        if content_problem:
             return SupportingTextMatch(
                 found=False,
-                error_message=EMPTY_SUPPORTING_TEXT_MESSAGE,
+                error_message=content_problem,
             )
 
         if not reference.content:
@@ -388,6 +390,79 @@ class SupportingTextValidator:
         parts = re.split(r"\s*\.{2,}\s*", text_without_brackets)
         parts = [re.sub(r"\s+", " ", p).strip() for p in parts if p.strip()]
         return parts
+
+    def count_quoted_characters(self, supporting_text: str) -> int:
+        """Count the non-whitespace characters an excerpt actually quotes.
+
+        Editorial brackets and ``...`` separators are excluded because they are
+        never matched against the reference. Whitespace is excluded so that
+        PDF-to-text extraction artifacts ("t he pro tein") measure the same as
+        clean text, and so that no tokenizing is needed - chemical nomenclature
+        and other punctuation-dense strings are counted in full.
+
+        Args:
+            supporting_text: The excerpt to measure
+
+        Returns:
+            Number of non-whitespace characters of quoted text
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> validator.count_quoted_characters("the protein")
+            10
+            >>> validator.count_quoted_characters("t he pro tein")
+            10
+            >>> validator.count_quoted_characters("protein [important] functions")
+            16
+            >>> validator.count_quoted_characters("2,3-dihydroxybenzoate")
+            21
+        """
+        return sum(
+            len(re.sub(r"\s", "", part))
+            for part in self._split_query(supporting_text)
+        )
+
+    def check_excerpt_content(self, supporting_text: str) -> Optional[str]:
+        """Report why an excerpt is too insubstantial to be evidence, if it is.
+
+        Applied before any reference is fetched, because these are defects in
+        the data itself: they hold regardless of what the excerpt cites, and no
+        lookup could change the verdict.
+
+        Args:
+            supporting_text: The excerpt to check
+
+        Returns:
+            An error message, or None if the excerpt has enough substance
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> validator.check_excerpt_content("protein functions") is None
+            True
+            >>> "empty" in validator.check_excerpt_content("   ")
+            True
+            >>> strict = ReferenceValidationConfig(min_excerpt_length=20)
+            >>> validator = SupportingTextValidator(strict)
+            >>> "too short" in validator.check_excerpt_content("the gene")
+            True
+        """
+        if is_blank_text(supporting_text):
+            return EMPTY_SUPPORTING_TEXT_MESSAGE
+
+        if self.config.min_excerpt_length <= 0:
+            return None
+
+        length = self.count_quoted_characters(supporting_text)
+        if length < self.config.min_excerpt_length:
+            return (
+                f"Supporting text is too short: {length} non-whitespace "
+                f"characters of quoted text, minimum is "
+                f"{self.config.min_excerpt_length} (min_excerpt_length)"
+            )
+
+        return None
 
     def _substring_match(
         self,

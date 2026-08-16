@@ -36,6 +36,8 @@ from linkml_reference_validator.validation.supporting_text_validator import (
     is_blank_text,
 )
 
+MIN_LENGTH = 20
+
 DATA_DIR = Path(__file__).parent / "data"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 DEEP_SCHEMA = DATA_DIR / "test_schema_deep_nesting.yaml"
@@ -330,3 +332,149 @@ def test_extract_evidence_items_requires_reference():
     items = _extract_evidence_items(data, None, Path("unused.yaml"))
 
     assert items == []
+
+
+# ---------------------------------------------------------------------------
+# Configurable minimum excerpt length
+#
+# A blank excerpt is the extreme case; a two-character one is barely better,
+# since a short string matches almost any paper by chance. Length is measured
+# in non-whitespace characters of quoted text, which keeps the count stable
+# across PDF-to-text whitespace damage and never splits chemical names.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def strict_config(tmp_path):
+    """Configuration enforcing a minimum excerpt length."""
+    return ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        min_excerpt_length=MIN_LENGTH,
+    )
+
+
+def test_min_excerpt_length_defaults_to_disabled():
+    """The check is opt-in so existing data keeps validating as before."""
+    assert ReferenceValidationConfig().min_excerpt_length == 0
+
+
+def test_min_excerpt_length_rejects_negative():
+    """A negative minimum is meaningless."""
+    with pytest.raises(ValueError):
+        ReferenceValidationConfig(min_excerpt_length=-1)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("the protein", 10),
+        # PDF-to-text whitespace damage must not change the count.
+        ("t he pro tein", 10),
+        ("the\n\nprotein", 10),
+        # Editorial brackets are not quoted text.
+        ("protein [important] functions", len("proteinfunctions")),
+        # Ellipsis separators are not quoted text.
+        ("abc ... def", 6),
+        ("[editorial note only]", 0),
+        ("", 0),
+        # Chemical nomenclature counts in full - no tokenizing, no splitting.
+        ("2,3-dihydroxybenzoate", 21),
+        ("N-(4-hydroxyphenyl)acetamide", 28),
+    ],
+)
+def test_count_quoted_characters(validator, text, expected):
+    """Length counts non-whitespace characters of actually-quoted text."""
+    assert validator.count_quoted_characters(text) == expected
+
+
+def test_count_quoted_characters_survives_whitespace_damage(validator):
+    """Mangled and clean renderings of the same quote measure identically."""
+    clean = "the protein functions in cell cycle"
+    mangled = "the  pro tein  func tions\tin cell   cycle"
+
+    assert validator.count_quoted_characters(clean) == validator.count_quoted_characters(
+        mangled
+    )
+
+
+def test_validate_rejects_too_short_excerpt(strict_config):
+    """An excerpt below the configured minimum is an error."""
+    validator = SupportingTextValidator(strict_config)
+
+    result = validator.validate("the gene", "PMID:TEST001")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert "too short" in result.message.lower()
+    assert str(MIN_LENGTH) in result.message
+
+
+def test_validate_too_short_does_not_fetch(strict_config, mocker):
+    """A too-short excerpt fails without any reference lookup."""
+    validator = SupportingTextValidator(strict_config)
+    spy = mocker.patch.object(validator.fetcher, "fetch")
+
+    validator.validate("the gene", "PMID:TEST001")
+
+    spy.assert_not_called()
+
+
+def test_validate_accepts_excerpt_at_minimum(cached_config):
+    """An excerpt meeting the minimum validates normally."""
+    text = "Protein X functions in cell cycle regulation"
+    cached_config.min_excerpt_length = len(text.replace(" ", ""))
+    validator = SupportingTextValidator(cached_config)
+
+    result = validator.validate(text, "PMID:TEST001")
+
+    assert result.is_valid is True
+
+
+def test_short_excerpt_allowed_when_check_disabled(cached_config):
+    """With the default config, a short but real quote still passes."""
+    validator = SupportingTextValidator(cached_config)
+
+    result = validator.validate("Protein X", "PMID:TEST001")
+
+    assert result.is_valid is True
+
+
+def test_find_text_in_reference_rejects_too_short(strict_config):
+    """The matching entry point enforces the minimum too."""
+    validator = SupportingTextValidator(strict_config)
+    ref = ReferenceContent(
+        reference_id="PMID:123",
+        content="The protein functions in cell cycle regulation.",
+    )
+
+    match = validator.find_text_in_reference("protein", ref)
+
+    assert match.found is False
+    assert "too short" in match.error_message.lower()
+
+
+def test_plugin_rejects_too_short_snippet(cached_config):
+    """The plugin reports a too-short snippet like any other empty evidence."""
+    cached_config.min_excerpt_length = MIN_LENGTH
+    plugin = ReferenceValidationPlugin(config=cached_config)
+    schema_view = SchemaView(str(DEEP_SCHEMA))
+    context = ValidationContext(schema_view.schema, target_class="Community")
+    plugin.pre_process(context)
+
+    results = list(plugin.process(_community({"snippet": "the gene"}), context))
+
+    assert len(results) == 1
+    assert "too short" in results[0].message.lower()
+
+
+def test_repair_single_flags_too_short_for_removal(cached_config):
+    """A too-short excerpt cannot be repaired - there is nothing to expand from."""
+    cached_config.min_excerpt_length = MIN_LENGTH
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+
+    result = repairer.repair_single("the gene", "PMID:TEST001")
+
+    assert result.is_repaired is False
+    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert "too short" in result.message.lower()

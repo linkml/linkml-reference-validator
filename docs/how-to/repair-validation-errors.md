@@ -300,6 +300,15 @@ Empty excerpts cannot be repaired automatically — there is no text to correct,
 and fuzzy-matching nothing against the reference would invent a quote. They are
 flagged for removal so you can supply the real quote or drop the evidence item.
 
+### "Supporting text is too short"
+
+The excerpt is below the `min_excerpt_length` you configured (off by default;
+see [How It Works](../concepts/how-it-works.md)). A very short excerpt matches
+almost any paper by chance, so it is weak evidence even when the match succeeds.
+
+Like empty excerpts, these are flagged for removal rather than repaired: there
+is no way to guess which longer passage the curator meant.
+
 ### "Reference content not available"
 
 The reference exists but has no retrievable content:

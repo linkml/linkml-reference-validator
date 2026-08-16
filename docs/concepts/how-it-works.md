@@ -53,6 +53,29 @@ a blank excerpt is a defect in the data regardless of what it cites. An
 excerpt slot that is *absent* is a different matter — whether it is required
 is up to your schema.
 
+**Minimum excerpt length (optional):**
+
+A blank excerpt is the extreme case. A two-character one is barely better: a
+short string matches almost any paper by chance, so the match succeeds without
+the excerpt being real evidence. Set `min_excerpt_length` to require a minimum:
+
+```yaml
+# .linkml-reference-validator.yaml
+min_excerpt_length: 20
+```
+
+The check is off by default (`0`), so existing data keeps validating as before.
+Length is measured in **non-whitespace characters of quoted text**:
+
+- Whitespace is ignored, so PDF-to-text extraction damage does not change the
+  count — `"t he pro tein"` and `"the protein"` both measure 10.
+- No tokenizing, so chemical nomenclature and other punctuation-dense strings
+  are counted in full — `"2,3-dihydroxybenzoate"` measures 21, not 2 words.
+- Editorial `[brackets]` and `...` separators do not count, since they are
+  never matched against the reference.
+
+Like the blank check, this runs before the reference is fetched.
+
 ### 3. Ellipsis Handling
 
 When supporting text contains `...`, each part is matched separately:

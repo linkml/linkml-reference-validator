@@ -16,7 +16,9 @@ from linkml_reference_validator.field_detection import (
 )
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
+    EMPTY_SUPPORTING_TEXT_MESSAGE,
     SupportingTextValidator,
+    is_blank_text,
 )
 
 _LINKML_AVAILABLE = (
@@ -186,6 +188,26 @@ if _LINKML_AVAILABLE:
 
             for excerpt_field in excerpt_fields:
                 excerpt_value = instance.get(excerpt_field)
+                excerpt_path = (
+                    f"{path}.{excerpt_field}" if path else excerpt_field
+                )
+
+                # A present-but-blank excerpt is evidence of nothing. It must be
+                # reported here rather than skipped: downstream substring
+                # matching would accept it against any reference, and it may
+                # have no reference at all.
+                if is_blank_text(excerpt_value):
+                    yield LinkMLValidationResult(
+                        type="reference_validation",
+                        severity=Severity.ERROR,
+                        message=f"{EMPTY_SUPPORTING_TEXT_MESSAGE} (in '{excerpt_field}')",
+                        instance={"supporting_text": excerpt_value},
+                        instantiates=excerpt_path,
+                        context=[excerpt_path],
+                        source="ReferenceValidationPlugin",
+                    )
+                    continue
+
                 if not excerpt_value:
                     continue
 
@@ -208,7 +230,7 @@ if _LINKML_AVAILABLE:
                                 excerpt_value,
                                 reference_id,
                                 expected_title,
-                                f"{path}.{excerpt_field}" if path else excerpt_field,
+                                excerpt_path,
                             )
                             # Break after first successful reference match to avoid duplicates
                             break

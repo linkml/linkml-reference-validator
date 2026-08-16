@@ -290,6 +290,16 @@ The supporting text wasn't found in the reference. Possible causes:
 - Wrong PMID
 - AI-generated/hallucinated quote
 
+### "Supporting text is empty"
+
+The excerpt is empty or whitespace-only, so there is nothing to match against
+the reference. This is usually a bug in whatever generated the data (for
+example, a string slice with a backwards range yielding `""`).
+
+Empty excerpts cannot be repaired automatically — there is no text to correct,
+and fuzzy-matching nothing against the reference would invent a quote. They are
+flagged for removal so you can supply the real quote or drop the evidence item.
+
 ### "Reference content not available"
 
 The reference exists but has no retrievable content:

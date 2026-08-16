@@ -15,6 +15,39 @@ from linkml_reference_validator.models import (
 
 logger = logging.getLogger(__name__)
 
+#: Message used whenever a blank excerpt is rejected, so every layer reports
+#: the same diagnosis for the same defect.
+EMPTY_SUPPORTING_TEXT_MESSAGE = (
+    "Supporting text is empty: an excerpt must quote actual text from the "
+    "reference (the empty string trivially matches any document)"
+)
+
+
+def is_blank_text(value: object) -> bool:
+    """Report whether a value is a string with no non-whitespace characters.
+
+    Blank excerpts are the core of the "vacuous pass" bug: substring checks
+    succeed for the empty string against every possible document, so a blank
+    excerpt would otherwise be recorded as verified evidence.
+
+    Args:
+        value: Value to test; non-strings are never blank text
+
+    Returns:
+        True if the value is a string containing only whitespace (or nothing)
+
+    Examples:
+        >>> is_blank_text("")
+        True
+        >>> is_blank_text("   \\n")
+        True
+        >>> is_blank_text("protein functions")
+        False
+        >>> is_blank_text(None)
+        False
+    """
+    return isinstance(value, str) and not value.strip()
+
 
 class SupportingTextValidator:
     """Validate that supporting text quotes are found in references.
@@ -162,7 +195,23 @@ class SupportingTextValidator:
             >>> # result = validator.validate("quote", "PMID:12345678")
             >>> # With title validation:
             >>> # result = validator.validate("quote", "PMID:12345678", expected_title="Study Title")
+            >>> # A blank excerpt is rejected without any reference lookup:
+            >>> result = validator.validate("   ", "PMID:12345678")
+            >>> result.is_valid
+            False
         """
+        # A blank excerpt is a defect in the data regardless of what it cites,
+        # so reject it before skip-prefix handling or any reference lookup.
+        if is_blank_text(supporting_text):
+            return ValidationResult(
+                is_valid=False,
+                reference_id=reference_id,
+                supporting_text=supporting_text,
+                severity=ValidationSeverity.ERROR,
+                message=f"{EMPTY_SUPPORTING_TEXT_MESSAGE}: {reference_id}",
+                path=path,
+            )
+
         # Check if this prefix should be skipped
         prefix = reference_id.split(":")[0].upper() if ":" in reference_id else ""
         skip_prefixes_upper = [p.upper() for p in self.config.skip_prefixes]
@@ -272,7 +321,17 @@ class SupportingTextValidator:
             ... )
             >>> match.found
             True
+            >>> validator.find_text_in_reference("", ref).found
+            False
         """
+        # Checked before content, so a blank excerpt is always diagnosed as
+        # blank rather than blamed on the reference.
+        if is_blank_text(supporting_text):
+            return SupportingTextMatch(
+                found=False,
+                error_message=EMPTY_SUPPORTING_TEXT_MESSAGE,
+            )
+
         if not reference.content:
             return SupportingTextMatch(
                 found=False,

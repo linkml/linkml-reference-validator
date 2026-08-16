@@ -36,6 +36,23 @@ reference_content = "...The MUC1 oncoprotein blocks nuclear..."
 # Match: "muc1 oncoprotein" found in normalized reference
 ```
 
+**Empty excerpts are rejected:**
+
+An empty or whitespace-only excerpt is always an error, never a pass. The
+empty string is a substring of every document, so a blank excerpt would
+otherwise be reported as verified evidence while quoting nothing at all:
+
+```python
+supporting_text = ""     # or "   ", "\n"
+# ERROR: Supporting text is empty
+```
+
+The check runs before the reference is fetched, and applies even when the
+reference prefix is on the [skip list](../how-to/skip-unsupported-references.md):
+a blank excerpt is a defect in the data regardless of what it cites. An
+excerpt slot that is *absent* is a different matter — whether it is required
+is up to your schema.
+
 ### 3. Ellipsis Handling
 
 When supporting text contains `...`, each part is matched separately:

@@ -323,9 +323,19 @@ def _extract_evidence_items(
         if isinstance(d, dict):
             # Direct evidence item pattern
             if "supporting_text" in d or "snippet" in d:
-                text = d.get("supporting_text") or d.get("snippet")
+                # Prefer a usable quote, but keep a blank one when that is all
+                # there is: blank excerpts must be reported, not dropped.
+                candidates: list[str] = []
+                for text_key in ("supporting_text", "snippet"):
+                    text_value = d.get(text_key)
+                    if isinstance(text_value, str):
+                        candidates.append(text_value)
+                text = next(
+                    (c for c in candidates if c.strip()),
+                    candidates[0] if candidates else None,
+                )
                 ref = d.get("reference") or d.get("reference_id")
-                if text and ref:
+                if text is not None and ref:
                     items.append((text, ref, path))
 
             # Look for evidence list

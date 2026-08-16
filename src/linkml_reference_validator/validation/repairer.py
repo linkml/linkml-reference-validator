@@ -36,7 +36,9 @@ from linkml_reference_validator.validation.fuzzy_text_utils import (
     normalize_whitespace,
 )
 from linkml_reference_validator.validation.supporting_text_validator import (
+    EMPTY_SUPPORTING_TEXT_MESSAGE,
     SupportingTextValidator,
+    is_blank_text,
 )
 
 logger = logging.getLogger(__name__)
@@ -460,7 +462,34 @@ class SupportingTextRepairer:
             >>> # In real usage:
             >>> # repairer = SupportingTextRepairer(ReferenceValidationConfig())
             >>> # result = repairer.repair_single("some text", "PMID:123")
+            >>> repairer = SupportingTextRepairer(ReferenceValidationConfig())
+            >>> result = repairer.repair_single("", "PMID:123")
+            >>> result.is_repaired
+            False
+            >>> result.actions[0].action_type.value
+            'REMOVAL'
         """
+        # A blank excerpt carries no signal to repair from: fuzzy matching it
+        # against the reference would invent a quote nobody wrote. Flag it for
+        # human review instead, without fetching anything.
+        if is_blank_text(supporting_text):
+            return RepairResult(
+                reference_id=reference_id,
+                original_text=supporting_text,
+                was_valid=False,
+                is_repaired=False,
+                actions=[RepairAction(
+                    action_type=RepairActionType.REMOVAL,
+                    original_text=supporting_text,
+                    reference_id=reference_id,
+                    confidence=RepairConfidence.VERY_LOW,
+                    description="Excerpt is empty - supply a real quote or remove the item",
+                    path=path,
+                )],
+                message=f"{EMPTY_SUPPORTING_TEXT_MESSAGE} - cannot be repaired automatically",
+                path=path,
+            )
+
         # Check skip list
         if reference_id in self.repair_config.skip_references:
             return RepairResult(

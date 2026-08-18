@@ -158,7 +158,7 @@ def test_repair_single_flags_excerpt_quoting_nothing(cached_config):
     result = repairer.repair_single("[editorial note]", "PMID:TEST001")
 
     assert result.is_repaired is False
-    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
 
 
 def test_is_blank_text_non_string():
@@ -307,8 +307,14 @@ def test_plugin_valid_snippet_still_passes(plugin, deep_context):
 
 
 @pytest.mark.parametrize("text", ["", "  "])
-def test_repair_single_flags_blank_for_removal(cached_config, text):
-    """A blank snippet cannot be repaired; it is flagged for human review."""
+def test_repair_single_flags_blank_as_empty_excerpt(cached_config, text):
+    """A blank snippet cannot be repaired; it is flagged for human review.
+
+    Reported as EMPTY_EXCERPT rather than REMOVAL: a removal recommendation
+    means "this quote does not match the reference", a verdict reached by
+    comparison. No comparison happens here, so borrowing that category would
+    misreport how the conclusion was reached.
+    """
     repairer = SupportingTextRepairer(cached_config, RepairConfig())
 
     result = repairer.repair_single(text, "PMID:TEST001", path="evidence[0].snippet")
@@ -316,10 +322,68 @@ def test_repair_single_flags_blank_for_removal(cached_config, text):
     assert result.was_valid is False
     assert result.is_repaired is False
     assert result.repaired_text is None
-    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
     assert result.actions[0].can_auto_fix is False
     assert "empty" in result.message.lower()
     assert result.path == "evidence[0].snippet"
+
+
+def test_report_shows_empty_excerpt_distinctly(cached_config):
+    """The curator-facing report must say the excerpt is empty.
+
+    It previously rendered as "Similarity: 0%" over "Snippet: '...'", which
+    reads as an ellipsis-only quote that scored zero against the reference -
+    wrong on both counts, and indistinguishable from a fabricated quote.
+    """
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch([("", "PMID:TEST001", "evidence[0].snippet")])
+
+    output = repairer.format_report(report)
+
+    assert "EMPTY" in output.upper()
+    assert "Similarity" not in output
+    assert "Snippet: '...'" not in output
+    assert "evidence[0].snippet" in output
+
+
+def test_report_summary_counts_empty_excerpts(cached_config):
+    """Giving empty excerpts their own section must not drop them from the tally."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch(
+        [
+            ("", "PMID:TEST001", "e[0]"),
+            ("   ", "PMID:TEST002", "e[1]"),
+            ("a wholly fabricated sentence never written", "PMID:TEST001", "e[2]"),
+        ]
+    )
+
+    assert report.empty_excerpt_count == 2
+    assert report.removal_count == 1
+    assert "Empty excerpts: 2" in repairer.format_report(report)
+
+
+def test_report_still_shows_fabricated_removals(cached_config):
+    """The empty-excerpt section must not swallow ordinary removals."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch(
+        [("wholly fabricated sentence never written", "PMID:TEST001", "e[0]")]
+    )
+
+    output = repairer.format_report(report)
+
+    assert "REMOVAL" in output.upper()
+    assert "not found in reference" in output
+
+
+def test_report_does_not_imply_truncation_of_short_text(cached_config):
+    """A quote shorter than the display limit must not be shown with an ellipsis."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch([("a short fake quote", "PMID:TEST001", "e[0]")])
+
+    output = repairer.format_report(report)
+
+    assert "'a short fake quote'" in output
+    assert "a short fake quote...." not in output
 
 
 def test_repair_single_blank_does_not_fetch(cached_config, mocker):
@@ -344,7 +408,7 @@ def test_blank_check_precedes_skip_references(cached_config):
 
     result = repairer.repair_single("", "PMID:TEST001")
 
-    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
     assert "empty" in result.message.lower()
 
 
@@ -360,7 +424,7 @@ def test_blank_check_precedes_trusted_low_similarity(cached_config):
 
     result = repairer.repair_single("", "PMID:TEST001")
 
-    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
 
 
 def test_skip_references_still_honoured_for_real_text(cached_config):
@@ -562,5 +626,5 @@ def test_repair_single_flags_too_short_for_removal(cached_config):
     result = repairer.repair_single("the gene", "PMID:TEST001")
 
     assert result.is_repaired is False
-    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
     assert "too short" in result.message.lower()

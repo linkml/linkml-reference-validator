@@ -87,9 +87,10 @@ class XMLExtractor(Extractor):
         return ["xml"]
 
     def extract(self, data: bytes, *, content_type: Optional[str] = None) -> Optional[str]:
-        text_data = data.decode("utf-8") if isinstance(data, bytes) else data
-
-        soup = BeautifulSoup(text_data, "xml")
+        # Handed to BeautifulSoup as bytes rather than decoded here: a manual
+        # decode assumes UTF-8 and raises on any article whose XML declares
+        # another encoding, whereas the parser honours the declaration.
+        soup = BeautifulSoup(data, "xml")
         body = soup.find("body")
         if not body:
             return None

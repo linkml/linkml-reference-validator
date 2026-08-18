@@ -113,6 +113,22 @@ def test_restricted_in_reference_titles_does_not_discard_article():
     assert LONG_BODY_FILLER.strip() in text
 
 
+def test_non_utf8_encoded_article_is_extracted():
+    """An article declaring a non-UTF-8 encoding must not blow up extraction."""
+    xml = (
+        '<?xml version="1.0" encoding="ISO-8859-1"?>'
+        "<article><body><sec><p>"
+        + LONG_BODY_FILLER
+        + "Fran\xe7ois measured the r\xe9sultats."
+        + "</p></sec></body></article>"
+    ).encode("iso-8859-1")
+
+    text = XMLExtractor().extract(xml, content_type="application/xml")
+
+    assert text is not None
+    assert "François" in text
+
+
 @pytest.mark.parametrize(
     "notice",
     [
@@ -301,6 +317,17 @@ def test_html_fallback_separates_headings_and_list_items():
 def test_html_fallback_treats_br_as_a_break():
     """A <br> is a line break, not a word boundary to be swallowed."""
     html = b"<html><body><div>Line one<br>Line two</div></body></html>"
+
+    text = HTMLExtractor().extract(html, content_type="text/html")
+
+    assert "Line oneLine two" not in text
+    assert "Line one" in text
+    assert "Line two" in text
+
+
+def test_html_paragraph_treats_br_as_a_break():
+    """The same on the paragraph path, which is the one users hit most."""
+    html = b"<html><body><p>Line one<br>Line two</p></body></html>"
 
     text = HTMLExtractor().extract(html, content_type="text/html")
 

@@ -348,14 +348,6 @@ class SupportingTextValidator:
             )
 
         query_parts = self._split_query(supporting_text)
-
-        # Empty query validation
-        if not query_parts:
-            return SupportingTextMatch(
-                found=False,
-                error_message="Query is empty after removing brackets and splitting",
-            )
-
         return self._substring_match(query_parts, reference.content, supporting_text)
 
     def _split_query(self, text: str) -> list[str]:
@@ -509,7 +501,20 @@ class SupportingTextValidator:
             True
             >>> match.similarity_score
             1.0
+            >>> validator._substring_match([], "any document at all").found
+            False
         """
+        # Guarded here rather than in the caller: with no parts the loop below
+        # never runs and every quote "matches", which is the vacuous pass this
+        # whole check exists to prevent. check_excerpt_content already rejects
+        # such excerpts upstream, so this is the invariant that keeps the
+        # primitive honest if it is ever called from somewhere else.
+        if not query_parts:
+            return SupportingTextMatch(
+                found=False,
+                error_message=NO_QUOTED_TEXT_MESSAGE,
+            )
+
         normalized_content = self.normalize_text(content)
         matched_parts = []
 

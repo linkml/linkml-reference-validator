@@ -42,6 +42,33 @@ from linkml_reference_validator.validation.supporting_text_validator import (
 logger = logging.getLogger(__name__)
 
 
+def _format_excerpt(text: str, limit: int = 60) -> str:
+    """Render an excerpt for a report, marking emptiness and real truncation.
+
+    Args:
+        text: The excerpt as it appears in the data
+        limit: Longest excerpt shown in full
+
+    Returns:
+        A display string
+
+    Examples:
+        >>> _format_excerpt("a short quote")
+        "'a short quote'"
+        >>> _format_excerpt("")
+        '(empty)'
+        >>> _format_excerpt("   ")
+        '(empty)'
+        >>> _format_excerpt("x" * 70).endswith("...'")
+        True
+    """
+    if not text.strip():
+        return "(empty)"
+    if len(text) <= limit:
+        return f"'{text}'"
+    return f"'{text[:limit]}...'"
+
+
 class SupportingTextRepairer:
     """Repair supporting text validation errors.
 
@@ -465,7 +492,7 @@ class SupportingTextRepairer:
             >>> result.is_repaired
             False
             >>> result.actions[0].action_type.value
-            'REMOVAL'
+            'EMPTY_EXCERPT'
         """
         # An insubstantial excerpt carries too little signal to repair from:
         # fuzzy matching it against the reference would invent a quote nobody
@@ -477,8 +504,13 @@ class SupportingTextRepairer:
         # excerpt is a defect in the data that no reference could excuse.
         content_problem = self.validator.check_excerpt_content(supporting_text)
         if content_problem:
+            # EMPTY_EXCERPT, not REMOVAL: a removal recommendation means "this
+            # quote does not match the reference", a verdict reached by
+            # comparison. Nothing was compared here, and reporting it as a
+            # removal would show a meaningless "Similarity: 0%" beside quotes
+            # that really were checked and found fabricated.
             action = RepairAction(
-                action_type=RepairActionType.REMOVAL,
+                action_type=RepairActionType.EMPTY_EXCERPT,
                 original_text=supporting_text,
                 reference_id=reference_id,
                 confidence=RepairConfidence.VERY_LOW,
@@ -594,6 +626,7 @@ class SupportingTextRepairer:
         high_confidence = []
         suggestions = []
         removals = []
+        empty_excerpts = []
         unverifiable = []
         already_valid = []
 
@@ -605,6 +638,8 @@ class SupportingTextRepairer:
             for action in result.actions:
                 if action.can_auto_fix:
                     high_confidence.append((result, action))
+                elif action.action_type == RepairActionType.EMPTY_EXCERPT:
+                    empty_excerpts.append((result, action))
                 elif action.action_type == RepairActionType.REMOVAL:
                     removals.append((result, action))
                 elif action.action_type == RepairActionType.UNVERIFIABLE:
@@ -633,14 +668,26 @@ class SupportingTextRepairer:
                     lines.append(f"    Suggestion: '{action.repaired_text[:80]}...'")
             lines.append("")
 
+        # Empty excerpts - reported before removals, since nothing was compared
+        if empty_excerpts:
+            lines.append("EMPTY EXCERPTS (nothing to verify):")
+            for result, action in empty_excerpts:
+                path_str = f" at {result.path}" if result.path else ""
+                lines.append(f"  {result.reference_id}{path_str}:")
+                lines.append(f"    {result.message}")
+                lines.append(f"    Excerpt: {_format_excerpt(result.original_text)}")
+                lines.append(f"    {action.description}")
+            lines.append("")
+
         # Removals
         if removals:
             lines.append("RECOMMENDED REMOVALS (low confidence):")
             for result, action in removals:
                 path_str = f" at {result.path}" if result.path else ""
                 lines.append(f"  {result.reference_id}{path_str}:")
+                lines.append(f"    {action.description}")
                 lines.append(f"    Similarity: {action.similarity_score*100:.0f}%")
-                lines.append(f"    Snippet: '{result.original_text[:60]}...'")
+                lines.append(f"    Snippet: {_format_excerpt(result.original_text)}")
             lines.append("")
 
         # Unverifiable
@@ -660,6 +707,7 @@ class SupportingTextRepairer:
         lines.append(f"  Auto-fixes: {report.auto_fixed_count}")
         lines.append(f"  Suggestions: {report.suggested_count}")
         lines.append(f"  Removals: {report.removal_count}")
+        lines.append(f"  Empty excerpts: {report.empty_excerpt_count}")
         lines.append(f"  Unverifiable: {report.unverifiable_count}")
 
         return "\n".join(lines)

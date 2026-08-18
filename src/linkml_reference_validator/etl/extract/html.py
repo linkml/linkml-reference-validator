@@ -50,6 +50,12 @@ class HTMLExtractor(Extractor):
         for tag in soup(["script", "style"]):
             tag.decompose()
 
+        # Before either branch, so both agree: <br> carries no text of its own,
+        # so bare get_text() would weld the lines it separates into
+        # "Line oneLine two" - the same welding this extractor exists to avoid.
+        for line_break in soup.find_all("br"):
+            line_break.replace_with("\n")
+
         region = soup.find("article") or soup.find("main")
         scope = region if region is not None else soup
 
@@ -71,8 +77,6 @@ class HTMLExtractor(Extractor):
         # "(<i>GUSB</i>, <i>GRN</i>)" would come out as "(\nGUSB\n,\nGRN\n)".
         # Marking block boundaries first means get_text() can then run bare,
         # keeping the source's own spacing inside each block.
-        for line_break in scope.find_all("br"):
-            line_break.replace_with("\n")
         for block in scope.find_all(BLOCK_LEVEL_TAGS):
             block.insert_after("\n")
 

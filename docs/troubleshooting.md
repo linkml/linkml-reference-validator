@@ -292,11 +292,12 @@ text = "Your quote here"
 print(normalize_text(text))
 ```
 
-### Query is empty after removing brackets
+### Supporting text is empty once brackets and separators are removed
 
 **Symptom:**
 ```
-Error: Query is empty after removing brackets
+Error: Supporting text is empty once editorial brackets and '...' separators
+are removed: it quotes nothing from the reference
 Supporting text: "[editorial note]"
 ```
 
@@ -312,6 +313,32 @@ supporting_text: "[sic]"
 
 # Correct
 supporting_text: "protein functions in cells [sic]"
+```
+
+An excerpt that is empty or whitespace-only (`supporting_text: ""`) reports the
+same way, and for the same reason: there is nothing to check against the
+reference. Both are rejected before the reference is fetched.
+
+### Correct quotes rejected after upgrading
+
+**Symptom:**
+
+Snippets you know are correct are rejected, and the cached reference is far
+smaller than the article it came from.
+
+**Cause:**
+
+Versions before the extractor fixes discarded some full-text articles and
+cached a short PMC placeholder page in their place, labelled as full text.
+Fixing the extractors does not rewrite what is already cached.
+
+**Solution:**
+
+Delete the affected entries from your cache directory (`references_cache/` by
+default) and re-run validation, which re-fetches them:
+
+```bash
+rm references_cache/PMID_30598549.md   # or remove the whole directory
 ```
 
 ### Title validation failed

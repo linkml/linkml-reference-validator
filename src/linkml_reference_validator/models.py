@@ -31,6 +31,7 @@ class RepairActionType(str, Enum):
     FUZZY_CORRECTION = "FUZZY_CORRECTION"  # Replace with closest matching text
     REMOVAL = "REMOVAL"  # Flag for removal (fabricated/not found)
     UNVERIFIABLE = "UNVERIFIABLE"  # No abstract available
+    EMPTY_EXCERPT = "EMPTY_EXCERPT"  # Quotes nothing; no comparison was possible
 
 
 class RepairConfidence(str, Enum):
@@ -139,6 +140,9 @@ class RepairAction:
         if self.action_type == RepairActionType.REMOVAL:
             return False
         if self.action_type == RepairActionType.UNVERIFIABLE:
+            return False
+        # An empty excerpt has no correct replacement to apply
+        if self.action_type == RepairActionType.EMPTY_EXCERPT:
             return False
         return self.confidence == RepairConfidence.HIGH and self.repaired_text is not None
 
@@ -258,6 +262,22 @@ class RepairReport:
                 a.action_type == RepairActionType.UNVERIFIABLE for a in r.actions
             )
             if has_unverifiable:
+                count += 1
+        return count
+
+    @property
+    def empty_excerpt_count(self) -> int:
+        """Number of items whose excerpt quotes nothing.
+
+        Counted separately from removals: no comparison against the reference
+        was made, so these are not a verdict about how well a quote matched.
+        """
+        count = 0
+        for r in self.results:
+            has_empty = any(
+                a.action_type == RepairActionType.EMPTY_EXCERPT for a in r.actions
+            )
+            if has_empty:
                 count += 1
         return count
 

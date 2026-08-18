@@ -10,13 +10,16 @@ from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegi
 logger = logging.getLogger(__name__)
 
 #: Phrases appearing in the placeholder documents PMC serves in place of an
-#: article whose full text it cannot supply.
+#: article whose full text it cannot supply. Deliberately broad, because the
+#: length gate below - not the wording - is what keeps matching safe. PMC
+#: phrases these notices several ways ("access to this article is
+#: restricted", "full text is restricted", ...), and an exhaustive list would
+#: trade the old false positives for false negatives.
 STUB_NOTICE_PHRASES = (
+    "restricted",
     "does not allow downloading",
     "cannot be obtained",
     "not available from pmc",
-    "full text is restricted",
-    "access to the full text is restricted",
 )
 
 #: Longest a placeholder notice can plausibly be. Stub phrases are only
@@ -43,10 +46,16 @@ def is_stub_notice(text: str) -> bool:
     Examples:
         >>> is_stub_notice("The full text cannot be obtained from PMC.")
         True
-        >>> is_stub_notice("Analysis was restricted to imputed variants.")
+        >>> is_stub_notice("Access to this article is restricted.")
+        True
+        >>> is_stub_notice("A brief note about the assay.")
         False
-        >>> long_article = "Analysis cannot be obtained here. " + "body text. " * 200
-        >>> is_stub_notice(long_article)
+
+        The same words inside a real article body are not a stub, however
+        many ways PMC might have phrased its notice:
+
+        >>> article = "Analysis was restricted to imputed variants. " + "Body. " * 200
+        >>> is_stub_notice(article)
         False
     """
     if len(text) > MAX_STUB_NOTICE_CHARS:
@@ -97,7 +106,13 @@ class XMLExtractor(Extractor):
         # a methods sentence elsewhere in the document says nothing about
         # whether PMC served us the article.
         if is_stub_notice(text):
-            logger.debug("Discarding PMC placeholder notice instead of article text")
+            # Logged at info, not debug: silently discarding an article is what
+            # made the original over-matching bug so hard to spot.
+            logger.info(
+                "Discarding a %d-character PMC placeholder notice; no full text "
+                "was served for this article",
+                len(text),
+            )
             return None
 
         return text

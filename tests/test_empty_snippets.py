@@ -117,6 +117,50 @@ def test_is_blank_text_false(text):
     assert is_blank_text(text) is False
 
 
+# ---------------------------------------------------------------------------
+# Excerpts that are non-blank but still quote nothing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["...", "....", "[editorial note]", "[a] ... [b]"])
+def test_validate_rejects_excerpt_quoting_nothing(validator, text):
+    """Markup that reduces to no quoted text is as vacuous as a blank string."""
+    result = validator.validate(text, "PMID:TEST001")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert "empty" in result.message.lower()
+
+
+def test_validate_excerpt_quoting_nothing_does_not_fetch(validator, mocker):
+    """It is a data defect, so it is settled without a reference lookup."""
+    spy = mocker.patch.object(validator.fetcher, "fetch")
+
+    validator.validate("[editorial note]", "PMID:TEST001")
+
+    spy.assert_not_called()
+
+
+def test_plugin_rejects_snippet_quoting_nothing(plugin, deep_context):
+    """The plugin reports bracket-only snippets like any other empty evidence."""
+    results = list(
+        plugin.process(_community({"snippet": "[not a real quote]"}), deep_context)
+    )
+
+    assert len(results) == 1
+    assert "empty" in results[0].message.lower()
+
+
+def test_repair_single_flags_excerpt_quoting_nothing(cached_config):
+    """A bracket-only excerpt is flagged for removal, not repaired."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+
+    result = repairer.repair_single("[editorial note]", "PMID:TEST001")
+
+    assert result.is_repaired is False
+    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+
+
 def test_is_blank_text_non_string():
     """Non-strings are not blank text (they are handled elsewhere)."""
     assert is_blank_text(None) is False
@@ -286,6 +330,48 @@ def test_repair_single_blank_does_not_fetch(cached_config, mocker):
     repairer.repair_single("", "PMID:TEST001")
 
     spy.assert_not_called()
+
+
+def test_blank_check_precedes_skip_references(cached_config):
+    """Skipping a reference silences repair for it, not for a defect in the data.
+
+    skip_references says "do not try to repair quotes against this reference".
+    A blank quote is not a judgement about the reference, so it is still
+    reported.
+    """
+    repair_config = RepairConfig(skip_references=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("", "PMID:TEST001")
+
+    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+    assert "empty" in result.message.lower()
+
+
+def test_blank_check_precedes_trusted_low_similarity(cached_config):
+    """Trusting a reference suppresses REMOVAL for weak matches, not for blanks.
+
+    trusted_low_similarity exists so a poorly-matching quote is not proposed
+    for deletion. A blank excerpt has no match to judge, so the trust setting
+    does not apply and REMOVAL survives.
+    """
+    repair_config = RepairConfig(trusted_low_similarity=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("", "PMID:TEST001")
+
+    assert [a.action_type for a in result.actions] == [RepairActionType.REMOVAL]
+
+
+def test_skip_references_still_honoured_for_real_text(cached_config):
+    """The precedence above must not break skip_references for ordinary quotes."""
+    repair_config = RepairConfig(skip_references=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("fabricated quote", "PMID:TEST001")
+
+    assert result.actions == []
+    assert "skip" in result.message.lower()
 
 
 # ---------------------------------------------------------------------------

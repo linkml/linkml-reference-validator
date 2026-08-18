@@ -9,6 +9,17 @@ from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegi
 
 logger = logging.getLogger(__name__)
 
+#: Tags whose boundaries are real text breaks. Used by the whole-document
+#: fallback to separate blocks without touching inline markup, so that a
+#: separator never lands between a gene symbol and its surrounding
+#: punctuation.
+BLOCK_LEVEL_TAGS = (
+    "address", "article", "aside", "blockquote", "div", "dd", "dl", "dt",
+    "figcaption", "figure", "footer", "h1", "h2", "h3", "h4", "h5", "h6",
+    "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section",
+    "table", "td", "th", "tr", "ul",
+)
+
 
 @ExtractorRegistry.register
 class HTMLExtractor(Extractor):
@@ -55,5 +66,15 @@ class HTMLExtractor(Extractor):
             if text:
                 return text
 
-        text = scope.get_text(separator="\n", strip=True)
-        return text if text.strip() else None
+        # Same hazard as the paragraph branch, one level down: a blanket
+        # separator lands between *every* pair of markup-delimited runs, so
+        # "(<i>GUSB</i>, <i>GRN</i>)" would come out as "(\nGUSB\n,\nGRN\n)".
+        # Marking block boundaries first means get_text() can then run bare,
+        # keeping the source's own spacing inside each block.
+        for line_break in scope.find_all("br"):
+            line_break.replace_with("\n")
+        for block in scope.find_all(BLOCK_LEVEL_TAGS):
+            block.insert_after("\n")
+
+        text = scope.get_text().strip()
+        return text if text else None

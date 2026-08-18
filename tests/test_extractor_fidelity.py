@@ -121,6 +121,10 @@ def test_restricted_in_reference_titles_does_not_discard_article():
         "The full text of this article cannot be obtained from PMC.",
         "This article is not available from PMC.",
         "Access to the full text is restricted by the publisher.",
+        # Wordings an exhaustive phrase list would miss; the length gate is
+        # what lets a broad "restricted" catch them safely.
+        "Access to this article is restricted.",
+        "Full text is restricted.",
     ],
 )
 def test_short_stub_notice_is_rejected(notice):
@@ -254,8 +258,59 @@ def test_html_paragraph_text_is_trimmed():
     assert text == "Indented sentence."
 
 
-def test_html_fallback_without_paragraphs_keeps_symbol_boundaries(validator):
-    """The no-<p> fallback must also keep gene symbols from fusing."""
+def test_html_fallback_without_paragraphs_keeps_symbol_boundaries():
+    """The no-<p> fallback must reproduce inline spacing exactly, like the <p> path.
+
+    Asserted on the extracted string rather than through the matcher: the
+    normalizer collapses whitespace and drops punctuation, so a matcher-based
+    assertion passes even on corrupted text like "(\\nGUSB\\n,\\nGRN\\n)" and
+    would not pin this behaviour at all.
+    """
+    html = (
+        b"<html><body><div>Variants near "
+        b"(<i>GUSB</i>, <i>GRN</i>, and <i>NEU1</i>) were found."
+        b"</div></body></html>"
+    )
+
+    text = HTMLExtractor().extract(html, content_type="text/html")
+
+    assert text == "Variants near (GUSB, GRN, and NEU1) were found."
+
+
+def test_html_fallback_separates_adjacent_block_elements():
+    """Preserving inline spacing must not let neighbouring blocks run together."""
+    html = b"<html><body><div>Introduction</div><div>The protein binds.</div></body></html>"
+
+    text = HTMLExtractor().extract(html, content_type="text/html")
+
+    assert "IntroductionThe" not in text
+    assert "Introduction" in text
+    assert "The protein binds." in text
+
+
+def test_html_fallback_separates_headings_and_list_items():
+    """Headings and list items are block boundaries too."""
+    html = b"<html><body><h1>Results</h1><ul><li>First</li><li>Second</li></ul></body></html>"
+
+    text = HTMLExtractor().extract(html, content_type="text/html")
+
+    assert "ResultsFirst" not in text
+    assert "FirstSecond" not in text
+
+
+def test_html_fallback_treats_br_as_a_break():
+    """A <br> is a line break, not a word boundary to be swallowed."""
+    html = b"<html><body><div>Line one<br>Line two</div></body></html>"
+
+    text = HTMLExtractor().extract(html, content_type="text/html")
+
+    assert "Line oneLine two" not in text
+    assert "Line one" in text
+    assert "Line two" in text
+
+
+def test_html_fallback_snippet_validates(validator):
+    """End to end on the fallback path, as on the paragraph path."""
     html = (
         b"<html><body><div>Variants near "
         b"(<i>GUSB</i>, <i>GRN</i>, and <i>NEU1</i>) were found."

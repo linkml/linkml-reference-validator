@@ -22,6 +22,13 @@ EMPTY_SUPPORTING_TEXT_MESSAGE = (
     "reference (the empty string trivially matches any document)"
 )
 
+#: An excerpt made only of editorial notes and ellipses quotes nothing, so it
+#: is exactly as vacuous as a blank one and is diagnosed the same way.
+NO_QUOTED_TEXT_MESSAGE = (
+    "Supporting text is empty once editorial brackets and '...' separators are "
+    "removed: it quotes nothing from the reference"
+)
+
 
 def is_blank_text(value: object) -> bool:
     """Report whether a value is a string with no non-whitespace characters.
@@ -443,6 +450,8 @@ class SupportingTextValidator:
             True
             >>> "empty" in validator.check_excerpt_content("   ")
             True
+            >>> "empty" in validator.check_excerpt_content("[editorial note]")
+            True
             >>> strict = ReferenceValidationConfig(min_excerpt_length=20)
             >>> validator = SupportingTextValidator(strict)
             >>> "too short" in validator.check_excerpt_content("the gene")
@@ -451,10 +460,16 @@ class SupportingTextValidator:
         if is_blank_text(supporting_text):
             return EMPTY_SUPPORTING_TEXT_MESSAGE
 
+        length = self.count_quoted_characters(supporting_text)
+
+        # Independent of min_excerpt_length: an excerpt that quotes nothing is
+        # the defect this check exists for, not a threshold judgement.
+        if length == 0:
+            return NO_QUOTED_TEXT_MESSAGE
+
         if self.config.min_excerpt_length <= 0:
             return None
 
-        length = self.count_quoted_characters(supporting_text)
         if length < self.config.min_excerpt_length:
             return (
                 f"Supporting text is too short: {length} non-whitespace "

@@ -186,9 +186,7 @@ if _LINKML_AVAILABLE:
 
             for excerpt_field in excerpt_fields:
                 excerpt_value = instance.get(excerpt_field)
-                excerpt_path = (
-                    f"{path}.{excerpt_field}" if path else excerpt_field
-                )
+                excerpt_path = f"{path}.{excerpt_field}" if path else excerpt_field
 
                 # A present-but-insubstantial excerpt is evidence of nothing. It
                 # must be reported here rather than skipped: downstream
@@ -203,7 +201,7 @@ if _LINKML_AVAILABLE:
                             type="reference_validation",
                             severity=Severity.ERROR,
                             message=f"{content_problem} (in '{excerpt_field}')",
-                            instance={"supporting_text": excerpt_value},
+                            instance={excerpt_field: excerpt_value},
                             instantiates=excerpt_path,
                             context=[excerpt_path],
                             source="ReferenceValidationPlugin",

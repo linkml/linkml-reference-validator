@@ -470,21 +470,27 @@ class SupportingTextRepairer:
         # An insubstantial excerpt carries too little signal to repair from:
         # fuzzy matching it against the reference would invent a quote nobody
         # wrote. Flag it for human review instead, without fetching anything.
+        #
+        # Deliberately ahead of skip_references and trusted_low_similarity.
+        # Both of those settings are statements about a *reference* - do not
+        # chase it, do not doubt quotes that match it poorly - whereas a blank
+        # excerpt is a defect in the data that no reference could excuse.
         content_problem = self.validator.check_excerpt_content(supporting_text)
         if content_problem:
+            action = RepairAction(
+                action_type=RepairActionType.REMOVAL,
+                original_text=supporting_text,
+                reference_id=reference_id,
+                confidence=RepairConfidence.VERY_LOW,
+                description="Supply a real quote from the reference, or remove the item",
+                path=path,
+            )
             return RepairResult(
                 reference_id=reference_id,
                 original_text=supporting_text,
                 was_valid=False,
                 is_repaired=False,
-                actions=[RepairAction(
-                    action_type=RepairActionType.REMOVAL,
-                    original_text=supporting_text,
-                    reference_id=reference_id,
-                    confidence=RepairConfidence.VERY_LOW,
-                    description="Supply a real quote from the reference, or remove the item",
-                    path=path,
-                )],
+                actions=[action],
                 message=f"{content_problem} - cannot be repaired automatically",
                 path=path,
             )

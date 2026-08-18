@@ -422,6 +422,9 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
+        if isinstance(xml_content, str):
+            xml_content = xml_content.encode("utf-8")
+
         # Delegated to the shared extractor so body parsing and PMC
         # placeholder detection cannot drift from the rest of the ETL layer.
         # This module used to carry its own copy, which discarded any article

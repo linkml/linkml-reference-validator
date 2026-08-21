@@ -6,7 +6,7 @@ fetched from the PMC XML API (with an HTML fallback) and extracted via XMLExtrac
 
 import logging
 import time
-from typing import Optional
+from typing import Optional, Union
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -21,6 +21,7 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
 )
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
 
 logger = logging.getLogger(__name__)
@@ -97,14 +98,20 @@ class PMCFullTextProvider(FullTextProvider):
                         return str(first_link["Id"])
         return None
 
-    def _fetch_pmc_xml_bytes(self, pmcid: str, config: ReferenceValidationConfig) -> Optional[bytes]:
-        """Fetch raw PMC XML bytes for a PMC ID."""
+    def _fetch_pmc_xml_bytes(
+        self, pmcid: str, config: ReferenceValidationConfig
+    ) -> Optional[Union[bytes, str]]:
+        """Fetch raw PMC XML for a PMC ID, exactly as Entrez returned it.
+
+        Returned unconverted: Entrez hands back str, and encoding it to UTF-8
+        would leave any ISO-8859-1 declaration in front of UTF-8 bytes for the
+        parser to believe, turning "François" into "FranÃ§ois". XMLExtractor
+        accepts either form and gets both right.
+        """
         time.sleep(config.rate_limit_delay)
         handle = Entrez.efetch(db="pmc", id=pmcid, rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
-        if isinstance(xml_content, str):
-            xml_content = xml_content.encode("utf-8")
         return xml_content
 
     def _fetch_pmc_html(self, pmcid: str, config: ReferenceValidationConfig) -> Optional[str]:
@@ -118,7 +125,9 @@ class PMCFullTextProvider(FullTextProvider):
         soup = BeautifulSoup(response.content, "html.parser")
         article_body = soup.find("div", class_="article-body") or soup.find("div", class_="tsec")
         if article_body:
-            paragraphs = article_body.find_all("p")
-            if paragraphs:
-                return "\n\n".join(p.get_text() for p in paragraphs)
+            # The region is selected here, but the text comes out of the shared
+            # extractor rather than a private copy of the paragraph walk, so
+            # this path gets its <br> handling and block-boundary fallback
+            # instead of quietly drifting from it.
+            return HTMLExtractor().extract(str(article_body), content_type="text/html")
         return None

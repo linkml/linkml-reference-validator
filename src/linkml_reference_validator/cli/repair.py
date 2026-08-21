@@ -312,6 +312,39 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     return RepairConfig()
 
 
+def _excerpt_key(d: dict) -> Optional[str]:
+    """Return the key holding this evidence item's excerpt, if any.
+
+    Prefers a usable quote, but falls back to a blank one when that is all
+    there is: blank excerpts must be reported, not dropped. Used by both
+    extraction and write-back so a repair cannot land in a different field
+    than the quote came from.
+
+    Args:
+        d: A candidate evidence item
+
+    Returns:
+        "supporting_text", "snippet", or None if neither holds a string
+
+    Examples:
+        >>> _excerpt_key({"supporting_text": "a quote"})
+        'supporting_text'
+        >>> _excerpt_key({"supporting_text": "", "snippet": "a quote"})
+        'snippet'
+        >>> _excerpt_key({"supporting_text": ""})
+        'supporting_text'
+        >>> _excerpt_key({"reference": "PMID:1"}) is None
+        True
+    """
+    present = [
+        key for key in ("supporting_text", "snippet") if isinstance(d.get(key), str)
+    ]
+    for key in present:
+        if d[key].strip():
+            return key
+    return present[0] if present else None
+
+
 def _extract_evidence_items(
     data: dict,
     target_class: Optional[str],
@@ -336,21 +369,11 @@ def _extract_evidence_items(
         # Look for evidence patterns
         if isinstance(d, dict):
             # Direct evidence item pattern
-            if "supporting_text" in d or "snippet" in d:
-                # Prefer a usable quote, but keep a blank one when that is all
-                # there is: blank excerpts must be reported, not dropped.
-                candidates: list[str] = []
-                for text_key in ("supporting_text", "snippet"):
-                    text_value = d.get(text_key)
-                    if isinstance(text_value, str):
-                        candidates.append(text_value)
-                text = next(
-                    (c for c in candidates if c.strip()),
-                    candidates[0] if candidates else None,
-                )
+            text_key = _excerpt_key(d)
+            if text_key is not None:
                 ref = d.get("reference") or d.get("reference_id")
-                if text is not None and ref:
-                    items.append((text, ref, path))
+                if ref:
+                    items.append((d[text_key], ref, path))
 
             # Look for evidence list
             for key in ["evidence", "supporting_evidence", "annotations"]:
@@ -410,11 +433,14 @@ def _apply_repairs_to_data(
 
         if isinstance(d, dict):
             # Check if this item needs repair
-            if "supporting_text" in d or "snippet" in d:
-                text_key = "supporting_text" if "supporting_text" in d else "snippet"
-                if path in repairs_by_path:
-                    d[text_key] = repairs_by_path[path]
-                    changes_made = True
+            # Same key the quote was read from. Choosing independently here
+            # let a repair of the snippet be written into supporting_text,
+            # leaving the snippet wrong and inventing a quote in a field that
+            # never had one.
+            text_key = _excerpt_key(d)
+            if text_key is not None and path in repairs_by_path:
+                d[text_key] = repairs_by_path[path]
+                changes_made = True
 
             # Recurse
             for key in ["evidence", "supporting_evidence", "annotations"]:

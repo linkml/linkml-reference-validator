@@ -410,3 +410,68 @@ def test_curated_snippet_in_restricted_mentioning_article_validates(validator):
     )
 
     assert match.found is True
+
+
+# ---------------------------------------------------------------------------
+# The PMC full-text provider: the other call site for the same XML
+#
+# ReferenceFetcher resolves full text through the provider registry, so this
+# path carries most PMC full text - more than PMIDSource._fetch_pmc_xml.
+# ---------------------------------------------------------------------------
+
+
+@patch("linkml_reference_validator.etl.fulltext.pmc.Entrez.efetch")
+def test_pmc_provider_preserves_accents_from_non_utf8_article(mock_efetch):
+    """The provider path must not re-encode either.
+
+    Re-encoding the str Entrez returns leaves an ISO-8859-1 declaration in
+    front of UTF-8 bytes, and the parser believes the declaration.
+    """
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    handle = MagicMock()
+    handle.read.return_value = (
+        '<?xml version="1.0" encoding="ISO-8859-1"?>'
+        "<article><body><sec><p>"
+        + LONG_BODY_FILLER
+        + "Fran\xe7ois measured 5 \xb5g."
+        + "</p></sec></body></article>"
+    )
+    mock_efetch.return_value = handle
+
+    text = PMCFullTextProvider()._fetch_pmc_xml_bytes(
+        "6358485", ReferenceValidationConfig(rate_limit_delay=0.0)
+    )
+    extracted = XMLExtractor().extract(text, content_type="application/xml")
+
+    assert extracted is not None
+    assert "François measured 5 µg." in extracted
+    assert "FranÃ§ois" not in extracted
+    assert "Âµ" not in extracted
+
+
+def test_pmc_provider_html_preserves_inline_markup():
+    """The provider's HTML fallback must get the shared extractor's fixes too.
+
+    It carried a private copy of the paragraph extraction, so it missed <br>
+    handling and anything else fixed in HTMLExtractor.
+    """
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    html = (
+        b"<html><body><div class='article-body'>"
+        b"<p>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</p>"
+        b"<p>Line one<br>Line two</p>"
+        b"</div></body></html>"
+    )
+
+    with patch(
+        "linkml_reference_validator.etl.fulltext.pmc.requests.get"
+    ) as mock_get:
+        mock_get.return_value = MagicMock(status_code=200, content=html)
+        text = PMCFullTextProvider()._fetch_pmc_html(
+            "123", ReferenceValidationConfig(rate_limit_delay=0.0)
+        )
+
+    assert "(GUSB, GRN)" in text
+    assert "Line oneLine two" not in text

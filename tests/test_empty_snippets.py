@@ -632,3 +632,101 @@ def test_repair_single_flags_too_short_for_removal(cached_config):
     assert result.is_repaired is False
     assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
     assert "too short" in result.message.lower()
+
+
+# ---------------------------------------------------------------------------
+# The repair CLI must write a fix back to the key it read the quote from
+# ---------------------------------------------------------------------------
+
+
+def test_repair_writes_back_to_the_key_it_read_from():
+    """Extraction prefers the non-blank key; write-back must agree.
+
+    With supporting_text blank and snippet holding the real quote, a repair
+    of the snippet used to be written into supporting_text, leaving the
+    snippet wrong and inventing a quote in a field that had none.
+    """
+    from linkml_reference_validator.cli.repair import (
+        _apply_repairs_to_data,
+        _excerpt_key,
+    )
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {
+        "evidence": [
+            {"reference": "PMID:TEST001", "supporting_text": "", "snippet": "CO2 levels"}
+        ]
+    }
+    assert _excerpt_key(data["evidence"][0]) == "snippet"
+
+    report = RepairReport()
+    report.add_result(
+        RepairResult(
+            reference_id="PMID:TEST001",
+            original_text="CO2 levels",
+            was_valid=False,
+            is_repaired=True,
+            repaired_text="CO₂ levels",
+            path="evidence[0]",
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text="CO2 levels",
+                    repaired_text="CO₂ levels",
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+    )
+
+    changed = _apply_repairs_to_data(data, report, None)
+
+    assert changed is True
+    assert data["evidence"][0]["snippet"] == "CO₂ levels"
+    assert data["evidence"][0]["supporting_text"] == ""
+
+
+def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
+    """The ordinary case still writes to supporting_text."""
+    from linkml_reference_validator.cli.repair import (
+        _apply_repairs_to_data,
+        _excerpt_key,
+    )
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {"evidence": [{"reference": "PMID:TEST001", "supporting_text": "CO2 levels"}]}
+    assert _excerpt_key(data["evidence"][0]) == "supporting_text"
+
+    report = RepairReport()
+    report.add_result(
+        RepairResult(
+            reference_id="PMID:TEST001",
+            original_text="CO2 levels",
+            was_valid=False,
+            is_repaired=True,
+            repaired_text="CO₂ levels",
+            path="evidence[0]",
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text="CO2 levels",
+                    repaired_text="CO₂ levels",
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+    )
+
+    _apply_repairs_to_data(data, report, None)
+
+    assert data["evidence"][0]["supporting_text"] == "CO₂ levels"

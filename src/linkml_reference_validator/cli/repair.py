@@ -13,7 +13,7 @@ import typer
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
-from linkml_reference_validator.models import RepairConfig
+from linkml_reference_validator.models import RepairActionType, RepairConfig
 from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 
 from .shared import (
@@ -246,7 +246,17 @@ def text_command(
         typer.echo(f"  ✗ Could not repair: {result.message}")
         for action in result.actions:
             typer.echo(f"    Suggestion: {action.action_type.value}")
-            typer.echo(f"    Confidence: {action.confidence.value} ({action.similarity_score*100:.0f}%)")
+            # No percentage for excerpts that were never compared: a score of
+            # 0% would read as "checked against the reference and matched
+            # nothing", which is the misreading the separate action type
+            # exists to prevent. format_report omits it for the same reason.
+            if action.action_type == RepairActionType.INSUFFICIENT_EXCERPT:
+                typer.echo(f"    Confidence: {action.confidence.value}")
+            else:
+                typer.echo(
+                    f"    Confidence: {action.confidence.value} "
+                    f"({action.similarity_score*100:.0f}%)"
+                )
             if action.repaired_text:
                 typer.echo(f"    Best match: {action.repaired_text[:80]}...")
 

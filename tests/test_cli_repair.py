@@ -562,3 +562,43 @@ def test_repair_data_exits_zero_when_all_excerpts_valid(tmp_path, cli_cache_dir)
     )
 
     assert result.exit_code == 0
+
+
+def test_repair_text_empty_omits_meaningless_similarity(cli_cache_dir):
+    """No comparison happened, so no percentage should be shown for it.
+
+    format_report drops the similarity line for these; this command must
+    agree rather than printing "VERY_LOW (0%)" for a quote that was never
+    compared against anything.
+    """
+    result = runner.invoke(
+        app,
+        [
+            "repair",
+            "text",
+            "",
+            "PMID:TEST001",
+            "--cache-dir",
+            str(cli_cache_dir),
+        ],
+    )
+
+    assert "0%" not in result.stdout
+    assert "INSUFFICIENT_EXCERPT" in result.stdout
+
+
+def test_repair_text_keeps_similarity_for_compared_quotes(cli_cache_dir):
+    """A quote that really was compared still reports its score."""
+    result = runner.invoke(
+        app,
+        [
+            "repair",
+            "text",
+            "a wholly fabricated sentence that is not in the paper",
+            "PMID:TEST001",
+            "--cache-dir",
+            str(cli_cache_dir),
+        ],
+    )
+
+    assert "%" in result.stdout

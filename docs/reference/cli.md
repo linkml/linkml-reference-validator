@@ -622,6 +622,10 @@ validation:
     geo: GEO
     NCBIGeo: GEO
 
+  # Minimum non-whitespace characters an excerpt must quote.
+  # 0 disables the check; empty excerpts are rejected regardless.
+  min_excerpt_length: 0
+
 repair:
   # Confidence thresholds
   auto_fix_threshold: 0.95

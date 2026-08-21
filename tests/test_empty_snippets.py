@@ -339,13 +339,14 @@ def test_report_shows_empty_excerpt_distinctly(cached_config):
     report = repairer.repair_batch([("", "PMID:TEST001", "evidence[0].snippet")])
 
     output = repairer.format_report(report)
-    section = output.split("INSUFFICIENT EXCERPTS")[1].split("Summary:")[0]
+    section = output.split("INSUFFICIENT EXCERPTS")[1].split("RECOMMENDED REMOVALS")[0]
 
     assert "Excerpt: (empty)" in section
     assert "evidence[0].snippet" in section
-    # Scoped to the section: a similarity score is meaningful for quotes that
-    # really were compared, so the assertion must not depend on the batch
-    # happening to contain none of those.
+    # Scoped to this section alone - the removals section that follows it is
+    # cut off deliberately. A similarity score is meaningful for quotes that
+    # really were compared, so this assertion must not start failing merely
+    # because a fabricated quote joins the batch.
     assert "Similarity" not in section
 
 

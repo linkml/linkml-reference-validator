@@ -31,7 +31,8 @@ class RepairActionType(str, Enum):
     FUZZY_CORRECTION = "FUZZY_CORRECTION"  # Replace with closest matching text
     REMOVAL = "REMOVAL"  # Flag for removal (fabricated/not found)
     UNVERIFIABLE = "UNVERIFIABLE"  # No abstract available
-    EMPTY_EXCERPT = "EMPTY_EXCERPT"  # Quotes nothing; no comparison was possible
+    # Quotes nothing, or too little to verify; no comparison was possible
+    INSUFFICIENT_EXCERPT = "INSUFFICIENT_EXCERPT"
 
 
 class RepairConfidence(str, Enum):
@@ -141,8 +142,8 @@ class RepairAction:
             return False
         if self.action_type == RepairActionType.UNVERIFIABLE:
             return False
-        # An empty excerpt has no correct replacement to apply
-        if self.action_type == RepairActionType.EMPTY_EXCERPT:
+        # An insufficient excerpt has no correct replacement to apply
+        if self.action_type == RepairActionType.INSUFFICIENT_EXCERPT:
             return False
         return self.confidence == RepairConfidence.HIGH and self.repaired_text is not None
 
@@ -241,45 +242,44 @@ class RepairReport:
                     count += 1
         return count
 
+    def _count_results_with(self, action_type: RepairActionType) -> int:
+        """Count results carrying at least one action of the given type.
+
+        Args:
+            action_type: The action type to look for
+
+        Returns:
+            Number of results with such an action
+
+        Examples:
+            >>> report = RepairReport()
+            >>> report._count_results_with(RepairActionType.REMOVAL)
+            0
+        """
+        return sum(
+            1
+            for r in self.results
+            if any(a.action_type == action_type for a in r.actions)
+        )
+
     @property
     def removal_count(self) -> int:
         """Number of items flagged for removal."""
-        count = 0
-        for r in self.results:
-            has_removal = any(
-                a.action_type == RepairActionType.REMOVAL for a in r.actions
-            )
-            if has_removal:
-                count += 1
-        return count
+        return self._count_results_with(RepairActionType.REMOVAL)
 
     @property
     def unverifiable_count(self) -> int:
         """Number of items that cannot be verified (no abstract)."""
-        count = 0
-        for r in self.results:
-            has_unverifiable = any(
-                a.action_type == RepairActionType.UNVERIFIABLE for a in r.actions
-            )
-            if has_unverifiable:
-                count += 1
-        return count
+        return self._count_results_with(RepairActionType.UNVERIFIABLE)
 
     @property
-    def empty_excerpt_count(self) -> int:
-        """Number of items whose excerpt quotes nothing.
+    def insufficient_excerpt_count(self) -> int:
+        """Number of items whose excerpt quotes nothing, or too little to verify.
 
         Counted separately from removals: no comparison against the reference
         was made, so these are not a verdict about how well a quote matched.
         """
-        count = 0
-        for r in self.results:
-            has_empty = any(
-                a.action_type == RepairActionType.EMPTY_EXCERPT for a in r.actions
-            )
-            if has_empty:
-                count += 1
-        return count
+        return self._count_results_with(RepairActionType.INSUFFICIENT_EXCERPT)
 
 
 class RepairConfig(BaseModel):

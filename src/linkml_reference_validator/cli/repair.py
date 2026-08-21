@@ -178,7 +178,11 @@ def data_command(
             typer.echo(f"  Applied {report.auto_fixed_count} auto-fix(es)")
 
     # Exit with appropriate code
-    if report.removal_count > 0 or report.unverifiable_count > 0:
+    if (
+        report.removal_count > 0
+        or report.unverifiable_count > 0
+        or report.insufficient_excerpt_count > 0
+    ):
         typer.echo("\n⚠ Manual review required for some items")
         raise typer.Exit(1)
     elif report.suggested_count > 0:

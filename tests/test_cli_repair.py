@@ -468,3 +468,97 @@ def test_repair_data_help():
     result = runner.invoke(app, ["repair", "data", "--help"])
     assert result.exit_code == 0
     assert "data file" in result.stdout.lower()
+
+
+# ============================================================================
+# Exit status for substantively empty excerpts
+#
+# An empty excerpt must fail the command, not just appear in the report body:
+# CI jobs gate on the exit status, and a green run on exactly the defect the
+# validator exists to catch is worse than no check at all.
+# ============================================================================
+
+
+_EMPTY_EXCERPT_SCHEMA = """
+id: https://example.org/test
+name: test
+default_prefix: test
+
+classes:
+  Statement:
+    tree_root: true
+    attributes:
+      text:
+        range: string
+      evidence:
+        multivalued: true
+        range: Evidence
+
+  Evidence:
+    attributes:
+      reference:
+        range: string
+      supporting_text:
+        range: string
+"""
+
+
+def test_repair_data_exits_nonzero_for_empty_excerpt(tmp_path, cli_cache_dir):
+    """A file whose only defect is an empty excerpt must exit non-zero."""
+    schema_file = tmp_path / "schema.yaml"
+    schema_file.write_text(_EMPTY_EXCERPT_SCHEMA)
+
+    data_file = tmp_path / "data.yaml"
+    data_file.write_text(
+        'text: "Test statement"\n'
+        "evidence:\n"
+        '  - reference: "PMID:TEST001"\n'
+        '    supporting_text: ""\n'
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "repair",
+            "data",
+            str(data_file),
+            "--schema",
+            str(schema_file),
+            "--cache-dir",
+            str(cli_cache_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Manual review required" in result.stdout
+
+
+def test_repair_data_exits_zero_when_all_excerpts_valid(tmp_path, cli_cache_dir):
+    """The check above must not make clean files fail."""
+    schema_file = tmp_path / "schema.yaml"
+    schema_file.write_text(_EMPTY_EXCERPT_SCHEMA)
+
+    data_file = tmp_path / "data.yaml"
+    data_file.write_text(
+        'text: "Test statement"\n'
+        "evidence:\n"
+        '  - reference: "PMID:TEST001"\n'
+        '    supporting_text: "Protein X functions in cell cycle regulation"\n'
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "repair",
+            "data",
+            str(data_file),
+            "--schema",
+            str(schema_file),
+            "--cache-dir",
+            str(cli_cache_dir),
+            "--dry-run",
+        ],
+    )
+
+    assert result.exit_code == 0

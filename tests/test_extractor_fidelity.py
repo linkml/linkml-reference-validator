@@ -208,6 +208,33 @@ def test_pmc_xml_fetch_still_rejects_stub(mock_efetch):
 
 
 @patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
+def test_pmc_xml_fetch_preserves_accents_from_non_utf8_article(mock_efetch):
+    """Entrez hands back str; an ISO-8859-1 declaration must not corrupt it.
+
+    This is the production path. Re-encoding that str to UTF-8 leaves the
+    declaration saying ISO-8859-1, and the parser believes the declaration -
+    turning "François" into "FranÃ§ois" in author names and unit symbols.
+    """
+    handle = MagicMock()
+    handle.read.return_value = (
+        '<?xml version="1.0" encoding="ISO-8859-1"?>'
+        "<article><body><sec><p>"
+        + LONG_BODY_FILLER
+        + "Fran\xe7ois measured the r\xe9sultats."
+        + "</p></sec></body></article>"
+    )
+    mock_efetch.return_value = handle
+
+    text = PMIDSource()._fetch_pmc_xml(
+        "6358485", ReferenceValidationConfig(rate_limit_delay=0.0)
+    )
+
+    assert text is not None
+    assert "François measured the résultats." in text
+    assert "FranÃ§ois" not in text
+
+
+@patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
 def test_pmc_xml_fetch_accepts_bytes(mock_efetch):
     """Entrez may hand back bytes; extraction must cope either way."""
     handle = MagicMock()

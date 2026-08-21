@@ -422,9 +422,11 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
-        if isinstance(xml_content, str):
-            xml_content = xml_content.encode("utf-8")
-
+        # Handed on as-is. Entrez returns str, and re-encoding it to UTF-8
+        # would leave any ISO-8859-1 declaration in place for the parser to
+        # believe, turning "François" into "FranÃ§ois". BeautifulSoup fixes up
+        # the declaration itself when given str.
+        #
         # Delegated to the shared extractor so body parsing and PMC
         # placeholder detection cannot drift from the rest of the ETL layer.
         # This module used to carry its own copy, which discarded any article

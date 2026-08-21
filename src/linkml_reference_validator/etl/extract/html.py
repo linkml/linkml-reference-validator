@@ -1,7 +1,7 @@
 """HTML content extractor."""
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from bs4 import BeautifulSoup  # type: ignore
 
@@ -44,7 +44,9 @@ class HTMLExtractor(Extractor):
     def formats(cls) -> list[str]:
         return ["html"]
 
-    def extract(self, data: bytes, *, content_type: Optional[str] = None) -> Optional[str]:
+    def extract(
+        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+    ) -> Optional[str]:
         soup = BeautifulSoup(data, "html.parser")
 
         for tag in soup(["script", "style"]):

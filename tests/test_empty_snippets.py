@@ -9,7 +9,7 @@ Every layer must now treat a present-but-blank excerpt as an error:
 
 - ``SupportingTextValidator`` rejects blank text before it ever fetches
 - the LinkML plugin distinguishes an absent excerpt slot from a blank one
-- the repairer flags blank text for removal instead of attempting a fix
+- the repairer flags blank text for review instead of attempting a fix
 - the repair CLI collects blank snippets instead of silently dropping them
 """
 
@@ -152,13 +152,13 @@ def test_plugin_rejects_snippet_quoting_nothing(plugin, deep_context):
 
 
 def test_repair_single_flags_excerpt_quoting_nothing(cached_config):
-    """A bracket-only excerpt is flagged for removal, not repaired."""
+    """A bracket-only excerpt is flagged for review, not repaired."""
     repairer = SupportingTextRepairer(cached_config, RepairConfig())
 
     result = repairer.repair_single("[editorial note]", "PMID:TEST001")
 
     assert result.is_repaired is False
-    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
 
 
 def test_is_blank_text_non_string():
@@ -307,10 +307,10 @@ def test_plugin_valid_snippet_still_passes(plugin, deep_context):
 
 
 @pytest.mark.parametrize("text", ["", "  "])
-def test_repair_single_flags_blank_as_empty_excerpt(cached_config, text):
+def test_repair_single_flags_blank_as_insufficient(cached_config, text):
     """A blank snippet cannot be repaired; it is flagged for human review.
 
-    Reported as EMPTY_EXCERPT rather than REMOVAL: a removal recommendation
+    Reported as INSUFFICIENT_EXCERPT rather than REMOVAL: a removal recommendation
     means "this quote does not match the reference", a verdict reached by
     comparison. No comparison happens here, so borrowing that category would
     misreport how the conclusion was reached.
@@ -322,7 +322,7 @@ def test_repair_single_flags_blank_as_empty_excerpt(cached_config, text):
     assert result.was_valid is False
     assert result.is_repaired is False
     assert result.repaired_text is None
-    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
     assert result.actions[0].can_auto_fix is False
     assert "empty" in result.message.lower()
     assert result.path == "evidence[0].snippet"
@@ -339,14 +339,17 @@ def test_report_shows_empty_excerpt_distinctly(cached_config):
     report = repairer.repair_batch([("", "PMID:TEST001", "evidence[0].snippet")])
 
     output = repairer.format_report(report)
+    section = output.split("INSUFFICIENT EXCERPTS")[1].split("Summary:")[0]
 
-    assert "EMPTY" in output.upper()
-    assert "Similarity" not in output
-    assert "Snippet: '...'" not in output
-    assert "evidence[0].snippet" in output
+    assert "Excerpt: (empty)" in section
+    assert "evidence[0].snippet" in section
+    # Scoped to the section: a similarity score is meaningful for quotes that
+    # really were compared, so the assertion must not depend on the batch
+    # happening to contain none of those.
+    assert "Similarity" not in section
 
 
-def test_report_summary_counts_empty_excerpts(cached_config):
+def test_report_summary_counts_insufficient_excerpts(cached_config):
     """Giving empty excerpts their own section must not drop them from the tally."""
     repairer = SupportingTextRepairer(cached_config, RepairConfig())
     report = repairer.repair_batch(
@@ -357,9 +360,9 @@ def test_report_summary_counts_empty_excerpts(cached_config):
         ]
     )
 
-    assert report.empty_excerpt_count == 2
+    assert report.insufficient_excerpt_count == 2
     assert report.removal_count == 1
-    assert "Empty excerpts: 2" in repairer.format_report(report)
+    assert "Insufficient excerpts: 2" in repairer.format_report(report)
 
 
 def test_report_still_shows_fabricated_removals(cached_config):
@@ -408,7 +411,7 @@ def test_blank_check_precedes_skip_references(cached_config):
 
     result = repairer.repair_single("", "PMID:TEST001")
 
-    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
     assert "empty" in result.message.lower()
 
 
@@ -424,7 +427,7 @@ def test_blank_check_precedes_trusted_low_similarity(cached_config):
 
     result = repairer.repair_single("", "PMID:TEST001")
 
-    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
 
 
 def test_skip_references_still_honoured_for_real_text(cached_config):
@@ -626,5 +629,5 @@ def test_repair_single_flags_too_short_for_removal(cached_config):
     result = repairer.repair_single("the gene", "PMID:TEST001")
 
     assert result.is_repaired is False
-    assert [a.action_type for a in result.actions] == [RepairActionType.EMPTY_EXCERPT]
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
     assert "too short" in result.message.lower()

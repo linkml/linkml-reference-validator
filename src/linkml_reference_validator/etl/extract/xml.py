@@ -1,7 +1,7 @@
 """JATS/PMC XML content extractor."""
 
 import logging
-from typing import Optional
+from typing import Optional, Union
 
 from bs4 import BeautifulSoup  # type: ignore
 
@@ -86,10 +86,13 @@ class XMLExtractor(Extractor):
     def formats(cls) -> list[str]:
         return ["xml"]
 
-    def extract(self, data: bytes, *, content_type: Optional[str] = None) -> Optional[str]:
-        # Handed to BeautifulSoup as bytes rather than decoded here: a manual
-        # decode assumes UTF-8 and raises on any article whose XML declares
-        # another encoding, whereas the parser honours the declaration.
+    def extract(
+        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+    ) -> Optional[str]:
+        # Passed through untouched, bytes or str. Decoding bytes here would
+        # assume UTF-8 and raise on any article declaring another encoding;
+        # re-encoding str here would leave that declaration contradicting the
+        # bytes. The parser gets both cases right on its own.
         soup = BeautifulSoup(data, "xml")
         body = soup.find("body")
         if not body:

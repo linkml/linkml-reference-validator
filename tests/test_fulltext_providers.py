@@ -151,9 +151,9 @@ class TestOpenAlexProvider:
 
 
 class TestPMCProvider:
-    @pytest.fixture
-    def config(self, tmp_path):
-        return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+    # Uses the module-level `config` fixture: the PMC floor tests below live
+    # outside this class, and a second identical fixture here would mean an
+    # edit to one of them never reaches the other.
 
     def test_name(self):
         from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
@@ -233,23 +233,65 @@ def test_pmc_locate_rejects_html_below_the_floor(config):
     assert loc is None
 
 
-def test_pmc_locate_accepts_text_at_the_floor_boundary(config):
-    """One character past the floor is full text; the gate is exclusive."""
+def _pmc_xml_gate(config, text):
+    """Drive PMCFullTextProvider.locate's XML gate with body text of a given size."""
     from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
 
     provider = PMCFullTextProvider()
+    xml = f"<article><body><p>{text}</p></body></article>".encode()
+    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+         patch.object(provider, "_fetch_pmc_xml_source", return_value=xml), \
+         patch.object(provider, "_fetch_pmc_html", return_value=None):
+        return provider.locate(ReferenceIdentifiers(pmcid="999"), config) is not None
 
+
+def _pmc_html_gate(config, text):
+    """Drive PMCFullTextProvider.locate's HTML fallback gate."""
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    provider = PMCFullTextProvider()
     with patch.object(provider, "_resolve_pmcid", return_value="999"), \
          patch.object(provider, "_fetch_pmc_xml_source", return_value=None), \
-         patch.object(provider, "_fetch_pmc_html", return_value="x" * MIN_FULLTEXT_CHARS):
-        assert provider.locate(ReferenceIdentifiers(pmcid="999"), config) is None
+         patch.object(provider, "_fetch_pmc_html", return_value=text):
+        return provider.locate(ReferenceIdentifiers(pmcid="999"), config) is not None
 
-    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
-         patch.object(provider, "_fetch_pmc_xml_source", return_value=None), \
-         patch.object(
-             provider, "_fetch_pmc_html", return_value="x" * (MIN_FULLTEXT_CHARS + 1)
-         ):
-        assert provider.locate(ReferenceIdentifiers(pmcid="999"), config) is not None
+
+def _pmid_xml_gate(config, text):
+    """Drive PMIDSource._fetch_pmc_fulltext's XML gate."""
+    from linkml_reference_validator.etl.sources.pmid import PMIDSource
+
+    source = PMIDSource()
+    with patch.object(source, "_get_pmcid", return_value="999"), \
+         patch.object(source, "_fetch_pmc_xml", return_value=text), \
+         patch.object(source, "_fetch_pmc_html", return_value=None):
+        return source._fetch_pmc_fulltext("123", config)[0] is not None
+
+
+def _pmid_html_gate(config, text):
+    """Drive PMIDSource._fetch_pmc_fulltext's HTML fallback gate."""
+    from linkml_reference_validator.etl.sources.pmid import PMIDSource
+
+    source = PMIDSource()
+    with patch.object(source, "_get_pmcid", return_value="999"), \
+         patch.object(source, "_fetch_pmc_xml", return_value=None), \
+         patch.object(source, "_fetch_pmc_html", return_value=text):
+        return source._fetch_pmc_fulltext("123", config)[0] is not None
+
+
+@pytest.mark.parametrize(
+    "drive",
+    [_pmc_xml_gate, _pmc_html_gate, _pmid_xml_gate, _pmid_html_gate],
+    ids=["pmc-xml", "pmc-html", "pmid-xml", "pmid-html"],
+)
+def test_every_floor_gate_is_exclusive(config, drive):
+    """All four gates must agree that the floor itself is not enough.
+
+    Parametrized rather than written once: an earlier version pinned this on
+    the PMC HTML fallback alone, so the other three could each be changed
+    from > to >= with the suite still green.
+    """
+    assert drive(config, "x" * MIN_FULLTEXT_CHARS) is False
+    assert drive(config, "x" * (MIN_FULLTEXT_CHARS + 1)) is True
 
 
 def test_pmid_fulltext_rejects_responses_below_the_floor(config):

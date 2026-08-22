@@ -33,6 +33,13 @@ logger = logging.getLogger(__name__)
 # on the HTML paths this length gate is the *only* thing standing between a
 # placeholder page and the cache - tying the two together keeps that true if
 # the notice length is ever raised.
+#
+# The two move together, but their safe directions are opposite. Raising
+# MAX_STUB_NOTICE_CHARS to catch a longer notice wording is safe, and is the
+# case this coupling exists for. LOWERING it - the tempting fix for a short
+# erratum being discarded for saying "restricted" - drags this gate down with
+# it and starts admitting stubs in the band it just vacated. Lower the notice
+# length only with a floor kept here.
 _MIN_PMC_FULLTEXT_CHARS = MAX_STUB_NOTICE_CHARS
 
 

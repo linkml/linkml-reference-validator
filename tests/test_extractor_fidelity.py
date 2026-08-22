@@ -536,7 +536,10 @@ def test_extract_scope_matches_extract_for_a_plain_region():
     """The scope-taking entry point and the parsing one must agree."""
     from bs4 import BeautifulSoup
 
-    markup = "<div><p>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</p></div>"
+    markup = (
+        "<div><script>JUNKSCRIPT</script><style>JUNKSTYLE</style>"
+        "<p>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</p></div>"
+    )
     region = BeautifulSoup(markup, "html.parser").find("div")
 
     assert HTMLExtractor().extract_scope(region) == HTMLExtractor().extract(markup)
@@ -589,3 +592,42 @@ def test_extract_scope_drops_script_and_style():
     assert "JUNKSCRIPT" not in text
     assert "JUNKSTYLE" not in text
     assert "Variants near (GUSB, GRN) were found." in text
+
+
+def test_extract_scope_is_idempotent():
+    """Extraction must be repeatable on the same region.
+
+    The block fallback marks boundaries by inserting newlines; doing that in
+    the caller's tree meant a second call inserted a second separator after
+    every block, so the text grew on each pass.
+    """
+    from bs4 import BeautifulSoup
+
+    region = BeautifulSoup(
+        "<div class='b'><div>One</div><div>Two</div></div>", "html.parser"
+    ).find("div", class_="b")
+    extractor = HTMLExtractor()
+
+    first = extractor.extract_scope(region)
+
+    assert extractor.extract_scope(region) == first
+    assert extractor.extract_scope(region) == first
+
+
+def test_extract_scope_leaves_the_caller_tree_alone():
+    """A caller's parsed document must survive extraction unchanged.
+
+    extract_scope takes a tag the caller owns and still holds a reference to,
+    so stripping script/style and rewriting <br> in place would hand back a
+    document the caller never asked to have edited.
+    """
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(
+        "<div class='b'><script>JUNK</script><p>One<br>Two</p></div>", "html.parser"
+    )
+    before = str(soup)
+
+    HTMLExtractor().extract_scope(soup.find("div", class_="b"))
+
+    assert str(soup) == before

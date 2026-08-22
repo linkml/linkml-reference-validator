@@ -354,6 +354,10 @@ class PMIDSource(ReferenceSource):
         if not pmcid:
             return None, "no_pmc"
 
+        # Gated on the stub-notice length for the same reason as the PMC
+        # provider (see _MIN_PMC_FULLTEXT_CHARS there): a response no longer
+        # than a placeholder notice is almost always one, and on the HTML
+        # fallback below this length check is the only stub defence there is.
         full_text = self._fetch_pmc_xml(pmcid, config)
         if full_text and len(full_text) > MAX_STUB_NOTICE_CHARS:
             return full_text, "full_text_xml"

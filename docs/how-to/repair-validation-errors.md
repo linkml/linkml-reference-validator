@@ -112,7 +112,7 @@ Flags text that appears fabricated or hallucinated:
 
 ```
 RECOMMENDED REMOVALS:
-  PMID:34567890 at evidence[2]:
+  PMID:34567890 at evidence[2].supporting_text:
     Similarity: 8%
     Snippet: 'This completely made up text...'
 ```
@@ -289,6 +289,33 @@ The supporting text wasn't found in the reference. Possible causes:
 - Text is in figures/tables (not extracted)
 - Wrong PMID
 - AI-generated/hallucinated quote
+
+### "Supporting text is empty"
+
+The excerpt is empty or whitespace-only, so there is nothing to match against
+the reference. This is usually a bug in whatever generated the data (for
+example, a string slice with a backwards range yielding `""`).
+
+Empty excerpts cannot be repaired automatically — there is no text to correct,
+and fuzzy-matching nothing against the reference would invent a quote. They
+appear under **INSUFFICIENT EXCERPTS (nothing to verify)** in the report, so
+you can supply the real quote or drop the evidence item.
+
+They are deliberately *not* counted as removals. A removal recommendation means
+"this quote does not match the reference", a verdict reached by comparing the
+two; here no comparison happened. So `removal_count` excludes them and the
+action type is `INSUFFICIENT_EXCERPT`, not `REMOVAL` — worth knowing if you
+script against the report. They do still make `repair data` exit non-zero.
+
+### "Supporting text is too short"
+
+The excerpt is below the `min_excerpt_length` you configured (off by default,
+and set under `validation:`; see
+[How It Works](../concepts/how-it-works.md)). A very short excerpt matches
+almost any paper by chance, so it is weak evidence even when the match succeeds.
+
+Like empty excerpts, these report under **INSUFFICIENT EXCERPTS** rather than
+being repaired: there is no way to guess which longer passage the curator meant.
 
 ### "Reference content not available"
 

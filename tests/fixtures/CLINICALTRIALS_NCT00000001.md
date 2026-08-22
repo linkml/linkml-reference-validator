@@ -1,5 +1,6 @@
 ---
 reference_id: clinicaltrials:NCT00000001
+extractor_version: 1
 title: A Phase III Study of Drug X for Treatment of Disease Y
 content_type: summary
 ---

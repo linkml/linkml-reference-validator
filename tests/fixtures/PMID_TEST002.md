@@ -1,5 +1,6 @@
 ---
 reference_id: PMID:TEST002
+extractor_version: 1
 title: Role of Protein Y in apoptosis pathway
 authors:
 - Brown M

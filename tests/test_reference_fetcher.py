@@ -1,5 +1,7 @@
 """Tests for reference fetcher."""
 
+import logging
+
 import pytest
 from unittest.mock import patch, MagicMock
 from linkml_reference_validator.models import (
@@ -7,7 +9,11 @@ from linkml_reference_validator.models import (
     ReferenceContent,
     FullTextLocation,
 )
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    EXTRACTOR_CACHE_VERSION,
+    ReferenceFetcher,
+)
+from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
 from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
@@ -1244,3 +1250,305 @@ def test_materialize_trusts_sniffed_format_over_hint(tmp_path):
     assert fmt == "html"
     assert pdf_bytes is None
     assert error is False
+
+
+# ============================================================================
+# Cache invalidation on extractor changes
+#
+# Fixing an extractor does not rewrite what it already cached. Entries written
+# before the stub-detection and markup-welding fixes hold text those bugs
+# produced - an 8.7 KB placeholder labelled as full text, or gene symbols
+# welded to their punctuation - and are served from disk forever, so correct
+# snippets keep being rejected with nothing in the output to explain why.
+# See https://github.com/monarch-initiative/genesets/issues/10
+# ============================================================================
+
+
+def _cached_text(fetcher, reference_id):
+    return fetcher.get_cache_path(reference_id).read_text(encoding="utf-8")
+
+
+def _unstamp(fetcher, reference_id):
+    """Rewrite a cache entry as an older extractor would have left it."""
+    path = fetcher.get_cache_path(reference_id)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n", ""
+        ),
+        encoding="utf-8",
+    )
+
+
+def _source_returning(mocker, content):
+    """Patch the registry so every reference resolves to a source yielding ``content``."""
+    return mocker.patch.object(
+        ReferenceSourceRegistry,
+        "get_source",
+        return_value=mocker.Mock(
+            return_value=mocker.Mock(fetch=mocker.Mock(return_value=content))
+        ),
+    )
+
+
+def test_saved_entry_carries_the_extractor_version(fetcher):
+    """Every entry records which extraction it came from."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+
+    assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in _cached_text(
+        fetcher, "PMID:1"
+    )
+
+
+def test_entry_from_the_current_extractor_is_served(fetcher):
+    """The ordinary case: a current entry still comes back from disk."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert loaded.content == "Body text."
+
+
+def test_entry_without_a_version_is_not_served(fetcher):
+    """Entries written before the stamp existed are the poisoned ones."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+
+    assert fetcher._load_from_disk("PMID:1") is None
+
+
+def test_entry_from_an_older_extractor_is_not_served(fetcher):
+    """A stamp older than the current one is equally stale."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}",
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION - 1}",
+        ),
+        encoding="utf-8",
+    )
+
+    assert fetcher._load_from_disk("PMID:1") is None
+
+
+def test_entry_from_a_newer_extractor_is_served(fetcher):
+    """A newer stamp is not stale - it just means an older tool is reading it."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}",
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION + 1}",
+        ),
+        encoding="utf-8",
+    )
+
+    assert fetcher._load_from_disk("PMID:1") is not None
+
+
+def test_legacy_text_entry_is_still_served(fetcher):
+    """The pre-Markdown format is deliberately exempt from the version check.
+
+    Nothing has written it for a long time, so such entries are as likely to
+    be hand-maintained as tool-written, and they are not what the extractor
+    bugs produced - those wrote Markdown. Invalidating them would discard
+    someone's data to fix a problem they do not have.
+    """
+    legacy = fetcher.get_cache_path("PMID:1").with_suffix(".txt")
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("Body text from a legacy cache entry.", encoding="utf-8")
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert "legacy cache entry" in loaded.content
+
+
+def test_entry_whose_id_contains_a_horizontal_rule_is_not_perpetually_stale(fetcher):
+    """Frontmatter ends at a line that is ``---``, not at ``---`` inside a value.
+
+    A URL reference containing ``---`` would otherwise truncate the searched
+    block, hiding the stamp - so the entry would read as unstamped, be
+    re-fetched, be rewritten with the same id, and read as unstamped again on
+    every single run.
+    """
+    reference_id = "url:https://example.com/a---b"
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id=reference_id, content="Body text.")
+    )
+
+    assert not fetcher._is_stale_cache_entry(_cached_text(fetcher, reference_id))
+
+    loaded = fetcher._load_from_disk(reference_id)
+    assert loaded is not None
+    assert loaded.reference_id == reference_id
+    assert loaded.content == "Body text."
+
+
+def test_horizontal_rule_in_a_title_does_not_truncate_the_frontmatter(fetcher):
+    """The same holds for any other value the source supplies."""
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:1",
+            title="Before --- after",
+            content="Body text.",
+            journal="Nature",
+        )
+    )
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert loaded.journal == "Nature"
+
+
+def test_legacy_text_entry_is_exempt_even_if_it_starts_with_a_rule(fetcher):
+    """The exemption follows the file that was read, not what its text looks like.
+
+    A ``.txt`` entry whose first line happens to be ``---`` has no stamp to find,
+    so routing it by content rather than by which branch opened it would discard
+    it - the exact "someone's data for a problem they do not have" the exemption
+    exists to prevent.
+    """
+    legacy = fetcher.get_cache_path("PMID:1").with_suffix(".txt")
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("---\nBody text from a legacy cache entry.", encoding="utf-8")
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert "legacy cache entry" in loaded.content
+
+
+def test_stale_entry_is_refetched_and_restamped(fetcher, mocker):
+    """A stale entry is replaced rather than merely ignored."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+
+    _source_returning(
+        mocker, ReferenceContent(reference_id="PMID:1", content="Freshly fetched text.")
+    )
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Freshly fetched text."
+    assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in _cached_text(
+        fetcher, "PMID:1"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Falling back to a stale entry when the source cannot be reached.
+#
+# Treating a stale entry as absent is only safe while the source can supply a
+# replacement. Offline, during an NCBI outage, or for a record since withdrawn,
+# "this text is out of date" must not become "this reference does not exist" -
+# otherwise the first offline run after upgrading reports every reference as
+# not found.
+# ---------------------------------------------------------------------------
+
+
+def test_stale_entry_is_served_when_the_source_cannot_be_reached(fetcher, mocker):
+    """An unreachable source falls back to the out-of-date copy on disk."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+
+    _source_returning(mocker, None)
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Stale body text."
+
+
+def test_stale_fallback_warns_that_the_text_is_out_of_date(fetcher, mocker, caplog):
+    """Serving known-suspect text is a warning, not a silent success."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    with caplog.at_level(logging.WARNING):
+        fetcher.fetch("PMID:1")
+
+    warnings = [r.getMessage() for r in caplog.records if r.levelno >= logging.WARNING]
+    assert any("PMID:1" in message for message in warnings)
+    assert any("older extractor" in message for message in warnings)
+
+
+def test_stale_fallback_is_not_written_back_to_disk(fetcher, mocker):
+    """The entry stays stale, so the next reachable run still refreshes it."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    fetcher.fetch("PMID:1")
+
+    assert "extractor_version:" not in _cached_text(fetcher, "PMID:1")
+
+
+def test_stale_entry_is_served_when_no_source_handles_the_id(fetcher, mocker):
+    """An unroutable ID is the same problem: the cached copy beats nothing."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+
+    mocker.patch.object(ReferenceSourceRegistry, "get_source", return_value=None)
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Stale body text."
+
+
+def test_force_refresh_does_not_fall_back_to_the_stale_entry(fetcher, mocker):
+    """An explicit refresh that fails must report failure, not paper over it."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    assert fetcher.fetch("PMID:1", force_refresh=True) is None
+
+
+def test_missing_entry_still_returns_none_when_the_source_fails(fetcher, mocker):
+    """The fallback invents nothing: no cache entry means no result."""
+    _source_returning(mocker, None)
+
+    assert fetcher.fetch("PMID:1") is None
+
+
+def test_cache_export_still_reads_unstamped_entries(fetcher):
+    """Export and enrichment must not lose entries the validator re-fetches.
+
+    iter_cached_references is what `cache export` and the Zotero enrichment
+    walk; treating an unstamped entry as absent there would silently drop it
+    from an export rather than just re-fetching it for validation.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", title="Kept", content="Body.")
+    )
+    _unstamp(fetcher, "PMID:1")
+
+    assert [r.title for r in fetcher.iter_cached_references()] == ["Kept"]

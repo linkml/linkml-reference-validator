@@ -13,7 +13,7 @@ import typer
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
-from linkml_reference_validator.models import RepairConfig
+from linkml_reference_validator.models import RepairActionType, RepairConfig
 from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 
 from .shared import (
@@ -178,7 +178,11 @@ def data_command(
             typer.echo(f"  Applied {report.auto_fixed_count} auto-fix(es)")
 
     # Exit with appropriate code
-    if report.removal_count > 0 or report.unverifiable_count > 0:
+    if (
+        report.removal_count > 0
+        or report.unverifiable_count > 0
+        or report.insufficient_excerpt_count > 0
+    ):
         typer.echo("\n⚠ Manual review required for some items")
         raise typer.Exit(1)
     elif report.suggested_count > 0:
@@ -242,7 +246,17 @@ def text_command(
         typer.echo(f"  ✗ Could not repair: {result.message}")
         for action in result.actions:
             typer.echo(f"    Suggestion: {action.action_type.value}")
-            typer.echo(f"    Confidence: {action.confidence.value} ({action.similarity_score*100:.0f}%)")
+            # No percentage for excerpts that were never compared: a score of
+            # 0% would read as "checked against the reference and matched
+            # nothing", which is the misreading the separate action type
+            # exists to prevent. format_report omits it for the same reason.
+            if action.action_type == RepairActionType.INSUFFICIENT_EXCERPT:
+                typer.echo(f"    Confidence: {action.confidence.value}")
+            else:
+                typer.echo(
+                    f"    Confidence: {action.confidence.value} "
+                    f"({action.similarity_score*100:.0f}%)"
+                )
             if action.repaired_text:
                 typer.echo(f"    Best match: {action.repaired_text[:80]}...")
 
@@ -298,6 +312,42 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     return RepairConfig()
 
 
+def _excerpt_keys(d: dict) -> list[str]:
+    """Return every key holding an excerpt on this evidence item.
+
+    All of them, not the best of them. The LinkML plugin iterates each excerpt
+    field and checks it, so picking one key here left the second quote on an
+    item silently unvalidated and unrepaired. A blank excerpt alongside a real
+    one is still a defect and is still reported.
+
+    Used by both extraction and write-back, and the excerpt key is carried in
+    the reported path, so a repair cannot land in a different field than the
+    quote came from.
+
+    An item that stores the same quote under both keys is therefore checked and
+    reported once per key. That is the honest reading - both fields are being
+    validated - and it costs no extra fetching, since the reference is served
+    from the in-process cache the second time.
+
+    Args:
+        d: A candidate evidence item
+
+    Returns:
+        The excerpt keys present as strings, in a stable order
+
+    Examples:
+        >>> _excerpt_keys({"supporting_text": "a quote"})
+        ['supporting_text']
+        >>> _excerpt_keys({"supporting_text": "", "snippet": "a quote"})
+        ['supporting_text', 'snippet']
+        >>> _excerpt_keys({"reference": "PMID:1"})
+        []
+    """
+    return [
+        key for key in ("supporting_text", "snippet") if isinstance(d.get(key), str)
+    ]
+
+
 def _extract_evidence_items(
     data: dict,
     target_class: Optional[str],
@@ -322,11 +372,11 @@ def _extract_evidence_items(
         # Look for evidence patterns
         if isinstance(d, dict):
             # Direct evidence item pattern
-            if "supporting_text" in d or "snippet" in d:
-                text = d.get("supporting_text") or d.get("snippet")
-                ref = d.get("reference") or d.get("reference_id")
-                if text and ref:
-                    items.append((text, ref, path))
+            ref = d.get("reference") or d.get("reference_id")
+            if ref:
+                for text_key in _excerpt_keys(d):
+                    key_path = f"{path}.{text_key}" if path else text_key
+                    items.append((d[text_key], ref, key_path))
 
             # Look for evidence list
             for key in ["evidence", "supporting_evidence", "annotations"]:
@@ -386,10 +436,14 @@ def _apply_repairs_to_data(
 
         if isinstance(d, dict):
             # Check if this item needs repair
-            if "supporting_text" in d or "snippet" in d:
-                text_key = "supporting_text" if "supporting_text" in d else "snippet"
-                if path in repairs_by_path:
-                    d[text_key] = repairs_by_path[path]
+            # Keyed by the same path extraction reported, which names the
+            # excerpt field. Choosing a key independently here let a repair of
+            # the snippet be written into supporting_text, leaving the snippet
+            # wrong and inventing a quote in a field that never had one.
+            for text_key in _excerpt_keys(d):
+                key_path = f"{path}.{text_key}" if path else text_key
+                if key_path in repairs_by_path:
+                    d[text_key] = repairs_by_path[key_path]
                     changes_made = True
 
             # Recurse

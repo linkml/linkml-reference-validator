@@ -585,16 +585,16 @@ Repair Report
 ============================================================
 
 HIGH CONFIDENCE FIXES (auto-applicable):
-  PMID:12345678 at evidence[0]:
+  PMID:12345678 at evidence[0].supporting_text:
     Character normalization fix
     'CO2 levels...' → 'CO₂ levels...'
 
 SUGGESTED FIXES (review recommended):
-  PMID:23456789 at evidence[1]:
+  PMID:23456789 at evidence[1].supporting_text:
     Inserted ellipsis between non-contiguous parts
 
 RECOMMENDED REMOVALS (low confidence):
-  PMID:34567890 at evidence[2]:
+  PMID:34567890 at evidence[2].supporting_text:
     Similarity: 8%
     Snippet: 'Fabricated text...'
 
@@ -621,6 +621,10 @@ validation:
   reference_prefix_map:
     geo: GEO
     NCBIGeo: GEO
+
+  # Minimum non-whitespace characters an excerpt must quote.
+  # 0 disables the check; empty excerpts are rejected regardless.
+  min_excerpt_length: 0
 
 repair:
   # Confidence thresholds

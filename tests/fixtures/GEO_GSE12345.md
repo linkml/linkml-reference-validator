@@ -1,5 +1,6 @@
 ---
 reference_id: GEO:GSE12345
+extractor_version: 1
 title: Test GEO Dataset for Validation
 content_type: summary
 ---

@@ -10,7 +10,7 @@ Examples:
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +28,16 @@ class Extractor(ABC):
         ...
 
     @abstractmethod
-    def extract(self, data: bytes, *, content_type: Optional[str] = None) -> Optional[str]:
-        """Extract plain text from ``data``; return None if nothing usable."""
+    def extract(
+        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+    ) -> Optional[str]:
+        """Extract plain text from ``data``; return None if nothing usable.
+
+        Accepts ``str`` as well as ``bytes`` because some sources hand back
+        already-decoded text (Entrez returns a text handle). Markup parsers
+        take either and handle the encoding declaration correctly in both
+        cases; re-encoding such text before passing it in does not.
+        """
         ...
 
 

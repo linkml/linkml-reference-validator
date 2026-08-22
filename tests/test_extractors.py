@@ -102,3 +102,16 @@ def test_pdf_extractor_unknown_backend_raises():
 
     with pytest.raises(ValueError):
         PDFExtractor(backend="not-a-backend")
+
+
+def test_pdf_extractor_rejects_decoded_text():
+    """The base contract allows str, but a PDF is binary and cannot be one.
+
+    Extractor.extract accepts Union[bytes, str] so text sources can pass
+    already-decoded markup. PDF is the one format where that is meaningless,
+    so it says so plainly instead of failing inside the backend.
+    """
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    with pytest.raises(TypeError):
+        PDFExtractor().extract("not really a pdf", content_type="application/pdf")

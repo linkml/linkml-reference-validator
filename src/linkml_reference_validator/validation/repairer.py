@@ -42,6 +42,33 @@ from linkml_reference_validator.validation.supporting_text_validator import (
 logger = logging.getLogger(__name__)
 
 
+def _format_excerpt(text: str, limit: int = 60) -> str:
+    """Render an excerpt for a report, marking emptiness and real truncation.
+
+    Args:
+        text: The excerpt as it appears in the data
+        limit: Longest excerpt shown in full
+
+    Returns:
+        A display string
+
+    Examples:
+        >>> _format_excerpt("a short quote")
+        "'a short quote'"
+        >>> _format_excerpt("")
+        '(empty)'
+        >>> _format_excerpt("   ")
+        '(empty)'
+        >>> _format_excerpt("x" * 70).endswith("...'")
+        True
+    """
+    if not text.strip():
+        return "(empty)"
+    if len(text) <= limit:
+        return f"'{text}'"
+    return f"'{text[:limit]}...'"
+
+
 class SupportingTextRepairer:
     """Repair supporting text validation errors.
 
@@ -460,7 +487,46 @@ class SupportingTextRepairer:
             >>> # In real usage:
             >>> # repairer = SupportingTextRepairer(ReferenceValidationConfig())
             >>> # result = repairer.repair_single("some text", "PMID:123")
+            >>> repairer = SupportingTextRepairer(ReferenceValidationConfig())
+            >>> result = repairer.repair_single("", "PMID:123")
+            >>> result.is_repaired
+            False
+            >>> result.actions[0].action_type.value
+            'INSUFFICIENT_EXCERPT'
         """
+        # An insubstantial excerpt carries too little signal to repair from:
+        # fuzzy matching it against the reference would invent a quote nobody
+        # wrote. Flag it for human review instead, without fetching anything.
+        #
+        # Deliberately ahead of skip_references and trusted_low_similarity.
+        # Both of those settings are statements about a *reference* - do not
+        # chase it, do not doubt quotes that match it poorly - whereas a blank
+        # excerpt is a defect in the data that no reference could excuse.
+        content_problem = self.validator.check_excerpt_content(supporting_text)
+        if content_problem:
+            # INSUFFICIENT_EXCERPT, not REMOVAL: a removal recommendation means "this
+            # quote does not match the reference", a verdict reached by
+            # comparison. Nothing was compared here, and reporting it as a
+            # removal would show a meaningless "Similarity: 0%" beside quotes
+            # that really were checked and found fabricated.
+            action = RepairAction(
+                action_type=RepairActionType.INSUFFICIENT_EXCERPT,
+                original_text=supporting_text,
+                reference_id=reference_id,
+                confidence=RepairConfidence.VERY_LOW,
+                description="Supply a real quote from the reference, or remove the item",
+                path=path,
+            )
+            return RepairResult(
+                reference_id=reference_id,
+                original_text=supporting_text,
+                was_valid=False,
+                is_repaired=False,
+                actions=[action],
+                message=f"{content_problem} - cannot be repaired automatically",
+                path=path,
+            )
+
         # Check skip list
         if reference_id in self.repair_config.skip_references:
             return RepairResult(
@@ -560,6 +626,7 @@ class SupportingTextRepairer:
         high_confidence = []
         suggestions = []
         removals = []
+        insufficient_excerpts = []
         unverifiable = []
         already_valid = []
 
@@ -571,6 +638,8 @@ class SupportingTextRepairer:
             for action in result.actions:
                 if action.can_auto_fix:
                     high_confidence.append((result, action))
+                elif action.action_type == RepairActionType.INSUFFICIENT_EXCERPT:
+                    insufficient_excerpts.append((result, action))
                 elif action.action_type == RepairActionType.REMOVAL:
                     removals.append((result, action))
                 elif action.action_type == RepairActionType.UNVERIFIABLE:
@@ -599,14 +668,26 @@ class SupportingTextRepairer:
                     lines.append(f"    Suggestion: '{action.repaired_text[:80]}...'")
             lines.append("")
 
+        # Reported before removals, since nothing here was compared at all
+        if insufficient_excerpts:
+            lines.append("INSUFFICIENT EXCERPTS (nothing to verify):")
+            for result, action in insufficient_excerpts:
+                path_str = f" at {result.path}" if result.path else ""
+                lines.append(f"  {result.reference_id}{path_str}:")
+                lines.append(f"    {result.message}")
+                lines.append(f"    Excerpt: {_format_excerpt(result.original_text)}")
+                lines.append(f"    {action.description}")
+            lines.append("")
+
         # Removals
         if removals:
             lines.append("RECOMMENDED REMOVALS (low confidence):")
             for result, action in removals:
                 path_str = f" at {result.path}" if result.path else ""
                 lines.append(f"  {result.reference_id}{path_str}:")
+                lines.append(f"    {action.description}")
                 lines.append(f"    Similarity: {action.similarity_score*100:.0f}%")
-                lines.append(f"    Snippet: '{result.original_text[:60]}...'")
+                lines.append(f"    Snippet: {_format_excerpt(result.original_text)}")
             lines.append("")
 
         # Unverifiable
@@ -626,6 +707,7 @@ class SupportingTextRepairer:
         lines.append(f"  Auto-fixes: {report.auto_fixed_count}")
         lines.append(f"  Suggestions: {report.suggested_count}")
         lines.append(f"  Removals: {report.removal_count}")
+        lines.append(f"  Insufficient excerpts: {report.insufficient_excerpt_count}")
         lines.append(f"  Unverifiable: {report.unverifiable_count}")
 
         return "\n".join(lines)

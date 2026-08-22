@@ -482,7 +482,7 @@ annotations:
 The repair command will flag for removal:
 ```
 RECOMMENDED REMOVALS (low confidence):
-  PMID:16888623 at evidence[0]:
+  PMID:16888623 at evidence[0].supporting_text:
     Similarity: 5%
     Snippet: 'completely fabricated text that doesn't exist'
     Action: Remove or find correct reference

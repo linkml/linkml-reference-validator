@@ -6,7 +6,7 @@ backends (docling, grobid) can be swapped in later without touching callers.
 
 import io
 import logging
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Union
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 
@@ -62,6 +62,13 @@ class PDFExtractor(Extractor):
     def formats(cls) -> list[str]:
         return ["pdf"]
 
-    def extract(self, data: bytes, *, content_type: Optional[str] = None) -> Optional[str]:
+    def extract(
+        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+    ) -> Optional[str]:
+        # The base accepts str for text formats, but a PDF is binary: decoded
+        # text cannot be reparsed as one, so say so rather than failing deep
+        # inside the backend.
+        if isinstance(data, str):
+            raise TypeError("PDF extraction requires bytes, not decoded text")
         text = self._backend.extract_text(data)
         return text if text and text.strip() else None

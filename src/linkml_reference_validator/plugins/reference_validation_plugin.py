@@ -186,6 +186,28 @@ if _LINKML_AVAILABLE:
 
             for excerpt_field in excerpt_fields:
                 excerpt_value = instance.get(excerpt_field)
+                excerpt_path = f"{path}.{excerpt_field}" if path else excerpt_field
+
+                # A present-but-insubstantial excerpt is evidence of nothing. It
+                # must be reported here rather than skipped: downstream
+                # substring matching would accept it against almost any
+                # reference, and it may have no reference at all.
+                if isinstance(excerpt_value, str):
+                    content_problem = self.validator.check_excerpt_content(
+                        excerpt_value
+                    )
+                    if content_problem:
+                        yield LinkMLValidationResult(
+                            type="reference_validation",
+                            severity=Severity.ERROR,
+                            message=f"{content_problem} (in '{excerpt_field}')",
+                            instance={excerpt_field: excerpt_value},
+                            instantiates=excerpt_path,
+                            context=[excerpt_path],
+                            source="ReferenceValidationPlugin",
+                        )
+                        continue
+
                 if not excerpt_value:
                     continue
 
@@ -208,7 +230,7 @@ if _LINKML_AVAILABLE:
                                 excerpt_value,
                                 reference_id,
                                 expected_title,
-                                f"{path}.{excerpt_field}" if path else excerpt_field,
+                                excerpt_path,
                             )
                             # Break after first successful reference match to avoid duplicates
                             break

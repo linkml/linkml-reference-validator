@@ -94,7 +94,7 @@ class HTMLExtractor(Extractor):
         # bs4's get_text() also skips Script/Stylesheet strings by default,
         # but that is a library default to rely on, not a guarantee this
         # extractor makes.
-        for tag in scope(["script", "style"]):
+        for tag in scope.find_all(["script", "style"]):
             tag.decompose()
 
         # Before either branch, so both agree: <br> carries no text of its own,

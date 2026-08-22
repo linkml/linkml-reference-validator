@@ -22,25 +22,9 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import MAX_STUB_NOTICE_CHARS, XMLExtractor
+from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS, XMLExtractor
 
 logger = logging.getLogger(__name__)
-
-# Derived from the stub-notice length rather than repeating its value: a PMC
-# XML/HTML response no longer than a placeholder notice is almost always one
-# (title + abstract, or a stripped landing page) rather than the article body,
-# so we reject it and fall through. Only the XML path runs is_stub_notice, so
-# on the HTML paths this length gate is the *only* thing standing between a
-# placeholder page and the cache - tying the two together keeps that true if
-# the notice length is ever raised.
-#
-# The two move together, but their safe directions are opposite. Raising
-# MAX_STUB_NOTICE_CHARS to catch a longer notice wording is safe, and is the
-# case this coupling exists for. LOWERING it - the tempting fix for a short
-# erratum being discarded for saying "restricted" - drags this gate down with
-# it and starts admitting stubs in the band it just vacated. Lower the notice
-# length only with a floor kept here.
-_MIN_PMC_FULLTEXT_CHARS = MAX_STUB_NOTICE_CHARS
 
 
 @FullTextProviderRegistry.register
@@ -71,13 +55,16 @@ class PMCFullTextProvider(FullTextProvider):
         xml_source = self._fetch_pmc_xml_source(pmcid, config)
         if xml_source:
             text = XMLExtractor().extract(xml_source, content_type="application/xml")
-            if text and len(text) > _MIN_PMC_FULLTEXT_CHARS:
+            # The shared floor, not a local threshold - see MIN_FULLTEXT_CHARS
+            # in extract/xml.py, which carries the reasoning. On the HTML
+            # fallback below it is the only stub defence there is.
+            if text and len(text) > MIN_FULLTEXT_CHARS:
                 return FullTextLocation(
                     text=text, format_hint="xml", oa_status="green", provider="pmc"
                 )
 
         html_text = self._fetch_pmc_html(pmcid, config)
-        if html_text and len(html_text) > _MIN_PMC_FULLTEXT_CHARS:
+        if html_text and len(html_text) > MIN_FULLTEXT_CHARS:
             return FullTextLocation(
                 text=html_text, format_hint="html", oa_status="green", provider="pmc"
             )

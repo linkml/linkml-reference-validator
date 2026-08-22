@@ -610,8 +610,12 @@ def test_extract_scope_is_idempotent():
 
     first = extractor.extract_scope(region)
 
-    assert extractor.extract_scope(region) == first
-    assert extractor.extract_scope(region) == first
+    # Anchored to the expected text, not merely to itself: comparing calls
+    # only to each other passes just as happily on three identical wrong
+    # answers as on three right ones.
+    assert first == "One\nTwo"
+    assert extractor.extract_scope(region) == "One\nTwo"
+    assert extractor.extract_scope(region) == "One\nTwo"
 
 
 def test_extract_scope_leaves_the_caller_tree_alone():
@@ -628,6 +632,9 @@ def test_extract_scope_leaves_the_caller_tree_alone():
     )
     before = str(soup)
 
-    HTMLExtractor().extract_scope(soup.find("div", class_="b"))
+    text = HTMLExtractor().extract_scope(soup.find("div", class_="b"))
 
+    # Both halves: the tree survives *and* extraction still works on the copy.
+    # Asserting only the former passes on a version that returns early.
+    assert text == "One\nTwo"
     assert str(soup) == before

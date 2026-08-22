@@ -29,6 +29,19 @@ STUB_NOTICE_PHRASES = (
 #: bare substring scan discarded the entire 155 KB paper for saying so.
 MAX_STUB_NOTICE_CHARS = 1000
 
+#: Shortest text any source will accept as full text rather than a stub.
+#: Kept here beside MAX_STUB_NOTICE_CHARS, and imported by every gate, so the
+#: two can be reasoned about together in one place.
+#:
+#: They move together, but their safe directions are opposite. Raising the
+#: notice length to catch a longer wording is safe. LOWERING it - the tempting
+#: fix for a short erratum discarded for saying "restricted" - would drag this
+#: floor down too and start admitting stubs in the band it just vacated. Only
+#: the XML path runs is_stub_notice, so on the HTML paths this floor is the
+#: sole defence. Lower the notice length only by pinning this to a literal
+#: first.
+MIN_FULLTEXT_CHARS = MAX_STUB_NOTICE_CHARS
+
 
 def is_stub_notice(text: str) -> bool:
     """Report whether extracted text is a PMC placeholder rather than an article.

@@ -51,7 +51,10 @@ class HTMLExtractor(Extractor):
     ) -> Optional[str]:
         soup = BeautifulSoup(data, "html.parser")
         region = soup.find("article") or soup.find("main")
-        return self.extract_scope(region if region is not None else soup)
+        # Straight to the private form: this soup was parsed here and is
+        # discarded here, so the defensive copy extract_scope makes for
+        # caller-owned tags would protect nobody and cost a full tree walk.
+        return self._extract_scope(region if region is not None else soup)
 
     def extract_scope(self, scope: Tag) -> Optional[str]:
         """Extract text from an already-selected region of parsed markup.
@@ -86,8 +89,15 @@ class HTMLExtractor(Extractor):
         # reparse this method replaced (measured ~14ms vs ~24ms on a 76 KB
         # body), and negligible beside the network fetch that produced the
         # markup - so purity here costs nothing that matters.
-        scope = copy.copy(scope)
+        return self._extract_scope(copy.copy(scope))
 
+    def _extract_scope(self, scope: Tag) -> Optional[str]:
+        """Extract text from a region this extractor is free to modify.
+
+        Separated from :meth:`extract_scope` so the copy is paid for only
+        where it buys something: a caller-owned tag. ``extract`` parses and
+        discards its own soup, so it enters here directly.
+        """
         # Dropped here rather than in extract(), because the PMC paths enter
         # through this method and a JSON-LD blob or stylesheet landing in
         # cached article text would corrupt every snippet checked against it.

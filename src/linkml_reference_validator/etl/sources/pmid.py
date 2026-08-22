@@ -21,7 +21,7 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import MAX_STUB_NOTICE_CHARS, XMLExtractor
+from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS, XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
@@ -354,16 +354,15 @@ class PMIDSource(ReferenceSource):
         if not pmcid:
             return None, "no_pmc"
 
-        # Gated on the stub-notice length for the same reason as the PMC
-        # provider (see _MIN_PMC_FULLTEXT_CHARS there): a response no longer
-        # than a placeholder notice is almost always one, and on the HTML
-        # fallback below this length check is the only stub defence there is.
+        # The shared floor, not a local threshold: see MIN_FULLTEXT_CHARS in
+        # extract/xml.py, which carries the reasoning. On the HTML fallback
+        # below it is the only stub defence there is.
         full_text = self._fetch_pmc_xml(pmcid, config)
-        if full_text and len(full_text) > MAX_STUB_NOTICE_CHARS:
+        if full_text and len(full_text) > MIN_FULLTEXT_CHARS:
             return full_text, "full_text_xml"
 
         full_text = self._fetch_pmc_html(pmcid, config)
-        if full_text and len(full_text) > MAX_STUB_NOTICE_CHARS:
+        if full_text and len(full_text) > MIN_FULLTEXT_CHARS:
             return full_text, "full_text_html"
 
         return None, "pmc_restricted"

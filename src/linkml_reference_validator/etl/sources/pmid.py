@@ -20,6 +20,7 @@ from bs4 import BeautifulSoup  # type: ignore
 import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
@@ -459,9 +460,9 @@ class PMIDSource(ReferenceSource):
         )
 
         if article_body:
-            paragraphs = article_body.find_all("p")
-            if paragraphs:
-                text = "\n\n".join(p.get_text() for p in paragraphs)
-                return text
+            # Region selected here, text extracted by the shared extractor, for
+            # the same reason _fetch_pmc_xml delegates: a private paragraph
+            # walk drifts from the rest of the ETL layer and misses its fixes.
+            return HTMLExtractor().extract(str(article_body), content_type="text/html")
 
         return None

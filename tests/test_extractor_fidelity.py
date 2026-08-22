@@ -475,3 +475,27 @@ def test_pmc_provider_html_preserves_inline_markup():
 
     assert "(GUSB, GRN)" in text
     assert "Line oneLine two" not in text
+
+
+def test_pmid_source_html_fallback_preserves_inline_markup():
+    """PMIDSource's own HTML fallback carried the third copy of the same walk.
+
+    It never had the welding bug, but it got none of this PR's other HTML
+    work either - no <br> handling, no block-boundary fallback - and it is
+    live as the fallback in PMIDSource's full-text path.
+    """
+    html = (
+        b"<html><body><div class='article-body'>"
+        b"<p>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</p>"
+        b"<p>Line one<br>Line two</p>"
+        b"</div></body></html>"
+    )
+
+    with patch("linkml_reference_validator.etl.sources.pmid.requests.get") as mock_get:
+        mock_get.return_value = MagicMock(status_code=200, content=html)
+        text = PMIDSource()._fetch_pmc_html(
+            "123", ReferenceValidationConfig(rate_limit_delay=0.0)
+        )
+
+    assert "(GUSB, GRN)" in text
+    assert "Line oneLine two" not in text

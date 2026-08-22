@@ -561,3 +561,31 @@ def test_extract_scope_handles_a_region_without_paragraphs():
     assert "Introduction" in text
     assert "The protein binds." in text
     assert "IntroductionThe" not in text
+
+
+def test_extract_scope_drops_script_and_style():
+    """Script and style content must never reach cached full text.
+
+    extract() decomposes them before selecting a region, but the three PMC
+    paths enter at extract_scope instead. bs4's get_text() happens to skip
+    Script/Stylesheet strings by default, so this held by luck of a library
+    default rather than by anything this code did - pinned here, and made
+    explicit in extract_scope, because a JSON-LD blob landing in a cached
+    article would silently corrupt every snippet check against it.
+    """
+    from bs4 import BeautifulSoup
+
+    region = BeautifulSoup(
+        "<div class='article-body'>"
+        '<script type="application/ld+json">{"headline":"JUNKSCRIPT"}</script>'
+        "<style>.hidden{content:'JUNKSTYLE'}</style>"
+        "<div>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</div>"
+        "</div>",
+        "html.parser",
+    ).find("div", class_="article-body")
+
+    text = HTMLExtractor().extract_scope(region)
+
+    assert "JUNKSCRIPT" not in text
+    assert "JUNKSTYLE" not in text
+    assert "Variants near (GUSB, GRN) were found." in text

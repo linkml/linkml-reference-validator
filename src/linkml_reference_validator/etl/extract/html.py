@@ -48,10 +48,6 @@ class HTMLExtractor(Extractor):
         self, data: Union[bytes, str], *, content_type: Optional[str] = None
     ) -> Optional[str]:
         soup = BeautifulSoup(data, "html.parser")
-
-        for tag in soup(["script", "style"]):
-            tag.decompose()
-
         region = soup.find("article") or soup.find("main")
         return self.extract_scope(region if region is not None else soup)
 
@@ -79,6 +75,15 @@ class HTMLExtractor(Extractor):
             >>> HTMLExtractor().extract_scope(region)
             'near (GUSB, GRN) here'
         """
+        # Dropped here rather than in extract(), because the PMC paths enter
+        # through this method and a JSON-LD blob or stylesheet landing in
+        # cached article text would corrupt every snippet checked against it.
+        # bs4's get_text() also skips Script/Stylesheet strings by default,
+        # but that is a library default to rely on, not a guarantee this
+        # extractor makes.
+        for tag in scope(["script", "style"]):
+            tag.decompose()
+
         # Before either branch, so both agree: <br> carries no text of its own,
         # so bare get_text() would weld the lines it separates into
         # "Line oneLine two" - the same welding this extractor exists to avoid.

@@ -1,5 +1,6 @@
 ---
 reference_id: PMID:TEST001
+extractor_version: 1
 title: Protein X functions in cell cycle regulation
 authors:
 - Smith J

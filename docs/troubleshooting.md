@@ -319,26 +319,37 @@ An excerpt that is empty or whitespace-only (`supporting_text: ""`) reports the
 same way, and for the same reason: there is nothing to check against the
 reference. Both are rejected before the reference is fetched.
 
-### Correct quotes rejected after upgrading
+### Cached references re-fetched after upgrading
 
 **Symptom:**
 
-Snippets you know are correct are rejected, and the cached reference is far
-smaller than the article it came from.
+The first run after upgrading re-fetches references that were already cached,
+and logs lines like:
+
+```
+Ignoring cache entry for PMID:30598549 written by an older extractor;
+it will be re-fetched and rewritten
+```
 
 **Cause:**
 
+This is deliberate, and it is a one-off per reference. Cache entries record
+which extractor wrote them (`extractor_version` in the file's frontmatter).
 Versions before the extractor fixes discarded some full-text articles and
-cached a short PMC placeholder page in their place, labelled as full text.
-Fixing the extractors does not rewrite what is already cached.
+cached a short PMC placeholder in their place, labelled as full text, and
+welded text across inline markup — so entries written then hold content that
+would reject correct snippets. Fixing the extractors cannot rewrite what they
+already wrote, so entries from before the fix are treated as absent and
+re-fetched the next time a validation needs them.
 
-**Solution:**
+Nothing is deleted, and entries are refreshed one at a time as they are used
+rather than in a single sweep. `cache export` and the Zotero enrichment read
+older entries unchanged — only validation re-fetches them.
 
-Delete the affected entries from your cache directory (`references_cache/` by
-default) and re-run validation, which re-fetches them:
+**If you would rather refresh one immediately:**
 
 ```bash
-rm references_cache/PMID_30598549.md   # or remove the whole directory
+linkml-reference-validator cache reference PMID:30598549 --force
 ```
 
 ### Title validation failed

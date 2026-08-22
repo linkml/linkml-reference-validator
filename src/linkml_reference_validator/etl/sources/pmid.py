@@ -257,12 +257,14 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
-        if isinstance(xml_content, bytes):
-            xml_content = xml_content.decode("utf-8")
-
         if not xml_content:
             return None
 
+        # Passed through as returned, for the same reason _fetch_pmc_xml does:
+        # decoding bytes here assumes UTF-8 and raises on a record declaring
+        # another encoding, taking the MeSH terms and publication types with
+        # it. BeautifulSoup honours the declaration for bytes and fixes it up
+        # for str.
         return BeautifulSoup(xml_content, "xml")
 
     def _parse_mesh_terms(self, soup: BeautifulSoup) -> Optional[list[str]]:

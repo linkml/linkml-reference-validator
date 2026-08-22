@@ -43,6 +43,19 @@ NEEDS_FULL_TEXT_TYPES = {
 # since a PMC XML/HTML hit under ~1k chars is almost always a stub, not the body).
 MIN_FULL_TEXT_CHARS = 500
 
+#: Bumped whenever an extraction change means previously cached text is wrong
+#: rather than merely older. Entries stamped below this are re-fetched on the
+#: next validation that needs them, one reference at a time.
+#:
+#: Version 1: the stub-detection and markup-welding fixes. Before them, an
+#: article whose methods said "restricted" was discarded and an 8.7 KB
+#: placeholder cached as its full text, and inline markup was welded to its
+#: neighbours - "(GUSB, GRN, and NEU1)" stored as "(GUSB,GRN, andNEU1)".
+#: Correcting the extractors does not rewrite what they already wrote, so
+#: without this stamp every existing cache keeps failing correct snippets with
+#: nothing in the output to explain why.
+EXTRACTOR_CACHE_VERSION = 1
+
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",
     "html": "full_text_html",
@@ -591,6 +604,7 @@ class ReferenceFetcher:
         lines = []
         lines.append("---")
         lines.append(f"reference_id: {reference.reference_id}")
+        lines.append(f"extractor_version: {EXTRACTOR_CACHE_VERSION}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -715,6 +729,13 @@ class ReferenceFetcher:
         if not cache_path.exists():
             legacy_path = cache_path.with_suffix(".txt")
             if legacy_path.exists():
+                # Deliberately exempt from the staleness check below. The
+                # pre-Markdown format is a read-only compatibility path that
+                # nothing has written for a long time, so such entries are as
+                # likely to be hand-maintained as tool-written - and they are
+                # not what the extractor bugs produced, since those wrote
+                # Markdown. Re-fetching them would discard someone's data to
+                # fix a problem they do not have.
                 cache_path = legacy_path
             else:
                 return None
@@ -722,6 +743,13 @@ class ReferenceFetcher:
         content_text = cache_path.read_text(encoding="utf-8")
 
         if content_text.startswith("---"):
+            if self._is_stale_cache_entry(content_text):
+                logger.info(
+                    "Ignoring cache entry for %s written by an older extractor; "
+                    "it will be re-fetched and rewritten",
+                    reference_id,
+                )
+                return None
             return self._load_markdown_format(content_text, reference_id)
         else:
             return self._load_legacy_format(content_text, reference_id)
@@ -744,6 +772,42 @@ class ReferenceFetcher:
         if not value:
             return None
         return value if isinstance(value, list) else [value]
+
+    @staticmethod
+    def _is_stale_cache_entry(content_text: str) -> bool:
+        """Report whether cached text came from an extractor older than this one.
+
+        Deliberately not applied by :meth:`iter_cached_references`: export and
+        enrichment walk the cache as a record of what was fetched, and dropping
+        older entries there would lose them rather than refresh them. Only the
+        validation read path treats a stale entry as absent, so it is re-fetched
+        and rewritten.
+
+        Args:
+            content_text: The cache file's contents, including frontmatter
+
+        Returns:
+            True if the entry has no version stamp, or one below the current
+
+        Examples:
+            >>> stale = "---\\nreference_id: PMID:1\\n---\\nBody."
+            >>> ReferenceFetcher._is_stale_cache_entry(stale)
+            True
+            >>> current = f"---\\nextractor_version: {EXTRACTOR_CACHE_VERSION}\\n---\\nBody."
+            >>> ReferenceFetcher._is_stale_cache_entry(current)
+            False
+        """
+        parts = content_text.split("---", 2)
+        if len(parts) < 3:
+            return True
+
+        match = re.search(r"^extractor_version:\s*(\d+)\s*$", parts[1], re.MULTILINE)
+        if not match:
+            return True
+
+        # A newer stamp is not stale: an older tool reading a cache written by a
+        # newer one should leave it alone rather than re-fetch it on every run.
+        return int(match.group(1)) < EXTRACTOR_CACHE_VERSION
 
     def _load_markdown_format(
         self, content_text: str, reference_id: str

@@ -7,7 +7,11 @@ from linkml_reference_validator.models import (
     ReferenceContent,
     FullTextLocation,
 )
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    EXTRACTOR_CACHE_VERSION,
+    ReferenceFetcher,
+)
+from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
 from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
@@ -1244,3 +1248,160 @@ def test_materialize_trusts_sniffed_format_over_hint(tmp_path):
     assert fmt == "html"
     assert pdf_bytes is None
     assert error is False
+
+
+# ============================================================================
+# Cache invalidation on extractor changes
+#
+# Fixing an extractor does not rewrite what it already cached. Entries written
+# before the stub-detection and markup-welding fixes hold text those bugs
+# produced - an 8.7 KB placeholder labelled as full text, or gene symbols
+# welded to their punctuation - and are served from disk forever, so correct
+# snippets keep being rejected with nothing in the output to explain why.
+# See https://github.com/monarch-initiative/genesets/issues/10
+# ============================================================================
+
+
+def _cached_text(fetcher, reference_id):
+    return fetcher.get_cache_path(reference_id).read_text(encoding="utf-8")
+
+
+def test_saved_entry_carries_the_extractor_version(fetcher):
+    """Every entry records which extraction it came from."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+
+    assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in _cached_text(
+        fetcher, "PMID:1"
+    )
+
+
+def test_entry_from_the_current_extractor_is_served(fetcher):
+    """The ordinary case: a current entry still comes back from disk."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert loaded.content == "Body text."
+
+
+def test_entry_without_a_version_is_not_served(fetcher):
+    """Entries written before the stamp existed are the poisoned ones."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n", ""
+        ),
+        encoding="utf-8",
+    )
+
+    assert fetcher._load_from_disk("PMID:1") is None
+
+
+def test_entry_from_an_older_extractor_is_not_served(fetcher):
+    """A stamp older than the current one is equally stale."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}",
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION - 1}",
+        ),
+        encoding="utf-8",
+    )
+
+    assert fetcher._load_from_disk("PMID:1") is None
+
+
+def test_entry_from_a_newer_extractor_is_served(fetcher):
+    """A newer stamp is not stale - it just means an older tool is reading it."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}",
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION + 1}",
+        ),
+        encoding="utf-8",
+    )
+
+    assert fetcher._load_from_disk("PMID:1") is not None
+
+
+def test_legacy_text_entry_is_still_served(fetcher):
+    """The pre-Markdown format is deliberately exempt from the version check.
+
+    Nothing has written it for a long time, so such entries are as likely to
+    be hand-maintained as tool-written, and they are not what the extractor
+    bugs produced - those wrote Markdown. Invalidating them would discard
+    someone's data to fix a problem they do not have.
+    """
+    legacy = fetcher.get_cache_path("PMID:1").with_suffix(".txt")
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("Body text from a legacy cache entry.", encoding="utf-8")
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert "legacy cache entry" in loaded.content
+
+
+def test_stale_entry_is_refetched_and_restamped(fetcher, mocker):
+    """A stale entry is replaced rather than merely ignored."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n", ""
+        ),
+        encoding="utf-8",
+    )
+
+    fresh = ReferenceContent(reference_id="PMID:1", content="Freshly fetched text.")
+    mocker.patch.object(
+        ReferenceSourceRegistry, "get_source", return_value=mocker.Mock(
+            return_value=mocker.Mock(fetch=mocker.Mock(return_value=fresh))
+        )
+    )
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Freshly fetched text."
+    assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in _cached_text(
+        fetcher, "PMID:1"
+    )
+
+
+def test_cache_export_still_reads_unstamped_entries(fetcher):
+    """Export and enrichment must not lose entries the validator re-fetches.
+
+    iter_cached_references is what `cache export` and the Zotero enrichment
+    walk; treating an unstamped entry as absent there would silently drop it
+    from an export rather than just re-fetching it for validation.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", title="Kept", content="Body.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n", ""
+        ),
+        encoding="utf-8",
+    )
+
+    assert [r.title for r in fetcher.iter_cached_references()] == ["Kept"]

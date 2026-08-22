@@ -17,7 +17,12 @@ from linkml_reference_validator.etl.fulltext.base import (
 
 @pytest.fixture
 def config(tmp_path):
-    """Config for the module-level tests below (classes define their own)."""
+    """Config for the module-level tests and for TestPMCProvider.
+
+    TestUnpaywallProvider and TestOpenAlexProvider override it to add an
+    email; TestPMCProvider deliberately does not, so its tests and the
+    floor tests below share one definition.
+    """
     return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
 
 
@@ -322,3 +327,15 @@ def test_pmid_fulltext_accepts_a_body_past_the_floor(config):
 
     assert text == body
     assert content_type == "full_text_xml"
+
+
+def test_the_floor_does_not_follow_the_notice_length_down():
+    """The floor's absolute value, which every other test derives from.
+
+    xml.py asks a human to pin this to a literal before lowering
+    MAX_STUB_NOTICE_CHARS, because MIN_FULLTEXT_CHARS is derived from it.
+    Nothing else in the suite would notice if it moved: every fixture is
+    sized from the constant, so lowering it moves the tests with it and the
+    gates silently start admitting the band they just vacated.
+    """
+    assert MIN_FULLTEXT_CHARS >= 1000

@@ -312,37 +312,35 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     return RepairConfig()
 
 
-def _excerpt_key(d: dict) -> Optional[str]:
-    """Return the key holding this evidence item's excerpt, if any.
+def _excerpt_keys(d: dict) -> list[str]:
+    """Return every key holding an excerpt on this evidence item.
 
-    Prefers a usable quote, but falls back to a blank one when that is all
-    there is: blank excerpts must be reported, not dropped. Used by both
-    extraction and write-back so a repair cannot land in a different field
-    than the quote came from.
+    All of them, not the best of them. The LinkML plugin iterates each excerpt
+    field and checks it, so picking one key here left the second quote on an
+    item silently unvalidated and unrepaired. A blank excerpt alongside a real
+    one is still a defect and is still reported.
+
+    Used by both extraction and write-back, and the excerpt key is carried in
+    the reported path, so a repair cannot land in a different field than the
+    quote came from.
 
     Args:
         d: A candidate evidence item
 
     Returns:
-        "supporting_text", "snippet", or None if neither holds a string
+        The excerpt keys present as strings, in a stable order
 
     Examples:
-        >>> _excerpt_key({"supporting_text": "a quote"})
-        'supporting_text'
-        >>> _excerpt_key({"supporting_text": "", "snippet": "a quote"})
-        'snippet'
-        >>> _excerpt_key({"supporting_text": ""})
-        'supporting_text'
-        >>> _excerpt_key({"reference": "PMID:1"}) is None
-        True
+        >>> _excerpt_keys({"supporting_text": "a quote"})
+        ['supporting_text']
+        >>> _excerpt_keys({"supporting_text": "", "snippet": "a quote"})
+        ['supporting_text', 'snippet']
+        >>> _excerpt_keys({"reference": "PMID:1"})
+        []
     """
-    present = [
+    return [
         key for key in ("supporting_text", "snippet") if isinstance(d.get(key), str)
     ]
-    for key in present:
-        if d[key].strip():
-            return key
-    return present[0] if present else None
 
 
 def _extract_evidence_items(
@@ -369,11 +367,11 @@ def _extract_evidence_items(
         # Look for evidence patterns
         if isinstance(d, dict):
             # Direct evidence item pattern
-            text_key = _excerpt_key(d)
-            if text_key is not None:
-                ref = d.get("reference") or d.get("reference_id")
-                if ref:
-                    items.append((d[text_key], ref, path))
+            ref = d.get("reference") or d.get("reference_id")
+            if ref:
+                for text_key in _excerpt_keys(d):
+                    key_path = f"{path}.{text_key}" if path else text_key
+                    items.append((d[text_key], ref, key_path))
 
             # Look for evidence list
             for key in ["evidence", "supporting_evidence", "annotations"]:
@@ -433,14 +431,15 @@ def _apply_repairs_to_data(
 
         if isinstance(d, dict):
             # Check if this item needs repair
-            # Same key the quote was read from. Choosing independently here
-            # let a repair of the snippet be written into supporting_text,
-            # leaving the snippet wrong and inventing a quote in a field that
-            # never had one.
-            text_key = _excerpt_key(d)
-            if text_key is not None and path in repairs_by_path:
-                d[text_key] = repairs_by_path[path]
-                changes_made = True
+            # Keyed by the same path extraction reported, which names the
+            # excerpt field. Choosing a key independently here let a repair of
+            # the snippet be written into supporting_text, leaving the snippet
+            # wrong and inventing a quote in a field that never had one.
+            for text_key in _excerpt_keys(d):
+                key_path = f"{path}.{text_key}" if path else text_key
+                if key_path in repairs_by_path:
+                    d[text_key] = repairs_by_path[key_path]
+                    changes_made = True
 
             # Recurse
             for key in ["evidence", "supporting_evidence", "annotations"]:

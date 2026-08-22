@@ -458,12 +458,18 @@ def test_extract_evidence_items_keeps_blank_snippet():
 
     items = _extract_evidence_items(data, None, Path("unused.yaml"))
 
-    assert ("", "PMID:TEST001", "evidence[0]") in items
-    assert ("real text", "PMID:TEST002", "evidence[1]") in items
+    assert ("", "PMID:TEST001", "evidence[0].snippet") in items
+    assert ("real text", "PMID:TEST002", "evidence[1].snippet") in items
 
 
-def test_extract_evidence_items_prefers_non_blank_key():
-    """When both keys are present, a non-blank value still wins."""
+def test_extract_evidence_items_reports_every_excerpt_key():
+    """Both keys are checked, matching the plugin.
+
+    Preferring one key meant an item carrying two excerpts had the second
+    silently unvalidated, while the LinkML plugin iterates every excerpt
+    field and checks each. A blank one alongside a real one is still a
+    defect and is still reported.
+    """
     data = {
         "evidence": [
             {
@@ -476,7 +482,10 @@ def test_extract_evidence_items_prefers_non_blank_key():
 
     items = _extract_evidence_items(data, None, Path("unused.yaml"))
 
-    assert items == [("real text", "PMID:TEST001", "evidence[0]")]
+    assert items == [
+        ("", "PMID:TEST001", "evidence[0].supporting_text"),
+        ("real text", "PMID:TEST001", "evidence[0].snippet"),
+    ]
 
 
 def test_extract_evidence_items_requires_reference():
@@ -648,7 +657,7 @@ def test_repair_writes_back_to_the_key_it_read_from():
     """
     from linkml_reference_validator.cli.repair import (
         _apply_repairs_to_data,
-        _excerpt_key,
+        _excerpt_keys,
     )
     from linkml_reference_validator.models import (
         RepairAction,
@@ -662,7 +671,7 @@ def test_repair_writes_back_to_the_key_it_read_from():
             {"reference": "PMID:TEST001", "supporting_text": "", "snippet": "CO2 levels"}
         ]
     }
-    assert _excerpt_key(data["evidence"][0]) == "snippet"
+    assert _excerpt_keys(data["evidence"][0]) == ["supporting_text", "snippet"]
 
     report = RepairReport()
     report.add_result(
@@ -672,7 +681,7 @@ def test_repair_writes_back_to_the_key_it_read_from():
             was_valid=False,
             is_repaired=True,
             repaired_text="CO₂ levels",
-            path="evidence[0]",
+            path="evidence[0].snippet",
             actions=[
                 RepairAction(
                     action_type=RepairActionType.CHARACTER_NORMALIZATION,
@@ -695,7 +704,7 @@ def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
     """The ordinary case still writes to supporting_text."""
     from linkml_reference_validator.cli.repair import (
         _apply_repairs_to_data,
-        _excerpt_key,
+        _excerpt_keys,
     )
     from linkml_reference_validator.models import (
         RepairAction,
@@ -705,7 +714,7 @@ def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
     )
 
     data = {"evidence": [{"reference": "PMID:TEST001", "supporting_text": "CO2 levels"}]}
-    assert _excerpt_key(data["evidence"][0]) == "supporting_text"
+    assert _excerpt_keys(data["evidence"][0]) == ["supporting_text"]
 
     report = RepairReport()
     report.add_result(
@@ -715,7 +724,7 @@ def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
             was_valid=False,
             is_repaired=True,
             repaired_text="CO₂ levels",
-            path="evidence[0]",
+            path="evidence[0].supporting_text",
             actions=[
                 RepairAction(
                     action_type=RepairActionType.CHARACTER_NORMALIZATION,
@@ -730,3 +739,56 @@ def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
     _apply_repairs_to_data(data, report, None)
 
     assert data["evidence"][0]["supporting_text"] == "CO₂ levels"
+
+
+def test_repair_writes_back_to_each_excerpt_key_independently():
+    """Two excerpts on one item repair into their own fields.
+
+    The path carries the key, so a fix for `snippet` cannot land in
+    `supporting_text` and vice versa.
+    """
+    from linkml_reference_validator.cli.repair import _apply_repairs_to_data
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {
+        "evidence": [
+            {
+                "reference": "PMID:TEST001",
+                "supporting_text": "CO2 levels",
+                "snippet": "H2O content",
+            }
+        ]
+    }
+
+    def _repaired(path, original, fixed):
+        return RepairResult(
+            reference_id="PMID:TEST001",
+            original_text=original,
+            was_valid=False,
+            is_repaired=True,
+            repaired_text=fixed,
+            path=path,
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text=original,
+                    repaired_text=fixed,
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+
+    report = RepairReport()
+    report.add_result(
+        _repaired("evidence[0].supporting_text", "CO2 levels", "CO₂ levels")
+    )
+    report.add_result(_repaired("evidence[0].snippet", "H2O content", "H₂O content"))
+
+    assert _apply_repairs_to_data(data, report, None) is True
+    assert data["evidence"][0]["supporting_text"] == "CO₂ levels"
+    assert data["evidence"][0]["snippet"] == "H₂O content"

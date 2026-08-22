@@ -638,3 +638,28 @@ def test_extract_scope_leaves_the_caller_tree_alone():
     # Asserting only the former passes on a version that returns early.
     assert text == "One\nTwo"
     assert str(soup) == before
+
+
+@patch("linkml_reference_validator.etl.sources.pmid.Entrez.efetch")
+def test_pubmed_record_in_a_non_utf8_encoding_is_parsed(mock_efetch):
+    """PubMed metadata must survive a record that is not UTF-8.
+
+    _fetch_pubmed_xml decoded bytes as UTF-8 before parsing, so a record in
+    another encoding raised UnicodeDecodeError and took the abstract, MeSH
+    terms and publication types with it.
+    """
+    handle = MagicMock()
+    handle.read.return_value = (
+        '<?xml version="1.0" encoding="ISO-8859-1"?>'
+        "<PubmedArticle><Abstract>"
+        "<AbstractText>Fran\xe7ois measured the r\xe9sultats.</AbstractText>"
+        "</Abstract></PubmedArticle>"
+    ).encode("iso-8859-1")
+    mock_efetch.return_value = handle
+
+    soup = PMIDSource()._fetch_pubmed_xml(
+        "123", ReferenceValidationConfig(rate_limit_delay=0.0)
+    )
+
+    assert soup is not None
+    assert "François measured the résultats." in PMIDSource()._parse_abstract(soup)

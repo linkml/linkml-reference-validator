@@ -22,7 +22,8 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS, XMLExtractor
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
 
 logger = logging.getLogger(__name__)
 

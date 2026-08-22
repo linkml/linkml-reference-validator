@@ -3,7 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
-from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
 from linkml_reference_validator.models import (
     ReferenceValidationConfig,
     ReferenceIdentifiers,

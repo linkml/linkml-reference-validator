@@ -21,7 +21,8 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS, XMLExtractor
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,

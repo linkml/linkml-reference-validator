@@ -94,9 +94,12 @@ class HTMLExtractor(Extractor):
     def _extract_scope(self, scope: Tag) -> Optional[str]:
         """Extract text from a region this extractor is free to modify.
 
+        For callers that own the tree and do not mind it being edited.
         Separated from :meth:`extract_scope` so the copy is paid for only
         where it buys something: a caller-owned tag. ``extract`` parses and
-        discards its own soup, so it enters here directly.
+        discards its own soup, so it enters here directly. Anything reaching
+        for this instead of the public method is opting out of that
+        protection deliberately.
         """
         # Dropped here rather than in extract(), because the PMC paths enter
         # through this method and a JSON-LD blob or stylesheet landing in

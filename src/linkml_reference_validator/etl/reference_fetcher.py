@@ -56,6 +56,14 @@ MIN_FULL_TEXT_CHARS = 500
 #: nothing in the output to explain why.
 EXTRACTOR_CACHE_VERSION = 1
 
+#: A cache file's frontmatter delimiter: a line that is exactly ``---``.
+#: Splitting on the bare string instead lets any *value* containing ``---`` - a
+#: URL reference_id, a title - truncate the block, which loses every field after
+#: it and hides the version stamp. An entry whose stamp is hidden reads as
+#: unstamped, so it is re-fetched, rewritten with the same id, and read as
+#: unstamped again: a re-fetch on every run, forever.
+_FRONTMATTER_DELIMITER = re.compile(r"^---[ \t]*$", re.MULTILINE)
+
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",
     "html": "full_text_html",
@@ -153,7 +161,7 @@ class ReferenceFetcher:
         source_class = ReferenceSourceRegistry.get_source(normalized_reference_id)
         if not source_class:
             logger.warning(f"No source found for reference type: {normalized_reference_id}")
-            return None
+            return self._stale_fallback(normalized_reference_id, force_refresh)
 
         # Parse identifier and fetch
         _, identifier = self._parse_reference_id(normalized_reference_id)
@@ -163,11 +171,44 @@ class ReferenceFetcher:
         if content and self.config.fetch_full_text and self.needs_full_text(content):
             content = self._enrich_with_full_text(content)
 
-        if content:
-            self._cache[normalized_reference_id] = content
-            self._save_by_access(content)
+        if not content:
+            return self._stale_fallback(normalized_reference_id, force_refresh)
+
+        self._cache[normalized_reference_id] = content
+        self._save_by_access(content)
 
         return content
+
+    def _stale_fallback(
+        self, normalized_reference_id: str, force_refresh: bool
+    ) -> Optional[ReferenceContent]:
+        """Serve an out-of-date cache entry when the source yielded nothing.
+
+        A stale entry is treated as absent on the happy path so the current
+        extractors rewrite it. That is only safe while a replacement can actually
+        be fetched: offline, during a provider outage, or for a record since
+        withdrawn, "this text is out of date" must not become "this reference does
+        not exist". The older copy is worse than a fresh fetch and much better than
+        reporting every cached reference as not found.
+
+        The entry is deliberately not re-saved, so it stays stale and the next run
+        that can reach the source still refreshes it. ``force_refresh`` opts out
+        entirely: an explicit refresh that failed should report failure.
+        """
+        if force_refresh:
+            return None
+
+        stale = self._load_from_disk(normalized_reference_id, allow_stale=True)
+        if stale is None:
+            return None
+
+        logger.warning(
+            "Could not re-fetch %s; using the cache entry written by an older "
+            "extractor. Its text may still contain the errors this version fixes.",
+            normalized_reference_id,
+        )
+        self._cache[normalized_reference_id] = stale
+        return stale
 
     def needs_full_text(self, content: ReferenceContent) -> bool:
         """Return True if the content lacks full text and the chain should run.
@@ -711,7 +752,9 @@ class ReferenceFetcher:
             cache_path.chmod(0o600)
         logger.info(f"Cached {reference.reference_id} to {cache_path}")
 
-    def _load_from_disk(self, reference_id: str) -> Optional[ReferenceContent]:
+    def _load_from_disk(
+        self, reference_id: str, allow_stale: bool = False
+    ) -> Optional[ReferenceContent]:
         """Load reference content from the public validation cache.
 
         Supports both new markdown format with YAML frontmatter and legacy text format.
@@ -720,39 +763,43 @@ class ReferenceFetcher:
 
         Args:
             reference_id: Reference identifier
+            allow_stale: Return entries written by an older extractor instead of
+                treating them as absent. Used only by :meth:`_stale_fallback`,
+                once a fetch has already failed to produce a replacement.
 
         Returns:
             ReferenceContent if cached, None otherwise
         """
         cache_path = self.get_cache_path(reference_id)
+        is_legacy = False
 
         if not cache_path.exists():
             legacy_path = cache_path.with_suffix(".txt")
-            if legacy_path.exists():
-                # Deliberately exempt from the staleness check below. The
-                # pre-Markdown format is a read-only compatibility path that
-                # nothing has written for a long time, so such entries are as
-                # likely to be hand-maintained as tool-written - and they are
-                # not what the extractor bugs produced, since those wrote
-                # Markdown. Re-fetching them would discard someone's data to
-                # fix a problem they do not have.
-                cache_path = legacy_path
-            else:
+            if not legacy_path.exists():
                 return None
+            cache_path = legacy_path
+            is_legacy = True
 
         content_text = cache_path.read_text(encoding="utf-8")
 
-        if content_text.startswith("---"):
-            if self._is_stale_cache_entry(content_text):
-                logger.info(
-                    "Ignoring cache entry for %s written by an older extractor; "
-                    "it will be re-fetched and rewritten",
-                    reference_id,
-                )
-                return None
-            return self._load_markdown_format(content_text, reference_id)
-        else:
+        # The pre-Markdown format has no frontmatter to stamp, and is deliberately
+        # exempt from the staleness check rather than perpetually stale: it is a
+        # read-only compatibility path that nothing has written for a long time,
+        # so such entries are as likely to be hand-maintained as tool-written -
+        # and they are not what the extractor bugs produced, since those wrote
+        # Markdown. Re-fetching them would discard someone's data to fix a
+        # problem they do not have.
+        if is_legacy or not content_text.startswith("---"):
             return self._load_legacy_format(content_text, reference_id)
+
+        if not allow_stale and self._is_stale_cache_entry(content_text):
+            logger.info(
+                "Ignoring cache entry for %s written by an older extractor; "
+                "it will be re-fetched and rewritten",
+                reference_id,
+            )
+            return None
+        return self._load_markdown_format(content_text, reference_id)
 
     @staticmethod
     def _as_optional_list(value: Any) -> Optional[list]:
@@ -774,7 +821,31 @@ class ReferenceFetcher:
         return value if isinstance(value, list) else [value]
 
     @staticmethod
-    def _is_stale_cache_entry(content_text: str) -> bool:
+    def _split_frontmatter(content_text: str) -> Optional[tuple[str, str]]:
+        """Split cache-file text into ``(frontmatter, body)``.
+
+        Args:
+            content_text: The cache file's contents
+
+        Returns:
+            The frontmatter and body, or None if the text is not delimited
+
+        Examples:
+            >>> ReferenceFetcher._split_frontmatter("---\\nyear: '2024'\\n---\\nBody.")
+            ("\\nyear: '2024'\\n", '\\nBody.')
+            >>> ReferenceFetcher._split_frontmatter("Body with no frontmatter.") is None
+            True
+            >>> # A value containing --- is not a delimiter; only a line that is
+            >>> ReferenceFetcher._split_frontmatter("---\\ntitle: a---b\\n---\\nBody.")
+            ('\\ntitle: a---b\\n', '\\nBody.')
+        """
+        parts = _FRONTMATTER_DELIMITER.split(content_text, maxsplit=2)
+        if len(parts) < 3:
+            return None
+        return parts[1], parts[2]
+
+    @classmethod
+    def _is_stale_cache_entry(cls, content_text: str) -> bool:
         """Report whether cached text came from an extractor older than this one.
 
         Deliberately not applied by :meth:`iter_cached_references`: export and
@@ -797,11 +868,11 @@ class ReferenceFetcher:
             >>> ReferenceFetcher._is_stale_cache_entry(current)
             False
         """
-        parts = content_text.split("---", 2)
-        if len(parts) < 3:
+        split = cls._split_frontmatter(content_text)
+        if split is None:
             return True
 
-        match = re.search(r"^extractor_version:\s*(\d+)\s*$", parts[1], re.MULTILINE)
+        match = re.search(r"^extractor_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
         if not match:
             return True
 
@@ -821,14 +892,14 @@ class ReferenceFetcher:
         Returns:
             ReferenceContent if successful, None otherwise
         """
-        parts = content_text.split("---", 2)
-        if len(parts) < 3:
+        split = self._split_frontmatter(content_text)
+        if split is None:
             logger.warning(f"Invalid markdown format for {reference_id}")
             return None
 
         yaml_parser = YAML(typ="safe")
-        frontmatter = yaml_parser.load(parts[1])
-        body = parts[2].strip()
+        frontmatter = yaml_parser.load(split[0])
+        body = split[1].strip()
 
         content = self._extract_content_from_markdown(body)
 

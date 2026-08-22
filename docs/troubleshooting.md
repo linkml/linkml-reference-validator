@@ -324,7 +324,12 @@ reference. Both are rejected before the reference is fetched.
 **Symptom:**
 
 The first run after upgrading re-fetches references that were already cached,
-and logs lines like:
+so it is slower and does more network traffic than usual. Run with `-v` to see
+why — the explanation is logged at INFO level, which only `-v` turns on:
+
+```bash
+linkml-reference-validator validate data.yaml -v
+```
 
 ```
 Ignoring cache entry for PMID:30598549 written by an older extractor;
@@ -344,13 +349,31 @@ re-fetched the next time a validation needs them.
 
 Nothing is deleted, and entries are refreshed one at a time as they are used
 rather than in a single sweep. `cache export` and the Zotero enrichment read
-older entries unchanged — only validation re-fetches them.
+older entries unchanged — only validation re-fetches them. The refresh applies
+to every cache entry, however it was populated, so a cache you pre-fetched
+deliberately will be rebuilt too.
 
 **If you would rather refresh one immediately:**
 
 ```bash
 linkml-reference-validator cache reference PMID:30598549 --force
 ```
+
+**If you are offline:**
+
+The older copy is used rather than lost. When the reference cannot be
+re-fetched — no network, a provider outage, a withdrawn record — validation
+falls back to what is on disk and warns:
+
+```
+Could not re-fetch PMID:30598549; using the cache entry written by an older
+extractor. Its text may still contain the errors this version fixes.
+```
+
+Validation then proceeds against that older text, so a snippet may be rejected
+for the reasons above. The entry is left stale rather than rewritten, so the
+next run that can reach the source refreshes it properly. This warning is
+printed without `-v`.
 
 ### Title validation failed
 

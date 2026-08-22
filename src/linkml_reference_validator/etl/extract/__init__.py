@@ -1,4 +1,12 @@
-"""Content extractors (PDF, HTML, XML)."""
+"""Content extractors (PDF, HTML, XML).
+
+Changing what these produce for the same input does not rewrite the text they
+already wrote to the reference cache, which is served in preference to a fetch.
+When a change means previously cached text is *wrong* rather than merely older,
+bump ``EXTRACTOR_CACHE_VERSION`` in
+:mod:`linkml_reference_validator.etl.reference_fetcher` so existing entries are
+re-fetched instead of keeping the old output forever.
+"""
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 

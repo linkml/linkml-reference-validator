@@ -112,7 +112,7 @@ Flags text that appears fabricated or hallucinated:
 
 ```
 RECOMMENDED REMOVALS:
-  PMID:34567890 at evidence[2]:
+  PMID:34567890 at evidence[2].supporting_text:
     Similarity: 8%
     Snippet: 'This completely made up text...'
 ```

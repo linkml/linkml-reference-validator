@@ -324,6 +324,11 @@ def _excerpt_keys(d: dict) -> list[str]:
     the reported path, so a repair cannot land in a different field than the
     quote came from.
 
+    An item that stores the same quote under both keys is therefore checked and
+    reported once per key. That is the honest reading - both fields are being
+    validated - and it costs no extra fetching, since the reference is served
+    from the in-process cache the second time.
+
     Args:
         d: A candidate evidence item
 

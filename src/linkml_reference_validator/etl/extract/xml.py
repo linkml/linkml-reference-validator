@@ -1,4 +1,9 @@
-"""JATS/PMC XML content extractor."""
+"""JATS/PMC XML content extractor.
+
+Changing what this yields for the same input may make already-cached text wrong
+rather than merely older; see :mod:`linkml_reference_validator.etl.extract` for
+when to bump ``EXTRACTOR_CACHE_VERSION``.
+"""
 
 import logging
 from typing import Optional, Union

@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from linkml_reference_validator.etl.extract.xml import MIN_FULLTEXT_CHARS
 from linkml_reference_validator.models import (
     ReferenceValidationConfig,
     ReferenceIdentifiers,
@@ -12,6 +13,12 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
 )
+
+
+@pytest.fixture
+def config(tmp_path):
+    """Config for the module-level tests below (classes define their own)."""
+    return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
 
 
 class _FakeProvider(FullTextProvider):
@@ -162,8 +169,11 @@ class TestPMCProvider:
         from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
 
         provider = PMCFullTextProvider()
-        long_body = "<body>" + "".join(f"<p>Sentence {i} of the body.</p>" for i in range(40)) + "</body>"
-        xml = f"<article>{long_body}</article>".encode("utf-8")
+        # Sized from the floor rather than from an incidental paragraph count:
+        # the previous fixture cleared MIN_FULLTEXT_CHARS by 28 characters, so
+        # shortening a sentence or raising the floor would have failed this
+        # test for a reason unrelated to what it checks.
+        xml = _pmc_article_xml(MIN_FULLTEXT_CHARS + 500)
 
         with patch.object(provider, "_resolve_pmcid", return_value="999"), \
              patch.object(provider, "_fetch_pmc_xml_source", return_value=xml):
@@ -172,4 +182,101 @@ class TestPMCProvider:
         assert loc is not None
         assert loc.format_hint == "xml"
         assert loc.provider == "pmc"
-        assert "Sentence 0 of the body." in loc.text
+        assert "Body sentence with enough prose" in loc.text
+        assert len(loc.text) > MIN_FULLTEXT_CHARS
+
+
+# ============================================================================
+# The full-text floor
+#
+# MIN_FULLTEXT_CHARS is the only stub defence on the HTML paths, and carries
+# the reasoning for both its own value and MAX_STUB_NOTICE_CHARS'. Nothing
+# asserted it: changing > to >= or deleting a gate left the suite green.
+# ============================================================================
+
+
+def _pmc_article_xml(length: int) -> bytes:
+    """Build PMC article XML whose extracted body text is at least `length`."""
+    filler = "Body sentence with enough prose to be worth counting. "
+    paragraphs = "".join(
+        f"<p>{filler * 4}</p>" for _ in range(length // (len(filler) * 4) + 1)
+    )
+    return f"<article><body>{paragraphs}</body></article>".encode()
+
+
+def test_pmc_locate_rejects_xml_below_the_floor(config):
+    """A body no longer than a placeholder notice is not full text."""
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    provider = PMCFullTextProvider()
+    short = b"<article><body><p>Too little to be an article body.</p></body></article>"
+
+    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+         patch.object(provider, "_fetch_pmc_xml_source", return_value=short), \
+         patch.object(provider, "_fetch_pmc_html", return_value=None):
+        loc = provider.locate(ReferenceIdentifiers(pmid="123", pmcid="999"), config)
+
+    assert loc is None
+
+
+def test_pmc_locate_rejects_html_below_the_floor(config):
+    """The HTML fallback is gated too - it has no is_stub_notice check at all."""
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    provider = PMCFullTextProvider()
+
+    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+         patch.object(provider, "_fetch_pmc_xml_source", return_value=None), \
+         patch.object(provider, "_fetch_pmc_html", return_value="Short landing page."):
+        loc = provider.locate(ReferenceIdentifiers(pmid="123", pmcid="999"), config)
+
+    assert loc is None
+
+
+def test_pmc_locate_accepts_text_at_the_floor_boundary(config):
+    """One character past the floor is full text; the gate is exclusive."""
+    from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+    provider = PMCFullTextProvider()
+
+    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+         patch.object(provider, "_fetch_pmc_xml_source", return_value=None), \
+         patch.object(provider, "_fetch_pmc_html", return_value="x" * MIN_FULLTEXT_CHARS):
+        assert provider.locate(ReferenceIdentifiers(pmcid="999"), config) is None
+
+    with patch.object(provider, "_resolve_pmcid", return_value="999"), \
+         patch.object(provider, "_fetch_pmc_xml_source", return_value=None), \
+         patch.object(
+             provider, "_fetch_pmc_html", return_value="x" * (MIN_FULLTEXT_CHARS + 1)
+         ):
+        assert provider.locate(ReferenceIdentifiers(pmcid="999"), config) is not None
+
+
+def test_pmid_fulltext_rejects_responses_below_the_floor(config):
+    """The PMID path has its own two gates on the same floor."""
+    from linkml_reference_validator.etl.sources.pmid import PMIDSource
+
+    source = PMIDSource()
+
+    with patch.object(source, "_get_pmcid", return_value="999"), \
+         patch.object(source, "_fetch_pmc_xml", return_value="Too short."), \
+         patch.object(source, "_fetch_pmc_html", return_value="Also too short."):
+        text, content_type = source._fetch_pmc_fulltext("123", config)
+
+    assert text is None
+    assert content_type == "pmc_restricted"
+
+
+def test_pmid_fulltext_accepts_a_body_past_the_floor(config):
+    """The rejection tests above must not pass by rejecting everything."""
+    from linkml_reference_validator.etl.sources.pmid import PMIDSource
+
+    source = PMIDSource()
+    body = "x" * (MIN_FULLTEXT_CHARS + 500)
+
+    with patch.object(source, "_get_pmcid", return_value="999"), \
+         patch.object(source, "_fetch_pmc_xml", return_value=body):
+        text, content_type = source._fetch_pmc_fulltext("123", config)
+
+    assert text == body
+    assert content_type == "full_text_xml"

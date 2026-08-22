@@ -22,14 +22,18 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import XMLExtractor
+from linkml_reference_validator.etl.extract.xml import MAX_STUB_NOTICE_CHARS, XMLExtractor
 
 logger = logging.getLogger(__name__)
 
-# 2x the global MIN_FULL_TEXT_CHARS floor (reference_fetcher.py): a PMC XML/HTML
-# response under ~1k chars is almost always a stub (title + abstract, or a stripped
-# landing page) rather than the article body, so we reject it and fall through.
-_MIN_PMC_FULLTEXT_CHARS = 1000
+# Derived from the stub-notice length rather than repeating its value: a PMC
+# XML/HTML response no longer than a placeholder notice is almost always one
+# (title + abstract, or a stripped landing page) rather than the article body,
+# so we reject it and fall through. Only the XML path runs is_stub_notice, so
+# on the HTML paths this length gate is the *only* thing standing between a
+# placeholder page and the cache - tying the two together keeps that true if
+# the notice length is ever raised.
+_MIN_PMC_FULLTEXT_CHARS = MAX_STUB_NOTICE_CHARS
 
 
 @FullTextProviderRegistry.register
@@ -57,9 +61,9 @@ class PMCFullTextProvider(FullTextProvider):
 
         Entrez.email = config.email  # type: ignore
 
-        xml_bytes = self._fetch_pmc_xml_bytes(pmcid, config)
-        if xml_bytes:
-            text = XMLExtractor().extract(xml_bytes, content_type="application/xml")
+        xml_source = self._fetch_pmc_xml_source(pmcid, config)
+        if xml_source:
+            text = XMLExtractor().extract(xml_source, content_type="application/xml")
             if text and len(text) > _MIN_PMC_FULLTEXT_CHARS:
                 return FullTextLocation(
                     text=text, format_hint="xml", oa_status="green", provider="pmc"
@@ -98,7 +102,7 @@ class PMCFullTextProvider(FullTextProvider):
                         return str(first_link["Id"])
         return None
 
-    def _fetch_pmc_xml_bytes(
+    def _fetch_pmc_xml_source(
         self, pmcid: str, config: ReferenceValidationConfig
     ) -> Optional[Union[bytes, str]]:
         """Fetch raw PMC XML for a PMC ID, exactly as Entrez returned it.
@@ -129,5 +133,5 @@ class PMCFullTextProvider(FullTextProvider):
             # extractor rather than a private copy of the paragraph walk, so
             # this path gets its <br> handling and block-boundary fallback
             # instead of quietly drifting from it.
-            return HTMLExtractor().extract(str(article_body), content_type="text/html")
+            return HTMLExtractor().extract_scope(article_body)
         return None

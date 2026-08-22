@@ -439,7 +439,7 @@ def test_pmc_provider_preserves_accents_from_non_utf8_article(mock_efetch):
     )
     mock_efetch.return_value = handle
 
-    text = PMCFullTextProvider()._fetch_pmc_xml_bytes(
+    text = PMCFullTextProvider()._fetch_pmc_xml_source(
         "6358485", ReferenceValidationConfig(rate_limit_delay=0.0)
     )
     extracted = XMLExtractor().extract(text, content_type="application/xml")
@@ -453,8 +453,10 @@ def test_pmc_provider_preserves_accents_from_non_utf8_article(mock_efetch):
 def test_pmc_provider_html_preserves_inline_markup():
     """The provider's HTML fallback must get the shared extractor's fixes too.
 
-    It carried a private copy of the paragraph extraction, so it missed <br>
-    handling and anything else fixed in HTMLExtractor.
+    Pins <br> handling and inline-markup spacing on the paragraph branch; the
+    no-paragraph fallback is covered separately by
+    test_extract_scope_handles_a_region_without_paragraphs, since a fixture
+    with <p> elements never reaches it.
     """
     from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
 
@@ -481,8 +483,9 @@ def test_pmid_source_html_fallback_preserves_inline_markup():
     """PMIDSource's own HTML fallback carried the third copy of the same walk.
 
     It never had the welding bug, but it got none of this PR's other HTML
-    work either - no <br> handling, no block-boundary fallback - and it is
-    live as the fallback in PMIDSource's full-text path.
+    work either, and it is live as the fallback in PMIDSource's full-text
+    path. Like its sibling, this pins <br> handling and inline spacing on the
+    paragraph branch, not the no-paragraph fallback.
     """
     html = (
         b"<html><body><div class='article-body'>"
@@ -499,3 +502,62 @@ def test_pmid_source_html_fallback_preserves_inline_markup():
 
     assert "(GUSB, GRN)" in text
     assert "Line oneLine two" not in text
+
+
+# ---------------------------------------------------------------------------
+# extract_scope: extracting from a region the caller already selected
+# ---------------------------------------------------------------------------
+
+
+def test_extract_scope_does_not_reselect_the_region():
+    """A caller-chosen region must be used whole, not narrowed again.
+
+    extract() picks <article>/<main> when given a whole document. Handing it a
+    region the caller already selected re-ran that choice inside the region, so
+    a nested <article> silently dropped everything around it.
+    """
+    from bs4 import BeautifulSoup
+
+    region = BeautifulSoup(
+        "<div class='article-body'>"
+        "<p>Introductory paragraph outside the nested element.</p>"
+        "<article><p>Nested article paragraph.</p></article>"
+        "</div>",
+        "html.parser",
+    ).find("div")
+
+    text = HTMLExtractor().extract_scope(region)
+
+    assert "Introductory paragraph outside the nested element." in text
+    assert "Nested article paragraph." in text
+
+
+def test_extract_scope_matches_extract_for_a_plain_region():
+    """The scope-taking entry point and the parsing one must agree."""
+    from bs4 import BeautifulSoup
+
+    markup = "<div><p>Variants near (<i>GUSB</i>, <i>GRN</i>) were found.</p></div>"
+    region = BeautifulSoup(markup, "html.parser").find("div")
+
+    assert HTMLExtractor().extract_scope(region) == HTMLExtractor().extract(markup)
+
+
+def test_extract_scope_handles_a_region_without_paragraphs():
+    """The block fallback runs for a region holding no <p> at all.
+
+    Both PMC HTML fallbacks returned None for such a region before delegating;
+    they now return its block-separated text. Recorded here because it changes
+    what counts as full text.
+    """
+    from bs4 import BeautifulSoup
+
+    region = BeautifulSoup(
+        "<div class='article-body'><div>Introduction</div><div>The protein binds.</div></div>",
+        "html.parser",
+    ).find("div", class_="article-body")
+
+    text = HTMLExtractor().extract_scope(region)
+
+    assert "Introduction" in text
+    assert "The protein binds." in text
+    assert "IntroductionThe" not in text

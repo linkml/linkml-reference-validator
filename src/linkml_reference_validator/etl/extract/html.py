@@ -1,7 +1,7 @@
 """HTML content extractor."""
 
 import logging
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from bs4 import BeautifulSoup  # type: ignore
 
@@ -52,14 +52,38 @@ class HTMLExtractor(Extractor):
         for tag in soup(["script", "style"]):
             tag.decompose()
 
+        region = soup.find("article") or soup.find("main")
+        return self.extract_scope(region if region is not None else soup)
+
+    def extract_scope(self, scope: Any) -> Optional[str]:
+        """Extract text from an already-selected region of parsed markup.
+
+        Callers that have chosen their own region - a PMC ``div.article-body``,
+        say - pass the tag straight in. Serialising it back to markup for
+        ``extract`` would parse the whole body a second time, and would re-run
+        the ``<article>``/``<main>`` selection *inside* a region the caller had
+        already settled, silently narrowing to a nested one.
+
+        Args:
+            scope: A BeautifulSoup tag or soup to take the text of
+
+        Returns:
+            The region's text, or None if it holds none
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> region = BeautifulSoup(
+            ...     "<div><p>near (<i>GUSB</i>, <i>GRN</i>) here</p></div>",
+            ...     "html.parser",
+            ... ).find("div")
+            >>> HTMLExtractor().extract_scope(region)
+            'near (GUSB, GRN) here'
+        """
         # Before either branch, so both agree: <br> carries no text of its own,
         # so bare get_text() would weld the lines it separates into
         # "Line oneLine two" - the same welding this extractor exists to avoid.
-        for line_break in soup.find_all("br"):
+        for line_break in scope.find_all("br"):
             line_break.replace_with("\n")
-
-        region = soup.find("article") or soup.find("main")
-        scope = region if region is not None else soup
 
         paragraphs = scope.find_all("p")
         if paragraphs:

@@ -166,7 +166,7 @@ class TestPMCProvider:
         xml = f"<article>{long_body}</article>".encode("utf-8")
 
         with patch.object(provider, "_resolve_pmcid", return_value="999"), \
-             patch.object(provider, "_fetch_pmc_xml_bytes", return_value=xml):
+             patch.object(provider, "_fetch_pmc_xml_source", return_value=xml):
             loc = provider.locate(ReferenceIdentifiers(pmid="123", pmcid="999"), config)
 
         assert loc is not None

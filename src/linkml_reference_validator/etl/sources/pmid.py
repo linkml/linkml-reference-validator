@@ -21,7 +21,7 @@ import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.extract.xml import XMLExtractor
+from linkml_reference_validator.etl.extract.xml import MAX_STUB_NOTICE_CHARS, XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
@@ -355,11 +355,11 @@ class PMIDSource(ReferenceSource):
             return None, "no_pmc"
 
         full_text = self._fetch_pmc_xml(pmcid, config)
-        if full_text and len(full_text) > 1000:
+        if full_text and len(full_text) > MAX_STUB_NOTICE_CHARS:
             return full_text, "full_text_xml"
 
         full_text = self._fetch_pmc_html(pmcid, config)
-        if full_text and len(full_text) > 1000:
+        if full_text and len(full_text) > MAX_STUB_NOTICE_CHARS:
             return full_text, "full_text_html"
 
         return None, "pmc_restricted"
@@ -463,6 +463,6 @@ class PMIDSource(ReferenceSource):
             # Region selected here, text extracted by the shared extractor, for
             # the same reason _fetch_pmc_xml delegates: a private paragraph
             # walk drifts from the rest of the ETL layer and misses its fixes.
-            return HTMLExtractor().extract(str(article_body), content_type="text/html")
+            return HTMLExtractor().extract_scope(article_body)
 
         return None

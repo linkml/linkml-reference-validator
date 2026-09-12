@@ -297,27 +297,6 @@ class TestPMIDSource:
         assert source.can_handle("PMID 12345678")
         assert not source.can_handle("DOI:10.1234/test")
 
-    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.read")
-    @patch("linkml_reference_validator.etl.sources.pmid.Entrez.elink")
-    def test_get_pmcid_handles_entrez_error(
-        self,
-        mock_elink,
-        mock_read,
-        source,
-        config,
-    ):
-        """Should return None when Entrez.read raises an error."""
-        handle = MagicMock()
-        mock_elink.return_value = handle
-        mock_read.side_effect = RuntimeError(
-            "Couldn't resolve #exLinkSrv2, the address table is empty."
-        )
-
-        result = source._get_pmcid("12112053", config)
-
-        assert result is None
-        handle.close.assert_called_once()
-
     # --- Publication types (issue #56) -----------------------------------
 
     _ARTICLE_XML = """<?xml version="1.0"?>

@@ -173,3 +173,14 @@ class TestPMCProvider:
         assert loc.format_hint == "xml"
         assert loc.provider == "pmc"
         assert "Sentence 0 of the body." in loc.text
+
+    @patch("linkml_reference_validator.etl.fulltext.pmc.Entrez.elink")
+    def test_resolve_pmcid_handles_entrez_error(self, mock_elink, config):
+        """Should return None when the Entrez elink call fails."""
+        from linkml_reference_validator.etl.fulltext.pmc import PMCFullTextProvider
+
+        mock_elink.side_effect = RuntimeError(
+            "Couldn't resolve #exLinkSrv2, the address table is empty."
+        )
+
+        assert PMCFullTextProvider()._resolve_pmcid("12112053", config) is None

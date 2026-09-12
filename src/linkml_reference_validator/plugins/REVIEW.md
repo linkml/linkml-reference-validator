@@ -229,7 +229,7 @@ Comprehensive Repository Review Report
   2. CLI Not Tested:
   Violates: "Always include CLI tests"
   3. Insufficient Doctests for Complex Functions:
-  Some complex functions lack doctests (e.g., _fetch_pmc_fulltext)
+  Some complex functions lack doctests
 
   Architecture Strengths
 
@@ -247,12 +247,7 @@ Comprehensive Repository Review Report
   reference_fetcher.py (68% coverage)
 
   Untested lines (54 total):
-  - Lines 224-232: _fetch_pmc_fulltext logic
-  - Lines 265-286: _fetch_pmc_xml parsing
-  - Lines 297-314: _fetch_pmc_html scraping
   - Lines 139-140, 170-172: Error handling
-
-  Impact: PMC full-text retrieval completely untested
 
   reference_validation_plugin.py (56% coverage)
 

@@ -10,10 +10,14 @@ Examples:
     True
 """
 
+from collections.abc import Callable
+from http.client import IncompleteRead, RemoteDisconnected
+from io import BytesIO
 import logging
 import re
 import time
 from typing import Any, Optional
+from urllib.error import HTTPError, URLError
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -108,15 +112,18 @@ class PMIDSource(ReferenceSource):
         pmid = identifier.strip()
         Entrez.email = config.email  # type: ignore
 
-        time.sleep(config.rate_limit_delay)
+        summary = self._read_entrez(
+            lambda: Entrez.esummary(db="pubmed", id=pmid), pmid, config
+        )
+        if summary is None:
+            return None
 
-        # External API call - handle network/API errors
+        # Parse only complete responses: a truncated stream can otherwise look
+        # like malformed XML to Entrez.read instead of a transport failure.
         try:
-            handle = Entrez.esummary(db="pubmed", id=pmid)
-            records = Entrez.read(handle)
-            handle.close()
-        except Exception as e:
-            logger.warning(f"Failed to fetch PMID:{pmid} from NCBI: {e}")
+            records = Entrez.read(BytesIO(summary))
+        except (ValueError, RuntimeError) as exc:
+            logger.warning("Failed to parse PMID:%s summary: %s", pmid, exc)
             return None
 
         if not records:
@@ -143,6 +150,10 @@ class PMIDSource(ReferenceSource):
         # A single efetch of the article XML backs the abstract, MeSH terms,
         # and publication types, so we don't round-trip to NCBI three times.
         article_xml = self._fetch_pubmed_xml(pmid, config)
+        if article_xml is None:
+            # A failed refresh must not overwrite useful cached text with just
+            # summary metadata. None also enables ReferenceFetcher's stale fallback.
+            return None
         abstract = self._parse_abstract(article_xml) if article_xml else None
         keywords = self._parse_mesh_terms(article_xml) if article_xml else None
         publication_types = (
@@ -235,6 +246,45 @@ class PMIDSource(ReferenceSource):
         joined = "\n\n".join(sections)
         return joined if joined else None
 
+    def _read_entrez(
+        self, open_handle: Callable[[], Any], pmid: str,
+        config: ReferenceValidationConfig,
+    ) -> Optional[bytes]:
+        """Read a complete response, retrying transport failures up to three attempts.
+
+        Entrez already retries HTTP/URL errors during opening (three attempts by
+        default, with its own delays). Do not restart that exhausted retry loop.
+        Direct socket failures and incomplete reads escape Entrez's loop, so
+        retry those here with 2 and 4 second backoff. A mixed sequence can make
+        at most ``3 * Entrez.max_tries`` requests; no process-global Entrez retry
+        settings are changed. Parsing happens after this transport-only boundary.
+        """
+        for attempt in range(3):
+            time.sleep(config.rate_limit_delay)
+            handle = None
+            try:
+                try:
+                    handle = open_handle()
+                except URLError as exc:
+                    # Includes HTTPError. Entrez has already applied its retry
+                    # policy; retrying here would multiply outage waits.
+                    if isinstance(exc, HTTPError):
+                        exc.close()
+                    logger.warning("Failed to open PMID:%s from NCBI: %s", pmid, exc)
+                    return None
+                return handle.read()
+            except (IncompleteRead, RemoteDisconnected, ConnectionError, TimeoutError, URLError) as exc:
+                logger.warning(
+                    "NCBI transport failure for PMID:%s (attempt %s/3): %s",
+                    pmid, attempt + 1, exc,
+                )
+            finally:
+                if handle is not None:
+                    handle.close()
+            if attempt < 2:
+                time.sleep(2 ** (attempt + 1))
+        return None
+
     def _fetch_pubmed_xml(
         self, pmid: str, config: ReferenceValidationConfig
     ) -> Optional[BeautifulSoup]:
@@ -250,12 +300,11 @@ class PMIDSource(ReferenceSource):
         Returns:
             Parsed BeautifulSoup document, or None if nothing was returned
         """
-        time.sleep(config.rate_limit_delay)
-
-        handle = Entrez.efetch(db="pubmed", id=pmid,
-                               rettype="xml", retmode="xml")
-        xml_content = handle.read()
-        handle.close()
+        xml_content = self._read_entrez(
+            lambda: Entrez.efetch(db="pubmed", id=pmid, rettype="xml", retmode="xml"),
+            pmid,
+            config,
+        )
 
         if not xml_content:
             return None

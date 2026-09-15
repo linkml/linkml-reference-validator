@@ -29,6 +29,28 @@ ALIASES = [
 CANONICAL = "clinicaltrials:NCT12345678"
 
 
+def test_committed_trial_fixture_uses_canonical_path(test_config, trial_server):
+    """Fixture cache hits must work on case-sensitive filesystems without HTTP."""
+    test_config.fetch_full_text = False
+    requests, state = trial_server
+    state["status"] = 503
+    fetcher = ReferenceFetcher(test_config)
+    expected = fetcher.get_cache_path("clinicaltrials:NCT00000001")
+    assert expected.name in {path.name for path in expected.parent.iterdir()}
+    result = fetcher.fetch("NCT00000001")
+    assert result is not None
+    assert result.title == "A Phase III Study of Drug X for Treatment of Disease Y"
+    assert requests == []
+
+
+@pytest.mark.parametrize("reference_id", ["NCT1234567", "NCT123456789", "NCTabcdefgh"])
+def test_near_miss_trial_ids_remain_unknown(trial_config, reference_id):
+    """Only bare NCT IDs matching the source's eight-digit pattern are claimed."""
+    fetcher = ReferenceFetcher(trial_config)
+    assert fetcher._parse_reference_id(reference_id) == ("UNKNOWN", reference_id)
+    assert fetcher.normalize_reference_id(reference_id) == reference_id
+
+
 @pytest.mark.parametrize("second_target", ["C", "clinicaltrials"])
 def test_cache_paths_do_not_reapply_unrelated_prefix_maps(tmp_path, second_target):
     """Fetching applies an unrelated prefix alias once, including on disk reads."""

@@ -437,6 +437,7 @@ class TestPMIDSource:
         self, mock_read, mock_esummary, mock_efetch, source, config
     ):
         """fetch() should derive abstract, MeSH, and pub types from one efetch."""
+        mock_esummary.return_value.read.return_value = b"<summary/>"
         mock_read.return_value = [
             {
                 "Title": "An illustrative case",

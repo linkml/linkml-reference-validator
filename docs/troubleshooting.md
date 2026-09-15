@@ -338,8 +338,9 @@ it will be re-fetched and rewritten
 
 **Cause:**
 
-This is deliberate, and it is a one-off per reference. Cache entries record
-which extractor wrote them (`extractor_version` in the file's frontmatter).
+This is deliberate; the migration completes for each reference only when its
+refresh succeeds. Cache entries record which extractor wrote them
+(`extractor_version` in the file's frontmatter).
 Versions before the extractor fixes discarded some full-text articles and
 cached a short PMC placeholder in their place, labelled as full text, and
 welded text across inline markup — so entries written then hold content that
@@ -374,6 +375,25 @@ Validation then proceeds against that older text, so a snippet may be rejected
 for the reasons above. The entry is left stale rather than rewritten, so the
 next run that can reach the source refreshes it properly. This warning is
 printed without `-v`.
+
+Until a refresh succeeds, each new run attempts to fetch every distinct stale
+reference before falling back to its cached text. Repeated uses of the same ID
+share an in-memory result, but this does not cover other IDs or later processes.
+Offline runs with large caches may therefore spend substantial time waiting for
+network failures on every run; there is no circuit breaker. The wait depends on
+the source's timeout and retry policy.
+
+For PubMed, Bio.Entrez handles HTTP/URL errors while opening requests (three
+attempts by default, with its own delays). The validator does not restart an
+exhausted Bio.Entrez retry loop. Dropped connections, socket/TLS errors, and
+HTTP framing errors (including incomplete bodies) are attempted up to three
+times, with 2 and 4 second
+backoff between attempts. Each attempt opens a new request, so mixed opening
+and body failures can involve up to nine HTTP requests with Bio.Entrez defaults
+per endpoint (summary and article XML). Exhaustion reports the reference as
+unfetchable, or uses an eligible stale cached copy if one is available. A partial
+summary refresh does not replace useful cached text. These are attempt limits,
+not a wall-clock deadline.
 
 ### Title validation failed
 

@@ -1,5 +1,6 @@
 ---
 reference_id: PMC:TEST001
+extractor_version: 1
 title: Molecular mechanisms of BRCA1 in DNA repair
 authors:
 - Zhang L

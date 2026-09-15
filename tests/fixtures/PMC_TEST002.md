@@ -1,5 +1,6 @@
 ---
 reference_id: PMC:TEST002
+extractor_version: 1
 title: TP53 mutations in cancer development
 authors:
 - Johnson K

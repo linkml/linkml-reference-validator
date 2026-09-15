@@ -1,0 +1,794 @@
+"""Tests for rejection of substantively empty supporting text.
+
+An empty (or whitespace-only) snippet used to pass the whole validation stack
+vacuously: the empty string is a substring of every document, so every
+"is this quote in the reference?" check succeeded without any evidence being
+present. See https://github.com/monarch-initiative/dismech/issues/8550
+
+Every layer must now treat a present-but-blank excerpt as an error:
+
+- ``SupportingTextValidator`` rejects blank text before it ever fetches
+- the LinkML plugin distinguishes an absent excerpt slot from a blank one
+- the repairer flags blank text for review instead of attempting a fix
+- the repair CLI collects blank snippets instead of silently dropping them
+"""
+
+from pathlib import Path
+
+import pytest
+from linkml.validator.validation_context import ValidationContext  # type: ignore[import-untyped]
+from linkml_runtime.utils.schemaview import SchemaView  # type: ignore[import-untyped]
+
+from linkml_reference_validator.cli.repair import _extract_evidence_items
+from linkml_reference_validator.models import (
+    ReferenceContent,
+    ReferenceValidationConfig,
+    RepairActionType,
+    RepairConfig,
+    ValidationSeverity,
+)
+from linkml_reference_validator.plugins.reference_validation_plugin import (
+    ReferenceValidationPlugin,
+)
+from linkml_reference_validator.validation.repairer import SupportingTextRepairer
+from linkml_reference_validator.validation.supporting_text_validator import (
+    SupportingTextValidator,
+    is_blank_text,
+)
+
+MIN_LENGTH = 20
+
+DATA_DIR = Path(__file__).parent / "data"
+FIXTURES_DIR = Path(__file__).parent / "fixtures"
+DEEP_SCHEMA = DATA_DIR / "test_schema_deep_nesting.yaml"
+
+BLANK_TEXTS = ["", " ", "   ", "\t", "\n", " \t\n ", " "]
+
+
+@pytest.fixture
+def config(tmp_path):
+    """Configuration pointing at an empty temporary cache."""
+    return ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+    )
+
+
+@pytest.fixture
+def validator(config):
+    """Validator under test."""
+    return SupportingTextValidator(config)
+
+
+@pytest.fixture
+def cached_config(tmp_path):
+    """Configuration with the test reference fixtures pre-cached."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    for fixture_file in FIXTURES_DIR.glob("*.md"):
+        (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
+    for fixture_file in FIXTURES_DIR.glob("*.txt"):
+        (cache_dir / fixture_file.name).write_text(fixture_file.read_text())
+    return ReferenceValidationConfig(cache_dir=cache_dir, rate_limit_delay=0.0)
+
+
+@pytest.fixture
+def plugin(cached_config):
+    """Plugin with cached test references."""
+    return ReferenceValidationPlugin(config=cached_config)
+
+
+@pytest.fixture
+def deep_context(plugin):
+    """Validation context for the deeply nested test schema."""
+    schema_view = SchemaView(str(DEEP_SCHEMA))
+    context = ValidationContext(schema_view.schema, target_class="Community")
+    plugin.pre_process(context)
+    return context
+
+
+def _community(snippet_field: dict) -> dict:
+    """Build a Community instance whose single evidence item carries the given fields."""
+    return {
+        "name": "Test Community",
+        "members": [
+            {
+                "taxon_name": "Species A",
+                "evidence": [{"reference": "PMID:TEST001", **snippet_field}],
+            }
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# is_blank_text
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", BLANK_TEXTS)
+def test_is_blank_text_true(text):
+    """Empty and whitespace-only strings are blank."""
+    assert is_blank_text(text) is True
+
+
+@pytest.mark.parametrize("text", ["a", " a ", "[note]", "..."])
+def test_is_blank_text_false(text):
+    """Any string with a non-whitespace character is not blank."""
+    assert is_blank_text(text) is False
+
+
+# ---------------------------------------------------------------------------
+# Excerpts that are non-blank but still quote nothing
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["...", "....", "[editorial note]", "[a] ... [b]"])
+def test_validate_rejects_excerpt_quoting_nothing(validator, text):
+    """Markup that reduces to no quoted text is as vacuous as a blank string."""
+    result = validator.validate(text, "PMID:TEST001")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert "empty" in result.message.lower()
+
+
+def test_validate_excerpt_quoting_nothing_does_not_fetch(validator, mocker):
+    """It is a data defect, so it is settled without a reference lookup."""
+    spy = mocker.patch.object(validator.fetcher, "fetch")
+
+    validator.validate("[editorial note]", "PMID:TEST001")
+
+    spy.assert_not_called()
+
+
+def test_plugin_rejects_snippet_quoting_nothing(plugin, deep_context):
+    """The plugin reports bracket-only snippets like any other empty evidence."""
+    results = list(
+        plugin.process(_community({"snippet": "[not a real quote]"}), deep_context)
+    )
+
+    assert len(results) == 1
+    assert "empty" in results[0].message.lower()
+
+
+def test_repair_single_flags_excerpt_quoting_nothing(cached_config):
+    """A bracket-only excerpt is flagged for review, not repaired."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+
+    result = repairer.repair_single("[editorial note]", "PMID:TEST001")
+
+    assert result.is_repaired is False
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
+
+
+def test_is_blank_text_non_string():
+    """Non-strings are not blank text (they are handled elsewhere)."""
+    assert is_blank_text(None) is False
+    assert is_blank_text(["a"]) is False
+
+
+# ---------------------------------------------------------------------------
+# SupportingTextValidator
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", BLANK_TEXTS)
+def test_validate_rejects_blank_supporting_text(validator, text):
+    """A blank snippet is an error, not a vacuous pass."""
+    result = validator.validate(text, "PMID:TEST001")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert "empty" in result.message.lower()
+
+
+def test_validate_blank_does_not_fetch(validator, mocker):
+    """A blank snippet fails without any reference lookup."""
+    spy = mocker.patch.object(validator.fetcher, "fetch")
+
+    result = validator.validate("", "PMID:TEST001")
+
+    assert result.is_valid is False
+    spy.assert_not_called()
+
+
+def test_validate_blank_rejected_for_skipped_prefix(tmp_path):
+    """Blank text is a data defect even when the reference prefix is skipped."""
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        skip_prefixes=["GO"],
+    )
+    validator = SupportingTextValidator(config)
+
+    result = validator.validate("", "GO:0008150")
+
+    assert result.is_valid is False
+    assert "empty" in result.message.lower()
+
+
+def test_find_text_in_reference_rejects_blank(validator):
+    """Blank text is not found, even though "" is a substring of everything."""
+    ref = ReferenceContent(
+        reference_id="PMID:123",
+        content="The protein functions in cell cycle regulation.",
+    )
+
+    match = validator.find_text_in_reference("", ref)
+
+    assert match.found is False
+    assert "empty" in match.error_message.lower()
+
+
+def test_find_text_in_reference_blank_without_content(validator):
+    """Blank text is reported as empty rather than as a missing-content problem."""
+    ref = ReferenceContent(reference_id="PMID:123", content=None)
+
+    match = validator.find_text_in_reference("   ", ref)
+
+    assert match.found is False
+    assert "empty" in match.error_message.lower()
+
+
+def test_validate_still_accepts_real_text(cached_config):
+    """The blank guard must not disturb ordinary validation."""
+    validator = SupportingTextValidator(cached_config)
+
+    result = validator.validate(
+        "Protein X functions in cell cycle regulation", "PMID:TEST001"
+    )
+
+    assert result.is_valid is True
+
+
+# ---------------------------------------------------------------------------
+# ReferenceValidationPlugin
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["", "   ", "\n"])
+def test_plugin_rejects_blank_snippet(plugin, deep_context, text):
+    """A present-but-blank snippet must produce a validation error."""
+    results = list(plugin.process(_community({"snippet": text}), deep_context))
+
+    assert len(results) == 1, (
+        "A blank snippet should be reported exactly once, "
+        f"got {[r.message for r in results]}"
+    )
+    assert "empty" in results[0].message.lower()
+    assert "snippet" in results[0].instantiates
+
+
+def test_plugin_blank_snippet_reported_without_reference(plugin, deep_context):
+    """A blank snippet is reported even when no reference is present to check it against."""
+    instance = {
+        "name": "Test Community",
+        "members": [{"taxon_name": "Species A", "evidence": [{"snippet": ""}]}],
+    }
+
+    results = list(plugin.process(instance, deep_context))
+
+    assert len(results) == 1
+    assert "empty" in results[0].message.lower()
+
+
+def test_plugin_absent_snippet_is_not_an_error(plugin, deep_context):
+    """An absent excerpt slot is LinkML's concern (required-ness), not ours."""
+    instance = _community({})
+
+    results = list(plugin.process(instance, deep_context))
+
+    assert results == []
+
+
+def test_plugin_null_snippet_is_not_an_error(plugin, deep_context):
+    """An explicitly null excerpt is absent, not blank."""
+    instance = _community({"snippet": None})
+
+    results = list(plugin.process(instance, deep_context))
+
+    assert results == []
+
+
+def test_plugin_valid_snippet_still_passes(plugin, deep_context):
+    """The blank guard must not flag genuine snippets."""
+    instance = _community(
+        {"snippet": "Protein X functions in cell cycle regulation"}
+    )
+
+    results = list(plugin.process(instance, deep_context))
+
+    assert results == []
+
+
+# ---------------------------------------------------------------------------
+# SupportingTextRepairer
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("text", ["", "  "])
+def test_repair_single_flags_blank_as_insufficient(cached_config, text):
+    """A blank snippet cannot be repaired; it is flagged for human review.
+
+    Reported as INSUFFICIENT_EXCERPT rather than REMOVAL: a removal recommendation
+    means "this quote does not match the reference", a verdict reached by
+    comparison. No comparison happens here, so borrowing that category would
+    misreport how the conclusion was reached.
+    """
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+
+    result = repairer.repair_single(text, "PMID:TEST001", path="evidence[0].snippet")
+
+    assert result.was_valid is False
+    assert result.is_repaired is False
+    assert result.repaired_text is None
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
+    assert result.actions[0].can_auto_fix is False
+    assert "empty" in result.message.lower()
+    assert result.path == "evidence[0].snippet"
+
+
+def test_report_shows_empty_excerpt_distinctly(cached_config):
+    """The curator-facing report must say the excerpt is empty.
+
+    It previously rendered as "Similarity: 0%" over "Snippet: '...'", which
+    reads as an ellipsis-only quote that scored zero against the reference -
+    wrong on both counts, and indistinguishable from a fabricated quote.
+    """
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch([("", "PMID:TEST001", "evidence[0].snippet")])
+
+    output = repairer.format_report(report)
+    section = output.split("INSUFFICIENT EXCERPTS")[1].split("RECOMMENDED REMOVALS")[0]
+
+    assert "Excerpt: (empty)" in section
+    assert "evidence[0].snippet" in section
+    # Scoped to this section alone - the removals section that follows it is
+    # cut off deliberately. A similarity score is meaningful for quotes that
+    # really were compared, so this assertion must not start failing merely
+    # because a fabricated quote joins the batch.
+    assert "Similarity" not in section
+
+
+def test_report_summary_counts_insufficient_excerpts(cached_config):
+    """Giving empty excerpts their own section must not drop them from the tally."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch(
+        [
+            ("", "PMID:TEST001", "e[0]"),
+            ("   ", "PMID:TEST002", "e[1]"),
+            ("a wholly fabricated sentence never written", "PMID:TEST001", "e[2]"),
+        ]
+    )
+
+    assert report.insufficient_excerpt_count == 2
+    assert report.removal_count == 1
+    assert "Insufficient excerpts: 2" in repairer.format_report(report)
+
+
+def test_report_still_shows_fabricated_removals(cached_config):
+    """The empty-excerpt section must not swallow ordinary removals."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch(
+        [("wholly fabricated sentence never written", "PMID:TEST001", "e[0]")]
+    )
+
+    output = repairer.format_report(report)
+
+    assert "REMOVAL" in output.upper()
+    assert "not found in reference" in output
+
+
+def test_report_does_not_imply_truncation_of_short_text(cached_config):
+    """A quote shorter than the display limit must not be shown with an ellipsis."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    report = repairer.repair_batch([("a short fake quote", "PMID:TEST001", "e[0]")])
+
+    output = repairer.format_report(report)
+
+    assert "'a short fake quote'" in output
+    assert "a short fake quote...." not in output
+
+
+def test_repair_single_blank_does_not_fetch(cached_config, mocker):
+    """Repairing a blank snippet needs no reference lookup."""
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+    spy = mocker.patch.object(repairer.fetcher, "fetch")
+
+    repairer.repair_single("", "PMID:TEST001")
+
+    spy.assert_not_called()
+
+
+def test_blank_check_precedes_skip_references(cached_config):
+    """Skipping a reference silences repair for it, not for a defect in the data.
+
+    skip_references says "do not try to repair quotes against this reference".
+    A blank quote is not a judgement about the reference, so it is still
+    reported.
+    """
+    repair_config = RepairConfig(skip_references=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("", "PMID:TEST001")
+
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
+    assert "empty" in result.message.lower()
+
+
+def test_blank_check_precedes_trusted_low_similarity(cached_config):
+    """Trusting a reference suppresses REMOVAL for weak matches, not for blanks.
+
+    trusted_low_similarity exists so a poorly-matching quote is not proposed
+    for deletion. A blank excerpt has no match to judge, so the trust setting
+    does not apply and REMOVAL survives.
+    """
+    repair_config = RepairConfig(trusted_low_similarity=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("", "PMID:TEST001")
+
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
+
+
+def test_skip_references_still_honoured_for_real_text(cached_config):
+    """The precedence above must not break skip_references for ordinary quotes."""
+    repair_config = RepairConfig(skip_references=["PMID:TEST001"])
+    repairer = SupportingTextRepairer(cached_config, repair_config)
+
+    result = repairer.repair_single("fabricated quote", "PMID:TEST001")
+
+    assert result.actions == []
+    assert "skip" in result.message.lower()
+
+
+# ---------------------------------------------------------------------------
+# Repair CLI extraction
+# ---------------------------------------------------------------------------
+
+
+def test_extract_evidence_items_keeps_blank_snippet():
+    """Blank snippets must reach the repairer instead of being dropped."""
+    data = {
+        "evidence": [
+            {"reference": "PMID:TEST001", "snippet": ""},
+            {"reference": "PMID:TEST002", "snippet": "real text"},
+        ]
+    }
+
+    items = _extract_evidence_items(data, None, Path("unused.yaml"))
+
+    assert ("", "PMID:TEST001", "evidence[0].snippet") in items
+    assert ("real text", "PMID:TEST002", "evidence[1].snippet") in items
+
+
+def test_extract_evidence_items_reports_every_excerpt_key():
+    """Both keys are checked, matching the plugin.
+
+    Preferring one key meant an item carrying two excerpts had the second
+    silently unvalidated, while the LinkML plugin iterates every excerpt
+    field and checks each. A blank one alongside a real one is still a
+    defect and is still reported.
+    """
+    data = {
+        "evidence": [
+            {
+                "reference": "PMID:TEST001",
+                "supporting_text": "",
+                "snippet": "real text",
+            }
+        ]
+    }
+
+    items = _extract_evidence_items(data, None, Path("unused.yaml"))
+
+    assert items == [
+        ("", "PMID:TEST001", "evidence[0].supporting_text"),
+        ("real text", "PMID:TEST001", "evidence[0].snippet"),
+    ]
+
+
+def test_extract_evidence_items_requires_reference():
+    """A blank snippet with no reference has nothing to repair against."""
+    data = {"evidence": [{"snippet": ""}]}
+
+    items = _extract_evidence_items(data, None, Path("unused.yaml"))
+
+    assert items == []
+
+
+# ---------------------------------------------------------------------------
+# Configurable minimum excerpt length
+#
+# A blank excerpt is the extreme case; a two-character one is barely better,
+# since a short string matches almost any paper by chance. Length is measured
+# in non-whitespace characters of quoted text, which keeps the count stable
+# across PDF-to-text whitespace damage and never splits chemical names.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def strict_config(tmp_path):
+    """Configuration enforcing a minimum excerpt length."""
+    return ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        min_excerpt_length=MIN_LENGTH,
+    )
+
+
+def test_min_excerpt_length_defaults_to_disabled():
+    """The check is opt-in so existing data keeps validating as before."""
+    assert ReferenceValidationConfig().min_excerpt_length == 0
+
+
+def test_min_excerpt_length_rejects_negative():
+    """A negative minimum is meaningless."""
+    with pytest.raises(ValueError):
+        ReferenceValidationConfig(min_excerpt_length=-1)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("the protein", 10),
+        # PDF-to-text whitespace damage must not change the count.
+        ("t he pro tein", 10),
+        ("the\n\nprotein", 10),
+        # Editorial brackets are not quoted text.
+        ("protein [important] functions", len("proteinfunctions")),
+        # Ellipsis separators are not quoted text.
+        ("abc ... def", 6),
+        ("[editorial note only]", 0),
+        ("", 0),
+        # Chemical nomenclature counts in full - no tokenizing, no splitting.
+        ("2,3-dihydroxybenzoate", 21),
+        ("N-(4-hydroxyphenyl)acetamide", 28),
+    ],
+)
+def test_count_quoted_characters(validator, text, expected):
+    """Length counts non-whitespace characters of actually-quoted text."""
+    assert validator.count_quoted_characters(text) == expected
+
+
+def test_count_quoted_characters_survives_whitespace_damage(validator):
+    """Mangled and clean renderings of the same quote measure identically."""
+    clean = "the protein functions in cell cycle"
+    mangled = "the  pro tein  func tions\tin cell   cycle"
+
+    assert validator.count_quoted_characters(clean) == validator.count_quoted_characters(
+        mangled
+    )
+
+
+def test_validate_rejects_too_short_excerpt(strict_config):
+    """An excerpt below the configured minimum is an error."""
+    validator = SupportingTextValidator(strict_config)
+
+    result = validator.validate("the gene", "PMID:TEST001")
+
+    assert result.is_valid is False
+    assert result.severity == ValidationSeverity.ERROR
+    assert "too short" in result.message.lower()
+    assert str(MIN_LENGTH) in result.message
+
+
+def test_validate_too_short_does_not_fetch(strict_config, mocker):
+    """A too-short excerpt fails without any reference lookup."""
+    validator = SupportingTextValidator(strict_config)
+    spy = mocker.patch.object(validator.fetcher, "fetch")
+
+    validator.validate("the gene", "PMID:TEST001")
+
+    spy.assert_not_called()
+
+
+def test_validate_accepts_excerpt_at_minimum(cached_config):
+    """An excerpt meeting the minimum validates normally."""
+    text = "Protein X functions in cell cycle regulation"
+    cached_config.min_excerpt_length = len(text.replace(" ", ""))
+    validator = SupportingTextValidator(cached_config)
+
+    result = validator.validate(text, "PMID:TEST001")
+
+    assert result.is_valid is True
+
+
+def test_short_excerpt_allowed_when_check_disabled(cached_config):
+    """With the default config, a short but real quote still passes."""
+    validator = SupportingTextValidator(cached_config)
+
+    result = validator.validate("Protein X", "PMID:TEST001")
+
+    assert result.is_valid is True
+
+
+def test_find_text_in_reference_rejects_too_short(strict_config):
+    """The matching entry point enforces the minimum too."""
+    validator = SupportingTextValidator(strict_config)
+    ref = ReferenceContent(
+        reference_id="PMID:123",
+        content="The protein functions in cell cycle regulation.",
+    )
+
+    match = validator.find_text_in_reference("protein", ref)
+
+    assert match.found is False
+    assert "too short" in match.error_message.lower()
+
+
+def test_plugin_rejects_too_short_snippet(cached_config):
+    """The plugin reports a too-short snippet like any other empty evidence."""
+    cached_config.min_excerpt_length = MIN_LENGTH
+    plugin = ReferenceValidationPlugin(config=cached_config)
+    schema_view = SchemaView(str(DEEP_SCHEMA))
+    context = ValidationContext(schema_view.schema, target_class="Community")
+    plugin.pre_process(context)
+
+    results = list(plugin.process(_community({"snippet": "the gene"}), context))
+
+    assert len(results) == 1
+    assert "too short" in results[0].message.lower()
+
+
+def test_repair_single_flags_too_short_for_removal(cached_config):
+    """A too-short excerpt cannot be repaired - there is nothing to expand from."""
+    cached_config.min_excerpt_length = MIN_LENGTH
+    repairer = SupportingTextRepairer(cached_config, RepairConfig())
+
+    result = repairer.repair_single("the gene", "PMID:TEST001")
+
+    assert result.is_repaired is False
+    assert [a.action_type for a in result.actions] == [RepairActionType.INSUFFICIENT_EXCERPT]
+    assert "too short" in result.message.lower()
+
+
+# ---------------------------------------------------------------------------
+# The repair CLI must write a fix back to the key it read the quote from
+# ---------------------------------------------------------------------------
+
+
+def test_repair_writes_back_to_the_key_it_read_from():
+    """Extraction prefers the non-blank key; write-back must agree.
+
+    With supporting_text blank and snippet holding the real quote, a repair
+    of the snippet used to be written into supporting_text, leaving the
+    snippet wrong and inventing a quote in a field that had none.
+    """
+    from linkml_reference_validator.cli.repair import (
+        _apply_repairs_to_data,
+        _excerpt_keys,
+    )
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {
+        "evidence": [
+            {"reference": "PMID:TEST001", "supporting_text": "", "snippet": "CO2 levels"}
+        ]
+    }
+    assert _excerpt_keys(data["evidence"][0]) == ["supporting_text", "snippet"]
+
+    report = RepairReport()
+    report.add_result(
+        RepairResult(
+            reference_id="PMID:TEST001",
+            original_text="CO2 levels",
+            was_valid=False,
+            is_repaired=True,
+            repaired_text="CO₂ levels",
+            path="evidence[0].snippet",
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text="CO2 levels",
+                    repaired_text="CO₂ levels",
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+    )
+
+    changed = _apply_repairs_to_data(data, report, None)
+
+    assert changed is True
+    assert data["evidence"][0]["snippet"] == "CO₂ levels"
+    assert data["evidence"][0]["supporting_text"] == ""
+
+
+def test_repair_writes_back_to_supporting_text_when_it_holds_the_quote():
+    """The ordinary case still writes to supporting_text."""
+    from linkml_reference_validator.cli.repair import (
+        _apply_repairs_to_data,
+        _excerpt_keys,
+    )
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {"evidence": [{"reference": "PMID:TEST001", "supporting_text": "CO2 levels"}]}
+    assert _excerpt_keys(data["evidence"][0]) == ["supporting_text"]
+
+    report = RepairReport()
+    report.add_result(
+        RepairResult(
+            reference_id="PMID:TEST001",
+            original_text="CO2 levels",
+            was_valid=False,
+            is_repaired=True,
+            repaired_text="CO₂ levels",
+            path="evidence[0].supporting_text",
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text="CO2 levels",
+                    repaired_text="CO₂ levels",
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+    )
+
+    _apply_repairs_to_data(data, report, None)
+
+    assert data["evidence"][0]["supporting_text"] == "CO₂ levels"
+
+
+def test_repair_writes_back_to_each_excerpt_key_independently():
+    """Two excerpts on one item repair into their own fields.
+
+    The path carries the key, so a fix for `snippet` cannot land in
+    `supporting_text` and vice versa.
+    """
+    from linkml_reference_validator.cli.repair import _apply_repairs_to_data
+    from linkml_reference_validator.models import (
+        RepairAction,
+        RepairConfidence,
+        RepairReport,
+        RepairResult,
+    )
+
+    data = {
+        "evidence": [
+            {
+                "reference": "PMID:TEST001",
+                "supporting_text": "CO2 levels",
+                "snippet": "H2O content",
+            }
+        ]
+    }
+
+    def _repaired(path, original, fixed):
+        return RepairResult(
+            reference_id="PMID:TEST001",
+            original_text=original,
+            was_valid=False,
+            is_repaired=True,
+            repaired_text=fixed,
+            path=path,
+            actions=[
+                RepairAction(
+                    action_type=RepairActionType.CHARACTER_NORMALIZATION,
+                    original_text=original,
+                    repaired_text=fixed,
+                    confidence=RepairConfidence.HIGH,
+                )
+            ],
+        )
+
+    report = RepairReport()
+    report.add_result(
+        _repaired("evidence[0].supporting_text", "CO2 levels", "CO₂ levels")
+    )
+    report.add_result(_repaired("evidence[0].snippet", "H2O content", "H₂O content"))
+
+    assert _apply_repairs_to_data(data, report, None) is True
+    assert data["evidence"][0]["supporting_text"] == "CO₂ levels"
+    assert data["evidence"][0]["snippet"] == "H₂O content"

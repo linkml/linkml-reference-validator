@@ -6,7 +6,7 @@ fetched from the PMC XML API (with an HTML fallback) and extracted via XMLExtrac
 
 import logging
 import time
-from typing import Optional
+from typing import Optional, Union
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -21,14 +21,11 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
 )
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
 
 logger = logging.getLogger(__name__)
-
-# 2x the global MIN_FULL_TEXT_CHARS floor (reference_fetcher.py): a PMC XML/HTML
-# response under ~1k chars is almost always a stub (title + abstract, or a stripped
-# landing page) rather than the article body, so we reject it and fall through.
-_MIN_PMC_FULLTEXT_CHARS = 1000
 
 
 @FullTextProviderRegistry.register
@@ -56,16 +53,19 @@ class PMCFullTextProvider(FullTextProvider):
 
         Entrez.email = config.email  # type: ignore
 
-        xml_bytes = self._fetch_pmc_xml_bytes(pmcid, config)
-        if xml_bytes:
-            text = XMLExtractor().extract(xml_bytes, content_type="application/xml")
-            if text and len(text) > _MIN_PMC_FULLTEXT_CHARS:
+        xml_source = self._fetch_pmc_xml_source(pmcid, config)
+        if xml_source:
+            text = XMLExtractor().extract(xml_source, content_type="application/xml")
+            # The shared floor, not a local threshold - see MIN_FULLTEXT_CHARS
+            # in extract/xml.py, which carries the reasoning. On the HTML
+            # fallback below it is the only stub defence there is.
+            if text and len(text) > MIN_FULLTEXT_CHARS:
                 return FullTextLocation(
                     text=text, format_hint="xml", oa_status="green", provider="pmc"
                 )
 
         html_text = self._fetch_pmc_html(pmcid, config)
-        if html_text and len(html_text) > _MIN_PMC_FULLTEXT_CHARS:
+        if html_text and len(html_text) > MIN_FULLTEXT_CHARS:
             return FullTextLocation(
                 text=html_text, format_hint="html", oa_status="green", provider="pmc"
             )
@@ -97,14 +97,20 @@ class PMCFullTextProvider(FullTextProvider):
                         return str(first_link["Id"])
         return None
 
-    def _fetch_pmc_xml_bytes(self, pmcid: str, config: ReferenceValidationConfig) -> Optional[bytes]:
-        """Fetch raw PMC XML bytes for a PMC ID."""
+    def _fetch_pmc_xml_source(
+        self, pmcid: str, config: ReferenceValidationConfig
+    ) -> Optional[Union[bytes, str]]:
+        """Fetch raw PMC XML for a PMC ID, exactly as Entrez returned it.
+
+        Returned unconverted: Entrez hands back str, and encoding it to UTF-8
+        would leave any ISO-8859-1 declaration in front of UTF-8 bytes for the
+        parser to believe, turning "François" into "FranÃ§ois". XMLExtractor
+        accepts either form and gets both right.
+        """
         time.sleep(config.rate_limit_delay)
         handle = Entrez.efetch(db="pmc", id=pmcid, rettype="xml", retmode="xml")
         xml_content = handle.read()
         handle.close()
-        if isinstance(xml_content, str):
-            xml_content = xml_content.encode("utf-8")
         return xml_content
 
     def _fetch_pmc_html(self, pmcid: str, config: ReferenceValidationConfig) -> Optional[str]:
@@ -118,7 +124,9 @@ class PMCFullTextProvider(FullTextProvider):
         soup = BeautifulSoup(response.content, "html.parser")
         article_body = soup.find("div", class_="article-body") or soup.find("div", class_="tsec")
         if article_body:
-            paragraphs = article_body.find_all("p")
-            if paragraphs:
-                return "\n\n".join(p.get_text() for p in paragraphs)
+            # The region is selected here, but the text comes out of the shared
+            # extractor rather than a private copy of the paragraph walk, so
+            # this path gets its <br> handling and block-boundary fallback
+            # instead of quietly drifting from it.
+            return HTMLExtractor().extract_scope(article_body)
         return None

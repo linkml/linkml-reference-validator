@@ -20,6 +20,9 @@ from bs4 import BeautifulSoup  # type: ignore
 import requests  # type: ignore
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
@@ -254,12 +257,14 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
-        if isinstance(xml_content, bytes):
-            xml_content = xml_content.decode("utf-8")
-
         if not xml_content:
             return None
 
+        # Passed through as returned, for the same reason _fetch_pmc_xml does:
+        # decoding bytes here assumes UTF-8 and raises on a record declaring
+        # another encoding, taking the MeSH terms and publication types with
+        # it. BeautifulSoup honours the declaration for bytes and fixes it up
+        # for str.
         return BeautifulSoup(xml_content, "xml")
 
     def _parse_mesh_terms(self, soup: BeautifulSoup) -> Optional[list[str]]:
@@ -352,12 +357,15 @@ class PMIDSource(ReferenceSource):
         if not pmcid:
             return None, "no_pmc"
 
+        # The shared floor, not a local threshold: see MIN_FULLTEXT_CHARS in
+        # extract/xml.py, which carries the reasoning. On the HTML fallback
+        # below it is the only stub defence there is.
         full_text = self._fetch_pmc_xml(pmcid, config)
-        if full_text and len(full_text) > 1000:
+        if full_text and len(full_text) > MIN_FULLTEXT_CHARS:
             return full_text, "full_text_xml"
 
         full_text = self._fetch_pmc_html(pmcid, config)
-        if full_text and len(full_text) > 1000:
+        if full_text and len(full_text) > MIN_FULLTEXT_CHARS:
             return full_text, "full_text_html"
 
         return None, "pmc_restricted"
@@ -421,22 +429,16 @@ class PMIDSource(ReferenceSource):
         xml_content = handle.read()
         handle.close()
 
-        if isinstance(xml_content, bytes):
-            xml_content = xml_content.decode("utf-8")
-
-        if "cannot be obtained" in xml_content.lower() or "restricted" in xml_content.lower():
-            return None
-
-        soup = BeautifulSoup(xml_content, "xml")
-        body = soup.find("body")
-
-        if body:
-            paragraphs = body.find_all("p")
-            if paragraphs:
-                text = "\n\n".join(p.get_text() for p in paragraphs)
-                return text
-
-        return None
+        # Handed on as-is. Entrez returns str, and re-encoding it to UTF-8
+        # would leave any ISO-8859-1 declaration in place for the parser to
+        # believe, turning "François" into "FranÃ§ois". BeautifulSoup fixes up
+        # the declaration itself when given str.
+        #
+        # Delegated to the shared extractor so body parsing and PMC
+        # placeholder detection cannot drift from the rest of the ETL layer.
+        # This module used to carry its own copy, which discarded any article
+        # whose markup mentioned "restricted" anywhere at all.
+        return XMLExtractor().extract(xml_content)
 
     def _fetch_pmc_html(
         self, pmcid: str, config: ReferenceValidationConfig
@@ -464,9 +466,9 @@ class PMIDSource(ReferenceSource):
         )
 
         if article_body:
-            paragraphs = article_body.find_all("p")
-            if paragraphs:
-                text = "\n\n".join(p.get_text() for p in paragraphs)
-                return text
+            # Region selected here, text extracted by the shared extractor, for
+            # the same reason _fetch_pmc_xml delegates: a private paragraph
+            # walk drifts from the rest of the ETL layer and misses its fixes.
+            return HTMLExtractor().extract_scope(article_body)
 
         return None

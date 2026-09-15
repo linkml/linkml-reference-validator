@@ -385,6 +385,10 @@ validation:
   # Cache directory (relative to config file or absolute)
   cache_dir: ./references_cache
 
+  # Reject excerpts quoting fewer than this many non-whitespace
+  # characters (0 disables; empty excerpts are always rejected)
+  min_excerpt_length: 0
+
   # Custom reference prefix mappings
   reference_prefix_map:
     geo: GEO

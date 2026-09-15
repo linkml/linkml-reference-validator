@@ -292,11 +292,12 @@ text = "Your quote here"
 print(normalize_text(text))
 ```
 
-### Query is empty after removing brackets
+### Supporting text is empty once brackets and separators are removed
 
 **Symptom:**
 ```
-Error: Query is empty after removing brackets
+Error: Supporting text is empty once editorial brackets and '...' separators
+are removed: it quotes nothing from the reference
 Supporting text: "[editorial note]"
 ```
 
@@ -313,6 +314,66 @@ supporting_text: "[sic]"
 # Correct
 supporting_text: "protein functions in cells [sic]"
 ```
+
+An excerpt that is empty or whitespace-only (`supporting_text: ""`) reports the
+same way, and for the same reason: there is nothing to check against the
+reference. Both are rejected before the reference is fetched.
+
+### Cached references re-fetched after upgrading
+
+**Symptom:**
+
+The first run after upgrading re-fetches references that were already cached,
+so it is slower and does more network traffic than usual. Run with `-v` to see
+why — the explanation is logged at INFO level, which only `-v` turns on:
+
+```bash
+linkml-reference-validator validate data.yaml -v
+```
+
+```
+Ignoring cache entry for PMID:30598549 written by an older extractor;
+it will be re-fetched and rewritten
+```
+
+**Cause:**
+
+This is deliberate, and it is a one-off per reference. Cache entries record
+which extractor wrote them (`extractor_version` in the file's frontmatter).
+Versions before the extractor fixes discarded some full-text articles and
+cached a short PMC placeholder in their place, labelled as full text, and
+welded text across inline markup — so entries written then hold content that
+would reject correct snippets. Fixing the extractors cannot rewrite what they
+already wrote, so entries from before the fix are treated as absent and
+re-fetched the next time a validation needs them.
+
+Nothing is deleted, and entries are refreshed one at a time as they are used
+rather than in a single sweep. `cache export` and the Zotero enrichment read
+older entries unchanged — only validation re-fetches them. The refresh applies
+to every cache entry, however it was populated, so a cache you pre-fetched
+deliberately will be rebuilt too.
+
+**If you would rather refresh one immediately:**
+
+```bash
+linkml-reference-validator cache reference PMID:30598549 --force
+```
+
+**If you are offline:**
+
+The older copy is used rather than lost. When the reference cannot be
+re-fetched — no network, a provider outage, a withdrawn record — validation
+falls back to what is on disk and warns:
+
+```
+Could not re-fetch PMID:30598549; using the cache entry written by an older
+extractor. Its text may still contain the errors this version fixes.
+```
+
+Validation then proceeds against that older text, so a snippet may be rejected
+for the reasons above. The entry is left stale rather than rewritten, so the
+next run that can reach the source refreshes it properly. This warning is
+printed without `-v`.
 
 ### Title validation failed
 

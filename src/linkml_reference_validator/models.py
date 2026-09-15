@@ -31,6 +31,8 @@ class RepairActionType(str, Enum):
     FUZZY_CORRECTION = "FUZZY_CORRECTION"  # Replace with closest matching text
     REMOVAL = "REMOVAL"  # Flag for removal (fabricated/not found)
     UNVERIFIABLE = "UNVERIFIABLE"  # No abstract available
+    # Quotes nothing, or too little to verify; no comparison was possible
+    INSUFFICIENT_EXCERPT = "INSUFFICIENT_EXCERPT"
 
 
 class RepairConfidence(str, Enum):
@@ -140,6 +142,9 @@ class RepairAction:
             return False
         if self.action_type == RepairActionType.UNVERIFIABLE:
             return False
+        # An insufficient excerpt has no correct replacement to apply
+        if self.action_type == RepairActionType.INSUFFICIENT_EXCERPT:
+            return False
         return self.confidence == RepairConfidence.HIGH and self.repaired_text is not None
 
 
@@ -237,29 +242,44 @@ class RepairReport:
                     count += 1
         return count
 
+    def _count_results_with(self, action_type: RepairActionType) -> int:
+        """Count results carrying at least one action of the given type.
+
+        Args:
+            action_type: The action type to look for
+
+        Returns:
+            Number of results with such an action
+
+        Examples:
+            >>> report = RepairReport()
+            >>> report._count_results_with(RepairActionType.REMOVAL)
+            0
+        """
+        return sum(
+            1
+            for r in self.results
+            if any(a.action_type == action_type for a in r.actions)
+        )
+
     @property
     def removal_count(self) -> int:
         """Number of items flagged for removal."""
-        count = 0
-        for r in self.results:
-            has_removal = any(
-                a.action_type == RepairActionType.REMOVAL for a in r.actions
-            )
-            if has_removal:
-                count += 1
-        return count
+        return self._count_results_with(RepairActionType.REMOVAL)
 
     @property
     def unverifiable_count(self) -> int:
         """Number of items that cannot be verified (no abstract)."""
-        count = 0
-        for r in self.results:
-            has_unverifiable = any(
-                a.action_type == RepairActionType.UNVERIFIABLE for a in r.actions
-            )
-            if has_unverifiable:
-                count += 1
-        return count
+        return self._count_results_with(RepairActionType.UNVERIFIABLE)
+
+    @property
+    def insufficient_excerpt_count(self) -> int:
+        """Number of items whose excerpt quotes nothing, or too little to verify.
+
+        Counted separately from removals: no comparison against the reference
+        was made, so these are not a verdict about how well a quote matched.
+        """
+        return self._count_results_with(RepairActionType.INSUFFICIENT_EXCERPT)
 
 
 class RepairConfig(BaseModel):
@@ -357,6 +377,10 @@ class ReferenceValidationConfig(BaseModel):
         ... )
         >>> config.literal_bracket_patterns
         ['\\d', '^[A-Z]$']
+        >>> ReferenceValidationConfig().min_excerpt_length
+        0
+        >>> ReferenceValidationConfig(min_excerpt_length=20).min_excerpt_length
+        20
     """
 
     cache_dir: Path = Field(
@@ -409,6 +433,19 @@ class ReferenceValidationConfig(BaseModel):
             "If any pattern matches, the bracketed text is treated as literal source "
             "text and preserved during supporting text validation. "
             "If no patterns are configured, all bracketed text is stripped."
+        ),
+    )
+    min_excerpt_length: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Minimum number of non-whitespace characters of quoted text required "
+            "in an excerpt. A short excerpt matches almost any reference by "
+            "chance, so it is weak evidence even when the match succeeds. "
+            "Editorial brackets and '...' separators do not count towards the "
+            "length. Whitespace is ignored so that PDF-to-text extraction "
+            "artifacts do not change the count. Set to 0 to disable the check; "
+            "empty and whitespace-only excerpts are always rejected regardless."
         ),
     )
     reference_prefix_map: dict[str, str] = Field(

@@ -15,6 +15,46 @@ from linkml_reference_validator.models import (
 
 logger = logging.getLogger(__name__)
 
+#: Message used whenever a blank excerpt is rejected, so every layer reports
+#: the same diagnosis for the same defect.
+EMPTY_SUPPORTING_TEXT_MESSAGE = (
+    "Supporting text is empty: an excerpt must quote actual text from the "
+    "reference (the empty string trivially matches any document)"
+)
+
+#: An excerpt made only of editorial notes and ellipses quotes nothing, so it
+#: is exactly as vacuous as a blank one and is diagnosed the same way.
+NO_QUOTED_TEXT_MESSAGE = (
+    "Supporting text is empty once editorial brackets and '...' separators are "
+    "removed: it quotes nothing from the reference"
+)
+
+
+def is_blank_text(value: object) -> bool:
+    """Report whether a value is a string with no non-whitespace characters.
+
+    Blank excerpts are the core of the "vacuous pass" bug: substring checks
+    succeed for the empty string against every possible document, so a blank
+    excerpt would otherwise be recorded as verified evidence.
+
+    Args:
+        value: Value to test; non-strings are never blank text
+
+    Returns:
+        True if the value is a string containing only whitespace (or nothing)
+
+    Examples:
+        >>> is_blank_text("")
+        True
+        >>> is_blank_text("   \\n")
+        True
+        >>> is_blank_text("protein functions")
+        False
+        >>> is_blank_text(None)
+        False
+    """
+    return isinstance(value, str) and not value.strip()
+
 
 class SupportingTextValidator:
     """Validate that supporting text quotes are found in references.
@@ -162,7 +202,24 @@ class SupportingTextValidator:
             >>> # result = validator.validate("quote", "PMID:12345678")
             >>> # With title validation:
             >>> # result = validator.validate("quote", "PMID:12345678", expected_title="Study Title")
+            >>> # A blank excerpt is rejected without any reference lookup:
+            >>> result = validator.validate("   ", "PMID:12345678")
+            >>> result.is_valid
+            False
         """
+        # An insubstantial excerpt is a defect in the data regardless of what it
+        # cites, so reject it before skip-prefix handling or any lookup.
+        content_problem = self.check_excerpt_content(supporting_text)
+        if content_problem:
+            return ValidationResult(
+                is_valid=False,
+                reference_id=reference_id,
+                supporting_text=supporting_text,
+                severity=ValidationSeverity.ERROR,
+                message=f"{content_problem}: {reference_id}",
+                path=path,
+            )
+
         # Check if this prefix should be skipped
         prefix = reference_id.split(":")[0].upper() if ":" in reference_id else ""
         skip_prefixes_upper = [p.upper() for p in self.config.skip_prefixes]
@@ -272,7 +329,18 @@ class SupportingTextValidator:
             ... )
             >>> match.found
             True
+            >>> validator.find_text_in_reference("", ref).found
+            False
         """
+        # Checked before content, so a thin excerpt is always diagnosed as thin
+        # rather than blamed on the reference.
+        content_problem = self.check_excerpt_content(supporting_text)
+        if content_problem:
+            return SupportingTextMatch(
+                found=False,
+                error_message=content_problem,
+            )
+
         if not reference.content:
             return SupportingTextMatch(
                 found=False,
@@ -280,14 +348,6 @@ class SupportingTextValidator:
             )
 
         query_parts = self._split_query(supporting_text)
-
-        # Empty query validation
-        if not query_parts:
-            return SupportingTextMatch(
-                found=False,
-                error_message="Query is empty after removing brackets and splitting",
-            )
-
         return self._substring_match(query_parts, reference.content, supporting_text)
 
     def _split_query(self, text: str) -> list[str]:
@@ -330,6 +390,87 @@ class SupportingTextValidator:
         parts = [re.sub(r"\s+", " ", p).strip() for p in parts if p.strip()]
         return parts
 
+    def count_quoted_characters(self, supporting_text: str) -> int:
+        """Count the non-whitespace characters an excerpt actually quotes.
+
+        Editorial brackets and ``...`` separators are excluded because they are
+        never matched against the reference. Whitespace is excluded so that
+        PDF-to-text extraction artifacts ("t he pro tein") measure the same as
+        clean text, and so that no tokenizing is needed - chemical nomenclature
+        and other punctuation-dense strings are counted in full.
+
+        Args:
+            supporting_text: The excerpt to measure
+
+        Returns:
+            Number of non-whitespace characters of quoted text
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> validator.count_quoted_characters("the protein")
+            10
+            >>> validator.count_quoted_characters("t he pro tein")
+            10
+            >>> validator.count_quoted_characters("protein [important] functions")
+            16
+            >>> validator.count_quoted_characters("2,3-dihydroxybenzoate")
+            21
+        """
+        return sum(
+            len(re.sub(r"\s", "", part))
+            for part in self._split_query(supporting_text)
+        )
+
+    def check_excerpt_content(self, supporting_text: str) -> Optional[str]:
+        """Report why an excerpt is too insubstantial to be evidence, if it is.
+
+        Applied before any reference is fetched, because these are defects in
+        the data itself: they hold regardless of what the excerpt cites, and no
+        lookup could change the verdict.
+
+        Args:
+            supporting_text: The excerpt to check
+
+        Returns:
+            An error message, or None if the excerpt has enough substance
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> validator = SupportingTextValidator(config)
+            >>> validator.check_excerpt_content("protein functions") is None
+            True
+            >>> "empty" in validator.check_excerpt_content("   ")
+            True
+            >>> "empty" in validator.check_excerpt_content("[editorial note]")
+            True
+            >>> strict = ReferenceValidationConfig(min_excerpt_length=20)
+            >>> validator = SupportingTextValidator(strict)
+            >>> "too short" in validator.check_excerpt_content("the gene")
+            True
+        """
+        if is_blank_text(supporting_text):
+            return EMPTY_SUPPORTING_TEXT_MESSAGE
+
+        length = self.count_quoted_characters(supporting_text)
+
+        # Independent of min_excerpt_length: an excerpt that quotes nothing is
+        # the defect this check exists for, not a threshold judgement.
+        if length == 0:
+            return NO_QUOTED_TEXT_MESSAGE
+
+        if self.config.min_excerpt_length <= 0:
+            return None
+
+        if length < self.config.min_excerpt_length:
+            return (
+                f"Supporting text is too short: {length} non-whitespace "
+                f"characters of quoted text, minimum is "
+                f"{self.config.min_excerpt_length} (min_excerpt_length)"
+            )
+
+        return None
+
     def _substring_match(
         self,
         query_parts: list[str],
@@ -360,7 +501,20 @@ class SupportingTextValidator:
             True
             >>> match.similarity_score
             1.0
+            >>> validator._substring_match([], "any document at all").found
+            False
         """
+        # Guarded here rather than in the caller: with no parts the loop below
+        # never runs and every quote "matches", which is the vacuous pass this
+        # whole check exists to prevent. check_excerpt_content already rejects
+        # such excerpts upstream, so this is the invariant that keeps the
+        # primitive honest if it is ever called from somewhere else.
+        if not query_parts:
+            return SupportingTextMatch(
+                found=False,
+                error_message=NO_QUOTED_TEXT_MESSAGE,
+            )
+
         normalized_content = self.normalize_text(content)
         matched_parts = []
 

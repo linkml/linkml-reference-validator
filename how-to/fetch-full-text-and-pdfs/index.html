@@ -967,6 +967,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#html-article-checks-and-cache-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML article checks and cache recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1533,6 +1544,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#html-article-checks-and-cache-recovery" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTML article checks and cache recovery
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1860,6 +1882,42 @@ downloaded PDF lives under the cache directory and can be located at
 <li><a href="../validate-entrez/">Validating Entrez Accessions</a> — PubMed/PMC references</li>
 <li><a href="../../reference/cli/">CLI Reference</a> — complete command documentation</li>
 </ul>
+<h2 id="html-article-checks-and-cache-recovery">HTML article checks and cache recovery</h2>
+<p>An OpenAlex or Unpaywall URL may lead to a repository item record containing
+only an abstract and metadata. HTML full-text acquisition now requires an
+identifiable research body: publisher body markup or narrative research sections
+with paragraphs, after removing abstracts and navigation. Length and additional
+metadata text alone do not establish full text. This also applies when a URL
+advertised as a PDF actually returns HTML. Genuine HTML research bodies remain
+eligible, including short bodies above the existing 500-character minimum.</p>
+<p>Ambiguous layouts are rejected and the next configured provider is tried. The
+fetcher does not crawl repository download links. If every provider completes
+without usable text or an error, the reference retains its original abstract
+and records <code>full_text_attempted: true</code>.</p>
+<p>New <code>full_text_html</code> cache entries carry <code>html_full_text_version: 1</code>. Older
+Markdown HTML full-text entries without this stamp are refreshed on their next
+validation read. This migration covers all providers because cached plain text
+cannot establish which HTML body structure was present. It does not invalidate
+current PDF, XML, or abstract caches.</p>
+<p>If refreshing an old HTML entry fails, validation does <strong>not</strong> fall back to that
+entry: its text may be repository metadata rather than article evidence. The
+file remains untouched for inventory/export, and the next validation run retries
+recovery. Once the source is available, normal fetching replaces it with a
+verified article or the available metadata/abstract. Other content types retain
+the existing stale-cache fallback. Legacy <code>.txt</code> caches remain a separate,
+read-only compatibility path and are not migrated by this HTML stamp.</p>
+<p>Research headings establish body presence; they do not filter the accepted
+article's other sections. For example, <code>Main</code>, <code>Case presentation</code>, and
+<code>Limitations</code> remain in an accepted article. A separately marked body is also
+preserved when an abstract heading uses a higher heading level. Without that
+structural boundary, an unmarked structured abstract remains ambiguous and is
+rejected conservatively.</p>
+<p>A provider's <code>FullTextLocation.text</code> (including a custom API <code>text_field</code>) is a
+trusted <strong>already-extracted article body</strong> contract. Configure it only for APIs
+that return article text, not arbitrary page text or metadata. Plain extracted
+text cannot be structurally rechecked; raw HTML supplied with an HTML hint still
+passes the body classifier. The acceptance stamp records that either the HTML
+check or this trusted provider contract was used.</p>
 
 
 

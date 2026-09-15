@@ -1231,6 +1231,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#supporting-text-is-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Supporting text is empty"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supporting-text-is-too-short" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Supporting text is too short"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#reference-content-not-available" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1946,6 +1968,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#supporting-text-is-empty" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Supporting text is empty"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#supporting-text-is-too-short" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Supporting text is too short"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#reference-content-not-available" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2172,7 +2216,7 @@
 <h3 id="4-removal-recommendation-very-low-confidence">4. Removal Recommendation (Very Low Confidence)</h3>
 <p>Flags text that appears fabricated or hallucinated:</p>
 <pre><code>RECOMMENDED REMOVALS:
-  PMID:34567890 at evidence[2]:
+  PMID:34567890 at evidence[2].supporting_text:
     Similarity: 8%
     Snippet: 'This completely made up text...'
 </code></pre>
@@ -2305,6 +2349,26 @@ linkml-reference-validator repair data file.yaml --schema schema.yaml --no-dry-r
 - Text is in figures/tables (not extracted)
 - Wrong PMID
 - AI-generated/hallucinated quote</p>
+<h3 id="supporting-text-is-empty">"Supporting text is empty"</h3>
+<p>The excerpt is empty or whitespace-only, so there is nothing to match against
+the reference. This is usually a bug in whatever generated the data (for
+example, a string slice with a backwards range yielding <code>""</code>).</p>
+<p>Empty excerpts cannot be repaired automatically — there is no text to correct,
+and fuzzy-matching nothing against the reference would invent a quote. They
+appear under <strong>INSUFFICIENT EXCERPTS (nothing to verify)</strong> in the report, so
+you can supply the real quote or drop the evidence item.</p>
+<p>They are deliberately <em>not</em> counted as removals. A removal recommendation means
+"this quote does not match the reference", a verdict reached by comparing the
+two; here no comparison happened. So <code>removal_count</code> excludes them and the
+action type is <code>INSUFFICIENT_EXCERPT</code>, not <code>REMOVAL</code> — worth knowing if you
+script against the report. They do still make <code>repair data</code> exit non-zero.</p>
+<h3 id="supporting-text-is-too-short">"Supporting text is too short"</h3>
+<p>The excerpt is below the <code>min_excerpt_length</code> you configured (off by default,
+and set under <code>validation:</code>; see
+<a href="../../concepts/how-it-works/">How It Works</a>). A very short excerpt matches
+almost any paper by chance, so it is weak evidence even when the match succeeds.</p>
+<p>Like empty excerpts, these report under <strong>INSUFFICIENT EXCERPTS</strong> rather than
+being repaired: there is no way to guess which longer passage the curator meant.</p>
 <h3 id="reference-content-not-available">"Reference content not available"</h3>
 <p>The reference exists but has no retrievable content:
 - Abstract-only paper with no PMC access

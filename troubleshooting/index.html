@@ -1318,10 +1318,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#query-is-empty-after-removing-brackets" class="md-nav__link">
+  <a href="#supporting-text-is-empty-once-brackets-and-separators-are-removed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Query is empty after removing brackets
+        Supporting text is empty once brackets and separators are removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cached-references-re-fetched-after-upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cached references re-fetched after upgrading
       
     </span>
   </a>
@@ -1779,10 +1790,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#query-is-empty-after-removing-brackets" class="md-nav__link">
+  <a href="#supporting-text-is-empty-once-brackets-and-separators-are-removed" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Query is empty after removing brackets
+        Supporting text is empty once brackets and separators are removed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#cached-references-re-fetched-after-upgrading" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cached references re-fetched after upgrading
       
     </span>
   </a>
@@ -2338,9 +2360,10 @@ from linkml_reference_validator.validation.supporting_text_validator import norm
 text = &quot;Your quote here&quot;
 print(normalize_text(text))
 </code></pre>
-<h3 id="query-is-empty-after-removing-brackets">Query is empty after removing brackets</h3>
+<h3 id="supporting-text-is-empty-once-brackets-and-separators-are-removed">Supporting text is empty once brackets and separators are removed</h3>
 <p><strong>Symptom:</strong></p>
-<pre><code>Error: Query is empty after removing brackets
+<pre><code>Error: Supporting text is empty once editorial brackets and '...' separators
+are removed: it quotes nothing from the reference
 Supporting text: &quot;[editorial note]&quot;
 </code></pre>
 <p><strong>Cause:</strong>
@@ -2353,6 +2376,47 @@ supporting_text: &quot;[sic]&quot;
 # Correct
 supporting_text: &quot;protein functions in cells [sic]&quot;
 </code></pre>
+<p>An excerpt that is empty or whitespace-only (<code>supporting_text: ""</code>) reports the
+same way, and for the same reason: there is nothing to check against the
+reference. Both are rejected before the reference is fetched.</p>
+<h3 id="cached-references-re-fetched-after-upgrading">Cached references re-fetched after upgrading</h3>
+<p><strong>Symptom:</strong></p>
+<p>The first run after upgrading re-fetches references that were already cached,
+so it is slower and does more network traffic than usual. Run with <code>-v</code> to see
+why — the explanation is logged at INFO level, which only <code>-v</code> turns on:</p>
+<pre><code class="language-bash">linkml-reference-validator validate data.yaml -v
+</code></pre>
+<pre><code>Ignoring cache entry for PMID:30598549 written by an older extractor;
+it will be re-fetched and rewritten
+</code></pre>
+<p><strong>Cause:</strong></p>
+<p>This is deliberate, and it is a one-off per reference. Cache entries record
+which extractor wrote them (<code>extractor_version</code> in the file's frontmatter).
+Versions before the extractor fixes discarded some full-text articles and
+cached a short PMC placeholder in their place, labelled as full text, and
+welded text across inline markup — so entries written then hold content that
+would reject correct snippets. Fixing the extractors cannot rewrite what they
+already wrote, so entries from before the fix are treated as absent and
+re-fetched the next time a validation needs them.</p>
+<p>Nothing is deleted, and entries are refreshed one at a time as they are used
+rather than in a single sweep. <code>cache export</code> and the Zotero enrichment read
+older entries unchanged — only validation re-fetches them. The refresh applies
+to every cache entry, however it was populated, so a cache you pre-fetched
+deliberately will be rebuilt too.</p>
+<p><strong>If you would rather refresh one immediately:</strong></p>
+<pre><code class="language-bash">linkml-reference-validator cache reference PMID:30598549 --force
+</code></pre>
+<p><strong>If you are offline:</strong></p>
+<p>The older copy is used rather than lost. When the reference cannot be
+re-fetched — no network, a provider outage, a withdrawn record — validation
+falls back to what is on disk and warns:</p>
+<pre><code>Could not re-fetch PMID:30598549; using the cache entry written by an older
+extractor. Its text may still contain the errors this version fixes.
+</code></pre>
+<p>Validation then proceeds against that older text, so a snippet may be rejected
+for the reasons above. The entry is left stale rather than rewritten, so the
+next run that can reach the source refreshes it properly. This warning is
+printed without <code>-v</code>.</p>
 <h3 id="title-validation-failed">Title validation failed</h3>
 <p><strong>Symptom:</strong></p>
 <pre><code>Error: Reference title mismatch

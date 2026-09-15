@@ -2102,6 +2102,40 @@ Normalized: &quot;muc1 oncoprotein blocks c abl&quot;
 reference_content = &quot;...The MUC1 oncoprotein blocks nuclear...&quot;
 # Match: &quot;muc1 oncoprotein&quot; found in normalized reference
 </code></pre>
+<p><strong>Empty excerpts are rejected:</strong></p>
+<p>An empty or whitespace-only excerpt is always an error, never a pass. The
+empty string is a substring of every document, so a blank excerpt would
+otherwise be reported as verified evidence while quoting nothing at all:</p>
+<pre><code class="language-python">supporting_text = &quot;&quot;     # or &quot;   &quot;, &quot;\n&quot;
+# ERROR: Supporting text is empty
+</code></pre>
+<p>The check runs before the reference is fetched, and applies even when the
+reference prefix is on the <a href="../../how-to/skip-unsupported-references/">skip list</a>:
+a blank excerpt is a defect in the data regardless of what it cites. An
+excerpt slot that is <em>absent</em> is a different matter — whether it is required
+is up to your schema.</p>
+<p><strong>Minimum excerpt length (optional):</strong></p>
+<p>A blank excerpt is the extreme case. A two-character one is barely better: a
+short string matches almost any paper by chance, so the match succeeds without
+the excerpt being real evidence. Set <code>min_excerpt_length</code> to require a minimum:</p>
+<pre><code class="language-yaml"># .linkml-reference-validator.yaml
+validation:
+  min_excerpt_length: 20
+</code></pre>
+<p>Keep it under <code>validation:</code>. A config file that has a <code>validation:</code> section
+ignores validation keys placed at the top level — silently, which for an
+opt-in check means it looks enabled while never running.</p>
+<p>The check is off by default (<code>0</code>), so existing data keeps validating as before.
+Length is measured in <strong>non-whitespace characters of quoted text</strong>:</p>
+<ul>
+<li>Whitespace is ignored, so PDF-to-text extraction damage does not change the
+  count — <code>"t he pro tein"</code> and <code>"the protein"</code> both measure 10.</li>
+<li>No tokenizing, so chemical nomenclature and other punctuation-dense strings
+  are counted in full — <code>"2,3-dihydroxybenzoate"</code> measures 21, not 2 words.</li>
+<li>Editorial <code>[brackets]</code> and <code>...</code> separators do not count, since they are
+  never matched against the reference.</li>
+</ul>
+<p>Like the blank check, this runs before the reference is fetched.</p>
 <h3 id="3-ellipsis-handling">3. Ellipsis Handling</h3>
 <p>When supporting text contains <code>...</code>, each part is matched separately:</p>
 <pre><code>Supporting: &quot;MUC1 oncoprotein ... nuclear targeting&quot;

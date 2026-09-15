@@ -126,6 +126,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.INFO,
+                skipped=True,
                 message=f"Skipping title validation for reference with prefix '{prefix}': {reference_id}",
                 path=path,
             )
@@ -138,6 +139,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -148,6 +150,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"Reference {reference_id} has no title to validate against",
                 path=path,
             )
@@ -161,6 +164,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.INFO,
+                title_checked=True,
                 message=f"Title validated successfully for {reference_id}",
                 path=path,
             )
@@ -170,6 +174,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.ERROR,
+                title_checked=True,
                 message=(
                     f"Title mismatch for {reference_id}: "
                     f"expected '{expected_title}' but got '{reference.title}'"
@@ -230,6 +235,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.INFO,
+                skipped=True,
                 message=f"Skipping validation for reference with prefix '{prefix}': {reference_id}",
                 path=path,
             )
@@ -242,6 +248,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -252,6 +259,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"No content available for reference: {reference_id}",
                 path=path,
             )
@@ -296,6 +304,7 @@ class SupportingTextValidator:
             severity=ValidationSeverity.INFO if is_valid else ValidationSeverity.ERROR,
             message=message,
             match_result=match,
+            title_checked=bool(expected_title and reference.title),
             path=path,
         )
 

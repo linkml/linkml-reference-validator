@@ -314,3 +314,17 @@ recovery. Once the source is available, normal fetching replaces it with a
 verified article or the available metadata/abstract. Other content types retain
 the existing stale-cache fallback. Legacy `.txt` caches remain a separate,
 read-only compatibility path and are not migrated by this HTML stamp.
+
+Research headings establish body presence; they do not filter the accepted
+article's other sections. For example, `Main`, `Case presentation`, and
+`Limitations` remain in an accepted article. A separately marked body is also
+preserved when an abstract heading uses a higher heading level. Without that
+structural boundary, an unmarked structured abstract remains ambiguous and is
+rejected conservatively.
+
+A provider's `FullTextLocation.text` (including a custom API `text_field`) is a
+trusted **already-extracted article body** contract. Configure it only for APIs
+that return article text, not arbitrary page text or metadata. Plain extracted
+text cannot be structurally rechecked; raw HTML supplied with an HTML hint still
+passes the body classifier. The acceptance stamp records that either the HTML
+check or this trusted provider contract was used.

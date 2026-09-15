@@ -59,6 +59,8 @@ EXTRACTOR_CACHE_VERSION = 1
 
 #: Independently version HTML full-text acceptance: prior entries may contain
 #: repository metadata rather than an article. PDF/XML caches need no refresh.
+#: Downloaded/raw HTML is structurally checked; pre-extracted text supplied by
+#: PMC or a configured text provider is trusted under FullTextLocation's contract.
 HTML_FULL_TEXT_CACHE_VERSION = 1
 
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
@@ -424,8 +426,13 @@ class ReferenceFetcher:
 
         ``error`` is True only when a download or extraction *raised* — a transient
         condition worth retrying — not when the resource was merely absent or unusable.
+        ``location.text`` is a trusted provider's already-extracted article body
+        (PMC or a configured text API). HTML markup supplied there still requires
+        structural extraction; a format hint alone does not certify raw HTML.
         """
         if location.text:
+            if location.format_hint == "html" and re.search(r"<[A-Za-z][^>]*>", location.text):
+                return HTMLExtractor().extract_full_text(location.text), "html", None, False
             return location.text, location.format_hint or "text", None, False
 
         if not location.url:
@@ -456,8 +463,8 @@ class ReferenceFetcher:
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
             text = (
-                extractor.extract_full_text(data)
-                if isinstance(extractor, HTMLExtractor)
+                HTMLExtractor().extract_full_text(data)
+                if fmt == "html"
                 else extractor.extract(data, content_type=content_type)
             )
         except Exception as exc:

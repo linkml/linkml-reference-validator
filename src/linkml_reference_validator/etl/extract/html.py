@@ -27,6 +27,13 @@ BLOCK_LEVEL_TAGS = (
     "table", "td", "th", "tr", "ul",
 )
 
+# Explicit article-body containers; generic layout IDs such as #body are not
+# evidence that a page contains an article.
+ARTICLE_BODY_SELECTOR = (
+    '[itemprop="articleBody"], .article-text, #artText, '
+    '.article-body, .article__body, .c-article-body'
+)
+
 
 @ExtractorRegistry.register
 class HTMLExtractor(Extractor):
@@ -114,11 +121,13 @@ class HTMLExtractor(Extractor):
         soup = BeautifulSoup(data, "html.parser")
         for tag in soup.select(
             'nav, header, footer, aside, script, style, form, dialog, '
-            '[role="navigation"], .abstract, #abstract, [role="doc-abstract"], '
-            '[id^="Abs"], [class*="abstract"], [id*="abstract"]'
+            '[role="navigation"], [role="doc-abstract"], '
+            '[class*="abstract" i], [id*="abstract" i]'
         ):
             if tag.parent is not None:
                 tag.decompose()
+
+        body = soup.select_one(ARTICLE_BODY_SELECTOR)
 
         # Some publishers mark abstracts only by a heading. Remove that heading
         # and its following siblings through the next same-or-higher heading;
@@ -130,6 +139,13 @@ class HTMLExtractor(Extractor):
                 continue
             level = int(heading.name[1])
             for sibling in list(heading.next_siblings):
+                # A separately identified article body is a stronger boundary
+                # than heading rank. Do not treat Methods/Results alone as one:
+                # those headings may belong to a structured abstract.
+                if body is not None and isinstance(sibling, Tag) and (
+                    sibling is body or any(parent is sibling for parent in body.parents)
+                ):
+                    break
                 if (
                     isinstance(sibling, Tag)
                     and re.fullmatch(r"h[1-6]", sibling.name)
@@ -139,10 +155,6 @@ class HTMLExtractor(Extractor):
                 sibling.extract()
             heading.decompose()
 
-        body = soup.select_one(
-            '[itemprop="articleBody"], .article-text, #artText, '
-            '.article-body, .article__body'
-        )
         region = body if body is not None else soup.find("article") or soup.find("main")
         if region is None:
             return None
@@ -156,8 +168,7 @@ class HTMLExtractor(Extractor):
         for heading in region.find_all(re.compile(r"^h[2-6]$")):
             if not research_heading.match(heading.get_text(" ", strip=True)):
                 continue
-            section = heading.parent
-            if section is None:
+            if heading.parent is None:
                 continue
             # Copy the heading's bounded sibling run, also supporting flat
             # article layouts without a div/section around each heading.
@@ -173,15 +184,12 @@ class HTMLExtractor(Extractor):
             if section.find("p"):
                 sections.append(section)
 
-        if sections:
-            # Keep only the research sections when the outer region is a generic
-            # article/main: repository metadata elsewhere must not be included.
-            if body is None:
-                texts = (self._extract_scope(s) for s in sections)
-                return "\n\n".join(filter(None, texts)) or None
-        elif (
+        # Headings establish that the selected region has a research body; they
+        # must not filter its content. Otherwise Main/Case presentation or an
+        # intervening Limitations section silently disappears from accepted text.
+        if not sections and (
             body is None
-            or region.find(re.compile(r"^h[1-6]$"))
+            or region.find(re.compile(r"^h[1-6]$")) is not None
             or len(region.find_all("p")) < 2
         ):
             return None

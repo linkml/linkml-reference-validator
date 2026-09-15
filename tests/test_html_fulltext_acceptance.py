@@ -329,3 +329,78 @@ def test_generic_body_id_does_not_establish_full_text(tmp_path, html_server):
     assert not make_fetcher(tmp_path).apply_full_text_location(
         ref, FullTextLocation(url=f"{html_server}/generic-body.html"), "openalex"
     )
+
+
+def test_accepted_article_preserves_unfamiliar_sections(tmp_path, html_server):
+    """Research headings establish the body without filtering its other sections."""
+    s = BeautifulSoup((FIXTURES / "plos-0000308.html").read_text(), "html.parser")
+    body = s.select_one("#artText")
+    body.name = "article"
+    body.attrs = {}
+    body.find("h2", string="Introduction").string = "Main"
+    body.find("h2", string="Results").string = "Case presentation"
+    body.find("h2", string="Discussion").string = "Limitations"
+    for section in list(body.select(".section")):
+        section.unwrap()
+    (tmp_path / "unfamiliar.html").write_text(f"<html><body>{body}</body></html>")
+    ref = ReferenceContent(
+        reference_id="DOI:10.1/unfamiliar", content_type="abstract_only"
+    )
+    assert make_fetcher(tmp_path).apply_full_text_location(
+        ref, FullTextLocation(url=f"{html_server}/unfamiliar.html"), "openalex"
+    )
+    assert (
+        "We studied the citations of 85 cancer microarray clinical trials"
+        in ref.content
+    )
+    assert "To confirm that these findings" in ref.content
+
+
+def test_abstract_heading_cannot_remove_identifiable_body(tmp_path, html_server):
+    """A higher-rank abstract heading must stop at a separately marked article body."""
+    s = BeautifulSoup((FIXTURES / "plos-0000308.html").read_text(), "html.parser")
+    body = s.select_one("#artText")
+    body.select_one(".abstract").decompose()
+    body.attrs = {"class": ["article-body"]}
+    for heading in body.find_all("h2"):
+        heading.name = "h3"
+    (tmp_path / "ranked.html").write_text(
+        f"<html><body><article><h2>Abstract</h2><p>Abstract only.</p>{body}</article></body></html>"
+    )
+    ref = ReferenceContent(reference_id="DOI:10.1/ranked", content_type="abstract_only")
+    assert make_fetcher(tmp_path).apply_full_text_location(
+        ref, FullTextLocation(url=f"{html_server}/ranked.html"), "openalex"
+    )
+    assert (
+        "We studied the citations of 85 cancer microarray clinical trials"
+        in ref.content
+    )
+    assert "Abstract only." not in ref.content
+
+
+def test_raw_inline_html_is_not_trusted_as_preextracted_text(tmp_path):
+    """HTML markup in a provider text field must pass the same body classifier."""
+    ref = ReferenceContent(reference_id="PMID:32894695", content_type="abstract_only")
+    assert not make_fetcher(tmp_path).apply_full_text_location(
+        ref,
+        FullTextLocation(
+            text=(FIXTURES / "dspace-32894695.html").read_text(), format_hint="html"
+        ),
+        "custom",
+    )
+
+
+def test_preextracted_html_body_is_a_trusted_provider_contract(tmp_path):
+    """PMC and configured text providers can supply an already-extracted body."""
+    text = HTMLExtractor().extract_full_text(
+        (FIXTURES / "plos-0000308.html").read_bytes()
+    )
+    assert text is not None
+    ref = ReferenceContent(
+        reference_id="DOI:10.1/extracted", content_type="abstract_only"
+    )
+    assert make_fetcher(tmp_path).apply_full_text_location(
+        ref, FullTextLocation(text=text, format_hint="html"), "custom"
+    )
+    assert ref.content == text
+    assert ref.metadata["html_full_text_version"] == 1

@@ -280,3 +280,128 @@ def test_unreadable_file_summary(counting_setup, tmp_path, content):
     assert str(broken) in summary
     assert str(good) not in summary
     assert "Snippets checked: 1" in summary
+    assert "Input files: 2" in summary
+    assert "Files validated: 1" in summary
+
+
+def test_fetched_empty_content_is_explicitly_unavailable(counting_setup, tmp_path):
+    """A successfully fetched empty file is unavailable, while rejected text is not."""
+    _, _, plugin, validator = counting_setup
+    source = tmp_path / "empty.txt"
+    source.write_text("")
+    reference_id = f"file:{source}"
+    reference = plugin.validator.fetcher.fetch(reference_id)
+    assert reference is not None and reference.content == ""
+    result = plugin.validator.validate(QUOTE, reference_id)
+    assert result.unavailable is True
+    assert plugin.validator.validate("", reference_id).unavailable is False
+    assert plugin.validator.validate(QUOTE, "GO:123").unavailable is False
+    assert plugin.validator.validate(QUOTE, "UNSUPPORTED:123").unavailable is True
+    report = validator.validate({"reference": reference_id, "supporting_text": QUOTE})
+    assert len(report.results) == 1
+    assert plugin.snippets_checked == 0
+    assert plugin.snippets_unavailable == 1
+
+
+def test_cli_all_counter_lines(counting_setup, tmp_path):
+    """The CLI exposes each outcome count, including nonzero skip and title counts."""
+    schema, cache, _, _ = counting_setup
+    data = tmp_path / "data.json"
+    data.write_text(
+        json.dumps(
+            [
+                {"reference": "GO:123", "supporting_text": QUOTE},
+                {"reference": "UNSUPPORTED:123", "supporting_text": QUOTE},
+                {"reference": "PMID:TEST001", "supporting_text": QUOTE, "title": QUOTE},
+            ]
+        )
+    )
+    config = tmp_path / "config.yaml"
+    config.write_text("skip_prefixes: [GO]\n")
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "data",
+            str(data),
+            "--schema",
+            str(schema),
+            "--cache-dir",
+            str(cache),
+            "--config",
+            str(config),
+            "--no-full-text",
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    summary = result.output.split("Validation Summary:")[1]
+    for label in (
+        "Snippets checked",
+        "Snippets skipped",
+        "Snippets unavailable",
+        "Titles checked",
+        "Issues found",
+    ):
+        assert f"{label}: 1" in summary
+
+
+@pytest.mark.parametrize(
+    "data, submitted, exit_code",
+    [
+        ({}, 1, 0),
+        ([], 0, 0),
+        ([None, 42], 0, 1),
+        ([None, {}, 42, {}], 1, 1),
+        ("scalar", 0, 1),
+    ],
+)
+def test_files_actually_submitted(counting_setup, tmp_path, data, submitted, exit_code):
+    """Only files with at least one mapping submitted count, including mixed lists."""
+    schema, cache, _, _ = counting_setup
+    path = tmp_path / "data.json"
+    path.write_text(json.dumps(data))
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "data",
+            str(path),
+            "--schema",
+            str(schema),
+            "--cache-dir",
+            str(cache),
+            "--no-full-text",
+        ],
+    )
+    assert result.exit_code == exit_code, result.output
+    summary = result.output.split("Validation Summary:")[1]
+    assert "Input files: 1" in summary
+    assert f"Files validated: {submitted}" in summary
+    if isinstance(data, list):
+        for index, value in enumerate(data):
+            if not isinstance(value, dict):
+                assert f"entry {index} in {path}" in result.output
+
+
+def test_issue_number_formatting(counting_setup, tmp_path):
+    """Both summary issue counts use thousands separators for large runs."""
+    schema, cache, _, _ = counting_setup
+    path = tmp_path / "data.json"
+    path.write_text(json.dumps([{"supporting_text": ""}] * 1000))
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "data",
+            str(path),
+            "--schema",
+            str(schema),
+            "--cache-dir",
+            str(cache),
+            "--no-full-text",
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    summary = result.output.split("Validation Summary:")[1]
+    assert "Issues found: 1,000" in summary
+    assert "(1,000 validation issue(s))" in summary

@@ -103,6 +103,9 @@ if _LINKML_AVAILABLE:
             Blank/absent excerpts and missing references perform no comparison.
             Titles count actual comparisons, including those bundled with snippets.
             Counts describe execution, never the number of yielded issues.
+            With lazy process()/iter_results() callers, counts are final only
+            after the result iterator is exhausted; early stopping leaves partial
+            counts. Validator.validate() consumes that iterator before returning.
             """
             self.snippets_checked = 0
             self.snippets_skipped = 0
@@ -553,7 +556,7 @@ if _LINKML_AVAILABLE:
                 self.snippets_checked += 1
             elif result.skipped:
                 self.snippets_skipped += 1
-            elif not self.validator.check_excerpt_content(excerpt):
+            elif result.unavailable:
                 self.snippets_unavailable += 1
             self.titles_checked += int(result.title_checked)
 

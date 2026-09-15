@@ -382,6 +382,7 @@ The summary separates work performed from issues found:
 
 ```text
 Validation Summary:
+  Input files: 2
   Files validated: 2
   Snippets checked: 3
   Snippets skipped: 0
@@ -393,6 +394,11 @@ Validation Summary:
     bad.yaml
 ```
 
+- **Input files** counts supplied paths, including files that cannot be read.
+- **Files validated** counts files with at least one mapping submitted to the
+  validator. An empty mapping counts; an empty list has no instances and does not.
+  A mixed list containing valid mappings and malformed entries counts once and
+  still fails. Entry diagnostics use zero-based indexes.
 - **Snippets checked** counts executed comparisons against reference content,
   including matches and mismatches. Multiple excerpt slots each count separately.
 - **Snippets skipped** counts snippet/reference pairs bypassed by `skip_prefixes`.
@@ -408,6 +414,15 @@ Absent excerpts and excerpts without a usable reference perform no comparison.
 Counters come from execution and reset for each LinkML validation call; the CLI
 accumulates all instances and files. The public plugin exposes `snippets_checked`,
 `snippets_skipped`, `snippets_unavailable`, and `titles_checked` after validation.
+When using lazy `process()` or `iter_results()` APIs, exhaust the result iterator
+before reading final counters. Unconsumed or partially consumed iterators do not
+provide final counts; `Validator.validate()` consumes the iterator for you.
+
+Title-only skips and unavailable titles have no separate summary counters: they
+leave all check counters at zero. A skipped title emits no issue; an unavailable
+standalone title emits an issue. Existing title behavior is preserved: a reference
+missing its title is an issue for standalone title validation, but a title supplied
+alongside an excerpt is not compared or reported when the reference has no title.
 
 A zero-snippet run prints `No snippet comparisons were performed.` This includes
 empty input collections and title-only runs. Exit behavior is unchanged: no issues

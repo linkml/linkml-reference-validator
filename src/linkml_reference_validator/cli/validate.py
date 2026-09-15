@@ -306,6 +306,7 @@ def data_command(
     total_skipped = 0
     total_unavailable = 0
     total_titles = 0
+    files_validated = 0
 
     for data_file in data_files:
         typer.echo(f"\nValidating {data_file} against schema {schema_file}")
@@ -325,12 +326,15 @@ def data_command(
             continue
 
         file_results = []
-        for instance in data if isinstance(data, list) else [data]:
+        file_submitted = False
+        instances = data if isinstance(data, list) else [data]
+        for index, instance in enumerate(instances):
             if not isinstance(instance, dict):
-                typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
+                typer.echo(f"Error: Unexpected data format at entry {index} in {data_file}", err=True)
                 if data_file not in failing_files:
                     failing_files.append(data_file)
                 continue
+            file_submitted = True
             report = validator.validate(instance, target_class=target_class)
             file_results.extend(report.results)
             total_snippets += plugin.snippets_checked
@@ -338,8 +342,9 @@ def data_command(
             total_unavailable += plugin.snippets_unavailable
             total_titles += plugin.titles_checked
 
+        files_validated += int(file_submitted)
         if file_results:
-            typer.echo(f"  Validation Issues ({len(file_results)}):")
+            typer.echo(f"  Validation Issues ({len(file_results):,}):")
             for result in file_results:
                 severity = result.severity.value if hasattr(result.severity, "value") else result.severity
                 typer.echo(f"    [{severity}] {result.message}")
@@ -355,7 +360,8 @@ def data_command(
         total_results += len(file_results)
 
     typer.echo("\nValidation Summary:")
-    typer.echo(f"  Files validated: {len(data_files)}")
+    typer.echo(f"  Input files: {len(data_files):,}")
+    typer.echo(f"  Files validated: {files_validated:,}")
     typer.echo(f"  Snippets checked: {total_snippets:,}")
     typer.echo(f"  Snippets skipped: {total_skipped:,}")
     typer.echo(f"  Snippets unavailable: {total_unavailable:,}")
@@ -369,7 +375,7 @@ def data_command(
     # failing_files but contributing no validation results) -- otherwise a
     # malformed file would be silently reported as passing.
     if failing_files:
-        typer.echo(f"  Issues found in {len(failing_files)} file(s) ({total_results} validation issue(s))")
+        typer.echo(f"  Issues found in {len(failing_files):,} file(s) ({total_results:,} validation issue(s))")
         typer.echo("  Failing files:")
         for data_file in failing_files:
             typer.echo(f"    {data_file}")

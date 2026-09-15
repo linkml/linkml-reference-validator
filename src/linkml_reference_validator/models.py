@@ -871,6 +871,7 @@ class ValidationResult:
     path: Optional[str] = None  # Path in data structure (e.g., "annotations[0].evidence")
     title_checked: bool = False  # An actual comparison against a fetched title
     skipped: bool = False  # Validation bypassed by configured reference prefix
+    unavailable: bool = False  # Required reference content or title could not be obtained
 
 
 @dataclass

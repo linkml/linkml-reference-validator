@@ -139,6 +139,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -149,6 +150,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"Reference {reference_id} has no title to validate against",
                 path=path,
             )
@@ -246,6 +248,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -256,6 +259,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"No content available for reference: {reference_id}",
                 path=path,
             )

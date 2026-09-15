@@ -125,6 +125,11 @@ def reference_command(
     Downloads and caches the full text of a reference for offline validation.
     Useful for pre-populating the cache or ensuring a reference is available.
 
+    Exits non-zero if the reference could not be fetched, including when the
+    source was unreachable and only an out-of-date cache entry could be served:
+    nothing was downloaded or written in that case, so a script gating on the
+    exit status should not treat it as cached.
+
     Examples:
 
         linkml-reference-validator cache reference PMID:12345678
@@ -143,7 +148,22 @@ def reference_command(
 
     typer.echo(f"Fetching {reference_id}...")
 
-    reference = fetcher.fetch(reference_id, force_refresh=force)
+    outcome = fetcher.fetch_with_provenance(reference_id, force_refresh=force)
+
+    # An unreachable source falls back to an out-of-date cache entry, which is
+    # the right answer for validation but not here: this command exists to
+    # populate the cache, and nothing was downloaded or written. Reporting
+    # success would take a script that gates on the exit status green through
+    # an outage.
+    if outcome.served_stale:
+        typer.echo(
+            f"Failed to cache {reference_id}: the source could not be reached, so an "
+            "out-of-date cache entry was served. Nothing was downloaded or written.",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    reference = outcome.content
 
     if reference:
         typer.echo(f"Successfully cached {reference_id}")

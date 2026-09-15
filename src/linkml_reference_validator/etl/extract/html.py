@@ -141,7 +141,7 @@ class HTMLExtractor(Extractor):
 
         body = soup.select_one(
             '[itemprop="articleBody"], .article-text, #artText, '
-            '.article-body, .article__body, #body'
+            '.article-body, .article__body'
         )
         region = body if body is not None else soup.find("article") or soup.find("main")
         if region is None:

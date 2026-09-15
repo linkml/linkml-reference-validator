@@ -312,3 +312,20 @@ def test_exhausted_landing_provider_keeps_original_abstract(tmp_path, html_serve
     assert result.content_type == "abstract_only"
     assert result.full_text_attempted
     assert result.full_text_provider is None
+
+
+def test_generic_body_id_does_not_establish_full_text(tmp_path, html_server):
+    """A generic layout ID and long metadata paragraphs are insufficient evidence."""
+    from html import escape
+
+    metadata = HTMLExtractor().extract((FIXTURES / "dspace-32894695.html").read_bytes())
+    assert metadata and len(metadata) > 3000
+    (tmp_path / "generic-body.html").write_text(
+        '<html><body><div id="body">'
+        f"<p>{escape(metadata[:1500])}</p><p>{escape(metadata[1500:])}</p>"
+        "</div></body></html>"
+    )
+    ref = ReferenceContent(reference_id="PMID:32894695", content_type="abstract_only")
+    assert not make_fetcher(tmp_path).apply_full_text_location(
+        ref, FullTextLocation(url=f"{html_server}/generic-body.html"), "openalex"
+    )

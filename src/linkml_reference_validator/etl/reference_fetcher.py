@@ -116,7 +116,10 @@ class ReferenceFetcher:
         register_custom_full_text_providers(config.full_text_providers_file)
 
     def fetch(
-        self, reference_id: str, force_refresh: bool = False
+        self,
+        reference_id: str,
+        force_refresh: bool = False,
+        allow_stale: bool = True,
     ) -> Optional[ReferenceContent]:
         """Fetch a reference by ID.
 
@@ -129,6 +132,12 @@ class ReferenceFetcher:
         Args:
             reference_id: The reference identifier
             force_refresh: If True, bypass cache and fetch fresh
+            allow_stale: If the source yields nothing, serve a cache entry written
+                by an older extractor rather than reporting the reference missing.
+                The default suits validation, which wants the best text available.
+                Callers whose purpose is to *fill* the cache pass False: for them a
+                fallback means the work did not happen, and saying otherwise would
+                report success for a download that never ran.
 
         Returns:
             ReferenceContent if found, None otherwise
@@ -161,7 +170,9 @@ class ReferenceFetcher:
         source_class = ReferenceSourceRegistry.get_source(normalized_reference_id)
         if not source_class:
             logger.warning(f"No source found for reference type: {normalized_reference_id}")
-            return self._stale_fallback(normalized_reference_id, force_refresh)
+            return self._stale_fallback(
+                normalized_reference_id, force_refresh, allow_stale
+            )
 
         # Parse identifier and fetch
         _, identifier = self._parse_reference_id(normalized_reference_id)
@@ -172,7 +183,9 @@ class ReferenceFetcher:
             content = self._enrich_with_full_text(content)
 
         if not content:
-            return self._stale_fallback(normalized_reference_id, force_refresh)
+            return self._stale_fallback(
+                normalized_reference_id, force_refresh, allow_stale
+            )
 
         self._cache[normalized_reference_id] = content
         self._save_by_access(content)
@@ -180,7 +193,10 @@ class ReferenceFetcher:
         return content
 
     def _stale_fallback(
-        self, normalized_reference_id: str, force_refresh: bool
+        self,
+        normalized_reference_id: str,
+        force_refresh: bool,
+        allow_stale: bool = True,
     ) -> Optional[ReferenceContent]:
         """Serve an out-of-date cache entry when the source yielded nothing.
 
@@ -192,10 +208,15 @@ class ReferenceFetcher:
         reporting every cached reference as not found.
 
         The entry is deliberately not re-saved, so it stays stale and the next run
-        that can reach the source still refreshes it. ``force_refresh`` opts out
-        entirely: an explicit refresh that failed should report failure.
+        that can reach the source still refreshes it. It is also served as it sits
+        on disk, without ``_maybe_retry_full_text``: that retry is another network
+        call, and reaching here established the network is not answering.
+
+        Two ways out: ``force_refresh``, because an explicit refresh that failed
+        should report failure, and ``allow_stale=False`` for callers whose job is
+        to fill the cache rather than read it.
         """
-        if force_refresh:
+        if force_refresh or not allow_stale:
             return None
 
         stale = self._load_from_disk(normalized_reference_id, allow_stale=True)
@@ -600,9 +621,14 @@ class ReferenceFetcher:
             'Normal title'
             >>> fetcher._quote_yaml_value("Title: with colon")
             '"Title: with colon"'
+            >>> fetcher._quote_yaml_value("Before\\n---\\nafter")
+            '"Before\\\\n---\\\\nafter"'
         """
-        # Characters that require quoting in YAML values
-        special_chars = '[]{}:,#&*?|<>=!%@`"\'\\'
+        # Characters that require quoting in YAML values. Line breaks are here
+        # for the frontmatter's sake rather than YAML's: one field must occupy
+        # one line, or a continuation line that reads as `---` ends the block
+        # early, truncating this value and prepending the rest to the body.
+        special_chars = '[]{}:,#&*?|<>=!%@`"\'\\\n\r'
         needs_quote = False
 
         # Check for special characters
@@ -621,8 +647,16 @@ class ReferenceFetcher:
             needs_quote = True
 
         if needs_quote:
-            # Escape any existing double quotes and wrap in double quotes
-            escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+            # Escape any existing double quotes and wrap in double quotes.
+            # Line breaks become escape sequences rather than real breaks: YAML
+            # would fold a literal newline back to a space, losing it, and it
+            # would still split the field across physical lines.
+            escaped = (
+                value.replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("\r", "\\r")
+                .replace("\n", "\\n")
+            )
             return f'"{escaped}"'
 
         return value

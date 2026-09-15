@@ -375,6 +375,17 @@ for the reasons above. The entry is left stale rather than rewritten, so the
 next run that can reach the source refreshes it properly. This warning is
 printed without `-v`.
 
+The cost of leaving it stale is that the refresh is attempted again next time.
+The "one-off per reference" above is one-off for a run that reaches the source;
+a run that never does re-attempts every stale reference, and waits for each
+attempt to time out. On a large dataset that first looks like a hang rather
+than a fallback. Once a run gets through, the entries it refreshed are settled
+for good.
+
+`cache reference` is the exception to the fallback: its job is to put text on
+disk, so it reports failure and exits non-zero when the source is unreachable,
+rather than reporting success for a download that did not happen.
+
 ### Title validation failed
 
 **Symptom:**

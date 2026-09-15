@@ -1552,3 +1552,51 @@ def test_cache_export_still_reads_unstamped_entries(fetcher):
     _unstamp(fetcher, "PMID:1")
 
     assert [r.title for r in fetcher.iter_cached_references()] == ["Kept"]
+
+
+def test_a_newline_in_a_value_cannot_end_the_frontmatter(fetcher):
+    """One field must occupy one line, or the delimiter search finds a false end.
+
+    _split_frontmatter is correct given one line per value. Writing a value
+    across physical lines puts that guarantee back in the writer's hands: a
+    title whose continuation is ``---`` would end the block early, truncating
+    the title and prepending the rest to the body.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:1",
+            title="Before\n---\nafter",
+            content="Body text.",
+            journal="Nature",
+        )
+    )
+
+    frontmatter, _ = fetcher._split_frontmatter(_cached_text(fetcher, "PMID:1"))
+    assert "\n---\n" not in frontmatter
+
+    loaded = fetcher._load_from_disk("PMID:1")
+    assert loaded is not None
+    assert loaded.title == "Before\n---\nafter"
+    assert loaded.journal == "Nature"
+    assert loaded.content == "Body text."
+
+
+def test_a_crlf_entry_is_read_like_any_other(fetcher):
+    """A hand-edited entry saved on Windows must not read as stale forever.
+
+    The delimiter pattern has no ``\\r`` in it; what makes CRLF safe is that
+    ``Path.read_text`` translates line endings before the pattern sees them.
+    Written as bytes so the test goes through that translation rather than
+    around it - assigning CRLF through ``write_text``/``read_text`` would
+    normalise on both sides and prove nothing.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", title="Windows", content="Body text.")
+    )
+    path = fetcher.get_cache_path("PMID:1")
+    path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+
+    loaded = fetcher._load_from_disk("PMID:1")
+
+    assert loaded is not None
+    assert loaded.title == "Windows"

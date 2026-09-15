@@ -657,3 +657,118 @@ def test_validate_no_full_text_flag(tmp_path, monkeypatch):
     # The command may exit 0 or 1 depending on match; we only assert config wiring.
     assert "fetch_full_text" in captured, result.stdout
     assert captured["fetch_full_text"] is False
+
+
+# ============================================================================
+# `cache reference` when the source cannot be reached
+#
+# ReferenceFetcher.fetch falls back to a cache entry written by an older
+# extractor rather than reporting the reference missing - right for validation,
+# which wants the best text available. This command's whole job is to *fill*
+# the cache, so a fallback means it did not do it.
+# ============================================================================
+
+
+def _unstamped_entry(cache_dir, reference_id="PMID:1"):
+    """Pre-populate a cache entry as an older extractor would have left it."""
+    from linkml_reference_validator.etl.reference_fetcher import (
+        EXTRACTOR_CACHE_VERSION,
+        ReferenceFetcher,
+    )
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+    )
+
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=cache_dir, fetch_full_text=False)
+    )
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id=reference_id, title="Pre-populated", content="Old body.")
+    )
+    path = fetcher.get_cache_path(reference_id)
+    path.write_text(
+        path.read_text(encoding="utf-8").replace(
+            f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n", ""
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
+def test_cache_reference_fails_when_only_a_stale_entry_is_available(tmp_path, mocker):
+    """A pre-population loop gated on exit status must not go green on an outage."""
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    path = _unstamped_entry(cache_dir)
+
+    mocker.patch(
+        "linkml_reference_validator.etl.sources.pmid.Entrez.esummary",
+        side_effect=OSError("network unreachable"),
+    )
+
+    result = runner.invoke(
+        app, ["cache", "reference", "PMID:1", "--cache-dir", str(cache_dir)]
+    )
+
+    assert result.exit_code == 1, result.output
+    assert "Successfully cached" not in result.output
+    # The entry is left alone: it is still the one the fixed extractors replace.
+    assert "extractor_version:" not in path.read_text(encoding="utf-8")
+
+
+def test_cache_reference_succeeds_when_the_source_answers(tmp_path, mocker):
+    """The ordinary path still reports success and rewrites the entry."""
+    from linkml_reference_validator.etl.reference_fetcher import EXTRACTOR_CACHE_VERSION
+    from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
+    from linkml_reference_validator.models import ReferenceContent
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    path = _unstamped_entry(cache_dir)
+
+    fresh = ReferenceContent(
+        reference_id="PMID:1", title="Refetched", content="Fresh body."
+    )
+    mocker.patch.object(
+        ReferenceSourceRegistry,
+        "get_source",
+        return_value=mocker.Mock(
+            return_value=mocker.Mock(fetch=mocker.Mock(return_value=fresh))
+        ),
+    )
+
+    result = runner.invoke(
+        app, ["cache", "reference", "PMID:1", "--cache-dir", str(cache_dir)]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Successfully cached" in result.output
+    assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_validation_still_uses_the_stale_entry_when_the_source_is_unreachable(
+    tmp_path, mocker
+):
+    """Only this command opts out; validation keeps the fallback it was added for."""
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.models import ReferenceValidationConfig
+
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    _unstamped_entry(cache_dir)
+
+    mocker.patch(
+        "linkml_reference_validator.etl.sources.pmid.Entrez.esummary",
+        side_effect=OSError("network unreachable"),
+    )
+
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=cache_dir, fetch_full_text=False)
+    )
+    reference = fetcher.fetch("PMID:1")
+
+    assert reference is not None
+    assert reference.content == "Old body."

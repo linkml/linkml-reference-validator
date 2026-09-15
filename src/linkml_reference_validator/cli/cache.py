@@ -143,7 +143,12 @@ def reference_command(
 
     typer.echo(f"Fetching {reference_id}...")
 
-    reference = fetcher.fetch(reference_id, force_refresh=force)
+    # allow_stale=False: this command's job is to put text on disk. Serving an
+    # entry an older extractor wrote - which fetch() does for validation, so an
+    # outage does not read as "reference not found" - would have it report
+    # success for a download that never happened, and a pre-population loop
+    # gated on the exit status would go green across a whole outage.
+    reference = fetcher.fetch(reference_id, force_refresh=force, allow_stale=False)
 
     if reference:
         typer.echo(f"Successfully cached {reference_id}")

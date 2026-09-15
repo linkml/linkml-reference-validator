@@ -1524,6 +1524,9 @@ NCT12345678
 <pre><code>clinicaltrials:NCT00000001
 CLINICALTRIALS:NCT00000001
 </code></pre>
+<p>These forms normalize to <code>clinicaltrials:NCT00000001</code> and share the cache file
+<code>clinicaltrials_NCT00000001.md</code>. Existing files with that canonical name are
+reused without renaming or fetching the trial again.</p>
 <h2 id="prefix-aliases-and-normalization">Prefix Aliases and Normalization</h2>
 <p>If your data uses alternate prefix styles (e.g., the legacy <code>NCT:</code> prefix), configure normalization in <code>.linkml-reference-validator.yaml</code>:</p>
 <pre><code class="language-yaml">validation:

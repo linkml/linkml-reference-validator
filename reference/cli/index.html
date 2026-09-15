@@ -3384,26 +3384,53 @@ Result:
 <li><code>1</code> - One or more validations failed</li>
 </ul>
 <h3 id="output-format_2">Output Format</h3>
-<p><strong>Success:</strong></p>
-<pre><code>Validating data.yaml against schema schema.yaml
-Cache directory: references_cache
-
-Validation Summary:
-  Total checks: 3
-  All validations passed!
+<p>The summary separates work performed from issues found:</p>
+<pre><code class="language-text">Validation Summary:
+  Input files: 2
+  Files validated: 2
+  Snippets checked: 3
+  Snippets skipped: 0
+  Snippets unavailable: 0
+  Titles checked: 1
+  Issues found: 1
+  Issues found in 1 file(s) (1 validation issue(s))
+  Failing files:
+    bad.yaml
 </code></pre>
-<p><strong>Failure:</strong></p>
-<pre><code>Validating data.yaml against schema schema.yaml
-Cache directory: references_cache
-
-Validation Issues (2):
-  [ERROR] Text part not found as substring: 'MUC1 activates JAK-STAT'
-    Location: Statement
-
-Validation Summary:
-  Total checks: 3
-  Issues found: 2
-</code></pre>
+<ul>
+<li><strong>Input files</strong> counts supplied paths, including files that cannot be read.</li>
+<li><strong>Files validated</strong> counts files with at least one mapping submitted to the
+  validator. An empty mapping counts; an empty list has no instances and does not.
+  A mixed list containing valid mappings and malformed entries counts once and
+  still fails. Entry diagnostics use zero-based indexes.</li>
+<li><strong>Snippets checked</strong> counts executed comparisons against reference content,
+  including matches and mismatches. Multiple excerpt slots each count separately.</li>
+<li><strong>Snippets skipped</strong> counts snippet/reference pairs bypassed by <code>skip_prefixes</code>.</li>
+<li><strong>Snippets unavailable</strong> counts attempted snippet validations where the reference
+  could not be fetched or had no content. These are not completed comparisons.</li>
+<li><strong>Titles checked</strong> counts actual title comparisons, including those performed
+  alongside snippets. Missing titles and skipped/unavailable references do not count.</li>
+<li><strong>Issues found</strong> counts emitted validation issues. Blank excerpts may produce an
+  issue without any comparison; file read/parse or data-format errors appear in the
+  failing-file list without adding a fabricated validation issue.</li>
+</ul>
+<p>Absent excerpts and excerpts without a usable reference perform no comparison.
+Counters come from execution and reset for each LinkML validation call; the CLI
+accumulates all instances and files. The public plugin exposes <code>snippets_checked</code>,
+<code>snippets_skipped</code>, <code>snippets_unavailable</code>, and <code>titles_checked</code> after validation.
+When using lazy <code>process()</code> or <code>iter_results()</code> APIs, exhaust the result iterator
+before reading final counters. Unconsumed or partially consumed iterators do not
+provide final counts; <code>Validator.validate()</code> consumes the iterator for you.</p>
+<p>Title-only skips and unavailable titles have no separate summary counters: they
+leave all check counters at zero. A skipped title emits no issue; an unavailable
+standalone title emits an issue. Existing title behavior is preserved: a reference
+missing its title is an issue for standalone title validation, but a title supplied
+alongside an excerpt is not compared or reported when the reference has no title.</p>
+<p>A zero-snippet run prints <code>No snippet comparisons were performed.</code> This includes
+empty input collections and title-only runs. Exit behavior is unchanged: no issues
+or file errors means exit 0, even when zero snippets were checked; issues or file
+errors mean exit 1. Failed file paths are listed at the end, including unreadable
+files, while later files continue to be processed.</p>
 <hr />
 <h2 id="repair">repair</h2>
 <p>Repair supporting text validation errors.</p>

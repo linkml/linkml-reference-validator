@@ -2,14 +2,19 @@
 
 from collections import Counter
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from ssl import SSLEOFError
 from threading import Event, Thread
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 from Bio import Entrez
+from Bio.Entrez import Parser
 import pytest
 
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    EXTRACTOR_CACHE_VERSION,
+    ReferenceFetcher,
+)
 from linkml_reference_validator.etl.sources.pmid import PMIDSource
 from linkml_reference_validator.models import (
     ReferenceContent,
@@ -45,7 +50,11 @@ def ncbi(monkeypatch):
             script = failures.get(endpoint, [])
             action = script.pop(0) if script else "ok"
             if action == "timeout":
-                Event().wait(0.4)
+                Event().wait(3)
+                self.close_connection = True
+                return
+            if action == "bad_status":
+                self.wfile.write(b"Not an HTTP status\r\n\r\n")
                 self.close_connection = True
                 return
             if action == "disconnect":
@@ -55,16 +64,19 @@ def ncbi(monkeypatch):
                 self.send_error(action)
                 return
             payload = SUMMARY if endpoint == "esummary.fcgi" else ARTICLE
+            if action == "empty":
+                payload = b""
             if action == "invalid":
                 payload = b"not XML"
             if action == "no_abstract":
                 payload = b"<PubmedArticleSet><PubmedArticle/></PubmedArticleSet>"
             self.send_response(200)
             self.send_header("Content-Type", "text/xml")
+            self.send_header("X-Test-Failure", action)
             self.send_header("Content-Length", str(len(payload)))
             self.end_headers()
             if action == "read_timeout":
-                Event().wait(0.4)
+                Event().wait(3)
                 self.close_connection = True
                 return
             self.wfile.write(payload[:20] if action == "truncate" else payload)
@@ -77,6 +89,24 @@ def ncbi(monkeypatch):
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
+    class TLSFailureHandle:
+        """Inject a TLS read failure after consuming bytes from a real HTTP handle.
+
+        This boundary harness avoids relying on platform-specific OpenSSL EOF
+        suppression, while exercising real request creation, IO and cleanup.
+        """
+
+        def __init__(self, handle):
+            self.handle = handle
+
+        def __getattr__(self, name):
+            return getattr(self.handle, name)
+
+        def read(self):
+            """Consume a partial response before surfacing the TLS exception."""
+            assert self.handle.read(20)
+            raise SSLEOFError("TLS connection closed during response body")
+
     def local_urlopen(request):
         """Keep Entrez request creation/retries and use a real local HTTP handle."""
         parts = urlsplit(request.full_url)
@@ -85,11 +115,20 @@ def ncbi(monkeypatch):
             data=request.data,
             headers=dict(request.header_items()),
         )
-        handle = urlopen(local, timeout=0.2)
+        handle = urlopen(local, timeout=1)
         handles.append(handle)
+        if handle.headers.get("X-Test-Failure") == "tls_eof":
+            return TLSFailureHandle(handle)
         return handle
 
+    def forbid_dtd_network(*args, **kwargs):
+        """Ensure summary parsing uses the DTD bundled with Biopython."""
+        pytest.fail("Entrez parser attempted an external DTD request")
+
+    monkeypatch.setattr(Parser, "urlopen", forbid_dtd_network)
     monkeypatch.setattr(Entrez, "urlopen", local_urlopen)
+    # Entrez.time is stdlib time: this also records validator sleeps. The
+    # HTTP handler uses Event.wait so its intended timeouts remain real.
     monkeypatch.setattr(Entrez.time, "sleep", sleeps.append)
     # Use the real built-in retry loop with its normal limit.
     monkeypatch.setattr(Entrez, "max_tries", 3)
@@ -111,7 +150,8 @@ def config(tmp_path):
 
 @pytest.mark.parametrize("endpoint", ["esummary.fcgi", "efetch.fcgi"])
 @pytest.mark.parametrize(
-    "failure", ["truncate", "disconnect", "timeout", "read_timeout"]
+    "failure",
+    ["truncate", "disconnect", "timeout", "read_timeout", "bad_status", "tls_eof"],
 )
 def test_transient_recovery(ncbi, config, endpoint, failure):
     """Opening and body failures recover, and every response handle closes."""
@@ -127,7 +167,8 @@ def test_transient_recovery(ncbi, config, endpoint, failure):
 
 @pytest.mark.parametrize("endpoint", ["esummary.fcgi", "efetch.fcgi"])
 @pytest.mark.parametrize(
-    "failure", ["truncate", "disconnect", "timeout", "read_timeout"]
+    "failure",
+    ["truncate", "disconnect", "timeout", "read_timeout", "bad_status", "tls_eof"],
 )
 def test_exhaustion_does_not_pass_or_abort_next_reference(
     ncbi, config, endpoint, failure
@@ -175,7 +216,9 @@ def test_partial_refresh_preserves_stale_cache(ncbi, config, force_refresh):
     )
     fetcher._save_to_disk(old)
     path = fetcher.get_cache_path("PMID:123")
-    stale = path.read_text().replace("extractor_version: 1", "extractor_version: 0")
+    stale = path.read_text().replace(
+        f"extractor_version: {EXTRACTOR_CACHE_VERSION}", "extractor_version: 0"
+    )
     path.write_text(stale)
     failures, counts, _, _ = ncbi
     failures["efetch.fcgi"] = ["truncate"] * 3
@@ -258,3 +301,27 @@ def test_connection_refused_uses_only_entrez_retries(ncbi, config, monkeypatch):
     assert len(attempts) == 3
     assert sleeps.count(Entrez.sleep_between_tries) == 2
     assert 2 not in sleeps and 4 not in sleeps
+
+
+def test_empty_article_response_does_not_replace_stale_text(ncbi, config):
+    """A complete empty body provides no replacement article text for a cache."""
+    fetcher = ReferenceFetcher(config)
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:123",
+            content="Useful older text.",
+            content_type="abstract_only",
+        )
+    )
+    path = fetcher.get_cache_path("PMID:123")
+    stale = path.read_text().replace(
+        f"extractor_version: {EXTRACTOR_CACHE_VERSION}", "extractor_version: 0"
+    )
+    path.write_text(stale)
+    failures, counts, handles, _ = ncbi
+    failures["efetch.fcgi"] = ["empty"]
+    ref = fetcher.fetch("PMID:123")
+    assert ref is not None and ref.content == "Useful older text."
+    assert path.read_text() == stale
+    assert counts["efetch.fcgi"] == 1
+    assert all(handle.closed for handle in handles)

@@ -385,8 +385,9 @@ the source's timeout and retry policy.
 
 For PubMed, Bio.Entrez handles HTTP/URL errors while opening requests (three
 attempts by default, with its own delays). The validator does not restart an
-exhausted Bio.Entrez retry loop. Dropped connections, socket timeouts, and
-incomplete response bodies are attempted up to three times, with 2 and 4 second
+exhausted Bio.Entrez retry loop. Dropped connections, socket/TLS errors, and
+HTTP framing errors (including incomplete bodies) are attempted up to three
+times, with 2 and 4 second
 backoff between attempts. Each attempt opens a new request, so mixed opening
 and body failures can involve up to nine HTTP requests with Bio.Entrez defaults
 per endpoint (summary and article XML). Exhaustion reports the reference as

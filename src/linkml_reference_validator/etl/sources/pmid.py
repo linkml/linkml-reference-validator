@@ -11,7 +11,7 @@ Examples:
 """
 
 from collections.abc import Callable
-from http.client import IncompleteRead, RemoteDisconnected
+from http.client import HTTPException
 from io import BytesIO
 import logging
 import re
@@ -247,17 +247,27 @@ class PMIDSource(ReferenceSource):
         return joined if joined else None
 
     def _read_entrez(
-        self, open_handle: Callable[[], Any], pmid: str,
+        self,
+        open_handle: Callable[[], Any],
+        pmid: str,
         config: ReferenceValidationConfig,
     ) -> Optional[bytes]:
         """Read a complete response, retrying transport failures up to three attempts.
 
         Entrez already retries HTTP/URL errors during opening (three attempts by
         default, with its own delays). Do not restart that exhausted retry loop.
-        Direct socket failures and incomplete reads escape Entrez's loop, so
+        Socket/TLS failures and HTTP framing errors escape Entrez's loop, so
         retry those here with 2 and 4 second backoff. A mixed sequence can make
         at most ``3 * Entrez.max_tries`` requests; no process-global Entrez retry
         settings are changed. Parsing happens after this transport-only boundary.
+
+        Args:
+            open_handle: Open a new Entrez response for each attempt.
+            pmid: PubMed identifier for diagnostics.
+            config: Configuration for rate limiting.
+
+        Returns:
+            Complete response bytes, or None when the request fails.
         """
         for attempt in range(3):
             time.sleep(config.rate_limit_delay)
@@ -273,7 +283,7 @@ class PMIDSource(ReferenceSource):
                     logger.warning("Failed to open PMID:%s from NCBI: %s", pmid, exc)
                     return None
                 return handle.read()
-            except (IncompleteRead, RemoteDisconnected, ConnectionError, TimeoutError, URLError) as exc:
+            except (OSError, HTTPException) as exc:
                 logger.warning(
                     "NCBI transport failure for PMID:%s (attempt %s/3): %s",
                     pmid, attempt + 1, exc,

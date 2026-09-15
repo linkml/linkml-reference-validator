@@ -71,3 +71,21 @@ def test_distinct_letters_and_scientific_symbols(
 def test_ligatures_with_existing_normalization() -> None:
     """Folding composes with Greek spelling, case, punctuation, and whitespace."""
     assert SupportingTextValidator.normalize_text("  α-ﬁbrils,  Æ/Œ! ") == "alpha fibrils æ œ"
+
+
+@pytest.mark.parametrize("reverse", [False, True])
+def test_cached_title_ligatures(tmp_path: Path, reverse: bool) -> None:
+    """Both title validation entry points fold ligatures but still require exact titles."""
+    title, expected = "Ĳ and amyloid ﬁbrils", "IJ and amyloid fibrils"
+    if reverse:
+        title, expected = expected, title
+    validator = SupportingTextValidator(ReferenceValidationConfig(cache_dir=tmp_path))
+    reference = ReferenceContent(
+        reference_id="PMID:123", title=title, content="The study describes amyloid fibrils."
+    )
+    validator.fetcher._save_to_disk(reference)
+    assert validator.validate_title(reference.reference_id, expected).is_valid
+    assert validator.validate(
+        "amyloid fibrils", reference.reference_id, expected_title=expected,
+    ).is_valid
+    assert not validator.validate_title(reference.reference_id, "amyloid fibrils").is_valid

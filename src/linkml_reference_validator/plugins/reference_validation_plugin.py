@@ -93,6 +93,21 @@ if _LINKML_AVAILABLE:
             self.config = config
             self.validator = SupportingTextValidator(config)
             self.schema_view: Optional[SchemaView] = None
+            self.reset_counts()
+
+        def reset_counts(self) -> None:
+            """Reset execution counters (also called before each LinkML validation).
+
+            Checked snippets are comparisons with fetched content, whether they
+            match or fail. Skipped prefixes and unavailable content are separate.
+            Blank/absent excerpts and missing references perform no comparison.
+            Titles count actual comparisons, including those bundled with snippets.
+            Counts describe execution, never the number of yielded issues.
+            """
+            self.snippets_checked = 0
+            self.snippets_skipped = 0
+            self.snippets_unavailable = 0
+            self.titles_checked = 0
 
         @property
         def cache_dir(self) -> Path:
@@ -116,6 +131,7 @@ if _LINKML_AVAILABLE:
                 >>> plugin = ReferenceValidationPlugin(config=config)
                 >>> # Would be called by LinkML validator
             """
+            self.reset_counts()
             if hasattr(context, "schema_view") and context.schema_view:
                 self.schema_view = context.schema_view
             logger.info("ReferenceValidationPlugin initialized")
@@ -533,6 +549,13 @@ if _LINKML_AVAILABLE:
             result = self.validator.validate(
                 excerpt, reference_id, expected_title=expected_title, path=path
             )
+            if result.match_result is not None:
+                self.snippets_checked += 1
+            elif result.skipped:
+                self.snippets_skipped += 1
+            elif not self.validator.check_excerpt_content(excerpt):
+                self.snippets_unavailable += 1
+            self.titles_checked += int(result.title_checked)
 
             if not result.is_valid:
                 severity = self._convert_severity(result.severity)
@@ -568,6 +591,7 @@ if _LINKML_AVAILABLE:
             result = self.validator.validate_title(
                 reference_id, expected_title=title, path=path
             )
+            self.titles_checked += int(result.title_checked)
 
             if not result.is_valid:
                 severity = self._convert_severity(result.severity)

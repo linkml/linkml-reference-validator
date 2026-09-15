@@ -7,6 +7,7 @@ from typing import Optional
 
 import typer
 from ruamel.yaml import YAML
+from ruamel.yaml.error import YAMLError
 from typing_extensions import Annotated
 
 from linkml_reference_validator.etl.text_extractor import TextExtractor
@@ -300,27 +301,42 @@ def data_command(
 
     yaml = YAML(typ="safe")
     total_results = 0
-    files_with_issues = 0
+    failing_files: list[Path] = []
+    total_snippets = 0
+    total_skipped = 0
+    total_unavailable = 0
+    total_titles = 0
 
     for data_file in data_files:
         typer.echo(f"\nValidating {data_file} against schema {schema_file}")
 
-        with open(data_file) as f:
-            data = yaml.load(f)
-
-        # Validate each instance in this file
-        file_results = []
-        if isinstance(data, list):
-            for instance in data:
-                report = validator.validate(instance, target_class=target_class)
-                file_results.extend(report.results)
-        elif isinstance(data, dict):
-            report = validator.validate(data, target_class=target_class)
-            file_results = report.results
-        else:
-            typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
-            files_with_issues += 1
+        try:
+            with open(data_file) as f:
+                data = yaml.load(f)
+        except (OSError, YAMLError, UnicodeError) as error:
+            typer.echo(f"Error: Could not read {data_file}: {error}", err=True)
+            failing_files.append(data_file)
             continue
+
+        # Each validate() call resets the plugin counters, including list items.
+        if not isinstance(data, (list, dict)):
+            typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
+            failing_files.append(data_file)
+            continue
+
+        file_results = []
+        for instance in data if isinstance(data, list) else [data]:
+            if not isinstance(instance, dict):
+                typer.echo(f"Error: Unexpected data format in {data_file}", err=True)
+                if data_file not in failing_files:
+                    failing_files.append(data_file)
+                continue
+            report = validator.validate(instance, target_class=target_class)
+            file_results.extend(report.results)
+            total_snippets += plugin.snippets_checked
+            total_skipped += plugin.snippets_skipped
+            total_unavailable += plugin.snippets_unavailable
+            total_titles += plugin.titles_checked
 
         if file_results:
             typer.echo(f"  Validation Issues ({len(file_results)}):")
@@ -333,20 +349,30 @@ def data_command(
                 if hasattr(result, "instance") and result.instance:
                     if isinstance(result.instance, dict) and "reference_id" in result.instance:
                         typer.echo(f"      Reference: {result.instance['reference_id']}")
-            files_with_issues += 1
+            if data_file not in failing_files:
+                failing_files.append(data_file)
 
         total_results += len(file_results)
 
     typer.echo("\nValidation Summary:")
     typer.echo(f"  Files validated: {len(data_files)}")
-    typer.echo(f"  Total checks: {total_results}")
+    typer.echo(f"  Snippets checked: {total_snippets:,}")
+    typer.echo(f"  Snippets skipped: {total_skipped:,}")
+    typer.echo(f"  Snippets unavailable: {total_unavailable:,}")
+    typer.echo(f"  Titles checked: {total_titles:,}")
+    typer.echo(f"  Issues found: {total_results:,}")
+    if total_snippets == 0:
+        typer.echo("  No snippet comparisons were performed.")
 
     # Exit non-zero if any file had a problem. This includes files that failed
     # validation *and* files that could not be read as a list/mapping (counted in
-    # files_with_issues but contributing no validation results) -- otherwise a
+    # failing_files but contributing no validation results) -- otherwise a
     # malformed file would be silently reported as passing.
-    if files_with_issues:
-        typer.echo(f"  Issues found in {files_with_issues} file(s) ({total_results} validation issue(s))")
+    if failing_files:
+        typer.echo(f"  Issues found in {len(failing_files)} file(s) ({total_results} validation issue(s))")
+        typer.echo("  Failing files:")
+        for data_file in failing_files:
+            typer.echo(f"    {data_file}")
         raise typer.Exit(1)
     else:
         typer.echo("  All validations passed!")

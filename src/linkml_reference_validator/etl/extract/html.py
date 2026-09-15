@@ -189,7 +189,6 @@ class HTMLExtractor(Extractor):
         # intervening Limitations section silently disappears from accepted text.
         if not sections and (
             body is None
-            or region.find(re.compile(r"^h[1-6]$")) is not None
             or len(region.find_all("p")) < 2
         ):
             return None

@@ -924,6 +924,12 @@ class ReferenceFetcher:
         if split is None:
             return True
 
+        # Preserve the pre-existing missing/old-version fast path, including for
+        # damaged legacy frontmatter that a successful re-fetch can replace.
+        match = re.search(r"^extractor_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
+        if not match or int(match.group(1)) < EXTRACTOR_CACHE_VERSION:
+            return True
+
         metadata = YAML(typ="safe").load(split[0])
         if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_html":
             html_version = metadata.get("html_full_text_version")
@@ -933,13 +939,9 @@ class ReferenceFetcher:
             ):
                 return True
 
-        match = re.search(r"^extractor_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
-        if not match:
-            return True
-
         # A newer stamp is not stale: an older tool reading a cache written by a
         # newer one should leave it alone rather than re-fetch it on every run.
-        return int(match.group(1)) < EXTRACTOR_CACHE_VERSION
+        return False
 
     def _load_markdown_format(
         self, content_text: str, reference_id: str

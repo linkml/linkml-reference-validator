@@ -404,3 +404,29 @@ def test_preextracted_html_body_is_a_trusted_provider_contract(tmp_path):
     )
     assert ref.content == text
     assert ref.metadata["html_full_text_version"] == 1
+
+
+def test_explicit_body_with_unfamiliar_heading_is_accepted(tmp_path, html_server):
+    """Adding a Case Report heading cannot invalidate an explicit article body."""
+    s = BeautifulSoup((FIXTURES / "plos-0000308.html").read_text(), "html.parser")
+    section = s.find("h2", string="Results").parent
+    section.attrs = {"class": ["article-body"]}
+    section.find("h2").string = "Case Report"
+    (tmp_path / "case-report.html").write_text(f"<html><body>{section}</body></html>")
+    ref = ReferenceContent(
+        reference_id="DOI:10.1/case-report", content_type="abstract_only"
+    )
+    assert make_fetcher(tmp_path).apply_full_text_location(
+        ref, FullTextLocation(url=f"{html_server}/case-report.html"), "openalex"
+    )
+    assert (
+        "We studied the citations of 85 cancer microarray clinical trials"
+        in ref.content
+    )
+
+
+def test_malformed_unversioned_cache_still_requests_refresh():
+    """The pre-existing missing-version path does not parse damaged YAML first."""
+    assert ReferenceFetcher._is_stale_cache_entry(
+        "---\ntitle: [truncated\n---\nOld text"
+    )

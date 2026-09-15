@@ -13,6 +13,21 @@ After validating your data files, you may find validation errors due to:
 
 The `repair` command attempts to fix these issues automatically or flags them for manual review.
 
+### Typographic ligatures already match
+
+Validation folds Latin compatibility ligatures on both the reference content and
+the quote, including each part separated by `...`. For example, PDF-extracted
+`amyloid ﬁbrils` matches `amyloid fibrils` without a repair. The supported folds
+are `ﬀ → ff`, `ﬁ → fi`, `ﬂ → fl`, `ﬃ → ffi`, `ﬄ → ffl`, `ﬅ/ﬆ → st`, and
+`Ĳ/ĳ → IJ/ij`. IJ is included because Unicode gives it a compatibility
+decomposition into I and J; ordinary case normalization still applies.
+
+The distinct letters `Æ/æ` and `Œ/œ` remain distinct from `AE/ae` and `OE/oe`.
+Equating these letters would accept spelling changes beyond typographic repair.
+Validation uses an explicit ligature table instead of broad Unicode NFKC
+normalization so this change does not equate scientific notation such as `H₂O`
+with `H2O`, `10⁶` with `106`, or the micro sign `µ` with Greek `μ`.
+
 ## Quick Start
 
 ### Repair a Single Quote

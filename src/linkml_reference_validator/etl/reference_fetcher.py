@@ -825,21 +825,28 @@ class ReferenceFetcher:
         """Recover author strings from legacy YAML without stringifying garbage.
 
         Unquoted colon-bearing authors can parse as mappings. Each string key
-        and string value pair becomes one author, in order. Valid strings are
-        preserved verbatim. Null list entries, non-string scalars, empty maps,
-        and pairs with non-string keys or values are dropped with a warning;
-        nested structures are never traversed. An absent/null field or empty
-        list means no authors, as does a list with no recoverable entries.
+        paired with a string, int, float, or bool becomes one readable author,
+        in order; a null value restores the name with a trailing colon. Scalar
+        formatting may differ from the original YAML spelling. Valid strings
+        are preserved verbatim. Null list entries, non-string scalar entries,
+        empty maps, and pairs with non-string keys or unsupported values are
+        dropped with a warning; nested structures are never traversed. An
+        absent/null field, scalar empty string, or empty list means no authors,
+        as does a list with no recoverable entries.
 
         Examples:
             >>> ReferenceFetcher._parse_cached_authors(
             ...     ["Smith J", {"Consortium": "contact@example.org"}], "PMID:1"
             ... )
             ['Smith J', 'Consortium: contact@example.org']
+            >>> ReferenceFetcher._parse_cached_authors(
+            ...     [{"Consortium": None, "Room": 305}], "PMID:1"
+            ... )
+            ['Consortium:', 'Room: 305']
             >>> ReferenceFetcher._parse_cached_authors(None, "PMID:1") is None
             True
         """
-        if value is None:
+        if value is None or (isinstance(value, str) and not value):
             return None
         entries = value if isinstance(value, list) else [value]
         authors: list[str] = []
@@ -849,7 +856,9 @@ class ReferenceFetcher:
                 authors.append(entry)
             elif isinstance(entry, dict) and entry:
                 for name, detail in entry.items():
-                    if isinstance(name, str) and isinstance(detail, str):
+                    if isinstance(name, str) and detail is None:
+                        authors.append(f"{name}:")
+                    elif isinstance(name, str) and isinstance(detail, (str, int, float, bool)):
                         authors.append(f"{name}: {detail}")
                     else:
                         dropped += 1

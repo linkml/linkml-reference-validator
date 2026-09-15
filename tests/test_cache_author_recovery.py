@@ -22,13 +22,27 @@ from linkml_reference_validator.models import (
         ),
         ("{First: one, Second: two}", ["First: one", "Second: two"], False),
         ('"  Smith J  "', ["  Smith J  "], False),
+        ('""', None, False),
+        (
+            "- Consortium. Electronic address:\n- Dept of X, Room: 305\n"
+            "- Consortium: true\n- Laboratory: 3.5",
+            [
+                "Consortium. Electronic address:",
+                "Dept of X, Room: 305",
+                "Consortium: True",
+                "Laboratory: 3.5",
+            ],
+            False,
+        ),
+        ("- {First: one, Second: two}", ["First: one", "Second: two"], False),
         (
             "- null\n- [nested, list]\n- {Bad: {nested: value}}\n- 123\n"
             "- {Good: email, Missing: null, List: [bad], 12: value}\n- Valid",
-            ["Good: email", "Valid"],
+            ["Good: email", "Missing:", "Valid"],
             True,
         ),
-        ("- null\n- {Missing: null}\n- {}\n- false", None, True),
+        ("- null\n- {Missing: null}\n- {}\n- false", ["Missing:"], True),
+        ("- null\n- {}\n- false\n- {Nested: !!set {bad: null}}", None, True),
         ("null", None, False),
         ("[]", None, False),
     ],
@@ -37,6 +51,7 @@ def test_legacy_authors_load_save_reload_and_export(
     tmp_path, caplog, author_yaml, expected, dropped
 ):
     """Recover readable pairs, skip invalid values, and export only author strings."""
+    caplog.set_level(logging.WARNING)
     fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
     path = fetcher.get_cache_path("PMID:12345")
     author_yaml = "\n".join("  " + line for line in author_yaml.splitlines())
@@ -75,6 +90,7 @@ def test_legacy_authors_load_save_reload_and_export(
 
 def test_fresh_colon_author_round_trip(tmp_path, caplog):
     """The existing writer quotes colon-bearing authors and preserves their text."""
+    caplog.set_level(logging.WARNING)
     fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
     author = "Some Study Consortium. Electronic address: someone@example.org"
     reference = ReferenceContent(reference_id="PMID:12345", authors=[author])

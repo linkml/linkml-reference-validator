@@ -5,7 +5,10 @@ already wrote to the reference cache, which is served in preference to a fetch.
 When a change means previously cached text is *wrong* rather than merely older,
 bump ``EXTRACTOR_CACHE_VERSION`` in
 :mod:`linkml_reference_validator.etl.reference_fetcher` so existing entries are
-re-fetched instead of keeping the old output forever.
+re-fetched instead of keeping the old output forever. For changes confined to
+XML table extraction, bump ``XML_EXTRACTION_CACHE_VERSION`` instead; HTML
+acceptance has its own ``HTML_FULL_TEXT_CACHE_VERSION``. These format-specific
+stamps avoid refreshing unchanged formats.
 """
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry

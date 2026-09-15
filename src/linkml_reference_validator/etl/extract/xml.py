@@ -2,13 +2,14 @@
 
 Changing what this yields for the same input may make already-cached text wrong
 rather than merely older; see :mod:`linkml_reference_validator.etl.extract` for
-when to bump ``EXTRACTOR_CACHE_VERSION``.
+when to bump cache versions. Table changes use ``XML_EXTRACTION_CACHE_VERSION``
+so PDF and HTML entries remain current.
 """
 
 import logging
 from typing import Optional, Union
 
-from bs4 import BeautifulSoup  # type: ignore
+from bs4 import BeautifulSoup, CData, NavigableString, Tag  # type: ignore
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 
@@ -83,18 +84,103 @@ def is_stub_notice(text: str) -> bool:
     return any(phrase in lowered for phrase in STUB_NOTICE_PHRASES)
 
 
+#: Bound cached table evidence; headers count and truncation is always explicit.
+MAX_TABLE_ROWS = 200
+
+
+def _table_text(node: Tag) -> str:
+    """Keep inline text contiguous, separating blocks and excluding nested tables."""
+
+    def walk(tag: Tag) -> str:
+        """Render descendants without mutating the parsed document."""
+        parts = []
+        for child in tag.children:
+            if type(child) in (NavigableString, CData):
+                parts.append(str(child))
+            elif isinstance(child, Tag) and child.name not in {"table", "table-wrap"}:
+                value = walk(child)
+                if child.name in {"p", "break", "br", "list-item", "title"}:
+                    value = " " + value + " "
+                parts.append(value)
+        return "".join(parts)
+
+    return " ".join(walk(node).split())
+
+
+def _tables_as_text(soup: BeautifulSoup) -> list[str]:
+    """Render each table once in document order, using source cells, not a grid.
+
+    Row/column spans are explicit annotations; values are never replicated or
+    assigned to inferred columns. Header rows count toward the 200-row limit.
+    """
+    sections = []
+    for table in soup.find_all(["table", "table-wrap-foot"]):
+        if table.find_parent(["sub-article", "response"]):
+            continue
+        wrap = table.find_parent("table-wrap")
+        if wrap is None:
+            # This pass targets JATS tables, not arbitrary XML layout tables.
+            continue
+        if table.name == "table-wrap-foot":
+            note = _table_text(table)
+            if note:
+                sections.append(note)
+            continue
+        heading_parts = []
+        for name in ("label", "caption"):
+            node = next(
+                (n for n in wrap.find_all(name) if n.find_parent("table-wrap") is wrap),
+                None,
+            )
+            if node is not None:
+                heading_parts.append(_table_text(node))
+        heading = " ".join(part for part in heading_parts if part) or "Table"
+        if table.find_parent(["table", "table-wrap"]) is not wrap:
+            heading = "Nested table"
+        rows = [
+            row for row in table.find_all("tr") if row.find_parent("table") is table
+        ]
+        rendered = []
+        for row in rows[:MAX_TABLE_ROWS]:
+            cells = []
+            for cell in row.find_all(["th", "td"]):
+                if (
+                    cell.find_parent("tr") is not row
+                    or cell.find_parent("table") is not table
+                ):
+                    continue
+                value = _table_text(cell).replace("\\", "\\\\").replace("|", "\\|")
+                for span in ("rowspan", "colspan"):
+                    if cell.has_attr(span) and str(cell[span]) != "1":
+                        value += f" [{span}={cell[span]}]"
+                cells.append(value)
+            if cells:
+                rendered.append("| " + " | ".join(cells) + " |")
+        if len(rows) > MAX_TABLE_ROWS:
+            rendered.append(f"[Table truncated after {MAX_TABLE_ROWS} rows.]")
+        if rendered:
+            sections.append("## " + heading + "\n\n" + "\n".join(rendered))
+    return sections
+
+
 @ExtractorRegistry.register
 class XMLExtractor(Extractor):
     """Extract body text from JATS/PMC article XML.
 
-    Returns the concatenated text of paragraphs within the article ``<body>``.
-    Returns None when there is no body content, and when the body holds one of
+    Returns body paragraphs followed by labeled tables from the whole document.
+    Table cells retain inline text and explicitly annotate spans; the first 200
+    source rows per table are retained, with a notice when rows are omitted.
+    Returns None when neither body paragraphs nor table rows exist, and when
+    the body holds one of
     PMC's placeholder notices instead of the article itself.
 
     Examples:
         >>> xml = b"<article><body><p>Hello body.</p></body></article>"
         >>> XMLExtractor().extract(xml)
         'Hello body.'
+        >>> table = "<article><table-wrap><table><tr><td>Yes</td></tr></table></table-wrap></article>"
+        >>> XMLExtractor().extract(table)
+        '## Table\\n\\n| Yes |'
         >>> stub = b"<article><body><p>Text cannot be obtained from PMC.</p></body></article>"
         >>> XMLExtractor().extract(stub) is None
         True
@@ -113,16 +199,12 @@ class XMLExtractor(Extractor):
         # bytes. The parser gets both cases right on its own.
         soup = BeautifulSoup(data, "xml")
         body = soup.find("body")
-        if not body:
-            return None
-
-        paragraphs = body.find_all("p")
-        if not paragraphs:
-            return None
-
-        text = "\n\n".join(p.get_text() for p in paragraphs if p.get_text().strip())
-        if not text.strip():
-            return None
+        paragraphs = body.find_all("p") if body else []
+        text = "\n\n".join(
+            p.get_text()
+            for p in paragraphs
+            if not p.find_parent("table-wrap") and p.get_text().strip()
+        )
 
         # Judged on the extracted body, not the raw markup: a citation title or
         # a methods sentence elsewhere in the document says nothing about
@@ -137,4 +219,6 @@ class XMLExtractor(Extractor):
             )
             return None
 
-        return text
+        return (
+            "\n\n".join(part for part in [text, *_tables_as_text(soup)] if part) or None
+        )

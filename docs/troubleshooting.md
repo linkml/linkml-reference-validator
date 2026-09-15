@@ -785,3 +785,47 @@ Run through this checklist when encountering issues:
 - [CLI Reference](reference/cli.md) - Complete command documentation
 - [How to Repair Validation Errors](how-to/repair-validation-errors.md) - Fixing common issues
 - [GitHub Issues](https://github.com/linkml/linkml-reference-validator/issues) - Report bugs
+
+### JATS tables and XML cache refresh
+
+JATS/PMC XML extraction appends pipe-delimited tables after the existing body
+paragraphs. Tables are found throughout the document, including `floats-group`
+when there is no body. Labels and captions form headings; table paragraphs do
+not also appear as body prose. Abstract extraction remains the source's job.
+Restricted body notices are checked before any tables are appended.
+
+Each actual table is rendered once, including tables inside nested wrappers.
+Nested tables without their own wrapper use a generic `Nested table` heading.
+Inline text and symbols are retained, block/line breaks become spaces, and
+literal backslashes and pipes in cells are escaped. Rows preserve source cell
+order, including empty cells. A span is printed as `[rowspan=2]` or
+`[colspan=2]` on its source cell: values are not copied into other rows or
+columns. These are quotable source rows, not a reconstructed rectangular grid;
+interpret spanned rows using the original table. Images and non-HTML table
+encodings are not transcribed.
+
+The first **200 source rows per table**, including header and empty rows, are
+kept. Larger tables end with `[Table truncated after 200 rows.]`; later rows
+cannot be validated from this cache. Table footnotes in `table-wrap-foot` are retained once in document order,
+including notes in `floats-group`. The cap is per table, not per document.
+
+`full_text_xml` entries now carry `xml_extraction_version: 1`, independently of
+`extractor_version` and `html_full_text_version`. Missing/older XML stamps cause
+refresh on the next validation fetch; current PDF and HTML entries need no
+refresh for this change. Fresh source/provider XML is stamped after acquisition.
+Inventory and metadata-only rewrites preserve the original XML stamp, including
+future versions, and never certify old text. If refresh is unavailable, legacy
+XML remains available with the existing stale-cache warning and is not rewritten;
+it may still lack table rows. A later process retries the refresh. Existing
+stale HTML rejection remains unchanged.
+
+A successful source refresh that returns only an abstract can replace the old
+full text if no provider supplies a body. This is existing refresh behavior;
+the stale fallback applies when the source returns no record, not when it
+returns an abstract-only record. Keep a backup if retaining older full text is
+necessary.
+
+This pass targets JATS `table-wrap` content and searches the whole document;
+tables and notes inside embedded `sub-article` or `response` elements are
+excluded so reviewer/reply findings are not attributed to the main paper. Bare tables
+without a `table-wrap` remain outside this JATS extraction pass.

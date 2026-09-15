@@ -26,6 +26,7 @@ def test_real_clinical_rows():
         "## Table 1 Summary clinical characteristics of patients with missense mutations in BACH2."
         in text
     )
+    assert "IvIg, intravenous immunoglobulin" in text
     for row in [
         "On IvIg treatment | Yes | Yes | No",
         "IgM | Low | Low | High",
@@ -297,4 +298,47 @@ def test_nested_table_without_own_wrapper_has_own_heading():
     assert (
         XMLExtractor().extract(xml)
         == "## Table 1 Main caption\n\n| Outer |\n\n## Nested table\n\n| Nested |"
+    )
+
+
+@pytest.mark.parametrize(
+    "table", ['<graphic href="T1.jpg"/>', "<table/>", "<table><tr/></table>"]
+)
+def test_unrenderable_table_keeps_caption(table):
+    """Existing caption evidence survives even when no table cells can be extracted."""
+    xml = f"<article><body><table-wrap><label>Table 1</label><caption><p>Baseline characteristics.</p></caption>{table}</table-wrap></body></article>"
+    assert XMLExtractor().extract(xml) == "## Table 1 Baseline characteristics."
+
+
+@pytest.mark.parametrize("tag", ["sub-article", "response"])
+def test_floats_only_article_does_not_take_reviewer_body(tag):
+    """A missing main body must not select a reviewer body as fallback prose."""
+    xml = f"<article><floats-group><table-wrap><table><tr><td>Main finding</td></tr></table></table-wrap></floats-group><{tag}><body><p>Reviewer prose.</p></body></{tag}></article>"
+    assert XMLExtractor().extract(xml) == "## Table\n\n| Main finding |"
+
+
+def test_cell_boundary_contracts():
+    """Unit spans are implicit, backslashes escaped, and sup/sub text stays flattened."""
+    xml = r'<article><table-wrap><table><tr><td rowspan="1" colspan="1">A\B</td><td>10<sup>9</sup></td><td>H<sub>2</sub>O</td></tr></table></table-wrap></article>'
+    assert XMLExtractor().extract(xml) == "## Table\n\n| A\\\\B | 109 | H2O |"
+
+
+def test_bare_table_is_outside_jats_wrapper_contract():
+    """Non-JATS layout tables are not interpreted as article evidence."""
+    assert (
+        XMLExtractor().extract(
+            "<article><table><tr><td>Cell</td></tr></table></article>"
+        )
+        is None
+    )
+
+
+def test_unrendered_wrapper_paragraphs_remain_body_prose():
+    """Existing alternative/attribution paragraphs survive unless rendered elsewhere."""
+    xml = """<article><body><p>Body.</p><table-wrap><label>Table 1</label>
+    <caption><p>Caption.</p></caption><attrib><p>Source attribution.</p></attrib>
+    <table><tr><td><p>Cell</p></td></tr></table></table-wrap></body></article>"""
+    assert (
+        XMLExtractor().extract(xml)
+        == "Body.\n\nSource attribution.\n\n## Table 1 Caption.\n\n| Cell |"
     )

@@ -107,6 +107,19 @@ def _table_text(node: Tag) -> str:
     return " ".join(walk(node).split())
 
 
+def _table_heading(wrap: Tag) -> str:
+    """Read only the label/caption owned by this wrapper, not nested wrappers."""
+    parts = []
+    for name in ("label", "caption"):
+        node = next(
+            (n for n in wrap.find_all(name) if n.find_parent("table-wrap") is wrap),
+            None,
+        )
+        if node is not None:
+            parts.append(_table_text(node))
+    return " ".join(part for part in parts if part)
+
+
 def _tables_as_text(soup: BeautifulSoup) -> list[str]:
     """Render each table once in document order, using source cells, not a grid.
 
@@ -114,8 +127,13 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
     assigned to inferred columns. Header rows count toward the 200-row limit.
     """
     sections = []
-    for table in soup.find_all(["table", "table-wrap-foot"]):
+    for table in soup.find_all(["table-wrap", "table", "table-wrap-foot"]):
         if table.find_parent(["sub-article", "response"]):
+            continue
+        if table.name == "table-wrap":
+            heading = _table_heading(table)
+            if heading:
+                sections.append("## " + heading)
             continue
         wrap = table.find_parent("table-wrap")
         if wrap is None:
@@ -126,15 +144,8 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
             if note:
                 sections.append(note)
             continue
-        heading_parts = []
-        for name in ("label", "caption"):
-            node = next(
-                (n for n in wrap.find_all(name) if n.find_parent("table-wrap") is wrap),
-                None,
-            )
-            if node is not None:
-                heading_parts.append(_table_text(node))
-        heading = " ".join(part for part in heading_parts if part) or "Table"
+        # Named wrapper headings were emitted at their own document position.
+        heading = "" if _table_heading(wrap) else "Table"
         if table.find_parent(["table", "table-wrap"]) is not wrap:
             heading = "Nested table"
         rows = [
@@ -159,7 +170,9 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
         if len(rows) > MAX_TABLE_ROWS:
             rendered.append(f"[Table truncated after {MAX_TABLE_ROWS} rows.]")
         if rendered:
-            sections.append("## " + heading + "\n\n" + "\n".join(rendered))
+            sections.append(
+                ("## " + heading + "\n\n" if heading else "") + "\n".join(rendered)
+            )
     return sections
 
 
@@ -167,10 +180,11 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
 class XMLExtractor(Extractor):
     """Extract body text from JATS/PMC article XML.
 
-    Returns body paragraphs followed by labeled tables from the whole document.
+    Returns main-article body paragraphs followed by labeled tables and notes,
+    including floats-group content. Sub-article and response content is excluded.
     Table cells retain inline text and explicitly annotate spans; the first 200
     source rows per table are retained, with a notice when rows are omitted.
-    Returns None when neither body paragraphs nor table rows exist, and when
+    Returns None when neither body paragraphs nor table content exists, and when
     the body holds one of
     PMC's placeholder notices instead of the article itself.
 
@@ -198,8 +212,23 @@ class XMLExtractor(Extractor):
         # re-encoding str here would leave that declaration contradicting the
         # bytes. The parser gets both cases right on its own.
         soup = BeautifulSoup(data, "xml")
-        body = soup.find("body")
-        paragraphs = body.find_all("p") if body else []
+        body = next(
+            (
+                node
+                for node in soup.find_all("body")
+                if not node.find_parent(["sub-article", "response"])
+            ),
+            None,
+        )
+        paragraphs = (
+            [
+                p
+                for p in body.find_all("p")
+                if not p.find_parent(["sub-article", "response"])
+            ]
+            if body
+            else []
+        )
         text = "\n\n".join(
             p.get_text()
             for p in paragraphs
@@ -219,6 +248,17 @@ class XMLExtractor(Extractor):
             )
             return None
 
+        # Keep existing attribution/alternative prose that the renderer does not
+        # emit. Table content must not inflate the stub check above.
+        text = "\n\n".join(
+            p.get_text()
+            for p in paragraphs
+            if p.get_text().strip()
+            and not (
+                p.find_parent("table-wrap")
+                and p.find_parent(["label", "caption", "table", "table-wrap-foot"])
+            )
+        )
         return (
             "\n\n".join(part for part in [text, *_tables_as_text(soup)] if part) or None
         )

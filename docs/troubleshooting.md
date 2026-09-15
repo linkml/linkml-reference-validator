@@ -791,7 +791,8 @@ Run through this checklist when encountering issues:
 JATS/PMC XML extraction appends pipe-delimited tables after the existing body
 paragraphs. Tables are found throughout the document, including `floats-group`
 when there is no body. Labels and captions form headings; table paragraphs do
-not also appear as body prose. Abstract extraction remains the source's job.
+not also appear as body prose. Other existing body paragraphs, such as table
+attribution or alternative descriptions, are retained. Abstract extraction remains the source's job.
 Restricted body notices are checked before any tables are appended.
 
 Each actual table is rendered once, including tables inside nested wrappers.
@@ -802,7 +803,10 @@ order, including empty cells. A span is printed as `[rowspan=2]` or
 `[colspan=2]` on its source cell: values are not copied into other rows or
 columns. These are quotable source rows, not a reconstructed rectangular grid;
 interpret spanned rows using the original table. Images and non-HTML table
-encodings are not transcribed.
+encodings are not transcribed, but their labels/captions are retained.
+As in existing body extraction, superscript/subscript text is flattened:
+`10<sup>9</sup>` becomes `109`, not exponent notation. Consult the original
+for numeric interpretation; superscript styling is not preserved.
 
 The first **200 source rows per table**, including header and empty rows, are
 kept. Larger tables end with `[Table truncated after 200 rows.]`; later rows

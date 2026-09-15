@@ -655,10 +655,11 @@ class SupportingTextValidator:
             'æ œ æ œ h₂o 10⁶ µ'
         """
         # Only compatibility ligatures; do not apply general Unicode NFKC.
-        text = text.translate(str.maketrans({
+        ligature_map = {
             "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl",
             "ﬅ": "st", "ﬆ": "st", "Ĳ": "IJ", "ĳ": "ij",
-        }))
+        }
+        text = text.translate({ord(ligature): expanded for ligature, expanded in ligature_map.items()})
 
         # Greek letter mappings (both uppercase and lowercase)
         greek_map = {

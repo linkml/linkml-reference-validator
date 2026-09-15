@@ -40,6 +40,10 @@ clinicaltrials:NCT00000001
 CLINICALTRIALS:NCT00000001
 ```
 
+These forms normalize to `clinicaltrials:NCT00000001` and share the cache file
+`clinicaltrials_NCT00000001.md`. Existing files with that canonical name are
+reused without renaming or fetching the trial again.
+
 ## Prefix Aliases and Normalization
 
 If your data uses alternate prefix styles (e.g., the legacy `NCT:` prefix), configure normalization in `.linkml-reference-validator.yaml`:

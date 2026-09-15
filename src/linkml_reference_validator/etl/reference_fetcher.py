@@ -19,6 +19,7 @@ from linkml_reference_validator.models import (
     SupplementaryFile,
 )
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.clinicaltrials import NCT_ID_PATTERN
 from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
@@ -457,11 +458,15 @@ class ReferenceFetcher:
             return str(pdf_path.relative_to(self.config.get_private_cache_dir()))
         return str(pdf_path.relative_to(self.config.cache_dir))
 
-    def _parse_reference_id(self, reference_id: str) -> tuple[str, str]:
+    def _parse_reference_id(
+        self, reference_id: str, *, apply_prefix_map: bool = True
+    ) -> tuple[str, str]:
         """Parse a reference ID into prefix and identifier.
 
         Args:
             reference_id: Reference ID like "PMID:12345678" or URL
+            apply_prefix_map: Resolve configured aliases; disabled for cache paths
+                because fetch has already resolved the caller's alias.
 
         Returns:
             Tuple of (prefix, identifier)
@@ -493,14 +498,22 @@ class ReferenceFetcher:
         if stripped.lower().startswith(("http://", "https://")):
             return "url", stripped
 
+        # Bare trial IDs use the same prefix and identifier casing as the source.
+        if NCT_ID_PATTERN.fullmatch(stripped):
+            stripped = f"clinicaltrials:{stripped}"
+
         # Standard prefix:identifier format
         match = re.match(r"^([A-Za-z_]+)[:\s]+(.+)$", stripped)
         if match:
             prefix = match.group(1)
-            # Preserve case for file/url, uppercase for others
+            # Match the canonical prefix used by the source and prefix aliases.
             prefix = self._normalize_prefix(prefix)
-            prefix = self._apply_prefix_map(prefix)
-            return prefix, match.group(2).strip()
+            if apply_prefix_map:
+                prefix = self._apply_prefix_map(prefix)
+            identifier = match.group(2).strip()
+            if prefix == "clinicaltrials" and NCT_ID_PATTERN.fullmatch(identifier):
+                identifier = identifier.upper()
+            return prefix, identifier
         if reference_id.strip().isdigit():
             return "PMID", reference_id.strip()
         return "UNKNOWN", reference_id
@@ -521,6 +534,10 @@ class ReferenceFetcher:
             'PMID:12345678'
             >>> fetcher.normalize_reference_id("PMID 12345678")
             'PMID:12345678'
+            >>> fetcher.normalize_reference_id("NCT12345678")
+            'clinicaltrials:NCT12345678'
+            >>> fetcher.normalize_reference_id("CLINICALTRIALS:nct12345678")
+            'clinicaltrials:NCT12345678'
         """
         prefix, identifier = self._parse_reference_id(reference_id)
         if prefix == "UNKNOWN":
@@ -528,8 +545,8 @@ class ReferenceFetcher:
         return f"{prefix}:{identifier}"
 
     def _normalize_prefix(self, prefix: str) -> str:
-        """Normalize prefix casing with special handling for file/url."""
-        if prefix.lower() in ("file", "url"):
+        """Normalize prefix casing to match the reference sources."""
+        if prefix.lower() in ("file", "url", "clinicaltrials"):
             return prefix.lower()
         return prefix.upper()
 
@@ -547,6 +564,9 @@ class ReferenceFetcher:
 
     def get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.
+
+        Bare NCT IDs and ClinicalTrials casing are canonicalized. For configured
+        prefix aliases, pass the result of :meth:`normalize_reference_id`.
 
         Args:
             reference_id: Reference identifier
@@ -566,9 +586,15 @@ class ReferenceFetcher:
         """
         return self._cache_path(reference_id, self.config.get_cache_dir())
 
-    @staticmethod
-    def _cache_path(reference_id: str, cache_dir: Path) -> Path:
-        """Return a cache path under an already selected cache directory."""
+    def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
+        """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
+        prefix, identifier = self._parse_reference_id(
+            reference_id, apply_prefix_map=False
+        )
+        if prefix == "clinicaltrials":
+            reference_id = f"{prefix}:{identifier}"
+        # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
+        # prefix maps here could follow a second alias and change the cache key.
         safe_id = (
             reference_id.replace(":", "_")
             .replace("/", "_")

@@ -1,6 +1,7 @@
 ---
 reference_id: PMID:TEST003
 extractor_version: 1
+html_full_text_version: 1
 title: Comprehensive analysis of gene Z expression patterns
 authors:
 - Garcia L

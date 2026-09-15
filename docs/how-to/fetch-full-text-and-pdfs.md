@@ -285,3 +285,32 @@ downloaded PDF lives under the cache directory and can be located at
 - [Validating DOIs](validate-dois.md) — DOI metadata sources and supplementary files
 - [Validating Entrez Accessions](validate-entrez.md) — PubMed/PMC references
 - [CLI Reference](../reference/cli.md) — complete command documentation
+
+## HTML article checks and cache recovery
+
+An OpenAlex or Unpaywall URL may lead to a repository item record containing
+only an abstract and metadata. HTML full-text acquisition now requires an
+identifiable research body: publisher body markup or narrative research sections
+with paragraphs, after removing abstracts and navigation. Length and additional
+metadata text alone do not establish full text. This also applies when a URL
+advertised as a PDF actually returns HTML. Genuine HTML research bodies remain
+eligible, including short bodies above the existing 500-character minimum.
+
+Ambiguous layouts are rejected and the next configured provider is tried. The
+fetcher does not crawl repository download links. If every provider completes
+without usable text or an error, the reference retains its original abstract
+and records `full_text_attempted: true`.
+
+New `full_text_html` cache entries carry `html_full_text_version: 1`. Older
+Markdown HTML full-text entries without this stamp are refreshed on their next
+validation read. This migration covers all providers because cached plain text
+cannot establish which HTML body structure was present. It does not invalidate
+current PDF, XML, or abstract caches.
+
+If refreshing an old HTML entry fails, validation does **not** fall back to that
+entry: its text may be repository metadata rather than article evidence. The
+file remains untouched for inventory/export, and the next validation run retries
+recovery. Once the source is available, normal fetching replaces it with a
+verified article or the available metadata/abstract. Other content types retain
+the existing stale-cache fallback. Legacy `.txt` caches remain a separate,
+read-only compatibility path and are not migrated by this HTML stamp.

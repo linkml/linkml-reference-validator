@@ -23,6 +23,7 @@ from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_form
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
@@ -55,6 +56,10 @@ MIN_FULL_TEXT_CHARS = 500
 #: without this stamp every existing cache keeps failing correct snippets with
 #: nothing in the output to explain why.
 EXTRACTOR_CACHE_VERSION = 1
+
+#: Independently version HTML full-text acceptance: prior entries may contain
+#: repository metadata rather than an article. PDF/XML caches need no refresh.
+HTML_FULL_TEXT_CACHE_VERSION = 1
 
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
@@ -168,6 +173,14 @@ class ReferenceFetcher:
         source = source_class()
         content = source.fetch(identifier, self.config)
 
+        # Source-produced full HTML (currently PMC's body-selecting path) is
+        # already extracted by that source. Certify only this fresh fetch, never
+        # an arbitrary inventory/load/save round trip of pre-fix cached text.
+        if content and content.content_type == "full_text_html":
+            content.metadata = dict(
+                content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
+
         if content and self.config.fetch_full_text and self.needs_full_text(content):
             content = self._enrich_with_full_text(content)
 
@@ -194,6 +207,8 @@ class ReferenceFetcher:
         The entry is deliberately not re-saved, so it stays stale and the next run
         that can reach the source still refreshes it. ``force_refresh`` opts out
         entirely: an explicit refresh that failed should report failure.
+        Unverified HTML full-text entries are excluded: their text may be only
+        landing-page metadata, which cannot safely serve as article evidence.
         """
         if force_refresh:
             return None
@@ -373,8 +388,18 @@ class ReferenceFetcher:
         if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
             return False, error
 
+        if (
+            fmt == "html" and abstract
+            and " ".join(text.split()) == " ".join(abstract.split())
+        ):
+            return False, error
+
         content.content = f"{abstract}\n\n{text}" if abstract else text
         content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
+        if fmt == "html":
+            content.metadata = dict(
+                content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
         content.full_text_provider = location.provider or provider_name
         # Non-public endpoints are not durable provenance and may contain
         # session-specific access information.
@@ -430,7 +455,11 @@ class ReferenceFetcher:
             return None, fmt, None, False
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
-            text = extractor.extract(data, content_type=content_type)
+            text = (
+                extractor.extract_full_text(data)
+                if isinstance(extractor, HTMLExtractor)
+                else extractor.extract(data, content_type=content_type)
+            )
         except Exception as exc:
             logger.warning(f"Extraction failed for {location.url}: {exc}")
             return None, fmt, None, True
@@ -646,6 +675,9 @@ class ReferenceFetcher:
         lines.append("---")
         lines.append(f"reference_id: {reference.reference_id}")
         lines.append(f"extractor_version: {EXTRACTOR_CACHE_VERSION}")
+        html_version = (reference.metadata or {}).get("html_full_text_version")
+        if reference.content_type == "full_text_html" and isinstance(html_version, int):
+            lines.append(f"html_full_text_version: {html_version}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -799,7 +831,20 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
-        return self._load_markdown_format(content_text, reference_id)
+        reference = self._load_markdown_format(content_text, reference_id)
+        if (
+            allow_stale
+            and reference is not None
+            and reference.content_type == "full_text_html"
+            and self._is_stale_cache_entry(content_text)
+        ):
+            logger.warning(
+                "Refusing stale HTML full text for %s: it may be a repository "
+                "landing page. Retry when the source is reachable to repair it.",
+                reference_id,
+            )
+            return None
+        return reference
 
     @staticmethod
     def _as_optional_list(value: Any) -> Optional[list]:
@@ -846,7 +891,7 @@ class ReferenceFetcher:
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:
-        """Report whether cached text came from an extractor older than this one.
+        """Report whether extraction or HTML full-text acceptance needs refreshing.
 
         Deliberately not applied by :meth:`iter_cached_references`: export and
         enrichment walk the cache as a record of what was fetched, and dropping
@@ -858,7 +903,7 @@ class ReferenceFetcher:
             content_text: The cache file's contents, including frontmatter
 
         Returns:
-            True if the entry has no version stamp, or one below the current
+            True if either applicable version stamp is absent or below current.
 
         Examples:
             >>> stale = "---\\nreference_id: PMID:1\\n---\\nBody."
@@ -871,6 +916,15 @@ class ReferenceFetcher:
         split = cls._split_frontmatter(content_text)
         if split is None:
             return True
+
+        metadata = YAML(typ="safe").load(split[0])
+        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_html":
+            html_version = metadata.get("html_full_text_version")
+            if (
+                not isinstance(html_version, int)
+                or html_version < HTML_FULL_TEXT_CACHE_VERSION
+            ):
+                return True
 
         match = re.search(r"^extractor_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
         if not match:
@@ -915,6 +969,8 @@ class ReferenceFetcher:
         )
 
         metadata: dict = {}
+        if "html_full_text_version" in frontmatter:
+            metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
         if "extra_fields_captured" in frontmatter:
             metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
 

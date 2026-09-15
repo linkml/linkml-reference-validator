@@ -248,7 +248,7 @@ Editorial conventions work the same in data files:
 
 ### Normalization Order
 
-1. Remove everything inside `[...]`
+1. Remove editorial `[...]` content unless a configured literal pattern matches
 2. Split on `...` if present
 3. For each part:
    - Lowercase
@@ -258,10 +258,15 @@ Editorial conventions work the same in data files:
 
 ### Regular Expressions
 
-Brackets: `\[([^\]]*)\]` (removes content and brackets)
-Ellipsis: `\.\.\.` (splits on three dots exactly)
+Brackets: `\[.*?\]` (single-line, non-nested matching; literal patterns can preserve matches)
 
-Note: `..` (two dots) and `....` (four dots) are NOT treated as ellipsis.
+Ellipsis: `\s*\.{2,}\s*` (splits on two or more ASCII periods)
+
+Both `..` (two dots) and `....` (four dots) are treated as separators. The Unicode
+ellipsis `…` is not a separator.
+
+Python callers can use the public [supporting text splitting helper](../reference/splitting.md)
+without constructing a validator.
 
 ## See Also
 

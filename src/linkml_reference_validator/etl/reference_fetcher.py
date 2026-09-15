@@ -458,11 +458,15 @@ class ReferenceFetcher:
             return str(pdf_path.relative_to(self.config.get_private_cache_dir()))
         return str(pdf_path.relative_to(self.config.cache_dir))
 
-    def _parse_reference_id(self, reference_id: str) -> tuple[str, str]:
+    def _parse_reference_id(
+        self, reference_id: str, *, apply_prefix_map: bool = True
+    ) -> tuple[str, str]:
         """Parse a reference ID into prefix and identifier.
 
         Args:
             reference_id: Reference ID like "PMID:12345678" or URL
+            apply_prefix_map: Resolve configured aliases; disabled for cache paths
+                because fetch has already resolved the caller's alias.
 
         Returns:
             Tuple of (prefix, identifier)
@@ -504,7 +508,8 @@ class ReferenceFetcher:
             prefix = match.group(1)
             # Match the canonical prefix used by the source and prefix aliases.
             prefix = self._normalize_prefix(prefix)
-            prefix = self._apply_prefix_map(prefix)
+            if apply_prefix_map:
+                prefix = self._apply_prefix_map(prefix)
             identifier = match.group(2).strip()
             if prefix == "clinicaltrials" and NCT_ID_PATTERN.fullmatch(identifier):
                 identifier = identifier.upper()
@@ -560,6 +565,9 @@ class ReferenceFetcher:
     def get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.
 
+        Bare NCT IDs and ClinicalTrials casing are canonicalized. For configured
+        prefix aliases, pass the result of :meth:`normalize_reference_id`.
+
         Args:
             reference_id: Reference identifier
 
@@ -580,7 +588,9 @@ class ReferenceFetcher:
 
     def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
         """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
-        prefix, identifier = self._parse_reference_id(reference_id)
+        prefix, identifier = self._parse_reference_id(
+            reference_id, apply_prefix_map=False
+        )
         if prefix == "clinicaltrials":
             reference_id = f"{prefix}:{identifier}"
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary

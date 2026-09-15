@@ -29,23 +29,24 @@ ALIASES = [
 CANONICAL = "clinicaltrials:NCT12345678"
 
 
-def test_cache_paths_do_not_reapply_unrelated_prefix_maps(tmp_path):
+@pytest.mark.parametrize("second_target", ["C", "clinicaltrials"])
+def test_cache_paths_do_not_reapply_unrelated_prefix_maps(tmp_path, second_target):
     """Fetching applies an unrelated prefix alias once, including on disk reads."""
     config = ReferenceValidationConfig(
         cache_dir=tmp_path,
-        reference_prefix_map={"A": "B", "B": "C"},
+        reference_prefix_map={"A": "B", "B": second_target},
         fetch_full_text=False,
     )
-    path = tmp_path / "B_example.md"
+    path = tmp_path / "B_NCT12345678.md"
     path.write_text(
-        "---\nreference_id: B:example\n"
+        "---\nreference_id: B:NCT12345678\n"
         f"extractor_version: {EXTRACTOR_CACHE_VERSION}\n"
         "content_type: summary\n---\n\nExisting evidence\n"
     )
     fetcher = ReferenceFetcher(config)
-    assert fetcher.normalize_reference_id("A:example") == "B:example"
-    assert fetcher.get_cache_path("B:example") == path
-    result = fetcher.fetch("A:example")
+    assert fetcher.normalize_reference_id("A:NCT12345678") == "B:NCT12345678"
+    assert fetcher.get_cache_path("B:NCT12345678") == path
+    result = fetcher.fetch("A:NCT12345678")
     assert result is not None
     assert result.content == "Existing evidence"
 
@@ -113,7 +114,15 @@ def test_trial_alias_normalization(trial_config, reference_id):
     assert normalized == CANONICAL
     assert fetcher.normalize_reference_id(normalized) == CANONICAL
     assert ReferenceSourceRegistry.get_source(normalized) is ClinicalTrialsSource
-    assert fetcher.get_cache_path(reference_id).name == "clinicaltrials_NCT12345678.md"
+    assert fetcher.get_cache_path(normalized).name == "clinicaltrials_NCT12345678.md"
+    if reference_id.startswith("trial:"):
+        # Path helpers retain their existing contract: aliases are resolved by
+        # normalize_reference_id (or fetch), not applied again during disk I/O.
+        assert fetcher.get_cache_path(reference_id).name == "trial_NCT12345678.md"
+    else:
+        assert (
+            fetcher.get_cache_path(reference_id).name == "clinicaltrials_NCT12345678.md"
+        )
 
 
 @pytest.mark.parametrize("reference_id", ALIASES)
@@ -136,11 +145,14 @@ def test_existing_canonical_cache_reused(trial_config, trial_server, reference_i
     assert list(path.parent.iterdir()) == [path]
 
 
-def test_trial_fetch_memory_disk_and_force_refresh(trial_config, trial_server):
+@pytest.mark.parametrize("reference_id", ALIASES)
+def test_trial_fetch_memory_disk_and_force_refresh(
+    trial_config, trial_server, reference_id
+):
     """Aliases reuse fetched evidence, while force-refresh always calls the API."""
     requests, state = trial_server
     fetcher = ReferenceFetcher(trial_config)
-    first = fetcher.fetch(ALIASES[0])
+    first = fetcher.fetch(reference_id)
     assert first is not None
     assert first.reference_id == CANONICAL
     for alias in ALIASES:
@@ -169,7 +181,7 @@ def test_trial_fetch_memory_disk_and_force_refresh(trial_config, trial_server):
 @pytest.mark.parametrize("private", [False, True])
 @pytest.mark.parametrize("reference_id", ALIASES)
 def test_trial_cache_write_normalizes(trial_config, reference_id, private):
-    """Disk writes share canonical filenames without exposing private evidence."""
+    """Disk writes canonicalize NCT syntax, preserve aliases, and isolate private data."""
     fetcher = ReferenceFetcher(trial_config)
     fetcher._save_to_disk(
         ReferenceContent(
@@ -182,9 +194,16 @@ def test_trial_cache_write_normalizes(trial_config, reference_id, private):
         if private
         else trial_config.get_cache_dir()
     )
-    path = directory / "clinicaltrials_NCT12345678.md"
+    # Source records already carry canonical IDs. If a caller supplies an alias
+    # directly, persistence must not reinterpret it using configured mappings.
+    filename = (
+        "trial_NCT12345678.md"
+        if reference_id.startswith("trial:")
+        else "clinicaltrials_NCT12345678.md"
+    )
+    path = directory / filename
     assert path.exists()
-    loaded = ReferenceFetcher(trial_config)._load_from_disk(CANONICAL)
+    loaded = ReferenceFetcher(trial_config)._load_from_disk(reference_id)
     if private:
         assert loaded is None
         assert path.stat().st_mode & 0o777 == 0o600

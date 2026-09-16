@@ -620,7 +620,15 @@ class SupportingTextValidator:
     def normalize_text(text: str) -> str:
         """Normalize text for comparison.
 
-        Spells out Greek letters, removes punctuation, extra whitespace, and lowercases.
+        Folds Latin compatibility ligatures, spells out Greek letters, removes
+        punctuation and extra whitespace, and lowercases. The same normalization
+        applies to reference content and queries (including split query parts).
+
+        IJ (Ĳ/ĳ) is folded because Unicode defines its compatibility decomposition
+        as I + J. Distinct letters Æ/æ and Œ/œ are preserved: equating them with
+        AE/OE would broaden validation beyond typographic repair. An explicit
+        table avoids broad NFKC normalization, which also changes scientific
+        notation such as superscripts, subscripts, and the micro sign.
 
         Args:
             text: Text to normalize
@@ -639,7 +647,20 @@ class SupportingTextValidator:
             'beta actin'
             >>> SupportingTextValidator.normalize_text("γ-tubulin")
             'gamma tubulin'
+            >>> SupportingTextValidator.normalize_text("amyloid ﬁbrils")
+            'amyloid fibrils'
+            >>> SupportingTextValidator.normalize_text("ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ Ĳ ĳ")
+            'ff fi fl ffi ffl st st ij ij'
+            >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶ µ")
+            'æ œ æ œ h₂o 10⁶ µ'
         """
+        # Only compatibility ligatures; do not apply general Unicode NFKC.
+        ligature_map = {
+            "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl",
+            "ﬅ": "st", "ﬆ": "st", "Ĳ": "IJ", "ĳ": "ij",
+        }
+        text = text.translate({ord(ligature): expanded for ligature, expanded in ligature_map.items()})
+
         # Greek letter mappings (both uppercase and lowercase)
         greek_map = {
             'α': 'alpha', 'Α': 'alpha',

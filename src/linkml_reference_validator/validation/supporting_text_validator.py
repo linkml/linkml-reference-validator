@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.matching import split_supporting_text
 from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,
@@ -382,22 +383,7 @@ class SupportingTextValidator:
             >>> validator._split_query("[editorial note]")
             []
         """
-        if not self._literal_bracket_regexes:
-            text_without_brackets = re.sub(r"\[.*?\]", " ", text)
-        else:
-
-            def replace_bracket(match: re.Match[str]) -> str:
-                """Preserve configured literal bracket content, strip editorial notes."""
-                content = match.group(1)
-                if any(regex.search(content) for regex in self._literal_bracket_regexes):
-                    return match.group(0)
-                return " "
-
-            text_without_brackets = re.sub(r"\[(.*?)\]", replace_bracket, text)
-
-        parts = re.split(r"\s*\.{2,}\s*", text_without_brackets)
-        parts = [re.sub(r"\s+", " ", p).strip() for p in parts if p.strip()]
-        return parts
+        return split_supporting_text(text, self._literal_bracket_regexes)
 
     def count_quoted_characters(self, supporting_text: str) -> int:
         """Count the non-whitespace characters an excerpt actually quotes.

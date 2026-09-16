@@ -52,6 +52,7 @@ nav:
       - Editorial Conventions: concepts/editorial-conventions.md
   - Reference:
       - CLI Reference: reference/cli.md
+      - Supporting Text Splitting: reference/splitting.md
   - Troubleshooting: troubleshooting.md
   - Roadmap: todo.md
 

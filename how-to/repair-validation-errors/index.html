@@ -950,6 +950,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#typographic-ligatures-already-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typographic ligatures already match
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1687,6 +1704,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#typographic-ligatures-already-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Typographic ligatures already match
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -2130,6 +2164,18 @@
 <li><strong>Missing abstracts</strong> - References without available content</li>
 </ol>
 <p>The <code>repair</code> command attempts to fix these issues automatically or flags them for manual review.</p>
+<h3 id="typographic-ligatures-already-match">Typographic ligatures already match</h3>
+<p>Validation folds Latin compatibility ligatures on both the reference content and
+the quote, including each part separated by <code>...</code>. For example, PDF-extracted
+<code>amyloid ﬁbrils</code> matches <code>amyloid fibrils</code> without a repair. The supported folds
+are <code>ﬀ → ff</code>, <code>ﬁ → fi</code>, <code>ﬂ → fl</code>, <code>ﬃ → ffi</code>, <code>ﬄ → ffl</code>, <code>ﬅ/ﬆ → st</code>, and
+<code>Ĳ/ĳ → IJ/ij</code>. IJ is included because Unicode gives it a compatibility
+decomposition into I and J; ordinary case normalization still applies.</p>
+<p>The distinct letters <code>Æ/æ</code> and <code>Œ/œ</code> remain distinct from <code>AE/ae</code> and <code>OE/oe</code>.
+Equating these letters would accept spelling changes beyond typographic repair.
+Validation uses an explicit ligature table instead of broad Unicode NFKC
+normalization so this change does not equate scientific notation such as <code>H₂O</code>
+with <code>H2O</code>, <code>10⁶</code> with <code>106</code>, or the micro sign <code>µ</code> with Greek <code>μ</code>.</p>
 <h2 id="quick-start">Quick Start</h2>
 <h3 id="repair-a-single-quote">Repair a Single Quote</h3>
 <pre><code class="language-bash">linkml-reference-validator repair text &quot;CO2 levels were measured&quot; PMID:12345678

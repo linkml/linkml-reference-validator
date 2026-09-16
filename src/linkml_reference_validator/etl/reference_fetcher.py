@@ -64,6 +64,9 @@ EXTRACTOR_CACHE_VERSION = 1
 #: PMC or a configured text provider is trusted under FullTextLocation's contract.
 HTML_FULL_TEXT_CACHE_VERSION = 1
 
+#: XML table extraction changes only XML caches, independent of HTML acceptance.
+XML_EXTRACTION_CACHE_VERSION = 1
+
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
 #: URL reference_id, a title - truncate the block, which loses every field after
@@ -182,6 +185,11 @@ class ReferenceFetcher:
         if content and content.content_type == "full_text_html":
             content.metadata = dict(
                 content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
+
+        if content and content.content_type == "full_text_xml":
+            content.metadata = dict(
+                content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
             )
 
         if content and self.config.fetch_full_text and self.needs_full_text(content):
@@ -402,6 +410,10 @@ class ReferenceFetcher:
         if fmt == "html":
             content.metadata = dict(
                 content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
+        if fmt == "xml":
+            content.metadata = dict(
+                content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
             )
         content.full_text_provider = location.provider or provider_name
         # Non-public endpoints are not durable provenance and may contain
@@ -711,6 +723,10 @@ class ReferenceFetcher:
         html_version = (reference.metadata or {}).get("html_full_text_version")
         if reference.content_type == "full_text_html" and isinstance(html_version, int):
             lines.append(f"html_full_text_version: {html_version}")
+        # YAML booleans are not extraction versions, despite bool subclassing int.
+        xml_version = (reference.metadata or {}).get("xml_extraction_version")
+        if reference.content_type == "full_text_xml" and type(xml_version) is int:
+            lines.append(f"xml_extraction_version: {xml_version}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -976,7 +992,7 @@ class ReferenceFetcher:
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:
-        """Report whether extraction or HTML full-text acceptance needs refreshing.
+        """Report whether extraction or format-specific full-text processing needs refreshing.
 
         Deliberately not applied by :meth:`iter_cached_references`: export and
         enrichment walk the cache as a record of what was fetched, and dropping
@@ -1015,6 +1031,11 @@ class ReferenceFetcher:
                 not isinstance(html_version, int)
                 or html_version < HTML_FULL_TEXT_CACHE_VERSION
             ):
+                return True
+
+        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_xml":
+            xml_version = metadata.get("xml_extraction_version")
+            if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
                 return True
 
         # A newer stamp is not stale: an older tool reading a cache written by a
@@ -1056,6 +1077,8 @@ class ReferenceFetcher:
         )
 
         metadata: dict = {}
+        if "xml_extraction_version" in frontmatter:
+            metadata["xml_extraction_version"] = frontmatter["xml_extraction_version"]
         if "html_full_text_version" in frontmatter:
             metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
         if "extra_fields_captured" in frontmatter:

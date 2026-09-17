@@ -1,9 +1,12 @@
 """Tests for the ``cache reference`` CLI command.
 
 ``cache reference`` exists to pre-populate the cache, so scripts gate on its
-exit status. That makes "did this actually reach the source?" the question the
-command has to answer, not "is there text for this reference?" - a stale entry
-served during an outage is a failure to cache, however readable its text.
+exit status. The question it has to answer is therefore whether the public
+validation cache holds a current entry afterwards - not whether it reached the
+source, since an entry this extractor already wrote is reported as cached
+without contacting anything, and not merely whether there is text for the
+reference, since a stale entry served during an outage is text this version was
+meant to replace.
 """
 
 import pytest
@@ -100,7 +103,7 @@ def test_caching_a_reachable_reference_succeeds(cache_dir, mocker):
 
 
 def test_unreachable_source_with_a_stale_entry_reports_failure(cache_dir, mocker):
-    """Serving an out-of-date copy is not caching: nothing was downloaded."""
+    """Serving an out-of-date copy is not caching: no current entry was left."""
     _write_stale_entry(cache_dir)
     _source_returning(mocker, None)
 

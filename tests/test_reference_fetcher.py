@@ -1558,9 +1558,9 @@ def test_cache_export_still_reads_unstamped_entries(fetcher):
 # ---------------------------------------------------------------------------
 # Telling a stale-served result apart from a fresh one.
 #
-# fetch() returns the same ReferenceContent whether the source was reached or
-# an out-of-date copy was served in its place, so a caller whose whole job is
-# "did this actually reach the source?" - `cache reference`, which exists to
+# fetch() returns the same ReferenceContent whether the reference was re-fetched
+# or an out-of-date copy was served in its place, so a caller that has to know
+# whether only a stale entry could be served - `cache reference`, which exists to
 # pre-populate the cache - cannot tell from the return value alone.
 # fetch_with_provenance() carries that distinction alongside the content.
 # ---------------------------------------------------------------------------

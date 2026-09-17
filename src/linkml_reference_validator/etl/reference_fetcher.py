@@ -92,9 +92,9 @@ class FetchOutcome:
     text served out of an out-of-date cache entry because the reference could
     not be re-fetched - the source may be unreachable, or no source may handle
     the identifier at all. Callers that only need the text use
-    :meth:`ReferenceFetcher.fetch`; callers acting on whether the cache was
-    actually refreshed - ``cache reference``, whose whole job is to populate it
-    - need ``served_stale`` too.
+    :meth:`ReferenceFetcher.fetch`; callers acting on whether only an
+    out-of-date entry could be served - ``cache reference``, whose whole job is
+    to populate the cache - need ``served_stale`` too.
 
     Examples:
         >>> FetchOutcome(content=None).served_stale
@@ -191,7 +191,7 @@ class ReferenceFetcher:
     def fetch_with_provenance(
         self, reference_id: str, force_refresh: bool = False
     ) -> FetchOutcome:
-        """Fetch a reference, reporting whether the cache was actually refreshed.
+        """Fetch a reference, reporting whether only an out-of-date entry was served.
 
         Identical to :meth:`fetch` except for the return type: the outcome's
         ``served_stale`` is True when the reference could not be re-fetched and

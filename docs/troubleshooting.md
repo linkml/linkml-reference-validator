@@ -791,6 +791,60 @@ Run through this checklist when encountering issues:
 - [How to Repair Validation Errors](how-to/repair-validation-errors.md) - Fixing common issues
 - [GitHub Issues](https://github.com/linkml/linkml-reference-validator/issues) - Report bugs
 
+### Which full text is fetched, and which is not
+
+Two rules govern what reaches the public reference cache. Both follow from the
+contract the Zotero provider established: material you may lawfully *read* is
+not automatically material a project may *redistribute*, and a checked-in cache
+is redistribution.
+
+**A landing page is not full text.** A provider returns a location only for a
+file — OpenAlex's `pdf_url`, Unpaywall's `url_for_pdf`. A record whose only
+location is an article *page* yields nothing, and the record stays
+`abstract_only`. Downloading such a page is scraping, and hosts refuse it:
+PMC answers a rate-limited request with a reCAPTCHA interstitial served on an
+HTTP 200, which no status check downstream can distinguish from article text.
+
+**Bronze open access is not redistributable.** `oa_status: bronze` means the
+publisher has made an article free to read on its own site under no open
+licence. Bronze locations are marked with a non-open `access_type` and are
+skipped by ordinary validation, the same route private-library material takes.
+`gold`, `diamond` and `hybrid` are treated as open; `green` only when the
+location states a licence, since that status names a repository rather than a
+permission. An unrecognised or missing status is **not** assumed open: an
+unknown licence is not a grant.
+
+This governs files found by asking an OA *index* (OpenAlex, Unpaywall). It does
+not govern the `pmc` and `epmc_preprint` providers, which ask an archive's own
+API for a document it serves for machine retrieval — a stronger warrant than an
+index's summary of a third-party host. The same green deposit can therefore be
+declined from OpenAlex and admitted from PMC.
+
+**A declined reference is retried when the extractor version moves, not on every
+run.** Declining is a decision, not a finding, so it must not be recorded as
+`full_text_attempted` — that flag means a clean run concluded no full text
+exists, and it stops the provider chain running again. But leaving nothing
+recorded is its own problem: a decline never clears the way a transient failure
+does, so every run would re-walk the whole chain for every bronze or
+page-only reference. On one real corpus that is tens of thousands of entries and
+hours of rate-limit sleep per run, aimed at the hosts whose rate limiting causes
+the interstitial in the first place. So the decline is recorded as
+`full_text_declined: <reason>` in the cache entry, and re-examined when the entry
+is next re-fetched.
+
+If you previously relied on landing-page or bronze full text, those references
+now resolve as `abstract_only`. Excerpts quoted from that text will no longer
+verify. Existing cache entries are not rewritten — see the refresh note below.
+
+**`cache enrich` is unaffected in where it writes.** That command has always
+passed `private=True`, so every file it fetches already went to the private
+research cache (`~/.cache/linkml-reference-validator/private` by default),
+whatever its licence. What changes on that path is the frontmatter: an enriched
+bronze entry now records `full_text_access_type: publisher_free`. Its
+`full_text_url` is still recorded — a publisher link is a stable public address,
+and it is the *text* that licensing keeps out of the public cache, not the
+address.
+
 ### JATS tables and XML cache refresh
 
 JATS/PMC XML extraction appends pipe-delimited tables after the existing body
@@ -828,11 +882,65 @@ XML remains available with the existing stale-cache warning and is not rewritten
 it may still lack table rows. A later process retries the refresh. Existing
 stale HTML rejection remains unchanged.
 
-A successful source refresh that returns only an abstract can replace the old
-full text if no provider supplies a body. This is existing refresh behavior;
-the stale fallback applies when the source returns no record, not when it
-returns an abstract-only record. Keep a backup if retaining older full text is
-necessary.
+**A cache-wide refresh adds one line to every enriched entry.** Both index
+providers now set `access_type` where they previously left it unset, so a
+refreshed public entry gains a `full_text_access_type: open` line. It means the
+same as its absence, but it does show up as a one-line diff on every such entry
+— worth knowing before reviewing that commit.
+
+**`cache reference` exits 1 on a preserved entry, every run.** A preserved entry
+is never written, so it is never stamped, so the next run reaches the same
+decision and fails again. A script that caches a list of references and gates on
+the exit status will keep failing on those until the source serves full text
+again, or `--force` accepts the abstract-only refresh in its place. That is the guard working as
+intended, but it is the kind of thing that gets diagnosed twice if it is not
+written down.
+
+A successful source refresh that returns only an abstract **no longer replaces**
+cached full text. Full-text retrieval fails transiently and silently — a
+rate-limited PMC request is answered with a reCAPTCHA interstitial carried on an
+HTTP 200 — so an abstract-only refresh is not evidence that the article has no
+full text. When a refresh loses full text the cached entry is kept, a warning
+names it, and the entry stays stale so a later run tries again.
+
+Losing it means coming back with *no* full text — an `abstract_only`,
+`unavailable` or `summary` record where the cache holds `full_text_*`. Sizes are
+not compared **to decide a refusal**. An earlier version of this guard also refused a refresh whose text
+was a fraction of the cached length, to catch a PDF whose text layer is a
+publisher cover sheet; it caught that, and wrongly refused four kinds of genuine
+improvement — a scraped page replaced by a clean XML body, by a clean HTML body,
+a plain-text API body replaced by XML, and a re-extraction that merely trimmed a
+trailing section. A shorter extraction is usually a better one, and a length
+comparison cannot tell those apart.
+
+Wrongly refusing is the worse error: a refused entry is never written, so it is
+never stamped, so every later run re-fetches and re-refuses it. Judging whether
+text *is* an article belongs in the acceptance layer, where a wrong answer costs
+one skipped fetch instead of a cache that can never migrate.
+
+Size is still *reported*, which has none of those properties. When a refresh
+keeps full text but returns under a fifth as much article text as the cache
+held, the entry is written as usual and a warning names both figures:
+
+```
+Refresh of PMID:9177246 replaced the cached full_text_html entry (18,464
+characters of article text) with a much shorter one: 602 characters of
+full_text_pdf. Written as usual, since a shorter extraction is often a cleaner
+one — but check it if quoted excerpts stop verifying.
+```
+
+Usually that is a cleaner extraction and there is nothing to do. It is the
+thread to pull when a quoted excerpt stops verifying: re-read the cached entry,
+and if the text is a publisher cover sheet rather than the article, re-fetch when
+the source will serve the real thing. The lengths quoted are of the article text,
+with the abstract both records carry subtracted.
+
+A refresh that *finds* full text still rewrites the entry. `force_refresh`
+(`--force`) overrides the refusal, but not the notice: it logs a warning naming
+the cached entry it is about to replace and its length, because it is the remedy
+this tool recommends and following that advice should not quietly discard an
+article body. This is narrower than the stale fallback, which applies
+only when the source returns no record at all.
 
 This pass targets JATS `table-wrap` content and searches the whole document;
 tables and notes inside embedded `sub-article` or `response` elements are

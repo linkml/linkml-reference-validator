@@ -3,7 +3,7 @@
 ``cache reference`` exists to pre-populate the cache, so scripts gate on its
 exit status. The question it has to answer is therefore whether the public
 validation cache holds a current entry afterwards - not whether it reached the
-source, since an entry this extractor already wrote is reported as cached
+source, since an entry this extractor already wrote may be reported as cached
 without contacting anything, and not merely whether there is text for the
 reference, since a stale entry served during an outage is text this version was
 meant to replace.

@@ -376,6 +376,11 @@ for the reasons above. The entry is left stale rather than rewritten, so the
 next run that can reach the source refreshes it properly. This warning is
 printed without `-v`.
 
+`cache reference` does not fall back this way. Validation prefers older text to
+no text, but that command exists to populate the cache, so being left with only
+a stale entry is reported as failure and exits non-zero - see
+[`cache reference`](reference/cli.md#cache-reference).
+
 Until a refresh succeeds, each new run attempts to fetch every distinct stale
 reference before falling back to its cached text. Repeated uses of the same ID
 share an in-memory result, but this does not cover other IDs or later processes.

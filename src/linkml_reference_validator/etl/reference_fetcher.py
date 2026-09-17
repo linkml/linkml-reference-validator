@@ -292,8 +292,8 @@ class ReferenceFetcher:
         Unverified HTML full-text entries are excluded: their text may be only
         landing-page metadata, which cannot safely serve as article evidence.
 
-        The outcome is flagged ``served_stale`` so callers that need a fetch to
-        have actually happened can report failure rather than success.
+        The outcome is flagged ``served_stale`` so callers that need the cache to
+        hold a current entry afterwards can report failure rather than success.
         """
         if force_refresh:
             return FetchOutcome(content=None)

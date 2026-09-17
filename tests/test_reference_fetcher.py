@@ -11,6 +11,7 @@ from linkml_reference_validator.models import (
 )
 from linkml_reference_validator.etl.reference_fetcher import (
     EXTRACTOR_CACHE_VERSION,
+    FetchOutcome,
     ReferenceFetcher,
 )
 from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
@@ -446,7 +447,7 @@ def test_fetch_with_cache(fetcher):
         content="Cached content",
     )
 
-    fetcher._cache["PMID:12345678"] = cached_ref
+    fetcher._cache["PMID:12345678"] = FetchOutcome(content=cached_ref)
 
     result = fetcher.fetch("PMID:12345678")
 
@@ -1552,3 +1553,169 @@ def test_cache_export_still_reads_unstamped_entries(fetcher):
     _unstamp(fetcher, "PMID:1")
 
     assert [r.title for r in fetcher.iter_cached_references()] == ["Kept"]
+
+
+# ---------------------------------------------------------------------------
+# Telling a stale-served result apart from a fresh one.
+#
+# fetch() returns the same ReferenceContent whether the reference was re-fetched
+# or an out-of-date copy was served in its place, so a caller that has to know
+# whether only a stale entry could be served - `cache reference`, which exists to
+# pre-populate the cache - cannot tell from the return value alone.
+# fetch_with_provenance() carries that distinction alongside the content.
+# ---------------------------------------------------------------------------
+
+
+def test_provenance_reports_a_fresh_fetch_as_not_stale(fetcher, mocker):
+    """Content that came from the source is reported as such."""
+    _source_returning(
+        mocker, ReferenceContent(reference_id="PMID:1", content="Freshly fetched text.")
+    )
+
+    outcome = fetcher.fetch_with_provenance("PMID:1")
+
+    assert outcome.content is not None
+    assert outcome.content.content == "Freshly fetched text."
+    assert outcome.served_stale is False
+
+
+def test_provenance_reports_a_stale_fallback_as_stale(fetcher, mocker):
+    """The fallback is flagged, so callers can report failure instead of success."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    outcome = fetcher.fetch_with_provenance("PMID:1")
+
+    assert outcome.content is not None
+    assert outcome.content.content == "Stale body text."
+    assert outcome.served_stale is True
+
+
+def test_provenance_reports_an_unroutable_id_served_from_cache_as_stale(fetcher, mocker):
+    """The other fallback route is flagged the same way."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    mocker.patch.object(ReferenceSourceRegistry, "get_source", return_value=None)
+
+    assert fetcher.fetch_with_provenance("PMID:1").served_stale is True
+
+
+def test_provenance_reports_a_current_cache_hit_as_not_stale(fetcher, mocker):
+    """A current entry is served without reaching the source, and is not stale."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Current body text.")
+    )
+    _source_returning(mocker, None)
+
+    outcome = fetcher.fetch_with_provenance("PMID:1")
+
+    assert outcome.content is not None
+    assert outcome.served_stale is False
+
+
+def test_provenance_reports_a_missing_entry_as_not_stale(fetcher, mocker):
+    """Nothing was served, so nothing was served stale."""
+    _source_returning(mocker, None)
+
+    outcome = fetcher.fetch_with_provenance("PMID:1")
+
+    assert outcome.content is None
+    assert outcome.served_stale is False
+
+
+def test_provenance_still_reports_stale_on_a_repeat_call(fetcher, mocker):
+    """The in-memory cache must not launder a stale entry into a fresh-looking one."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    assert fetcher.fetch_with_provenance("PMID:1").served_stale is True
+    assert fetcher.fetch_with_provenance("PMID:1").served_stale is True
+
+
+def test_a_later_successful_fetch_clears_the_stale_marker(fetcher, mocker):
+    """Once the source is reachable again the result is fresh, not stale."""
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+    assert fetcher.fetch_with_provenance("PMID:1").served_stale is True
+
+    _source_returning(
+        mocker, ReferenceContent(reference_id="PMID:1", content="Freshly fetched text.")
+    )
+
+    outcome = fetcher.fetch_with_provenance("PMID:1", force_refresh=True)
+
+    assert outcome.content.content == "Freshly fetched text."
+    assert outcome.served_stale is False
+    assert fetcher.fetch_with_provenance("PMID:1").served_stale is False
+
+
+def test_fetch_returns_the_content_itself_for_callers_that_do_not_care(fetcher, mocker):
+    """fetch() keeps its shape: validation reads text, not provenance."""
+    _source_returning(
+        mocker, ReferenceContent(reference_id="PMID:1", content="Freshly fetched text.")
+    )
+
+    result = fetcher.fetch("PMID:1")
+
+    assert isinstance(result, ReferenceContent)
+    assert result.content == "Freshly fetched text."
+
+
+def test_fetch_still_returns_none_when_there_is_nothing_to_serve(fetcher, mocker):
+    """The compatibility case validation depends on: no content unwraps to None."""
+    _source_returning(mocker, None)
+
+    assert fetcher.fetch("PMID:1") is None
+
+
+def test_fetch_still_hands_validation_the_stale_text(fetcher, mocker):
+    """Reporting staleness must not start withholding it.
+
+    Validation reads through fetch(), and serving the out-of-date copy during an
+    outage is the whole reason the fallback exists. A later "fix" that made
+    fetch() suppress stale results would turn every cached reference into a not
+    found the first time the source is unreachable.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Stale body text."
+
+
+def test_the_memory_cache_holds_outcomes_not_bare_content(fetcher, mocker):
+    """One container, so an entry cannot be separated from how it was obtained.
+
+    Keeping the flag in a second structure alongside the content left the
+    invariant to be maintained by hand at every write site, and a desync there
+    means a stale entry reported as a fresh one - the exact bug the flag exists
+    to prevent.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    fetcher.fetch_with_provenance("PMID:1")
+
+    cached = fetcher._cache["PMID:1"]
+    assert isinstance(cached, FetchOutcome)
+    assert cached.served_stale is True
+    assert cached.content.content == "Stale body text."

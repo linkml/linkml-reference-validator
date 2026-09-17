@@ -7,6 +7,7 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 import logging
 import re
 from collections.abc import Iterator
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional
 
@@ -83,6 +84,32 @@ _FORMAT_TO_CONTENT_TYPE = {
 }
 
 
+@dataclass(frozen=True)
+class FetchOutcome:
+    """A fetch result together with how it was obtained.
+
+    ``content`` alone cannot distinguish text that came from the source from
+    text served out of an out-of-date cache entry because the reference could
+    not be re-fetched - the source may be unreachable, or no source may handle
+    the identifier at all. Callers that only need the text use
+    :meth:`ReferenceFetcher.fetch`; callers acting on whether only an
+    out-of-date entry could be served - ``cache reference``, whose whole job is
+    to populate the cache - need ``served_stale`` too.
+
+    Examples:
+        >>> FetchOutcome(content=None).served_stale
+        False
+        >>> outcome = FetchOutcome(
+        ...     content=ReferenceContent(reference_id="PMID:1"), served_stale=True
+        ... )
+        >>> outcome.content.reference_id
+        'PMID:1'
+    """
+
+    content: Optional[ReferenceContent]
+    served_stale: bool = False
+
+
 class ReferenceFetcher:
     """Fetch and cache references from various sources.
 
@@ -118,7 +145,11 @@ class ReferenceFetcher:
             'linkml-reference-validator@example.com'
         """
         self.config = config
-        self._cache: dict[str, ReferenceContent] = {}
+        # Keyed by normalized reference ID. The value is the whole outcome, not
+        # just the content, so an entry cannot be separated from how it was
+        # obtained: a stale fallback stays flagged on every later read in this
+        # process instead of being laundered into a fresh-looking hit.
+        self._cache: dict[str, FetchOutcome] = {}
         self._acquirer = ContentAcquirer()
         # Build the PDF extractor once: this validates config.pdf_backend up front
         # (an unknown backend raises here, at init, rather than mid-fetch) and avoids
@@ -137,6 +168,10 @@ class ReferenceFetcher:
         - file:./path/to/file.md
         - url:https://example.com
 
+        The content may have been served from an out-of-date cache entry because
+        the reference could not be re-fetched; callers that must tell those apart
+        use :meth:`fetch_with_provenance` instead.
+
         Args:
             reference_id: The reference identifier
             force_refresh: If True, bypass cache and fetch fresh
@@ -150,6 +185,35 @@ class ReferenceFetcher:
             >>> # Would fetch in real usage:
             >>> # ref = fetcher.fetch("PMID:12345678")
             >>> # ref = fetcher.fetch("file:./notes.md")
+        """
+        return self.fetch_with_provenance(reference_id, force_refresh).content
+
+    def fetch_with_provenance(
+        self, reference_id: str, force_refresh: bool = False
+    ) -> FetchOutcome:
+        """Fetch a reference, reporting whether only an out-of-date entry was served.
+
+        Identical to :meth:`fetch` except for the return type: the outcome's
+        ``served_stale`` is True when the reference could not be re-fetched and
+        an out-of-date cache entry was served in its place. That leaves the cache
+        without a current entry, so a caller whose job is to populate it should
+        treat it as a failure - not because nothing was downloaded, which is
+        equally true of a cache hit that needed no download, but because the
+        entry that is there is the one this version was meant to replace.
+
+        Args:
+            reference_id: The reference identifier
+            force_refresh: If True, bypass cache and fetch fresh
+
+        Returns:
+            A :class:`FetchOutcome` wrapping the content, if any
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> # Would fetch in real usage:
+            >>> # outcome = fetcher.fetch_with_provenance("PMID:12345678")
+            >>> # outcome.served_stale
         """
         normalized_reference_id = self.normalize_reference_id(reference_id)
 
@@ -165,8 +229,9 @@ class ReferenceFetcher:
                 # reflect a prior transient failure. Give the chain one more chance
                 # per process if it was never cleanly attempted.
                 cached = self._maybe_retry_full_text(cached)
-                self._cache[normalized_reference_id] = cached
-                return cached
+                return self._remember(
+                    normalized_reference_id, FetchOutcome(content=cached)
+                )
 
         # Find appropriate source using registry
         source_class = ReferenceSourceRegistry.get_source(normalized_reference_id)
@@ -198,14 +263,20 @@ class ReferenceFetcher:
         if not content:
             return self._stale_fallback(normalized_reference_id, force_refresh)
 
-        self._cache[normalized_reference_id] = content
         self._save_by_access(content)
 
-        return content
+        return self._remember(normalized_reference_id, FetchOutcome(content=content))
+
+    def _remember(
+        self, normalized_reference_id: str, outcome: FetchOutcome
+    ) -> FetchOutcome:
+        """Record an outcome in the memory cache and return it for the caller."""
+        self._cache[normalized_reference_id] = outcome
+        return outcome
 
     def _stale_fallback(
         self, normalized_reference_id: str, force_refresh: bool
-    ) -> Optional[ReferenceContent]:
+    ) -> FetchOutcome:
         """Serve an out-of-date cache entry when the source yielded nothing.
 
         A stale entry is treated as absent on the happy path so the current
@@ -220,21 +291,25 @@ class ReferenceFetcher:
         entirely: an explicit refresh that failed should report failure.
         Unverified HTML full-text entries are excluded: their text may be only
         landing-page metadata, which cannot safely serve as article evidence.
+
+        The outcome is flagged ``served_stale`` so callers that need the cache to
+        hold a current entry afterwards can report failure rather than success.
         """
         if force_refresh:
-            return None
+            return FetchOutcome(content=None)
 
         stale = self._load_from_disk(normalized_reference_id, allow_stale=True)
         if stale is None:
-            return None
+            return FetchOutcome(content=None)
 
         logger.warning(
             "Could not re-fetch %s; using the cache entry written by an older "
             "extractor. Its text may still contain the errors this version fixes.",
             normalized_reference_id,
         )
-        self._cache[normalized_reference_id] = stale
-        return stale
+        return self._remember(
+            normalized_reference_id, FetchOutcome(content=stale, served_stale=True)
+        )
 
     def needs_full_text(self, content: ReferenceContent) -> bool:
         """Return True if the content lacks full text and the chain should run.
@@ -374,7 +449,9 @@ class ReferenceFetcher:
         if applied:
             if not private:
                 normalized_id = self.normalize_reference_id(content.reference_id)
-                self._cache[normalized_id] = content
+                # Enriched and about to be written back with the current stamp,
+                # so whatever was served before, this copy is no longer stale.
+                self._remember(normalized_id, FetchOutcome(content=content))
             self._save_to_disk(content, private=private)
         return applied
 

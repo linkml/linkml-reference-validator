@@ -751,6 +751,31 @@ Successfully cached PMID:16888623
   Content length: 1523 characters
 ```
 
+### Exit Codes
+
+- `0` - The public validation cache holds a current entry for the reference
+- `1` - It does not
+
+Exit `0` does not imply a download: a reference the current extractor has
+already cached may be reported as cached without contacting the source.
+
+Two cases satisfy the promise loosely. Content marked as non-open full text is
+written to the private cache, which validation deliberately never reads, so that
+run exits `0` without leaving anything in the public cache. Legacy `.txt` entries
+are exempt from the extractor version check and so always report as current.
+
+Conversely, a reference that could not be re-fetched is a failure even when a
+cache entry for it exists. Validation falls back to an entry written by an older
+extractor rather than reporting the reference as missing, but this command exists
+to populate the cache, so leaving it without a current entry is reported as
+failure and a script gating on the exit status does not go green through an
+outage. The same applies when no source handles the identifier at all.
+
+```
+Fetching PMID:16888623...
+Failed to cache PMID:16888623: it could not be re-fetched, so an out-of-date cache entry was served. The cache still holds no current entry for it.
+```
+
 ---
 
 ## cache lookup

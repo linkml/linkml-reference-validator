@@ -1564,6 +1564,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reference/splitting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supporting Text Splitting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -2221,7 +2249,7 @@ supporting_text: BRCA1 plays a ... in DNA repair                # ❌ Unnecessar
 <h2 id="technical-details">Technical Details</h2>
 <h3 id="normalization-order">Normalization Order</h3>
 <ol>
-<li>Remove everything inside <code>[...]</code></li>
+<li>Remove editorial <code>[...]</code> content unless a configured literal pattern matches</li>
 <li>Split on <code>...</code> if present</li>
 <li>For each part:</li>
 <li>Lowercase</li>
@@ -2230,9 +2258,12 @@ supporting_text: BRCA1 plays a ... in DNA repair                # ❌ Unnecessar
 <li>Match normalized parts against normalized reference</li>
 </ol>
 <h3 id="regular-expressions">Regular Expressions</h3>
-<p>Brackets: <code>\[([^\]]*)\]</code> (removes content and brackets)
-Ellipsis: <code>\.\.\.</code> (splits on three dots exactly)</p>
-<p>Note: <code>..</code> (two dots) and <code>....</code> (four dots) are NOT treated as ellipsis.</p>
+<p>Brackets: <code>\[.*?\]</code> (single-line, non-nested matching; literal patterns can preserve matches)</p>
+<p>Ellipsis: <code>\s*\.{2,}\s*</code> (splits on two or more ASCII periods)</p>
+<p>Both <code>..</code> (two dots) and <code>....</code> (four dots) are treated as separators. The Unicode
+ellipsis <code>…</code> is not a separator.</p>
+<p>Python callers can use the public <a href="../../reference/splitting/">supporting text splitting helper</a>
+without constructing a validator.</p>
 <h2 id="see-also">See Also</h2>
 <ul>
 <li><a href="../how-it-works/">How It Works</a> - Understanding the validation process</li>

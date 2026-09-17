@@ -11,7 +11,7 @@
         <link rel="canonical" href="https://linkml.github.io/linkml-reference-validator/troubleshooting/">
       
       
-        <link rel="prev" href="../reference/cli/">
+        <link rel="prev" href="../reference/splitting/">
       
       
         <link rel="next" href="../todo/">
@@ -1121,6 +1121,34 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../reference/splitting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Supporting Text Splitting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1603,6 +1631,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="See Also">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#jats-tables-and-xml-cache-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JATS tables and XML cache refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2075,6 +2120,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="See Also">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#jats-tables-and-xml-cache-refresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        JATS tables and XML cache refresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -2418,6 +2480,10 @@ extractor. Its text may still contain the errors this version fixes.
 for the reasons above. The entry is left stale rather than rewritten, so the
 next run that can reach the source refreshes it properly. This warning is
 printed without <code>-v</code>.</p>
+<p><code>cache reference</code> does not fall back this way. Validation prefers older text to
+no text, but that command exists to populate the cache, so being left with only
+a stale entry is reported as failure and exits non-zero — see
+<a href="../reference/cli/#cache-reference"><code>cache reference</code></a>.</p>
 <p>Until a refresh succeeds, each new run attempts to fetch every distinct stale
 reference before falling back to its cached text. Repeated uses of the same ID
 share an in-memory result, but this does not cover other IDs or later processes.
@@ -2768,6 +2834,47 @@ linkml-reference-validator validate text &quot;test&quot; PMID:12345678 --verbos
 <li><a href="../how-to/repair-validation-errors/">How to Repair Validation Errors</a> - Fixing common issues</li>
 <li><a href="https://github.com/linkml/linkml-reference-validator/issues">GitHub Issues</a> - Report bugs</li>
 </ul>
+<h3 id="jats-tables-and-xml-cache-refresh">JATS tables and XML cache refresh</h3>
+<p>JATS/PMC XML extraction appends pipe-delimited tables after the existing body
+paragraphs. Tables are found throughout the document, including <code>floats-group</code>
+when there is no body. Labels and captions form headings; table paragraphs do
+not also appear as body prose. Other existing body paragraphs, such as table
+attribution or alternative descriptions, are retained. Abstract extraction remains the source's job.
+Restricted body notices are checked before any tables are appended.</p>
+<p>Each actual table is rendered once, including tables inside nested wrappers.
+Nested tables without their own wrapper use a generic <code>Nested table</code> heading.
+Inline text and symbols are retained, block/line breaks become spaces, and
+literal backslashes and pipes in cells are escaped. Rows preserve source cell
+order, including empty cells. A span is printed as <code>[rowspan=2]</code> or
+<code>[colspan=2]</code> on its source cell: values are not copied into other rows or
+columns. These are quotable source rows, not a reconstructed rectangular grid;
+interpret spanned rows using the original table. Images and non-HTML table
+encodings are not transcribed, but their labels/captions are retained.
+As in existing body extraction, superscript/subscript text is flattened:
+<code>10&lt;sup&gt;9&lt;/sup&gt;</code> becomes <code>109</code>, not exponent notation. Consult the original
+for numeric interpretation; superscript styling is not preserved.</p>
+<p>The first <strong>200 source rows per table</strong>, including header and empty rows, are
+kept. Larger tables end with <code>[Table truncated after 200 rows.]</code>; later rows
+cannot be validated from this cache. Table footnotes in <code>table-wrap-foot</code> are retained once in document order,
+including notes in <code>floats-group</code>. The cap is per table, not per document.</p>
+<p><code>full_text_xml</code> entries now carry <code>xml_extraction_version: 1</code>, independently of
+<code>extractor_version</code> and <code>html_full_text_version</code>. Missing/older XML stamps cause
+refresh on the next validation fetch; current PDF and HTML entries need no
+refresh for this change. Fresh source/provider XML is stamped after acquisition.
+Inventory and metadata-only rewrites preserve the original XML stamp, including
+future versions, and never certify old text. If refresh is unavailable, legacy
+XML remains available with the existing stale-cache warning and is not rewritten;
+it may still lack table rows. A later process retries the refresh. Existing
+stale HTML rejection remains unchanged.</p>
+<p>A successful source refresh that returns only an abstract can replace the old
+full text if no provider supplies a body. This is existing refresh behavior;
+the stale fallback applies when the source returns no record, not when it
+returns an abstract-only record. Keep a backup if retaining older full text is
+necessary.</p>
+<p>This pass targets JATS <code>table-wrap</code> content and searches the whole document;
+tables and notes inside embedded <code>sub-article</code> or <code>response</code> elements are
+excluded so reviewer/reply findings are not attributed to the main paper. Bare tables
+without a <code>table-wrap</code> remain outside this JATS extraction pass.</p>
 
 
 

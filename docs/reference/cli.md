@@ -757,7 +757,7 @@ Successfully cached PMID:16888623
 - `1` - It does not
 
 Exit `0` does not imply a download: a reference the current extractor has
-already cached is reported as cached without contacting the source.
+already cached may be reported as cached without contacting the source.
 
 Two cases satisfy the promise loosely. Content marked as non-open full text is
 written to the private cache, which validation deliberately never reads, so that

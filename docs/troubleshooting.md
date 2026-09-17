@@ -378,7 +378,7 @@ printed without `-v`.
 
 `cache reference` does not fall back this way. Validation prefers older text to
 no text, but that command exists to populate the cache, so being left with only
-a stale entry is reported as failure and exits non-zero - see
+a stale entry is reported as failure and exits non-zero — see
 [`cache reference`](reference/cli.md#cache-reference).
 
 Until a refresh succeeds, each new run attempts to fetch every distinct stale

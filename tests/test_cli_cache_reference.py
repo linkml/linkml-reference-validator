@@ -145,10 +145,12 @@ def test_an_unroutable_id_is_not_reported_as_an_unreachable_source(cache_dir, mo
     assert "could not be reached" not in result.output
 
 
-# Item 5: --force against a stale entry takes the other branch of
-# _stale_fallback, which returns no content at all rather than the stale copy.
 def test_forcing_a_refresh_against_a_stale_entry_reports_plain_failure(cache_dir, mocker):
-    """An explicit refresh that failed reports failure, not a stale fallback."""
+    """An explicit refresh that failed reports failure, not a stale fallback.
+
+    ``--force`` takes the other branch of the fallback, which returns no content
+    at all rather than the out-of-date copy, so the plain message is the right one.
+    """
     _write_stale_entry(cache_dir)
     _source_returning(mocker, None)
 

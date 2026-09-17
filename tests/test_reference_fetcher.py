@@ -1679,6 +1679,26 @@ def test_fetch_still_returns_none_when_there_is_nothing_to_serve(fetcher, mocker
     assert fetcher.fetch("PMID:1") is None
 
 
+def test_fetch_still_hands_validation_the_stale_text(fetcher, mocker):
+    """Reporting staleness must not start withholding it.
+
+    Validation reads through fetch(), and serving the out-of-date copy during an
+    outage is the whole reason the fallback exists. A later "fix" that made
+    fetch() suppress stale results would turn every cached reference into a not
+    found the first time the source is unreachable.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Stale body text.")
+    )
+    _unstamp(fetcher, "PMID:1")
+    _source_returning(mocker, None)
+
+    result = fetcher.fetch("PMID:1")
+
+    assert result is not None
+    assert result.content == "Stale body text."
+
+
 def test_the_memory_cache_holds_outcomes_not_bare_content(fetcher, mocker):
     """One container, so an entry cannot be separated from how it was obtained.
 

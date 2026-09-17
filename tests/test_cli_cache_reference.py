@@ -35,11 +35,15 @@ def _fetcher(cache_dir):
     )
 
 
-def _write_stale_entry(cache_dir, reference_id="PMID:1", content="Stale body text."):
+def _write_stale_entry(
+    cache_dir, reference_id="PMID:1", content="Stale body text.", content_type="unknown"
+):
     """Leave a cache entry as an older extractor would have written it."""
     fetcher = _fetcher(cache_dir)
     fetcher._save_to_disk(
-        ReferenceContent(reference_id=reference_id, content=content)
+        ReferenceContent(
+            reference_id=reference_id, content=content, content_type=content_type
+        )
     )
     path = fetcher.get_cache_path(reference_id)
     path.write_text(
@@ -155,6 +159,24 @@ def test_forcing_a_refresh_against_a_stale_entry_reports_plain_failure(cache_dir
     _source_returning(mocker, None)
 
     result = _run(cache_dir, "PMID:1", "--force")
+
+    assert result.exit_code == 1
+    assert "Failed to fetch PMID:1" in result.output
+    assert "out-of-date" not in result.output
+
+
+def test_stale_html_full_text_is_not_even_offered_as_a_fallback(cache_dir, mocker):
+    """The third outcome: refused as a fallback, so it reports plain failure.
+
+    A stale ``full_text_html`` entry may be a repository landing page rather than
+    an article, so the fetcher declines to serve it even when nothing else is
+    available. Nothing is served, so nothing is served stale, and the command
+    reports the ordinary fetch failure instead of the out-of-date message.
+    """
+    _write_stale_entry(cache_dir, content_type="full_text_html")
+    _source_returning(mocker, None)
+
+    result = _run(cache_dir, "PMID:1")
 
     assert result.exit_code == 1
     assert "Failed to fetch PMID:1" in result.output

@@ -89,11 +89,12 @@ class FetchOutcome:
     """A fetch result together with how it was obtained.
 
     ``content`` alone cannot distinguish text that came from the source from
-    text served out of an out-of-date cache entry after the source could not be
-    reached. Callers that only need the text use :meth:`ReferenceFetcher.fetch`;
-    callers acting on whether the source was actually reached - ``cache
-    reference``, whose whole job is to populate the cache - need
-    ``served_stale`` too.
+    text served out of an out-of-date cache entry because the reference could
+    not be re-fetched - the source may be unreachable, or no source may handle
+    the identifier at all. Callers that only need the text use
+    :meth:`ReferenceFetcher.fetch`; callers acting on whether the cache was
+    actually refreshed - ``cache reference``, whose whole job is to populate it
+    - need ``served_stale`` too.
 
     Examples:
         >>> FetchOutcome(content=None).served_stale
@@ -167,9 +168,9 @@ class ReferenceFetcher:
         - file:./path/to/file.md
         - url:https://example.com
 
-        The content may have been served from an out-of-date cache entry after
-        the source could not be reached; callers that must tell those apart use
-        :meth:`fetch_with_provenance` instead.
+        The content may have been served from an out-of-date cache entry because
+        the reference could not be re-fetched; callers that must tell those apart
+        use :meth:`fetch_with_provenance` instead.
 
         Args:
             reference_id: The reference identifier
@@ -190,13 +191,15 @@ class ReferenceFetcher:
     def fetch_with_provenance(
         self, reference_id: str, force_refresh: bool = False
     ) -> FetchOutcome:
-        """Fetch a reference, reporting whether the source was actually reached.
+        """Fetch a reference, reporting whether the cache was actually refreshed.
 
         Identical to :meth:`fetch` except for the return type: the outcome's
-        ``served_stale`` is True when the source yielded nothing and an
-        out-of-date cache entry was served in its place. Nothing was downloaded
-        and nothing was written in that case, so a caller whose job is to
-        populate the cache should treat it as a failure.
+        ``served_stale`` is True when the reference could not be re-fetched and
+        an out-of-date cache entry was served in its place. That leaves the cache
+        without a current entry, so a caller whose job is to populate it should
+        treat it as a failure - not because nothing was downloaded, which is
+        equally true of a cache hit that needed no download, but because the
+        entry that is there is the one this version was meant to replace.
 
         Args:
             reference_id: The reference identifier

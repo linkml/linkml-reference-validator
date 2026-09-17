@@ -125,10 +125,10 @@ def reference_command(
     Downloads and caches the full text of a reference for offline validation.
     Useful for pre-populating the cache or ensuring a reference is available.
 
-    Exits non-zero if the reference could not be fetched, including when the
-    source was unreachable and only an out-of-date cache entry could be served:
-    nothing was downloaded or written in that case, so a script gating on the
-    exit status should not treat it as cached.
+    Exits zero when the cache holds a current entry for the reference afterwards,
+    and non-zero when it does not - including when the reference could not be
+    re-fetched and only an out-of-date entry could be served, so a script gating
+    on the exit status does not treat that as cached.
 
     Examples:
 
@@ -150,15 +150,19 @@ def reference_command(
 
     outcome = fetcher.fetch_with_provenance(reference_id, force_refresh=force)
 
-    # An unreachable source falls back to an out-of-date cache entry, which is
-    # the right answer for validation but not here: this command exists to
-    # populate the cache, and nothing was downloaded or written. Reporting
-    # success would take a script that gates on the exit status green through
-    # an outage.
+    # A reference that could not be re-fetched falls back to an out-of-date cache
+    # entry, which is the right answer for validation but not here. What this
+    # command promises is that the cache holds a current entry afterwards - not
+    # that it downloaded one, since an entry the current extractor already wrote
+    # needs no download. A stale entry leaves that promise unmet, so reporting
+    # success would take a script that gates on the exit status green through an
+    # outage. The reason is deliberately left open: the source may be unreachable,
+    # or no source may handle this identifier at all.
     if outcome.served_stale:
         typer.echo(
-            f"Failed to cache {reference_id}: the source could not be reached, so an "
-            "out-of-date cache entry was served. Nothing was downloaded or written.",
+            f"Failed to cache {reference_id}: it could not be re-fetched, so an "
+            "out-of-date cache entry was served. The cache still holds no current "
+            "entry for it.",
             err=True,
         )
         raise typer.Exit(1)

@@ -144,11 +144,11 @@ class ReferenceFetcher:
             'linkml-reference-validator@example.com'
         """
         self.config = config
-        self._cache: dict[str, ReferenceContent] = {}
-        # Reference IDs whose in-memory entry came from a stale fallback rather
-        # than from the source. Without this the memory cache would launder a
-        # stale entry into a fresh-looking one on the second fetch of a run.
-        self._served_stale: set[str] = set()
+        # Keyed by normalized reference ID. The value is the whole outcome, not
+        # just the content, so an entry cannot be separated from how it was
+        # obtained: a stale fallback stays flagged on every later read in this
+        # process instead of being laundered into a fresh-looking hit.
+        self._cache: dict[str, FetchOutcome] = {}
         self._acquirer = ContentAcquirer()
         # Build the PDF extractor once: this validates config.pdf_backend up front
         # (an unknown backend raises here, at init, rather than mid-fetch) and avoids
@@ -216,10 +216,7 @@ class ReferenceFetcher:
 
         # Check memory cache
         if not force_refresh and normalized_reference_id in self._cache:
-            return FetchOutcome(
-                content=self._cache[normalized_reference_id],
-                served_stale=normalized_reference_id in self._served_stale,
-            )
+            return self._cache[normalized_reference_id]
 
         # Check disk cache
         if not force_refresh:
@@ -229,8 +226,9 @@ class ReferenceFetcher:
                 # reflect a prior transient failure. Give the chain one more chance
                 # per process if it was never cleanly attempted.
                 cached = self._maybe_retry_full_text(cached)
-                self._remember(normalized_reference_id, cached, served_stale=False)
-                return FetchOutcome(content=cached)
+                return self._remember(
+                    normalized_reference_id, FetchOutcome(content=cached)
+                )
 
         # Find appropriate source using registry
         source_class = ReferenceSourceRegistry.get_source(normalized_reference_id)
@@ -262,23 +260,16 @@ class ReferenceFetcher:
         if not content:
             return self._stale_fallback(normalized_reference_id, force_refresh)
 
-        self._remember(normalized_reference_id, content, served_stale=False)
         self._save_by_access(content)
 
-        return FetchOutcome(content=content)
+        return self._remember(normalized_reference_id, FetchOutcome(content=content))
 
     def _remember(
-        self,
-        normalized_reference_id: str,
-        content: ReferenceContent,
-        served_stale: bool,
-    ) -> None:
-        """Record content in the memory cache along with how it was obtained."""
-        self._cache[normalized_reference_id] = content
-        if served_stale:
-            self._served_stale.add(normalized_reference_id)
-        else:
-            self._served_stale.discard(normalized_reference_id)
+        self, normalized_reference_id: str, outcome: FetchOutcome
+    ) -> FetchOutcome:
+        """Record an outcome in the memory cache and return it for the caller."""
+        self._cache[normalized_reference_id] = outcome
+        return outcome
 
     def _stale_fallback(
         self, normalized_reference_id: str, force_refresh: bool
@@ -313,8 +304,9 @@ class ReferenceFetcher:
             "extractor. Its text may still contain the errors this version fixes.",
             normalized_reference_id,
         )
-        self._remember(normalized_reference_id, stale, served_stale=True)
-        return FetchOutcome(content=stale, served_stale=True)
+        return self._remember(
+            normalized_reference_id, FetchOutcome(content=stale, served_stale=True)
+        )
 
     def needs_full_text(self, content: ReferenceContent) -> bool:
         """Return True if the content lacks full text and the chain should run.
@@ -456,7 +448,7 @@ class ReferenceFetcher:
                 normalized_id = self.normalize_reference_id(content.reference_id)
                 # Enriched and about to be written back with the current stamp,
                 # so whatever was served before, this copy is no longer stale.
-                self._remember(normalized_id, content, served_stale=False)
+                self._remember(normalized_id, FetchOutcome(content=content))
             self._save_to_disk(content, private=private)
         return applied
 

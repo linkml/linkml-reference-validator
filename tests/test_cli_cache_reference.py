@@ -63,6 +63,12 @@ def _source_returning(mocker, content):
 
 
 def _run(cache_dir, *args):
+    """Invoke the command.
+
+    Assertions below read ``result.output`` rather than ``result.stdout``: the
+    failure messages go to stderr, and only ``output`` carries both streams on
+    every click version (8.2 dropped CliRunner's ``mix_stderr``).
+    """
     return runner.invoke(
         app, ["cache", "reference", *args, "--cache-dir", str(cache_dir)]
     )
@@ -83,7 +89,7 @@ def test_caching_a_reachable_reference_succeeds(cache_dir, mocker):
     result = _run(cache_dir, "PMID:1")
 
     assert result.exit_code == 0
-    assert "Successfully cached PMID:1" in result.stdout
+    assert "Successfully cached PMID:1" in result.output
     assert f"extractor_version: {EXTRACTOR_CACHE_VERSION}" in _fetcher(
         cache_dir
     ).get_cache_path("PMID:1").read_text(encoding="utf-8")
@@ -97,9 +103,9 @@ def test_unreachable_source_with_a_stale_entry_reports_failure(cache_dir, mocker
     result = _run(cache_dir, "PMID:1")
 
     assert result.exit_code == 1
-    assert "Successfully cached" not in result.stdout
-    assert "Failed to cache PMID:1" in result.stdout
-    assert "out-of-date" in result.stdout
+    assert "Successfully cached" not in result.output
+    assert "Failed to cache PMID:1" in result.output
+    assert "out-of-date" in result.output
 
 
 def test_unreachable_source_with_a_stale_entry_writes_nothing(cache_dir, mocker):
@@ -120,7 +126,37 @@ def test_unreachable_source_with_no_entry_still_reports_failure(cache_dir, mocke
     result = _run(cache_dir, "PMID:1")
 
     assert result.exit_code == 1
-    assert "Failed to fetch PMID:1" in result.stdout
+    assert "Failed to fetch PMID:1" in result.output
+
+
+def test_an_unroutable_id_is_not_reported_as_an_unreachable_source(cache_dir, mocker):
+    """No source handles the ID at all, which is not an outage.
+
+    Both causes land in the same fallback, so the message has to cover both:
+    "retry later" is the wrong advice for a typo'd prefix.
+    """
+    _write_stale_entry(cache_dir)
+    mocker.patch.object(ReferenceSourceRegistry, "get_source", return_value=None)
+
+    result = _run(cache_dir, "PMID:1")
+
+    assert result.exit_code == 1
+    assert "could not be re-fetched" in result.output
+    assert "could not be reached" not in result.output
+
+
+# Item 5: --force against a stale entry takes the other branch of
+# _stale_fallback, which returns no content at all rather than the stale copy.
+def test_forcing_a_refresh_against_a_stale_entry_reports_plain_failure(cache_dir, mocker):
+    """An explicit refresh that failed reports failure, not a stale fallback."""
+    _write_stale_entry(cache_dir)
+    _source_returning(mocker, None)
+
+    result = _run(cache_dir, "PMID:1", "--force")
+
+    assert result.exit_code == 1
+    assert "Failed to fetch PMID:1" in result.output
+    assert "out-of-date" not in result.output
 
 
 def test_a_current_entry_is_reported_as_cached(cache_dir, mocker):
@@ -135,4 +171,4 @@ def test_a_current_entry_is_reported_as_cached(cache_dir, mocker):
     result = _run(cache_dir, "PMID:1")
 
     assert result.exit_code == 0
-    assert "Successfully cached PMID:1" in result.stdout
+    assert "Successfully cached PMID:1" in result.output

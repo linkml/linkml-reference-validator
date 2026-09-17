@@ -753,19 +753,23 @@ Successfully cached PMID:16888623
 
 ### Exit Codes
 
-- `0` - The reference was fetched and written to the cache
-- `1` - The reference could not be fetched
+- `0` - The cache holds a current entry for the reference
+- `1` - It does not
 
-An unreachable source is a failure even when a cache entry for the reference
-already exists. Validation falls back to an entry written by an older extractor
-rather than reporting the reference as missing, but this command exists to
-populate the cache: if nothing was downloaded, it reports failure so a script
-gating on the exit status does not go green through an outage.
+Exit `0` does not imply a download: a reference the current extractor has
+already cached is reported as cached without contacting the source.
+
+Conversely, a reference that could not be re-fetched is a failure even when a
+cache entry for it exists. Validation falls back to an entry written by an older
+extractor rather than reporting the reference as missing, but this command exists
+to populate the cache, so leaving it without a current entry is reported as
+failure and a script gating on the exit status does not go green through an
+outage. The same applies when no source handles the identifier at all.
 
 ```
 Fetching PMID:16888623...
-Failed to cache PMID:16888623: the source could not be reached, so an
-out-of-date cache entry was served. Nothing was downloaded or written.
+Failed to cache PMID:16888623: it could not be re-fetched, so an out-of-date
+cache entry was served. The cache still holds no current entry for it.
 ```
 
 ---

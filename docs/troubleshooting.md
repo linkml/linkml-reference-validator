@@ -338,8 +338,9 @@ it will be re-fetched and rewritten
 
 **Cause:**
 
-This is deliberate, and it is a one-off per reference. Cache entries record
-which extractor wrote them (`extractor_version` in the file's frontmatter).
+This is deliberate; the migration completes for each reference only when its
+refresh succeeds. Cache entries record which extractor wrote them
+(`extractor_version` in the file's frontmatter).
 Versions before the extractor fixes discarded some full-text articles and
 cached a short PMC placeholder in their place, labelled as full text, and
 welded text across inline markup — so entries written then hold content that
@@ -374,6 +375,25 @@ Validation then proceeds against that older text, so a snippet may be rejected
 for the reasons above. The entry is left stale rather than rewritten, so the
 next run that can reach the source refreshes it properly. This warning is
 printed without `-v`.
+
+Until a refresh succeeds, each new run attempts to fetch every distinct stale
+reference before falling back to its cached text. Repeated uses of the same ID
+share an in-memory result, but this does not cover other IDs or later processes.
+Offline runs with large caches may therefore spend substantial time waiting for
+network failures on every run; there is no circuit breaker. The wait depends on
+the source's timeout and retry policy.
+
+For PubMed, Bio.Entrez handles HTTP/URL errors while opening requests (three
+attempts by default, with its own delays). The validator does not restart an
+exhausted Bio.Entrez retry loop. Dropped connections, socket/TLS errors, and
+HTTP framing errors (including incomplete bodies) are attempted up to three
+times, with 2 and 4 second
+backoff between attempts. Each attempt opens a new request, so mixed opening
+and body failures can involve up to nine HTTP requests with Bio.Entrez defaults
+per endpoint (summary and article XML). Exhaustion reports the reference as
+unfetchable, or uses an eligible stale cached copy if one is available. A partial
+summary refresh does not replace useful cached text. These are attempt limits,
+not a wall-clock deadline.
 
 ### Title validation failed
 
@@ -765,3 +785,51 @@ Run through this checklist when encountering issues:
 - [CLI Reference](reference/cli.md) - Complete command documentation
 - [How to Repair Validation Errors](how-to/repair-validation-errors.md) - Fixing common issues
 - [GitHub Issues](https://github.com/linkml/linkml-reference-validator/issues) - Report bugs
+
+### JATS tables and XML cache refresh
+
+JATS/PMC XML extraction appends pipe-delimited tables after the existing body
+paragraphs. Tables are found throughout the document, including `floats-group`
+when there is no body. Labels and captions form headings; table paragraphs do
+not also appear as body prose. Other existing body paragraphs, such as table
+attribution or alternative descriptions, are retained. Abstract extraction remains the source's job.
+Restricted body notices are checked before any tables are appended.
+
+Each actual table is rendered once, including tables inside nested wrappers.
+Nested tables without their own wrapper use a generic `Nested table` heading.
+Inline text and symbols are retained, block/line breaks become spaces, and
+literal backslashes and pipes in cells are escaped. Rows preserve source cell
+order, including empty cells. A span is printed as `[rowspan=2]` or
+`[colspan=2]` on its source cell: values are not copied into other rows or
+columns. These are quotable source rows, not a reconstructed rectangular grid;
+interpret spanned rows using the original table. Images and non-HTML table
+encodings are not transcribed, but their labels/captions are retained.
+As in existing body extraction, superscript/subscript text is flattened:
+`10<sup>9</sup>` becomes `109`, not exponent notation. Consult the original
+for numeric interpretation; superscript styling is not preserved.
+
+The first **200 source rows per table**, including header and empty rows, are
+kept. Larger tables end with `[Table truncated after 200 rows.]`; later rows
+cannot be validated from this cache. Table footnotes in `table-wrap-foot` are retained once in document order,
+including notes in `floats-group`. The cap is per table, not per document.
+
+`full_text_xml` entries now carry `xml_extraction_version: 1`, independently of
+`extractor_version` and `html_full_text_version`. Missing/older XML stamps cause
+refresh on the next validation fetch; current PDF and HTML entries need no
+refresh for this change. Fresh source/provider XML is stamped after acquisition.
+Inventory and metadata-only rewrites preserve the original XML stamp, including
+future versions, and never certify old text. If refresh is unavailable, legacy
+XML remains available with the existing stale-cache warning and is not rewritten;
+it may still lack table rows. A later process retries the refresh. Existing
+stale HTML rejection remains unchanged.
+
+A successful source refresh that returns only an abstract can replace the old
+full text if no provider supplies a body. This is existing refresh behavior;
+the stale fallback applies when the source returns no record, not when it
+returns an abstract-only record. Keep a backup if retaining older full text is
+necessary.
+
+This pass targets JATS `table-wrap` content and searches the whole document;
+tables and notes inside embedded `sub-article` or `response` elements are
+excluded so reviewer/reply findings are not attributed to the main paper. Bare tables
+without a `table-wrap` remain outside this JATS extraction pass.

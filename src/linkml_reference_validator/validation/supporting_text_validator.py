@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.matching import split_supporting_text
 from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,
@@ -126,6 +127,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.INFO,
+                skipped=True,
                 message=f"Skipping title validation for reference with prefix '{prefix}': {reference_id}",
                 path=path,
             )
@@ -138,6 +140,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -148,6 +151,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"Reference {reference_id} has no title to validate against",
                 path=path,
             )
@@ -161,6 +165,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.INFO,
+                title_checked=True,
                 message=f"Title validated successfully for {reference_id}",
                 path=path,
             )
@@ -170,6 +175,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text="",
                 severity=ValidationSeverity.ERROR,
+                title_checked=True,
                 message=(
                     f"Title mismatch for {reference_id}: "
                     f"expected '{expected_title}' but got '{reference.title}'"
@@ -230,6 +236,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.INFO,
+                skipped=True,
                 message=f"Skipping validation for reference with prefix '{prefix}': {reference_id}",
                 path=path,
             )
@@ -242,6 +249,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=self.config.unknown_prefix_severity,
+                unavailable=True,
                 message=f"Could not fetch reference: {reference_id}",
                 path=path,
             )
@@ -252,6 +260,7 @@ class SupportingTextValidator:
                 reference_id=reference_id,
                 supporting_text=supporting_text,
                 severity=ValidationSeverity.ERROR,
+                unavailable=True,
                 message=f"No content available for reference: {reference_id}",
                 path=path,
             )
@@ -296,6 +305,7 @@ class SupportingTextValidator:
             severity=ValidationSeverity.INFO if is_valid else ValidationSeverity.ERROR,
             message=message,
             match_result=match,
+            title_checked=bool(expected_title and reference.title),
             path=path,
         )
 
@@ -373,22 +383,7 @@ class SupportingTextValidator:
             >>> validator._split_query("[editorial note]")
             []
         """
-        if not self._literal_bracket_regexes:
-            text_without_brackets = re.sub(r"\[.*?\]", " ", text)
-        else:
-
-            def replace_bracket(match: re.Match[str]) -> str:
-                """Preserve configured literal bracket content, strip editorial notes."""
-                content = match.group(1)
-                if any(regex.search(content) for regex in self._literal_bracket_regexes):
-                    return match.group(0)
-                return " "
-
-            text_without_brackets = re.sub(r"\[(.*?)\]", replace_bracket, text)
-
-        parts = re.split(r"\s*\.{2,}\s*", text_without_brackets)
-        parts = [re.sub(r"\s+", " ", p).strip() for p in parts if p.strip()]
-        return parts
+        return split_supporting_text(text, self._literal_bracket_regexes)
 
     def count_quoted_characters(self, supporting_text: str) -> int:
         """Count the non-whitespace characters an excerpt actually quotes.
@@ -611,7 +606,15 @@ class SupportingTextValidator:
     def normalize_text(text: str) -> str:
         """Normalize text for comparison.
 
-        Spells out Greek letters, removes punctuation, extra whitespace, and lowercases.
+        Folds Latin compatibility ligatures, spells out Greek letters, removes
+        punctuation and extra whitespace, and lowercases. The same normalization
+        applies to reference content and queries (including split query parts).
+
+        IJ (Ĳ/ĳ) is folded because Unicode defines its compatibility decomposition
+        as I + J. Distinct letters Æ/æ and Œ/œ are preserved: equating them with
+        AE/OE would broaden validation beyond typographic repair. An explicit
+        table avoids broad NFKC normalization, which also changes scientific
+        notation such as superscripts, subscripts, and the micro sign.
 
         Args:
             text: Text to normalize
@@ -630,7 +633,20 @@ class SupportingTextValidator:
             'beta actin'
             >>> SupportingTextValidator.normalize_text("γ-tubulin")
             'gamma tubulin'
+            >>> SupportingTextValidator.normalize_text("amyloid ﬁbrils")
+            'amyloid fibrils'
+            >>> SupportingTextValidator.normalize_text("ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ Ĳ ĳ")
+            'ff fi fl ffi ffl st st ij ij'
+            >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶ µ")
+            'æ œ æ œ h₂o 10⁶ µ'
         """
+        # Only compatibility ligatures; do not apply general Unicode NFKC.
+        ligature_map = {
+            "ﬀ": "ff", "ﬁ": "fi", "ﬂ": "fl", "ﬃ": "ffi", "ﬄ": "ffl",
+            "ﬅ": "st", "ﬆ": "st", "Ĳ": "IJ", "ĳ": "ij",
+        }
+        text = text.translate({ord(ligature): expanded for ligature, expanded in ligature_map.items()})
+
         # Greek letter mappings (both uppercase and lowercase)
         greek_map = {
             'α': 'alpha', 'Α': 'alpha',

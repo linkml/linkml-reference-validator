@@ -20,10 +20,12 @@ from linkml_reference_validator.models import (
     SupplementaryFile,
 )
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
+from linkml_reference_validator.etl.sources.clinicaltrials import NCT_ID_PATTERN
 from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.extract.html import HTMLExtractor
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
@@ -56,6 +58,15 @@ MIN_FULL_TEXT_CHARS = 500
 #: without this stamp every existing cache keeps failing correct snippets with
 #: nothing in the output to explain why.
 EXTRACTOR_CACHE_VERSION = 1
+
+#: Independently version HTML full-text acceptance: prior entries may contain
+#: repository metadata rather than an article. PDF/XML caches need no refresh.
+#: Downloaded/raw HTML is structurally checked; pre-extracted text supplied by
+#: PMC or a configured text provider is trusted under FullTextLocation's contract.
+HTML_FULL_TEXT_CACHE_VERSION = 1
+
+#: XML table extraction changes only XML caches, independent of HTML acceptance.
+XML_EXTRACTION_CACHE_VERSION = 1
 
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
@@ -232,6 +243,19 @@ class ReferenceFetcher:
         source = source_class()
         content = source.fetch(identifier, self.config)
 
+        # Source-produced full HTML (currently PMC's body-selecting path) is
+        # already extracted by that source. Certify only this fresh fetch, never
+        # an arbitrary inventory/load/save round trip of pre-fix cached text.
+        if content and content.content_type == "full_text_html":
+            content.metadata = dict(
+                content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
+
+        if content and content.content_type == "full_text_xml":
+            content.metadata = dict(
+                content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
+            )
+
         if content and self.config.fetch_full_text and self.needs_full_text(content):
             content = self._enrich_with_full_text(content)
 
@@ -271,6 +295,8 @@ class ReferenceFetcher:
         The entry is deliberately not re-saved, so it stays stale and the next run
         that can reach the source still refreshes it. ``force_refresh`` opts out
         entirely: an explicit refresh that failed should report failure.
+        Unverified HTML full-text entries are excluded: their text may be only
+        landing-page metadata, which cannot safely serve as article evidence.
 
         The outcome is flagged ``served_stale`` so callers that need a fetch to
         have actually happened can report failure rather than success.
@@ -455,8 +481,22 @@ class ReferenceFetcher:
         if not text or len(text.strip()) < MIN_FULL_TEXT_CHARS:
             return False, error
 
+        if (
+            fmt == "html" and abstract
+            and " ".join(text.split()) == " ".join(abstract.split())
+        ):
+            return False, error
+
         content.content = f"{abstract}\n\n{text}" if abstract else text
         content.content_type = _FORMAT_TO_CONTENT_TYPE.get(fmt or "text", "full_text")
+        if fmt == "html":
+            content.metadata = dict(
+                content.metadata or {}, html_full_text_version=HTML_FULL_TEXT_CACHE_VERSION
+            )
+        if fmt == "xml":
+            content.metadata = dict(
+                content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
+            )
         content.full_text_provider = location.provider or provider_name
         # Non-public endpoints are not durable provenance and may contain
         # session-specific access information.
@@ -481,8 +521,13 @@ class ReferenceFetcher:
 
         ``error`` is True only when a download or extraction *raised* — a transient
         condition worth retrying — not when the resource was merely absent or unusable.
+        ``location.text`` is a trusted provider's already-extracted article body
+        (PMC or a configured text API). HTML markup supplied there still requires
+        structural extraction; a format hint alone does not certify raw HTML.
         """
         if location.text:
+            if location.format_hint == "html" and re.search(r"<[A-Za-z][^>]*>", location.text):
+                return HTMLExtractor().extract_full_text(location.text), "html", None, False
             return location.text, location.format_hint or "text", None, False
 
         if not location.url:
@@ -512,7 +557,11 @@ class ReferenceFetcher:
             return None, fmt, None, False
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
-            text = extractor.extract(data, content_type=content_type)
+            text = (
+                HTMLExtractor().extract_full_text(data)
+                if fmt == "html"
+                else extractor.extract(data, content_type=content_type)
+            )
         except Exception as exc:
             logger.warning(f"Extraction failed for {location.url}: {exc}")
             return None, fmt, None, True
@@ -539,11 +588,15 @@ class ReferenceFetcher:
             return str(pdf_path.relative_to(self.config.get_private_cache_dir()))
         return str(pdf_path.relative_to(self.config.cache_dir))
 
-    def _parse_reference_id(self, reference_id: str) -> tuple[str, str]:
+    def _parse_reference_id(
+        self, reference_id: str, *, apply_prefix_map: bool = True
+    ) -> tuple[str, str]:
         """Parse a reference ID into prefix and identifier.
 
         Args:
             reference_id: Reference ID like "PMID:12345678" or URL
+            apply_prefix_map: Resolve configured aliases; disabled for cache paths
+                because fetch has already resolved the caller's alias.
 
         Returns:
             Tuple of (prefix, identifier)
@@ -575,14 +628,22 @@ class ReferenceFetcher:
         if stripped.lower().startswith(("http://", "https://")):
             return "url", stripped
 
+        # Bare trial IDs use the same prefix and identifier casing as the source.
+        if NCT_ID_PATTERN.fullmatch(stripped):
+            stripped = f"clinicaltrials:{stripped}"
+
         # Standard prefix:identifier format
         match = re.match(r"^([A-Za-z_]+)[:\s]+(.+)$", stripped)
         if match:
             prefix = match.group(1)
-            # Preserve case for file/url, uppercase for others
+            # Match the canonical prefix used by the source and prefix aliases.
             prefix = self._normalize_prefix(prefix)
-            prefix = self._apply_prefix_map(prefix)
-            return prefix, match.group(2).strip()
+            if apply_prefix_map:
+                prefix = self._apply_prefix_map(prefix)
+            identifier = match.group(2).strip()
+            if prefix == "clinicaltrials" and NCT_ID_PATTERN.fullmatch(identifier):
+                identifier = identifier.upper()
+            return prefix, identifier
         if reference_id.strip().isdigit():
             return "PMID", reference_id.strip()
         return "UNKNOWN", reference_id
@@ -603,6 +664,10 @@ class ReferenceFetcher:
             'PMID:12345678'
             >>> fetcher.normalize_reference_id("PMID 12345678")
             'PMID:12345678'
+            >>> fetcher.normalize_reference_id("NCT12345678")
+            'clinicaltrials:NCT12345678'
+            >>> fetcher.normalize_reference_id("CLINICALTRIALS:nct12345678")
+            'clinicaltrials:NCT12345678'
         """
         prefix, identifier = self._parse_reference_id(reference_id)
         if prefix == "UNKNOWN":
@@ -610,8 +675,8 @@ class ReferenceFetcher:
         return f"{prefix}:{identifier}"
 
     def _normalize_prefix(self, prefix: str) -> str:
-        """Normalize prefix casing with special handling for file/url."""
-        if prefix.lower() in ("file", "url"):
+        """Normalize prefix casing to match the reference sources."""
+        if prefix.lower() in ("file", "url", "clinicaltrials"):
             return prefix.lower()
         return prefix.upper()
 
@@ -629,6 +694,9 @@ class ReferenceFetcher:
 
     def get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.
+
+        Bare NCT IDs and ClinicalTrials casing are canonicalized. For configured
+        prefix aliases, pass the result of :meth:`normalize_reference_id`.
 
         Args:
             reference_id: Reference identifier
@@ -648,9 +716,15 @@ class ReferenceFetcher:
         """
         return self._cache_path(reference_id, self.config.get_cache_dir())
 
-    @staticmethod
-    def _cache_path(reference_id: str, cache_dir: Path) -> Path:
-        """Return a cache path under an already selected cache directory."""
+    def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
+        """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
+        prefix, identifier = self._parse_reference_id(
+            reference_id, apply_prefix_map=False
+        )
+        if prefix == "clinicaltrials":
+            reference_id = f"{prefix}:{identifier}"
+        # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
+        # prefix maps here could follow a second alias and change the cache key.
         safe_id = (
             reference_id.replace(":", "_")
             .replace("/", "_")
@@ -728,6 +802,13 @@ class ReferenceFetcher:
         lines.append("---")
         lines.append(f"reference_id: {reference.reference_id}")
         lines.append(f"extractor_version: {EXTRACTOR_CACHE_VERSION}")
+        html_version = (reference.metadata or {}).get("html_full_text_version")
+        if reference.content_type == "full_text_html" and isinstance(html_version, int):
+            lines.append(f"html_full_text_version: {html_version}")
+        # YAML booleans are not extraction versions, despite bool subclassing int.
+        xml_version = (reference.metadata or {}).get("xml_extraction_version")
+        if reference.content_type == "full_text_xml" and type(xml_version) is int:
+            lines.append(f"xml_extraction_version: {xml_version}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -881,7 +962,20 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
-        return self._load_markdown_format(content_text, reference_id)
+        reference = self._load_markdown_format(content_text, reference_id)
+        if (
+            allow_stale
+            and reference is not None
+            and reference.content_type == "full_text_html"
+            and self._is_stale_cache_entry(content_text)
+        ):
+            logger.warning(
+                "Refusing stale HTML full text for %s: it may be a repository "
+                "landing page. Retry when the source is reachable to repair it.",
+                reference_id,
+            )
+            return None
+        return reference
 
     @staticmethod
     def _as_optional_list(value: Any) -> Optional[list]:
@@ -901,6 +995,58 @@ class ReferenceFetcher:
         if not value:
             return None
         return value if isinstance(value, list) else [value]
+
+    @staticmethod
+    def _parse_cached_authors(value: Any, reference_id: str) -> Optional[list[str]]:
+        """Recover author strings from legacy YAML without stringifying garbage.
+
+        Unquoted colon-bearing authors can parse as mappings. Each string key
+        paired with a string, int, float, or bool becomes one readable author,
+        in order; a null value restores the name with a trailing colon. Scalar
+        formatting may differ from the original YAML spelling. Valid strings
+        are preserved verbatim. Null list entries, non-string scalar entries,
+        empty maps, and pairs with non-string keys or unsupported values are
+        dropped with a warning; nested structures are never traversed. An
+        absent/null field, scalar empty string, or empty list means no authors,
+        as does a list with no recoverable entries.
+
+        Examples:
+            >>> ReferenceFetcher._parse_cached_authors(
+            ...     ["Smith J", {"Consortium": "contact@example.org"}], "PMID:1"
+            ... )
+            ['Smith J', 'Consortium: contact@example.org']
+            >>> ReferenceFetcher._parse_cached_authors(
+            ...     [{"Consortium": None, "Room": 305}], "PMID:1"
+            ... )
+            ['Consortium:', 'Room: 305']
+            >>> ReferenceFetcher._parse_cached_authors(None, "PMID:1") is None
+            True
+        """
+        if value is None or (isinstance(value, str) and not value):
+            return None
+        entries = value if isinstance(value, list) else [value]
+        authors: list[str] = []
+        dropped = 0
+        for entry in entries:
+            if isinstance(entry, str):
+                authors.append(entry)
+            elif isinstance(entry, dict) and entry:
+                for name, detail in entry.items():
+                    if isinstance(name, str) and detail is None:
+                        authors.append(f"{name}:")
+                    elif isinstance(name, str) and isinstance(detail, (str, int, float, bool)):
+                        authors.append(f"{name}: {detail}")
+                    else:
+                        dropped += 1
+            else:
+                dropped += 1
+        if dropped:
+            logger.warning(
+                "Dropped %d malformed author entries or mapping pairs from cache for %s",
+                dropped,
+                reference_id,
+            )
+        return authors or None
 
     @staticmethod
     def _split_frontmatter(content_text: str) -> Optional[tuple[str, str]]:
@@ -928,7 +1074,7 @@ class ReferenceFetcher:
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:
-        """Report whether cached text came from an extractor older than this one.
+        """Report whether extraction or format-specific full-text processing needs refreshing.
 
         Deliberately not applied by :meth:`iter_cached_references`: export and
         enrichment walk the cache as a record of what was fetched, and dropping
@@ -940,7 +1086,7 @@ class ReferenceFetcher:
             content_text: The cache file's contents, including frontmatter
 
         Returns:
-            True if the entry has no version stamp, or one below the current
+            True if either applicable version stamp is absent or below current.
 
         Examples:
             >>> stale = "---\\nreference_id: PMID:1\\n---\\nBody."
@@ -954,13 +1100,29 @@ class ReferenceFetcher:
         if split is None:
             return True
 
+        # Preserve the pre-existing missing/old-version fast path, including for
+        # damaged legacy frontmatter that a successful re-fetch can replace.
         match = re.search(r"^extractor_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
-        if not match:
+        if not match or int(match.group(1)) < EXTRACTOR_CACHE_VERSION:
             return True
+
+        metadata = YAML(typ="safe").load(split[0])
+        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_html":
+            html_version = metadata.get("html_full_text_version")
+            if (
+                not isinstance(html_version, int)
+                or html_version < HTML_FULL_TEXT_CACHE_VERSION
+            ):
+                return True
+
+        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_xml":
+            xml_version = metadata.get("xml_extraction_version")
+            if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
+                return True
 
         # A newer stamp is not stale: an older tool reading a cache written by a
         # newer one should leave it alone rather than re-fetch it on every run.
-        return int(match.group(1)) < EXTRACTOR_CACHE_VERSION
+        return False
 
     def _load_markdown_format(
         self, content_text: str, reference_id: str
@@ -985,7 +1147,7 @@ class ReferenceFetcher:
 
         content = self._extract_content_from_markdown(body)
 
-        authors = self._as_optional_list(frontmatter.get("authors"))
+        authors = self._parse_cached_authors(frontmatter.get("authors"), reference_id)
         keywords = self._as_optional_list(frontmatter.get("keywords"))
         publication_types = self._as_optional_list(
             frontmatter.get("publication_types")
@@ -997,6 +1159,10 @@ class ReferenceFetcher:
         )
 
         metadata: dict = {}
+        if "xml_extraction_version" in frontmatter:
+            metadata["xml_extraction_version"] = frontmatter["xml_extraction_version"]
+        if "html_full_text_version" in frontmatter:
+            metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
         if "extra_fields_captured" in frontmatter:
             metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
 

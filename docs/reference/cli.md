@@ -378,29 +378,57 @@ linkml-reference-validator validate data \
 
 ### Output Format
 
-**Success:**
-```
-Validating data.yaml against schema schema.yaml
-Cache directory: references_cache
+The summary separates work performed from issues found:
 
+```text
 Validation Summary:
-  Total checks: 3
-  All validations passed!
+  Input files: 2
+  Files validated: 2
+  Snippets checked: 3
+  Snippets skipped: 0
+  Snippets unavailable: 0
+  Titles checked: 1
+  Issues found: 1
+  Issues found in 1 file(s) (1 validation issue(s))
+  Failing files:
+    bad.yaml
 ```
 
-**Failure:**
-```
-Validating data.yaml against schema schema.yaml
-Cache directory: references_cache
+- **Input files** counts supplied paths, including files that cannot be read.
+- **Files validated** counts files with at least one mapping submitted to the
+  validator. An empty mapping counts; an empty list has no instances and does not.
+  A mixed list containing valid mappings and malformed entries counts once and
+  still fails. Entry diagnostics use zero-based indexes.
+- **Snippets checked** counts executed comparisons against reference content,
+  including matches and mismatches. Multiple excerpt slots each count separately.
+- **Snippets skipped** counts snippet/reference pairs bypassed by `skip_prefixes`.
+- **Snippets unavailable** counts attempted snippet validations where the reference
+  could not be fetched or had no content. These are not completed comparisons.
+- **Titles checked** counts actual title comparisons, including those performed
+  alongside snippets. Missing titles and skipped/unavailable references do not count.
+- **Issues found** counts emitted validation issues. Blank excerpts may produce an
+  issue without any comparison; file read/parse or data-format errors appear in the
+  failing-file list without adding a fabricated validation issue.
 
-Validation Issues (2):
-  [ERROR] Text part not found as substring: 'MUC1 activates JAK-STAT'
-    Location: Statement
+Absent excerpts and excerpts without a usable reference perform no comparison.
+Counters come from execution and reset for each LinkML validation call; the CLI
+accumulates all instances and files. The public plugin exposes `snippets_checked`,
+`snippets_skipped`, `snippets_unavailable`, and `titles_checked` after validation.
+When using lazy `process()` or `iter_results()` APIs, exhaust the result iterator
+before reading final counters. Unconsumed or partially consumed iterators do not
+provide final counts; `Validator.validate()` consumes the iterator for you.
 
-Validation Summary:
-  Total checks: 3
-  Issues found: 2
-```
+Title-only skips and unavailable titles have no separate summary counters: they
+leave all check counters at zero. A skipped title emits no issue; an unavailable
+standalone title emits an issue. Existing title behavior is preserved: a reference
+missing its title is an issue for standalone title validation, but a title supplied
+alongside an excerpt is not compared or reported when the reference has no title.
+
+A zero-snippet run prints `No snippet comparisons were performed.` This includes
+empty input collections and title-only runs. Exit behavior is unchanged: no issues
+or file errors means exit 0, even when zero snippets were checked; issues or file
+errors mean exit 1. Failed file paths are listed at the end, including unreadable
+files, while later files continue to be processed.
 
 ---
 

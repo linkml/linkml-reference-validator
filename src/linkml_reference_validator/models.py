@@ -719,8 +719,10 @@ class ReferenceIdentifiers:
 class FullTextLocation:
     """A located full-text resource for a reference.
 
-    A provider returns either a downloadable ``url`` (PDF/HTML/XML) or inline
-    ``text`` it has already extracted.
+    A provider returns one of three things: a downloadable ``url``
+    (PDF/HTML/XML), inline ``text`` it has already extracted, or -- carrying
+    neither -- a ``declined`` marker saying it found a candidate and refused it.
+    Check ``declined`` before reading ``url``.
 
     Examples:
         >>> loc = FullTextLocation(url="https://x/y.pdf", format_hint="pdf")
@@ -737,8 +739,20 @@ class FullTextLocation:
     license: Optional[str] = None
     provider: str = ""
     version: Optional[str] = None      # "publishedVersion" | "acceptedVersion" | ...
-    access_type: Optional[str] = None  # "open" | "user_library" | "institutional"
+    # "open" | "publisher_free" | "user_library" | "institutional". Anything
+    # other than "open" (or None) is withheld from ordinary validation and
+    # routed to the private cache: see _enrich_with_full_text and
+    # _save_by_access. "publisher_free" is free to read on the publisher's site
+    # under no open licence -- readable, not redistributable.
+    access_type: Optional[str] = None
     source_item_id: Optional[str] = None
+    #: Set when a provider *found* a candidate and declined it on policy, rather
+    #: than finding nothing. A declined location carries no ``url`` or ``text``
+    #: and is never fetched; it exists so the chain can tell a decision we made
+    #: apart from a fact about the article. Recording the first as the second is
+    #: what leaves a bronze record that later converts to gold unexamined
+    #: forever.
+    declined: Optional[str] = None
 
 
 @dataclass
@@ -795,6 +809,12 @@ class ReferenceContent:
     oa_status: Optional[str] = None
     license: Optional[str] = None
     local_pdf_path: Optional[str] = None
+    #: Why the provider chain refused a candidate it found, if it did. Distinct
+    #: from ``full_text_attempted``, which asserts that a clean run concluded no
+    #: full text is available: a decline is a decision about material that
+    #: exists. Recorded so the chain is re-walked when the extractor version
+    #: moves rather than on every run -- retryable, not retried indefinitely.
+    full_text_declined: Optional[str] = None
     full_text_access_type: Optional[str] = None
     full_text_source_item_id: Optional[str] = None
     # Preprint / peer-review status, surfaced so downstream KBs can apply policies

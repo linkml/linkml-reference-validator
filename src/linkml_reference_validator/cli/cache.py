@@ -150,19 +150,24 @@ def reference_command(
 
     outcome = fetcher.fetch_with_provenance(reference_id, force_refresh=force)
 
-    # A reference that could not be re-fetched falls back to an out-of-date cache
-    # entry, which is the right answer for validation but not here. What this
-    # command promises is that the cache holds a current entry afterwards - not
-    # that it downloaded one, since an entry the current extractor already wrote
-    # needs no download. A stale entry leaves that promise unmet, so reporting
-    # success would take a script that gates on the exit status green through an
-    # outage. The reason is deliberately left open: the source may be unreachable,
-    # or no source may handle this identifier at all.
+    # What this command promises is that the cache holds a current entry
+    # afterwards - not that it downloaded one, since an entry the current
+    # extractor already wrote needs no download. Two paths leave that promise
+    # unmet, and the message has to be true of both: the reference could not be
+    # re-fetched and an out-of-date entry was served instead, or it was
+    # re-fetched and the result was refused for holding less full text than the
+    # entry already cached. Either way the write was skipped, so what is
+    # reported is that, rather than a guess at which path ran. Reporting success
+    # would take a script that gates on the exit status green through an outage.
     if outcome.served_stale:
         typer.echo(
-            f"Failed to cache {reference_id}: it could not be re-fetched, so an "
-            "out-of-date cache entry was served. The cache still holds no current "
-            "entry for it.",
+            f"Failed to cache {reference_id}: it could not be re-fetched, or the "
+            "refresh came back with no full text where the cache holds some. "
+            "Either way no entry was written, so the cache still holds no current "
+            "entry for it. Re-run when the source serves full text again. "
+            "(--force replaces cached text with whatever a refresh returns, so it "
+            "resolves the second case and not the first: with the source "
+            "unreachable there is nothing to put in its place.)",
             err=True,
         )
         raise typer.Exit(1)
@@ -301,6 +306,14 @@ def enrich_command(
 
         if location is None:
             typer.echo(f"{reference.reference_id}\tnot_found\t-")
+            continue
+
+        if location.declined:
+            # Reported as its own outcome, not as a find and not as an absence.
+            # A declined location carries no url and no text, so counting it
+            # would inflate `Found:` by exactly the references the provider
+            # refused -- and this command's whole output is an inventory.
+            typer.echo(f"{reference.reference_id}\tdeclined\t{location.declined}")
             continue
 
         found += 1

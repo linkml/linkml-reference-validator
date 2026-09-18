@@ -128,7 +128,21 @@ class TestOpenAlexProvider:
         assert loc.provider == "openalex"
 
     @patch("linkml_reference_validator.etl.fulltext.openalex.requests.get")
-    def test_locate_falls_back_to_oa_url(self, mock_get, config):
+    def test_locate_does_not_fall_back_to_oa_url(self, mock_get, config):
+        """A landing page is not a located full text.
+
+        This test previously asserted the opposite: an ``oa_url`` with no
+        ``pdf_url`` was returned as an ``html`` location and then downloaded.
+        That is scraping an article *page*, which the hosts actively refuse --
+        PMC answers a rate-limited request with a reCAPTCHA interstitial on an
+        HTTP 200, indistinguishable downstream from article text. See
+        tests/test_open_access_policy.py for the policy this belongs to.
+
+        The provider reports the decline rather than returning nothing, so the
+        enrichment chain can tell "we refused this" from "there is none" and
+        keeps the record retryable. What matters here is unchanged: no ``url``
+        and no ``text``, so nothing is ever fetched.
+        """
         from linkml_reference_validator.etl.fulltext.openalex import OpenAlexProvider
 
         mock_response = MagicMock()
@@ -139,9 +153,10 @@ class TestOpenAlexProvider:
         }
         mock_get.return_value = mock_response
 
-        loc = OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config)
-        assert loc.url == "https://oa/landing"
-        assert loc.format_hint == "html"
+        location = OpenAlexProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config)
+
+        assert location.declined == "landing_page_only"
+        assert location.url is None and location.text is None
 
     @patch("linkml_reference_validator.etl.fulltext.openalex.requests.get")
     def test_locate_not_oa_returns_none(self, mock_get, config):

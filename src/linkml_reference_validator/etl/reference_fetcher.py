@@ -23,6 +23,7 @@ from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.clinicaltrials import NCT_ID_PATTERN
 from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
+from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
@@ -31,6 +32,29 @@ from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistr
 from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
 
 logger = logging.getLogger(__name__)
+
+
+#: A refresh keeping full text but returning less than this share of the cached
+#: length is reported, never refused. The distinction is the whole lesson of this
+#: guard's history: refusing on size blocked four kinds of genuine improvement
+#: permanently, because an entry that is never written is never stamped. A log
+#: line has none of those properties -- the write proceeds, the migration
+#: completes, ``cache reference`` still exits 0 -- and a wrong guess costs one
+#: line rather than a cache that can never migrate.
+REPORT_SHRINK_RATIO = 0.2
+
+#: ``access_type`` values whose source URL may be recorded, as an allowlist so
+#: an unrecognised value stays suppressed. A private endpoint -- one reached
+#: through someone's own credentials or installation -- is excluded because its
+#: address is meaningless elsewhere and may carry a local token; everything
+#: unknown is excluded for the reason this module excludes an unknown
+#: ``oa_status`` and an unknown licence, which is that it cannot vouch for it.
+#:
+#: Not the same question as whether the *text* may be redistributed:
+#: ``PUBLISHER_FREE_ACCESS`` is listed here precisely because a publisher's link
+#: is a stable public address even when its content is not openly licensed. See
+#: the note at the ``full_text_url`` assignment.
+PUBLIC_URL_ACCESS_TYPES = frozenset({None, "open", PUBLISHER_FREE_ACCESS})
 
 
 NEEDS_FULL_TEXT_TYPES = {
@@ -82,6 +106,59 @@ _FORMAT_TO_CONTENT_TYPE = {
     "xml": "full_text_xml",
     "text": "full_text",
 }
+
+
+def _text_after_abstract(content: Optional[str]) -> str:
+    """Return a record's extracted text, without the abstract prepended to it.
+
+    ``_apply_full_text_location`` stores ``abstract + "\\n\\n" + text``, so both
+    the cached record and a refreshed one carry the abstract. Comparing whole
+    records credits a failed extraction with text it was always going to have:
+    a ~2,000-character abstract, the median in a real cache, by itself clears a
+    fifth of a 10,000-character entry.
+
+    Split on the first blank line, which is the join that produced it *when
+    there was an abstract to prepend*. ``_apply_full_text_location`` writes bare
+    text when there is not -- a source that returned no abstract, or a record
+    that came straight from PMC -- and the partition then lands on the first
+    paragraph break in the body and drops the opening paragraph instead.
+
+    Neither mistake is symmetric, and neither is serious. Under-subtracting on
+    the *fresh* side leaves it larger and so less likely to report;
+    under-subtracting on the *cached* side raises the bar and makes a report
+    more likely. Both decide a log line, never a refusal.
+    """
+    text = content or ""
+    _, separator, body = text.partition("\n\n")
+    return body if separator else text
+
+
+class _RefreshLoss:
+    """Describe what a refused refresh returned, formatted only if logged.
+
+    ``logger.warning`` decides whether a record is emitted before rendering its
+    arguments, so an f-string built at the call site is computed whichever way
+    that goes. The rest of this module passes lazy ``%s`` arguments; this keeps
+    the branch on ``content_type`` without breaking that.
+    """
+
+    __slots__ = ("_fresh",)
+
+    def __init__(self, fresh: ReferenceContent) -> None:
+        self._fresh = fresh
+
+    def __str__(self) -> str:
+        if self._fresh.content_type in NEEDS_FULL_TEXT_TYPES:
+            return f"no full text ({self._fresh.content_type})"
+        # The extracted text, not the whole record. Both records carry the same
+        # abstract, so including it quotes the cached entry at one size here and
+        # another in the caller's own ``%d``, and shows a pair that can read as
+        # half while the sentence says "much shorter". The subtracted lengths
+        # are the ones every caller decides on.
+        return (
+            f"{len(_text_after_abstract(self._fresh.content))} characters of "
+            f"{self._fresh.content_type}"
+        )
 
 
 @dataclass(frozen=True)
@@ -263,6 +340,12 @@ class ReferenceFetcher:
         if not content:
             return self._stale_fallback(normalized_reference_id, force_refresh)
 
+        preserved = self._preserve_cached_full_text(
+            normalized_reference_id, content, force_refresh
+        )
+        if preserved is not None:
+            return self._remember(normalized_reference_id, preserved)
+
         self._save_by_access(content)
 
         return self._remember(normalized_reference_id, FetchOutcome(content=content))
@@ -311,6 +394,207 @@ class ReferenceFetcher:
             normalized_reference_id, FetchOutcome(content=stale, served_stale=True)
         )
 
+    def _preserve_cached_full_text(
+        self,
+        normalized_reference_id: str,
+        fresh: ReferenceContent,
+        force_refresh: bool,
+    ) -> Optional[FetchOutcome]:
+        """Refuse a refresh that would replace cached full text with none.
+
+        A refresh may improve an entry; it may never demote one. That invariant
+        is about the **public** validation cache, which is the only one
+        :meth:`_load_from_disk` reads; a private research-cache entry has no
+        equivalent protection, and none is attempted here. Full-text
+        retrieval fails transiently and silently -- a rate-limited PMC request
+        answers with a reCAPTCHA interstitial carried on an HTTP 200, so nothing
+        downstream can distinguish it from article text. The bot page is
+        rejected, the abstract fetch succeeds on its own, and the record would
+        be written as ``abstract_only``: indistinguishable from "this article
+        has no full text", and destroying whatever the entry held.
+
+        :meth:`_stale_fallback` does not cover this. It fires only when the
+        source yields *nothing*, and here the abstract is something.
+
+        **Deleting and serving are separate decisions, and this method makes
+        both.** Whether an entry may be *overwritten* is asked with
+        ``allow_stale_html=True``, because a stale ``full_text_html`` entry is
+        still somebody's data and destroying it is not this method's business.
+        Whether its text may be *served as evidence* is asked without that
+        bypass, so :meth:`_load_from_disk`'s refusal of stale HTML -- "it may be
+        a repository landing page" -- still holds. An entry can therefore be
+        kept on disk and withheld from validation at the same time, which is the
+        right answer for a pre-fix entry scraped from a landing page: the
+        curator's file is not deleted, and its suspect text is not quoted back
+        as though it came from the article.
+
+        Narrow on purpose:
+
+        * only a **loss** of full text is refused -- the refresh coming back
+          with none at all (see :meth:`_refresh_loses_full_text`, which is a rule
+          about kind and does not compare sizes) -- so an entry that gains full
+          text, keeps it, or had none to begin with, migrates normally. A
+          refresh that keeps full text but returns far less of it is reported by
+          :meth:`_report_shrinking_refresh` and written;
+        * the preserved entry is **not re-saved**, so it stays stale and the
+          next run that can reach the source still refreshes it -- the same
+          contract :meth:`_stale_fallback` documents;
+        * ``force_refresh`` opts out of the *refusal*, because an explicit
+          refresh that found less is a result the caller asked for -- but not of
+          the notice: :meth:`_warn_forced_discard` still says what it replaced.
+
+        Both outcomes set ``served_stale``. The flag's consumer is ``cache
+        reference``, which reports "the cache still holds no current entry for
+        it", and that is exactly true here in both branches: the write was
+        skipped, so the entry on disk is the out-of-date one either way.
+
+        Returns ``None`` when the refresh may proceed normally.
+        """
+        if force_refresh:
+            self._warn_forced_discard(normalized_reference_id, fresh)
+            return None
+
+        # May it be overwritten? Stale HTML is readable for this question only.
+        cached = self._load_from_disk(
+            normalized_reference_id, allow_stale=True, allow_stale_html=True
+        )
+        if cached is None or self.needs_full_text(cached):
+            return None
+        if not self._refresh_loses_full_text(cached, fresh):
+            # The write proceeds. Say so if it replaced much more than it brought,
+            # which is the only place that report can be true.
+            self._report_shrinking_refresh(normalized_reference_id, cached, fresh)
+            return None
+
+        logger.warning(
+            "Refresh of %s returned %s; keeping the cached %s entry rather than "
+            "overwriting it. It stays stale, so a later run will try again.",
+            normalized_reference_id,
+            _RefreshLoss(fresh),
+            cached.content_type,
+        )
+
+        # May its text be served? Asked without the bypass, so stale HTML is
+        # withheld here exactly as _stale_fallback withholds it, and validation
+        # falls back to the freshly fetched abstract.
+        servable = self._load_from_disk(normalized_reference_id, allow_stale=True)
+        return FetchOutcome(content=servable or fresh, served_stale=True)
+
+    def _report_shrinking_refresh(
+        self,
+        normalized_reference_id: str,
+        cached: ReferenceContent,
+        fresh: ReferenceContent,
+    ) -> None:
+        """Note a refresh that keeps full text but returns far less of it.
+
+        Reported rather than refused. A PDF whose text layer is a publisher
+        cover sheet is still typed ``full_text_pdf``, so the kind rule lets it
+        through and the article body is overwritten -- and until this existed
+        that happened with no output at all, leaving a curator whose quoted
+        evidence stopped verifying with nothing to pull on.
+
+        Refusing it is what this guard used to do, and what cost four rounds of
+        permanently blocked migrations. A warning shares none of that: the write
+        proceeds, the entry is stamped, the migration completes, and a wrong
+        guess costs one log line.
+        """
+        cached_length = len(_text_after_abstract(cached.content))
+        if not cached_length:
+            return
+        if len(_text_after_abstract(fresh.content)) >= cached_length * REPORT_SHRINK_RATIO:
+            return
+        logger.warning(
+            "Refresh of %s replaced the cached %s entry (%d characters of "
+            "article text) with a much shorter one: %s. Written as usual, since "
+            "a shorter extraction is often a cleaner one -- but check it if "
+            "quoted excerpts stop verifying.",
+            normalized_reference_id,
+            cached.content_type,
+            cached_length,
+            _RefreshLoss(fresh),
+        )
+
+    def _warn_forced_discard(
+        self, normalized_reference_id: str, fresh: ReferenceContent
+    ) -> None:
+        """Say what ``force_refresh`` is about to destroy, before it does.
+
+        The opt-out itself is right: an explicit refresh that finds less is a
+        result the caller asked for. Doing it silently is not. ``--force`` is
+        what both the ``cache reference`` failure message and the troubleshooting
+        docs name as the remedy, and a preserved entry fails on every run, so the
+        pressure to reach for it is continuous and it is typically run across a
+        batch rather than one reference at a time. Following that advice should
+        not quietly perform the loss this guard exists to prevent.
+        """
+        cached = self._load_from_disk(
+            normalized_reference_id, allow_stale=True, allow_stale_html=True
+        )
+        if cached is None or self.needs_full_text(cached):
+            return
+        if not self._refresh_loses_full_text(cached, fresh):
+            return
+        logger.warning(
+            "--force is replacing the cached %s entry for %s (%d characters of "
+            "article text) with %s. The cached text is not recoverable from here.",
+            cached.content_type,
+            normalized_reference_id,
+            len(_text_after_abstract(cached.content)),
+            _RefreshLoss(fresh),
+        )
+
+    @staticmethod
+    def _refresh_loses_full_text(
+        cached: ReferenceContent, fresh: ReferenceContent
+    ) -> bool:
+        """Report whether a refresh replaces full text with no full text.
+
+        Deliberately a rule about *kind*, not a comparison of size. An earlier
+        version also refused a refresh whose text was a fraction of the cached
+        length, to catch a cover-page PDF extraction that clears the acceptance
+        floor. That guarded one real case and mis-handled four others -- a page
+        scrape replaced by a clean XML body, by a clean HTML body, a plain-text
+        API body replaced by XML, and any re-extraction that merely trimmed a
+        trailing section -- because a shorter extraction is usually a *better*
+        one, and the shrink cannot tell the two apart.
+
+        Each of those mis-handled cases fails in the worse direction. A refusal
+        is not a one-off: the entry is never written, so it is never stamped, so
+        every later run re-fetches and re-refuses it while ``cache reference``
+        exits 1. A guard meant to protect the cache instead pinned it
+        permanently at its pre-migration content.
+
+        The size question belongs in the acceptance layer, where
+        :func:`linkml_reference_validator.etl.extract.xml.is_stub_notice`
+        already rejects an XML placeholder before it is ever cached, and where a
+        wrong answer costs one skipped fetch rather than a cache that can never
+        migrate. Extending it to PDF text layers -- a cover sheet reads much like
+        the placeholder it already catches -- would close the one case this rule
+        knowingly lets through; ``test_a_cover_page_pdf_is_not_refused_but_is_reported``
+        pins that gap and says to invert it when that lands.
+
+        Examples:
+            >>> from linkml_reference_validator.models import ReferenceContent
+            >>> def ref(content_type):
+            ...     return ReferenceContent(
+            ...         reference_id="PMID:1", content="text", content_type=content_type
+            ...     )
+            >>> ReferenceFetcher._refresh_loses_full_text(
+            ...     ref("full_text_html"), ref("abstract_only"))
+            True
+
+            A shorter or differently-shaped full text is still full text:
+
+            >>> ReferenceFetcher._refresh_loses_full_text(
+            ...     ref("full_text_html"), ref("full_text_xml"))
+            False
+            >>> ReferenceFetcher._refresh_loses_full_text(
+            ...     ref("full_text_xml"), ref("full_text"))
+            False
+        """
+        return fresh.content_type in NEEDS_FULL_TEXT_TYPES
+
     def needs_full_text(self, content: ReferenceContent) -> bool:
         """Return True if the content lacks full text and the chain should run.
 
@@ -340,6 +624,7 @@ class ReferenceFetcher:
         """
         if (
             not self.config.fetch_full_text
+            or content.full_text_declined
             or not self.needs_full_text(content)
             or content.full_text_attempted
         ):
@@ -367,16 +652,20 @@ class ReferenceFetcher:
     def _enrich_with_full_text(self, content: ReferenceContent) -> ReferenceContent:
         """Merge the first usable public full text from the provider chain.
 
-        If no provider yields usable full text but the chain was consulted without a
-        transient error, mark ``full_text_attempted`` so the record is not re-queried
-        on every later run. A provider/download error leaves the flag unset so a
-        subsequent run retries (PR #48 review #1). Locations with an explicit
-        non-open access type are ignored: private-library material is available to
-        the separate cache-enrichment workflow, never to ordinary validation.
+        If no provider yields usable full text but the chain was consulted without
+        a transient error *and without declining anything*, mark
+        ``full_text_attempted`` so the record is not re-queried on every later
+        run. A provider/download error leaves the flag unset so a subsequent run
+        retries (PR #48 review #1), and so does a policy decline -- see the note
+        at the assignment for why those are the same kind of thing. Locations
+        with an explicit non-open access type are ignored: private-library
+        material is available to the separate cache-enrichment workflow, never to
+        ordinary validation.
         """
         ids = build_identifiers(content)
         abstract = content.content
         had_error = False
+        declined_on_policy: Optional[str] = None
 
         for provider_name in self.config.full_text_providers:
             provider = FullTextProviderRegistry.get(provider_name)
@@ -394,12 +683,23 @@ class ReferenceFetcher:
             if location is None:
                 continue
 
+            if location.declined:
+                logger.debug(
+                    "Provider '%s' declined a candidate for %s (%s)",
+                    provider_name,
+                    content.reference_id,
+                    location.declined,
+                )
+                declined_on_policy = location.declined
+                continue
+
             if location.access_type not in (None, "open"):
                 logger.info(
                     "Ignoring non-public full text from provider '%s' for %s",
                     provider_name,
                     content.reference_id,
                 )
+                declined_on_policy = f"access_type:{location.access_type}"
                 continue
 
             applied, error = self._apply_full_text_location(
@@ -410,9 +710,33 @@ class ReferenceFetcher:
             if applied:
                 return content
 
-        # No usable full text: only record a definitive attempt if nothing went wrong,
-        # so a transient failure stays retryable on the next run.
-        if not had_error:
+        # No usable full text. ``full_text_attempted`` means "a clean run
+        # concluded none is available", and ``_maybe_retry_full_text`` never runs
+        # the chain again once it is set, so only a genuine absence may set it.
+        #
+        # Two outcomes are not absences. A transient failure is not one, which
+        # ``had_error`` has always covered. Neither is a location we *found* and
+        # declined -- a bronze PDF refused on licence, or a landing page refused
+        # because fetching it would be scraping. Those are decisions about
+        # material that exists, and recording a decision as a fact about the
+        # article is the defect this whole change is about, one layer up: a
+        # bronze record that later converts to gold, or a page-only DOI that
+        # later gains a repository PDF, would never be looked at again.
+        #
+        # The cost of leaving the flag unset is one chain re-run per process for
+        # those references, which is the trade ``had_error`` already makes.
+        if declined_on_policy:
+            # Remembered, not asserted. Leaving nothing at all would be correct
+            # and ruinous: a decline never clears the way a transient error
+            # does, so every run would re-walk the whole chain for every bronze
+            # or page-only reference -- four providers, each opening with a
+            # rate-limit sleep, against the hosts whose rate limiting produces
+            # the interstitial this guard exists for. On one real corpus that is
+            # 23,465 eligible entries and about thirteen hours of sleep per run.
+            # The entry is re-fetched when the extractor version moves, which is
+            # when a re-walk is actually worth paying for.
+            content.full_text_declined = declined_on_policy
+        elif not had_error:
             content.full_text_attempted = True
         return content
 
@@ -493,10 +817,17 @@ class ReferenceFetcher:
                 content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
             )
         content.full_text_provider = location.provider or provider_name
-        # Non-public endpoints are not durable provenance and may contain
-        # session-specific access information.
+        # A private-library endpoint is not durable provenance and may carry
+        # session-specific access information -- a localhost Zotero attachment
+        # URL means nothing to anyone else and may encode a local token. A
+        # publisher's own link is neither: it is a stable public URL, and the
+        # reason a PUBLISHER_FREE_ACCESS location's *text* stays out of the
+        # public cache is licensing rather than secrecy, so recording where it
+        # came from costs nothing and is worth keeping.
         content.full_text_url = (
-            None if location.access_type not in (None, "open") else location.url
+            location.url
+            if location.access_type in PUBLIC_URL_ACCESS_TYPES
+            else None
         )
         content.oa_status = location.oa_status
         content.license = location.license
@@ -833,6 +1164,11 @@ class ReferenceFetcher:
             )
         if reference.full_text_attempted:
             lines.append("full_text_attempted: true")
+        if reference.full_text_declined:
+            lines.append(
+                f"full_text_declined: "
+                f"{self._quote_yaml_value(reference.full_text_declined)}"
+            )
         if reference.full_text_provider:
             lines.append(f"full_text_provider: {reference.full_text_provider}")
         if reference.full_text_url:
@@ -911,7 +1247,10 @@ class ReferenceFetcher:
         logger.info(f"Cached {reference.reference_id} to {cache_path}")
 
     def _load_from_disk(
-        self, reference_id: str, allow_stale: bool = False
+        self,
+        reference_id: str,
+        allow_stale: bool = False,
+        allow_stale_html: bool = False,
     ) -> Optional[ReferenceContent]:
         """Load reference content from the public validation cache.
 
@@ -922,8 +1261,18 @@ class ReferenceFetcher:
         Args:
             reference_id: Reference identifier
             allow_stale: Return entries written by an older extractor instead of
-                treating them as absent. Used only by :meth:`_stale_fallback`,
-                once a fetch has already failed to produce a replacement.
+                treating them as absent. Used once a fetch has already failed to
+                produce a usable replacement -- by :meth:`_stale_fallback` when
+                the source yielded nothing at all, and by
+                :meth:`_preserve_cached_full_text` and
+                :meth:`_warn_forced_discard` when it yielded no full text.
+            allow_stale_html: Also return a stale ``full_text_html`` entry, which
+                ``allow_stale`` alone withholds because it may be a repository
+                landing page rather than the article. Set this only to decide
+                whether an entry may be *overwritten*; leave it off to decide
+                whether its text may be *served* as evidence. Meaningless
+                without ``allow_stale``, which rejects a stale entry of any type
+                before this is consulted.
 
         Returns:
             ReferenceContent if cached, None otherwise
@@ -960,13 +1309,15 @@ class ReferenceFetcher:
         reference = self._load_markdown_format(content_text, reference_id)
         if (
             allow_stale
+            and not allow_stale_html
             and reference is not None
             and reference.content_type == "full_text_html"
             and self._is_stale_cache_entry(content_text)
         ):
             logger.warning(
                 "Refusing stale HTML full text for %s: it may be a repository "
-                "landing page. Retry when the source is reachable to repair it.",
+                "landing page. Retry when the source serves full text again to "
+                "repair it.",
                 reference_id,
             )
             return None
@@ -1184,6 +1535,7 @@ class ReferenceFetcher:
             is_preprint=frontmatter.get("is_preprint"),
             peer_review_status=frontmatter.get("peer_review_status"),
             full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),
+            full_text_declined=frontmatter.get("full_text_declined"),
         )
 
     def _extract_content_from_markdown(self, body: str) -> str:

@@ -28,6 +28,16 @@ from linkml_reference_validator.etl.extract.xml import XMLExtractor
 logger = logging.getLogger(__name__)
 
 
+class TransientFullTextError(RuntimeError):
+    """A provider failed for a reason that says nothing about the article.
+
+    ``_enrich_with_full_text`` already treats a raised exception as
+    ``had_error``, which keeps the record retryable. Raising this rather than
+    returning ``None`` is how a provider says "ask me again" instead of "there
+    is nothing here".
+    """
+
+
 @FullTextProviderRegistry.register
 class PMCFullTextProvider(FullTextProvider):
     """Provide PMC full text for a reference identified by PMID/PMCID.
@@ -85,7 +95,11 @@ class PMCFullTextProvider(FullTextProvider):
             handle.close()
         except Exception as exc:  # external system boundary
             logger.warning("Failed to link PMID:%s to PMC: %s", pmid, exc)
-            return None
+            # An elink outage is not "this PMID has no PMC copy"; see the note
+            # in _fetch_pmc_html for why that distinction has to survive.
+            raise TransientFullTextError(
+                f"Could not link PMID:{pmid} to PMC: {exc}"
+            ) from exc
 
         if isinstance(result, list) and result and isinstance(result[0], dict):
             link_set_db = result[0].get("LinkSetDb", [])
@@ -114,12 +128,28 @@ class PMCFullTextProvider(FullTextProvider):
         return xml_content
 
     def _fetch_pmc_html(self, pmcid: str, config: ReferenceValidationConfig) -> Optional[str]:
-        """Fetch full text from the PMC HTML page as a fallback."""
+        """Fetch full text from the PMC HTML page as a fallback.
+
+        This is the one page fetch the OA providers' "a landing page is not full
+        text" rule does not cover, and what makes it safe is the requirement
+        below: text is returned only from a ``div.article-body`` or ``div.tsec``.
+        A bot-check interstitial -- which PMC serves on an HTTP 200, so no status
+        check sees it -- carries neither, so this yields ``None`` rather than
+        caching the page. The ``oa_url`` fallback that was removed had no such
+        structural test; it accepted whatever came back.
+        """
         time.sleep(config.rate_limit_delay)
         url = f"https://www.ncbi.nlm.nih.gov/pmc/articles/PMC{pmcid}/"
         response = requests.get(url, timeout=30)
         if response.status_code != 200:
-            return None
+            # Not an absence. PMC answers a rate-limited client with 429, and
+            # returning ``None`` here would let the chain record that this
+            # article has no full text -- the defect this release is about, in
+            # the host whose interstitial is its evidence. Raise so the chain's
+            # existing ``had_error`` path keeps the record retryable.
+            raise TransientFullTextError(
+                f"PMC returned {response.status_code} for PMC{pmcid}"
+            )
 
         soup = BeautifulSoup(response.content, "html.parser")
         article_body = soup.find("div", class_="article-body") or soup.find("div", class_="tsec")

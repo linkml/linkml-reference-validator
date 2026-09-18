@@ -17,6 +17,7 @@ from linkml_reference_validator.models import (
 from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
+    access_type_for_oa_status,
 )
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 @FullTextProviderRegistry.register
 class UnpaywallProvider(FullTextProvider):
-    """Locate an open-access PDF/landing page for a DOI via Unpaywall.
+    """Locate an open-access PDF for a DOI via Unpaywall.
+
+    Returns a location only for a ``url_for_pdf``; a landing ``url`` is a page,
+    not a file, and downloading one is scraping.
 
     Examples:
         >>> UnpaywallProvider.name()
@@ -54,16 +58,28 @@ class UnpaywallProvider(FullTextProvider):
             return None
 
         pdf_url = best.get("url_for_pdf")
-        landing = best.get("url")
-        target = pdf_url or landing
-        if not target:
-            return None
+        if not pdf_url:
+            # See OpenAlexProvider: a landing URL is a page, not a file, and
+            # fetching it is scraping.
+            logger.debug(
+                "Unpaywall has only a landing page for DOI:%s; not scraping it",
+                ids.doi,
+            )
+            # See OpenAlexProvider: declined, not absent.
+            return FullTextLocation(
+                declined="landing_page_only",
+                oa_status=data.get("oa_status"),
+                provider="unpaywall",
+            )
 
+        oa_status = data.get("oa_status")
+        licence = best.get("license")
         return FullTextLocation(
-            url=target,
-            format_hint="pdf" if pdf_url else "html",
-            oa_status=data.get("oa_status"),
-            license=best.get("license"),
+            url=pdf_url,
+            format_hint="pdf",
+            oa_status=oa_status,
+            access_type=access_type_for_oa_status(oa_status, licence),
+            license=licence,
             version=best.get("version"),
             provider="unpaywall",
         )

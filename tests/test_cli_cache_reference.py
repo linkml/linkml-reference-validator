@@ -112,7 +112,11 @@ def test_unreachable_source_with_a_stale_entry_reports_failure(cache_dir, mocker
     assert result.exit_code == 1
     assert "Successfully cached" not in result.output
     assert "Failed to cache PMID:1" in result.output
-    assert "out-of-date" in result.output
+    # Asserted on the invariant both failure paths share -- no entry was
+    # written -- rather than on which path ran. The message covers the refused
+    # refresh as well as the unreachable source, and phrasing that names only
+    # one of them was what made this assertion wrong when the second arrived.
+    assert "no current entry" in result.output
 
 
 def test_unreachable_source_with_a_stale_entry_writes_nothing(cache_dir, mocker):
@@ -199,3 +203,69 @@ def test_a_current_entry_is_reported_as_cached(cache_dir, mocker):
 
     assert result.exit_code == 0
     assert "Successfully cached PMID:1" in result.output
+
+
+# --------------------------------------------------------------------------
+# A preserved entry is not a served entry
+# --------------------------------------------------------------------------
+
+
+def test_a_preserved_entry_is_reported_without_claiming_it_was_served(
+    cache_dir, mocker
+):
+    """The exit code was right; the sentence was not.
+
+    When ``_preserve_cached_full_text`` withholds a stale ``full_text_html``
+    entry, the cached text is deliberately *not* served -- the freshly fetched
+    abstract is. Saying "an out-of-date cache entry was served" describes the
+    other branch. What is true of both is that the write was skipped, so the
+    cache still holds no current entry.
+    """
+    _write_stale_entry(
+        cache_dir,
+        content="Scraped page text. " * 200,
+        content_type="full_text_html",
+    )
+    _source_returning(
+        mocker,
+        ReferenceContent(
+            reference_id="PMID:1", content="An abstract.", content_type="abstract_only"
+        ),
+    )
+
+    result = _run(cache_dir, "PMID:1")
+
+    assert result.exit_code == 1
+    assert "out-of-date cache entry was served" not in result.output
+    assert "no current entry" in result.output
+
+
+def test_a_preserved_entry_keeps_failing_until_forced(cache_dir, mocker):
+    """Worth pinning, because it is the surprising consequence of the guard.
+
+    A script that caches a list of references and gates on the exit status will
+    fail on a preserved entry every run, not once: the entry is never written,
+    so it is never stamped, so the next run reaches the same decision.
+    """
+    _write_stale_entry(
+        cache_dir,
+        content="Scraped page text. " * 200,
+        content_type="full_text_html",
+    )
+    _source_returning(
+        mocker,
+        ReferenceContent(
+            reference_id="PMID:1", content="An abstract.", content_type="abstract_only"
+        ),
+    )
+
+    path = _fetcher(cache_dir).get_cache_path("PMID:1")
+
+    assert _run(cache_dir, "PMID:1").exit_code == 1
+    assert _run(cache_dir, "PMID:1").exit_code == 1, "still failing on a later run"
+    assert "Scraped page text" in path.read_text(encoding="utf-8")
+
+    assert _run(cache_dir, "PMID:1", "--force").exit_code == 0, "--force is the exit"
+    # What --force costs, asserted rather than left to the reader. It is the
+    # remedy the failure message names, so the cost belongs in the contract.
+    assert "Scraped page text" not in path.read_text(encoding="utf-8")

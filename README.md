@@ -37,6 +37,26 @@ linkml-validate -s schema.yaml data.yaml \
 
 ---
 
+## Agent skill
+
+Install the [linkml-reference-validator workflow skill](skills/linkml-reference-validator/SKILL.md) with the
+[skills CLI](https://skills.sh/) (requires Node.js). Preview available skills first:
+
+```bash
+npx skills add linkml/linkml-reference-validator --list
+npx skills add linkml/linkml-reference-validator --skill linkml-reference-validator
+```
+
+Installation defaults to the current project. Use `-a codex` or
+`-a claude-code` to select an agent; add `-g` for your user-wide skills directory:
+
+```bash
+npx skills add linkml/linkml-reference-validator --skill linkml-reference-validator -a codex -g
+```
+
+The skill provides agent instructions. Install the runtime separately as described
+above; it does not configure credentials, backend services, or data sources.
+
 ## Why Use This Tool?
 
 Scientific data often includes claims supported by quotes from publications. But how do you know the quotes are accurate?

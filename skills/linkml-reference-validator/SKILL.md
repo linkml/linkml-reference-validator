@@ -1,96 +1,67 @@
 ---
 name: linkml-reference-validator
-description: Validate cited quotations and reference titles with LinkML Reference Validator (LRV). Use for checking supporting_text against publications or local sources, validating evidence in LinkML YAML/JSON, investigating mismatched quotes, or previewing quote repairs.
+description: Set up, configure, and troubleshoot LinkML Reference Validator (LRV) as deterministic reference QC in repository hooks and CI. Use when interpreting quote or title failures, diagnosing unchecked evidence and cache coverage, or configuring schema extraction, sources, and matching policy.
 ---
 
-# Validate reference evidence
+# Work with reference QC
 
-LRV checks whether quoted text occurs in a cited source after supported
-normalization. It does not decide whether a scientific claim follows from that
-quote. Use separate reasoning for relevance, interpretation, and contradictions.
+LRV performs deterministic quote and title checks against retrieved source
+content. Run those checks through repository automation. The agent's role is to
+integrate the checker, explain findings, and make evidence-based corrections.
+Maintainers define required coverage and exception policy; curators decide
+whether the evidence supports the scientific claim. A matching quote settles
+neither its relevance nor the truth of the claim.
 
-## Set up and choose the check
+A passing automated check needs no agent reenactment. Apply scientific review
+when curating or reviewing evidence, rather than rereading every source on each
+QC run.
 
-Examples use `uvx linkml-reference-validator`; in a repository checkout use
-`uv run linkml-reference-validator`. Installing this skill does not install the
-Python package. Inspect `--help` if the installed release has different options.
-Prefer the nested CLI commands below over deprecated hyphenated aliases.
+## Establish the validation context
 
-Use the supplied reference identifier, never an invented PMID or DOI. Check its
-metadata and available content first:
+Read the project's guidance, validation recipe or wrapper, schema, explicit
+config, dependency lock, and existing hook/CI output. Identify the affected
+files, target class, source cache, and whether this check is blocking or
+advisory. Use the existing project command: a wrapper may encode policy absent
+from a bare CLI invocation. Reproduce a finding on the affected file with the
+same inputs before changing data; avoid repeated whole-corpus retrieval.
 
-```bash
-uvx linkml-reference-validator lookup PMID:16888623 \
-  --format json --cache-dir references_cache
-```
+- For a new gate or hook/CI changes, read [Guardrail setup](references/guardrails.md).
+- For extraction, retrieval, cache, or matching changes, read
+  [Configuration and targeted diagnosis](references/configuration.md).
 
-Lookup supports multiple identifiers. Its success exit code means at least one
-lookup succeeded; inspect each result. Check `content_type`: an abstract-only
-cache cannot establish absence of a quote from the full paper. Supported sources
-include PubMed/PMC, DOI, `file:/absolute/path/to/source.txt`, and
-`url:https://example.org/source`; consult the docs for other source types.
+Installing this skill supplies instructions; it does not activate a hook,
+install LRV, or establish a required CI check.
 
-For a single quote, the positional arguments are **text first, reference second**:
+## Interpret the result before repairing it
 
-```bash
-uvx linkml-reference-validator validate text \
-  "MUC1 oncoprotein blocks nuclear targeting" PMID:16888623 \
-  --cache-dir references_cache
-```
+| Finding | Agent's next step |
+| --- | --- |
+| Quote matched | Report source matching as passed. During evidence review, assess the attached claim, population, and direction of effect separately. |
+| Quote did not match | Compare the exact input with the retrieved content. Distinguish paraphrase, wrong citation, normalization, and missing full text. |
+| Title mismatch | Check identifier and source metadata together; changing the title to fit the wrong paper hides the real error. |
+| Source unavailable or prefix skipped | Report evidence as unchecked. Diagnose retrieval or source configuration; do not label the quote fabricated. |
+| Zero comparisons or unexpectedly low coverage | Inspect schema annotations, target class, missing evidence, file selection, and skip policy. Exit 0 does not establish coverage. |
+| Crash or invocation error | Repair the execution/configuration problem before drawing conclusions about the evidence. |
 
-Add `--title "Expected title"` when also checking the supplied title. Ellipses can
-separate quote fragments and bracketed editorial notes are ignored by matching;
-neither is permission to rewrite a source's meaning.
+An abstract-only record cannot establish that a quotation is absent from the
+full paper. Keep matched, failed, skipped, and unavailable evidence distinct;
+read coverage diagnostics alongside the exit status. Advisory output from a
+hook is not completion of the repository's required checks.
 
-## Validate structured evidence
+## Correct the cause and close the loop
 
-```bash
-uvx linkml-reference-validator validate data data.yaml \
-  --schema schema.yaml --target-class Statement --cache-dir references_cache
-```
+When fixing evidence, inspect the source and the intended claim together.
+Transcribe a supported quote accurately; never invent wording or swap citations
+solely to obtain a pass. Preserve the source cache as evidence rather than
+editing it to match the submitted quote. Review any automated repair suggestion
+against the paper and schema before applying it.
 
-Use the actual target class from the schema. The schema must identify excerpts
-and references through `implements` or `slot_uri`, not just plausible field names.
-Canonical interfaces are `oa:exact` for excerpts and `dcterms:references` for
-references; legacy `linkml:excerpt` and `linkml:authoritative_reference` are also
-supported. Inspect the schema before changing it. For plain text or OBO files,
-use `validate text-file --help` to supply a regex and the correct capture groups.
+For configuration work, explain which records become checked or unchecked and
+demonstrate the intended behavior with representative passing and failing
+examples. Preserve established policy during routine repairs: adding a skipped
+prefix or lowering retrieval severity changes the QC contract.
 
-Read the summary as well as the exit code. Exit 0 can mean **zero comparisons**.
-Report files and snippets checked, skipped, unavailable, and failed separately;
-do not count skipped prefixes, missing excerpts, or unavailable sources as
-validated evidence. Preserve reference cache contents for reproducibility.
-Retrieval failures, access restrictions, and a quote absent from the retrieved
-content are different findings.
-
-## Investigate or repair failures
-
-Inspect the retrieved source and exact input before suggesting a correction.
-Never fabricate a replacement quotation, substitute a different citation just
-to make validation pass, or lower matching criteria to hide a mismatch.
-
-When repair is requested, preview changes first. `repair data` uses a simpler
-extractor than schema-aware validation: it expects scalar reference IDs in
-common evidence fields and does not support every schema layout:
-
-```bash
-uvx linkml-reference-validator repair data data.yaml \
-  --schema schema.yaml --target-class Statement \
-  --cache-dir references_cache --dry-run
-```
-
-Review suggested edits against the source and intended claim. When applying an
-authorized repair, use `--no-dry-run --output repaired.yaml` to preserve the input,
-then revalidate the result. The CLI otherwise overwrites input with a backup.
-
-For nested reference objects such as `reference: {id: PMID:...}`, extract the
-identifier and preview one quote with `repair text "QUOTE" REFERENCE_ID` instead;
-current `repair data` can fail on that layout. Do not flatten or rewrite the
-dataset merely to make the repair command run.
-
-Deliver the failing file/field, reference identifier, failure category, source
-coverage (abstract or full text), and supported correction if one exists.
-Include remaining unchecked evidence, even if the command succeeded.
-
-See the [CLI reference](https://linkml.io/linkml-reference-validator/reference/cli/)
-for cache configuration, source-specific retrieval, and extraction options.
+Rerun the affected check after corrections and the required repository checks
+before delivery. Report the file/field, reference ID, diagnosis, correction,
+command and outcome, source coverage, and any evidence still unchecked. Surface
+unresolved scientific interpretation or policy choices to the human curator.

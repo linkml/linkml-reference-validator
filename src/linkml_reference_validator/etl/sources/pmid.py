@@ -288,12 +288,17 @@ class PMIDSource(ReferenceSource):
 
         # Prefer English; OtherAbstract is also where translations live, and a
         # French rendering would stop an English snippet matching its source.
-        english = [
-            node
-            for node in others
-            if (node.get("Language") or "eng").strip().lower() in ("eng", "en")
-        ]
-        for node in english + others:
+        # `Language` is #IMPLIED with an `eng` default in the PubMed DTD, so an
+        # attribute-less node is English rather than an unknown translation.
+        def _is_english(node: Any) -> bool:
+            language = node.get("Language")
+            if isinstance(language, list):  # bs4 may split a multi-valued attr
+                language = language[0] if language else None
+            return str(language or "eng").strip().lower() in ("eng", "en")
+
+        english = [node for node in others if _is_english(node)]
+        rest = [node for node in others if not _is_english(node)]
+        for node in english + rest:
             rendered = self._render_abstract_sections(node)
             if rendered:
                 return rendered

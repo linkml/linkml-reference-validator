@@ -100,9 +100,17 @@ XML_EXTRACTION_CACHE_VERSION = 1
 #: and the text would stay lost. Version 1: reading ``OtherAbstract``, where
 #: PubMed keeps PIP/KIE/NASA/AIDS abstracts; before it, such a record was stored
 #: as having no content and a refresh deleted the abstract already cached for it
-#: (issue #88). Scoped rather than bumping EXTRACTOR_CACHE_VERSION because only
-#: entries claiming no content can be wrong in this way, and a blanket bump
-#: would re-fetch every cached reference to find them.
+#: (issue #88). Scoped rather than bumping EXTRACTOR_CACHE_VERSION because an
+#: entry that records content cannot be wrong in this way, and a blanket bump
+#: would re-fetch every cached reference to find the ones that can be.
+#:
+#: The converse does not hold, and the stamp is deliberately general rather than
+#: targeted: `unavailable` is emitted by doi, url, clinicaltrials, json_api,
+#: entrez and ppr as well as pmid, and the OtherAbstract fix cannot help any of
+#: those. In the dismech cache 1,499 of the 1,735 such entries are DOI, so most
+#: of this refresh is cost rather than repair. That is accepted -- the stamp
+#: means "this no-content claim was made by extractor version N", which a later
+#: fix to any source will want, and it is still a 3% refresh against 100%.
 ABSENT_CONTENT_CACHE_VERSION = 1
 
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
@@ -1319,6 +1327,16 @@ class ReferenceFetcher:
         xml_version = (reference.metadata or {}).get("xml_extraction_version")
         if reference.content_type == "full_text_xml" and type(xml_version) is int:
             lines.append(f"xml_extraction_version: {xml_version}")
+        # Written from the constant, unlike the HTML and XML stamps, which come
+        # from `reference.metadata` so a metadata-only rewrite preserves the
+        # original. That is safe here only because every path that saves an
+        # `unavailable` entry has just produced it with this extractor:
+        # `apply_full_text_location` saves only when it applied something, which
+        # moves content_type away from `unavailable`, and `_maybe_retry_full_text`
+        # runs on the fetch path where staleness already forced a re-fetch. An
+        # enrichment path that re-saved an untouched `unavailable` entry would
+        # certify it as re-tested when it was not -- recreating #88 one version
+        # up. Move this to metadata if such a path is ever added.
         if reference.content_type == "unavailable":
             lines.append(f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}")
         if reference.title:
@@ -1653,6 +1671,14 @@ class ReferenceFetcher:
             if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
                 return True
 
+        # Scoped to `unavailable`, which leaves one gap: with
+        # `source_extra_fields["PMID"]` configured, a record with no abstract is
+        # stored as `summary` carrying the extra-fields blob, so an
+        # OtherAbstract-only record damaged by #88 lands outside this rule and is
+        # never re-tested. Widening to `summary` is not worth it -- most summary
+        # entries have nothing to do with a missing abstract, so it would cost a
+        # re-fetch of all of them. A deployment using that setting should clear
+        # its affected entries by hand.
         if isinstance(metadata, dict) and metadata.get("content_type") == "unavailable":
             absent_version = metadata.get("absent_content_version")
             if (

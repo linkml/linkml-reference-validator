@@ -511,6 +511,52 @@ class TestPMIDSource:
             "METHODS: We ran a trial.\n\nRESULTS: It worked."
         )
 
+    def test_parse_abstract_falls_through_an_empty_abstract_element(self, source):
+        """A present-but-empty ``Abstract`` must not short-circuit the fallback.
+
+        This is a distinct branch from "no ``Abstract`` at all", and the one that
+        regresses if the guard is ever rewritten back to ``if not abstract:``
+        returning early on element presence alone.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            "<Abstract><AbstractText></AbstractText></Abstract>"
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText>The only real text here.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "The only real text here."
+
+    def test_parse_abstract_treats_a_language_less_other_abstract_as_english(
+        self, source
+    ):
+        """``Language`` is ``#IMPLIED`` with an ``eng`` default in the PubMed DTD.
+
+        Real PIP records often omit it, so the ``or "eng"`` default is
+        load-bearing: without it an attribute-less node would be treated as an
+        unknown translation and deprioritised.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            '<OtherAbstract Type="PIP">'
+            "<AbstractText>No language attribute at all.</AbstractText>"
+            "</OtherAbstract>"
+            '<OtherAbstract Type="PIP" Language="fre">'
+            "<AbstractText>Un resume en francais.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "No language attribute at all."
+
     def test_parse_abstract_skips_empty_other_abstract(self, source):
         """An empty ``OtherAbstract`` yields None rather than an empty string."""
         from bs4 import BeautifulSoup

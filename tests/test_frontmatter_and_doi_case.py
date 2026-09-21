@@ -51,6 +51,13 @@ def fetcher(tmp_path):
         "Paragraph separator\u2029here",
         "Vertical tab\x0bhere",
         "Form feed\x0chere",
+        # ruamel's reader rejects DEL and the C1 block as non-printable, and
+        # json.dumps leaves them literal since it only escapes below 0x20. The
+        # realistic source is mojibake: Windows-1252 read as Latin-1 turns smart
+        # quotes and en-dashes into \x91-\x97, a common shape for metadata.
+        "Smart quote\x92s",
+        "Delete\x7fcharacter",
+        "C1 block\x80here",
     ],
 )
 def test_a_title_containing_a_line_break_round_trips(fetcher, title):
@@ -246,8 +253,82 @@ def test_a_file_written_by_another_process_is_found_after_a_reset(fetcher, tmp_p
     outsider = tmp_path / "DOI_10.1016_S0002-9440(10)63332-9.md"
     outsider.write_text("---\nreference_id: x\n---\n\n## Content\n\nB.\n")
 
-    assert fetcher.get_cache_path(LOWER).name != outsider.name, "stale, as documented"
-
+    # The index is stale here by design (per-process); not asserted, so that a
+    # future self-invalidating index is an improvement rather than a failure.
     fetcher.forget_cache_listing()
 
     assert fetcher.get_cache_path(LOWER).name == outsider.name
+
+
+def test_two_fetchers_on_one_directory_share_the_index(tmp_path):
+    """``Repairer`` holds two fetchers over one cache directory.
+
+    ``SupportingTextValidator`` builds its own ``ReferenceFetcher`` and
+    ``Repairer`` builds another, and a repair run interleaves both across many
+    references. With a per-instance index, every file one writes is invisible
+    to the other, so a DOI arriving uppercase through one and lowercase through
+    the other misses and writes the second file -- the defect this change
+    removes, surviving in the code path most likely to hit it.
+    """
+    config = ReferenceValidationConfig(cache_dir=tmp_path)
+    first, second = ReferenceFetcher(config), ReferenceFetcher(config)
+
+    second.get_cache_path(LOWER)  # indexes the directory while it is empty
+    first._save_to_disk(
+        ReferenceContent(
+            reference_id=UPPER, title="A paper", content="Body.",
+            content_type="abstract_only",
+        )
+    )
+    second._save_to_disk(
+        ReferenceContent(
+            reference_id=LOWER, title="A paper", content="Body.",
+            content_type="abstract_only",
+        )
+    )
+
+    assert len(list(tmp_path.glob("*.md"))) == 1, "one reference, one file"
+
+
+def test_an_undecodable_entry_can_still_be_overwritten(fetcher, tmp_path):
+    """The file that most needs rewriting must not be the one that cannot be.
+
+    Before this change a mangled entry was simply overwritten and repaired.
+    Reading the stored ``reference_id`` must not turn that into a failed save.
+    """
+    path = tmp_path / "DOI_10.1_x.md"
+    path.write_bytes(b"---\nreference_id: DOI:10.1/x\ntitle: \xff\xfe bad\n---\n")
+
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="DOI:10.1/x", title="Repaired", content="B.",
+            content_type="abstract_only",
+        )
+    )
+
+    assert "title: Repaired" in path.read_text(encoding="utf-8")
+
+
+def test_stored_reference_id_is_preserved_for_doi_only(fetcher, tmp_path):
+    """The justification is DOI case-insensitivity, so the behaviour is too.
+
+    Sanitization collapses ``:`` ``/`` ``?`` ``=`` to ``_``, so two distinct
+    ``url:`` references can share a filename. That collision predates this
+    change; cementing the first writer's id on every later write would change
+    how it is handled, for an identifier type the argument does not cover.
+    """
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="url:https://ex.com/a?b", title="First", content="B.",
+            content_type="abstract_only",
+        )
+    )
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="url:https://ex.com/a/b", title="Second", content="B.",
+            content_type="abstract_only",
+        )
+    )
+
+    stored = fetcher.get_cache_path("url:https://ex.com/a/b").read_text(encoding="utf-8")
+    assert "reference_id: url:https://ex.com/a/b" in stored, "not cemented for url:"

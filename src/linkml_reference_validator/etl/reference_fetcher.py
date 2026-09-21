@@ -1139,6 +1139,15 @@ class ReferenceFetcher:
         the directory per resolution is quadratic over a cache: measured at
         6.7 ms a call against a 6,721-entry directory, or 45 seconds of pure
         path resolution for a run that touches every reference.
+
+        The index is per-instance and per-process. Files this fetcher writes are
+        added as they are written, but one written by anything else -- another
+        process, or a subprocess this one shelled out to -- is not seen until
+        :meth:`forget_cache_listing`. A downstream backfill script met exactly
+        that: it shells out to fetch a missing reference, and a later lookup of
+        the same DOI in another capitalization did not find the new file.
+        Re-scanning on every miss would close the window and undo the
+        memoization, so the remedy is explicit.
         """
         cached = self._case_indexes.get(cache_dir)
         if cached is not None:
@@ -1149,6 +1158,16 @@ class ReferenceFetcher:
                 index.setdefault(entry.name.casefold(), set()).add(entry.name)
         self._case_indexes[cache_dir] = index
         return index
+
+    def forget_cache_listing(self) -> None:
+        """Drop the cached directory listings used to resolve DOI capitalization.
+
+        Call this after something outside this fetcher has written to a cache
+        directory -- a subprocess, or a concurrent run -- so the next DOI lookup
+        sees the new files. Cheap: the listing is rebuilt on the next resolution
+        that needs it.
+        """
+        self._case_indexes.clear()
 
     def _remember_cache_file(self, path: Path) -> None:
         """Record a newly written file so a later lookup in another case finds it."""

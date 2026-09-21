@@ -229,3 +229,25 @@ def test_resolution_does_not_scan_the_directory_per_call(fetcher, tmp_path):
             fetcher.get_cache_path(f"DOI:10.1000/paper{i}")
 
     assert scans <= 1, f"expected at most one directory scan, got {scans}"
+
+
+def test_a_file_written_by_another_process_is_found_after_a_reset(fetcher, tmp_path):
+    """The index is per-process, so an outside writer leaves it stale.
+
+    A downstream backfill script hit exactly this: it shells out to fetch a
+    missing reference, the subprocess writes the file into a directory the
+    parent has already indexed, and a later lookup of the same DOI in another
+    capitalization does not see it. The window is real but narrow, so the
+    remedy is an explicit reset rather than re-scanning on every miss, which
+    would undo the memoization.
+    """
+    fetcher.get_cache_path(UPPER)  # builds the index while the file is absent
+
+    outsider = tmp_path / "DOI_10.1016_S0002-9440(10)63332-9.md"
+    outsider.write_text("---\nreference_id: x\n---\n\n## Content\n\nB.\n")
+
+    assert fetcher.get_cache_path(LOWER).name != outsider.name, "stale, as documented"
+
+    fetcher.forget_cache_listing()
+
+    assert fetcher.get_cache_path(LOWER).name == outsider.name

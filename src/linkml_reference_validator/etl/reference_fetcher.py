@@ -93,6 +93,18 @@ HTML_FULL_TEXT_CACHE_VERSION = 1
 #: XML table extraction changes only XML caches, independent of HTML acceptance.
 XML_EXTRACTION_CACHE_VERSION = 1
 
+#: Version the claim "this reference has no content at all", scoped to
+#: ``content_type: unavailable``. Such an entry records what an extractor could
+#: not find, so an extractor fix can make it wrong -- and because the entry
+#: carries a current ``extractor_version`` it would otherwise never be re-tested
+#: and the text would stay lost. Version 1: reading ``OtherAbstract``, where
+#: PubMed keeps PIP/KIE/NASA/AIDS abstracts; before it, such a record was stored
+#: as having no content and a refresh deleted the abstract already cached for it
+#: (issue #88). Scoped rather than bumping EXTRACTOR_CACHE_VERSION because only
+#: entries claiming no content can be wrong in this way, and a blanket bump
+#: would re-fetch every cached reference to find them.
+ABSENT_CONTENT_CACHE_VERSION = 1
+
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
 #: URL reference_id, a title - truncate the block, which loses every field after
@@ -1307,6 +1319,8 @@ class ReferenceFetcher:
         xml_version = (reference.metadata or {}).get("xml_extraction_version")
         if reference.content_type == "full_text_xml" and type(xml_version) is int:
             lines.append(f"xml_extraction_version: {xml_version}")
+        if reference.content_type == "unavailable":
+            lines.append(f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -1637,6 +1651,14 @@ class ReferenceFetcher:
         if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_xml":
             xml_version = metadata.get("xml_extraction_version")
             if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
+                return True
+
+        if isinstance(metadata, dict) and metadata.get("content_type") == "unavailable":
+            absent_version = metadata.get("absent_content_version")
+            if (
+                type(absent_version) is not int
+                or absent_version < ABSENT_CONTENT_CACHE_VERSION
+            ):
                 return True
 
         # A newer stamp is not stale: an older tool reading a cache written by a

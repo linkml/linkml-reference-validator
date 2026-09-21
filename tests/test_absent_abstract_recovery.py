@@ -109,3 +109,32 @@ def test_a_freshly_written_absent_entry_is_not_immediately_stale(tmp_path):
     written = next(tmp_path.glob("*.md")).read_text()
     assert f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}" in written
     assert not ReferenceFetcher._is_stale_cache_entry(written)
+
+
+def test_an_entry_with_content_is_not_stamped(tmp_path):
+    """The emitter's scoping needs its own test; the staleness rule's is separate.
+
+    ``test_entries_that_do_have_content_are_untouched`` exercises
+    ``_is_stale_cache_entry``, so deleting the ``content_type == "unavailable"``
+    guard in ``_save_to_disk`` leaves the whole suite green. What escapes is not
+    a wrong answer but cache-wide churn: an unconditional stamp adds a line to
+    every entry on refresh, the same diff-on-every-file problem
+    ``troubleshooting.md`` already calls out for ``full_text_access_type``.
+    """
+    from linkml_reference_validator.models import (
+        ReferenceContent,
+        ReferenceValidationConfig,
+    )
+
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:38463381",
+            content_type="abstract_only",
+            title="A record that does have an abstract",
+            content="Real abstract text.",
+        )
+    )
+
+    written = next(tmp_path.glob("*.md")).read_text()
+    assert "absent_content_version" not in written

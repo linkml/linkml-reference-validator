@@ -1329,14 +1329,21 @@ class ReferenceFetcher:
             lines.append(f"xml_extraction_version: {xml_version}")
         # Written from the constant, unlike the HTML and XML stamps, which come
         # from `reference.metadata` so a metadata-only rewrite preserves the
-        # original. That is safe here only because every path that saves an
-        # `unavailable` entry has just produced it with this extractor:
-        # `apply_full_text_location` saves only when it applied something, which
-        # moves content_type away from `unavailable`, and `_maybe_retry_full_text`
-        # runs on the fetch path where staleness already forced a re-fetch. An
-        # enrichment path that re-saved an untouched `unavailable` entry would
-        # certify it as re-tested when it was not -- recreating #88 one version
-        # up. Move this to metadata if such a path is ever added.
+        # original. The invariant that makes that safe: nothing reaches a save
+        # path holding an `unavailable` entry it did not just produce.
+        #
+        # `_load_from_disk` filters stale entries out, so an `unavailable` entry
+        # that survives a cache hit already carries the current stamp and
+        # re-writing it is a no-op -- and at version 2 a stamp-1 entry is stale,
+        # so the cache-hit branch is never taken for it at all.
+        #
+        # The two paths that *do* hold an untouched cached entry are
+        # `_stale_fallback` and `_preserve_cached_full_text`, and both are safe
+        # only because they document that the entry is deliberately not
+        # re-saved. Those are the contracts a future change would have to
+        # violate: re-saving an untouched `unavailable` entry would certify it as
+        # re-tested when it was not, recreating #88 one version up. Move this to
+        # metadata if such a path is ever added.
         if reference.content_type == "unavailable":
             lines.append(f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}")
         if reference.title:

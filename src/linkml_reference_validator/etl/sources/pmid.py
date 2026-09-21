@@ -296,8 +296,11 @@ class PMIDSource(ReferenceSource):
                 language = language[0] if language else None
             return str(language or "eng").strip().lower() in ("eng", "en")
 
-        english = [node for node in others if _is_english(node)]
-        rest = [node for node in others if not _is_english(node)]
+        english: list[Any] = []
+        rest: list[Any] = []
+        for node in others:
+            (english if _is_english(node) else rest).append(node)
+
         for node in english + rest:
             rendered = self._render_abstract_sections(node)
             if rendered:

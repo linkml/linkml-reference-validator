@@ -4,6 +4,7 @@ This module provides the main ReferenceFetcher class that coordinates
 fetching from various sources (PMID, DOI, file, URL) using a plugin architecture.
 """
 
+import json
 import logging
 import re
 from collections.abc import Iterator
@@ -131,6 +132,28 @@ def _text_after_abstract(content: Optional[str]) -> str:
     text = content or ""
     _, separator, body = text.partition("\n\n")
     return body if separator else text
+
+
+#: Casefolded cache filename -> real names, per directory. Module-level on
+#: purpose: see ``ReferenceFetcher._case_index`` for why per-instance state
+#: leaves two fetchers on one directory blind to each other's writes.
+_CASE_INDEXES: dict[Path, dict[str, set[str]]] = {}
+
+#: Characters ``json.dumps(ensure_ascii=False)`` leaves literal that the YAML
+#: reader nonetheless rejects or the scanner treats as a line break: DEL, the
+#: C1 block, and the Unicode line and paragraph separators. JSON escapes only
+#: below 0x20, so these reach the file raw -- and a raw C1 byte makes the
+#: reader refuse the whole entry, while a raw separator inside a quoted scalar
+#: folds to a space on reload. The realistic source is mojibake: Windows-1252
+#: read as Latin-1 turns smart quotes and en-dashes into ``\x91``-``\x97``, a
+#: common shape for bibliographic metadata.
+_YAML_UNSAFE = re.compile("[\x7f-\x9f\u2028\u2029]")
+
+
+def _json_scalar(value: str) -> str:
+    """Render ``value`` as a JSON string that survives a YAML round trip."""
+    rendered = json.dumps(value, ensure_ascii=False)
+    return _YAML_UNSAFE.sub(lambda m: f"\\u{ord(m.group(0)):04x}", rendered)
 
 
 class _RefreshLoss:
@@ -1057,7 +1080,129 @@ class ReferenceFetcher:
             .replace("?", "_")
             .replace("=", "_")
         )
-        return cache_dir / f"{safe_id}.md"
+        path = cache_dir / f"{safe_id}.md"
+        if prefix.upper() == "DOI":
+            return self._existing_case_variant(path)
+        return path
+
+    @staticmethod
+    def _stored_reference_id(cache_path: Path, reference: ReferenceContent) -> str:
+        """The id already recorded in ``cache_path``, else the reference's own.
+
+        Applied to DOI references only, since that is what the argument covers:
+        a DOI in two capitalizations is one reference, so the spelling first
+        written should stand. Sanitization also collapses ``:`` ``/`` ``?`` and
+        ``=`` to ``_``, so two *distinct* ``url:`` references can share a
+        filename; that collision predates this change and cementing the first
+        writer's id there would change how it is handled, for an identifier
+        type the argument does not cover.
+
+        Read with ``errors="replace"``: an entry too mangled to decode is the one
+        that most needs overwriting, and a ``UnicodeDecodeError`` here would be
+        the one thing that stops it. Only the ``reference_id:`` line is read, so
+        replacement characters elsewhere cost nothing.
+        """
+        if not reference.reference_id.upper().startswith("DOI:"):
+            return reference.reference_id
+        try:
+            with cache_path.open(encoding="utf-8", errors="replace") as handle:
+                for position, line in enumerate(handle):
+                    if line.startswith("reference_id:"):
+                        stored = line.split(":", 1)[1].strip()
+                        return stored or reference.reference_id
+                    # The opening delimiter is the first line; the closing one
+                    # ends the frontmatter and with it anywhere the id can be.
+                    if position and line.strip() == "---":
+                        break
+        except OSError:  # no existing entry, or unreadable
+            pass
+        return reference.reference_id
+
+    def _existing_case_variant(self, path: Path) -> Path:
+        """Return an already-cached file differing from ``path`` only in case.
+
+        DOI names are case-insensitive by specification, so
+        ``10.1016/S0002-9440(10)63332-9`` and its lowercase spelling are one
+        reference. The prefix is normalized but the suffix is not, so without
+        this each spelling gets its own file: a duplicate download, and two
+        committed entries for one paper in a project that versions its cache.
+
+        Resolution looks for what is already on disk rather than imposing a
+        canonical spelling, so an existing cache is not renamed underneath
+        anyone -- a project holding thousands of DOI entries sees no diff, and
+        whichever spelling was written first keeps winning.
+
+        Scoped to DOI on purpose. A PMID or an NCT id is not case-insensitive,
+        and folding those would merge genuinely distinct references.
+
+        The index is built from real directory entries and ``exists()`` is never
+        consulted. On a case-insensitive filesystem -- macOS by default --
+        ``exists()`` is true for a spelling that is *not* the one on disk, so
+        trusting it would return the caller's spelling and write a second entry
+        that silently collides with the first.
+
+        Where a cache already holds *both* spellings -- what a case-sensitive
+        checkout of an already-duplicated repository looks like -- the caller's
+        exact spelling wins, and failing that the lexicographically first, so
+        the answer does not depend on directory order.
+        """
+        index = self._case_index(path.parent)
+        names = index.get(path.name.casefold())
+        if not names:
+            return path
+        if path.name in names:
+            return path
+        return path.parent / min(names)
+
+    @staticmethod
+    def _case_index(cache_dir: Path) -> dict[str, set[str]]:
+        """Casefolded name -> real names, built once per directory per process.
+
+        ``_cache_path`` is on the read path and the write path both, so scanning
+        the directory per resolution is quadratic over a cache: measured at
+        6.7 ms a call against a 6,721-entry directory, or 45 seconds of pure
+        path resolution for a run that touches every reference.
+
+        The index is shared across every fetcher in the process, not held per
+        instance. ``Repairer`` holds two fetchers over one directory -- its own
+        and the one inside ``SupportingTextValidator`` -- and interleaves them
+        across many references, so with per-instance state each one's writes
+        were invisible to the other and a cross-spelling DOI could still produce
+        two files. Every write funnels through :meth:`_remember_cache_file`, so
+        one shared map stays accurate for the whole process.
+
+        What it cannot see is a writer *outside this process* -- another run,
+        or a subprocess this one shelled out to -- which is the window
+        :meth:`forget_cache_listing` exists for.
+        """
+        cached = _CASE_INDEXES.get(cache_dir)
+        if cached is not None:
+            return cached
+        index: dict[str, set[str]] = {}
+        if cache_dir.is_dir():
+            for entry in cache_dir.iterdir():
+                index.setdefault(entry.name.casefold(), set()).add(entry.name)
+        _CASE_INDEXES[cache_dir] = index
+        return index
+
+    @staticmethod
+    def forget_cache_listing() -> None:
+        """Drop the cached directory listings used to resolve DOI capitalization.
+
+        Call this after something *outside this process* has written to a cache
+        directory -- another run, or a subprocess -- so the next DOI lookup sees
+        the new files. Writes from any fetcher in this process are already
+        tracked. Cheap: a listing is rebuilt on the next resolution that needs
+        it.
+        """
+        _CASE_INDEXES.clear()
+
+    @staticmethod
+    def _remember_cache_file(path: Path) -> None:
+        """Record a newly written file so a later lookup in another case finds it."""
+        index = _CASE_INDEXES.get(path.parent)
+        if index is not None:
+            index.setdefault(path.name.casefold(), set()).add(path.name)
 
     def _quote_yaml_value(self, value: str) -> str:
         """Quote a YAML value if it contains special characters.
@@ -1082,7 +1227,29 @@ class ReferenceFetcher:
             'Normal title'
             >>> fetcher._quote_yaml_value("Title: with colon")
             '"Title: with colon"'
+
+            A line break cannot be carried by a plain or a double-quoted YAML
+            scalar written on one line, so such a value is emitted JSON-style,
+            which is valid YAML and reloads with the break intact:
+
+            >>> fetcher._quote_yaml_value("Two\\nlines")
+            '"Two\\\\nlines"'
         """
+        # A literal line break ends the scalar, so interpolating one produces
+        # frontmatter that does not parse -- and re-fetching rewrites the same
+        # broken file, so nothing recovers it. Crossref titles do contain them.
+        # JSON escaping is valid YAML and preserves the break on reload, where
+        # folding it to a space would silently edit metadata that is compared
+        # against the fetched record elsewhere.
+        # ``splitlines`` splits on every break the YAML scanner recognises --
+        # U+0085, U+2028 and U+2029 as well as \n and \r -- and on the vertical
+        # tab and form feed, which the reader rejects outright as non-printable.
+        # Each produces the same unrecoverable file, just with a rarer
+        # character. ``!= [value]`` rather than ``len(...) > 1`` because a
+        # trailing break splits to a single element.
+        if value.splitlines() != [value] or _YAML_UNSAFE.search(value):
+            return _json_scalar(value)
+
         # Characters that require quoting in YAML values
         special_chars = '[]{}:,#&*?|<>=!%@`"\'\\'
         needs_quote = False
@@ -1126,7 +1293,12 @@ class ReferenceFetcher:
 
         lines = []
         lines.append("---")
-        lines.append(f"reference_id: {reference.reference_id}")
+        # An entry that already exists keeps the spelling it was written with.
+        # The path resolves to that file either way, so rewriting this line
+        # under the caller's capitalization would leave a one-line diff in a
+        # committed cache on every cross-spelling re-fetch -- the churn this
+        # resolution exists to remove, one layer in.
+        lines.append(f"reference_id: {self._stored_reference_id(cache_path, reference)}")
         lines.append(f"extractor_version: {EXTRACTOR_CACHE_VERSION}")
         html_version = (reference.metadata or {}).get("html_full_text_version")
         if reference.content_type == "full_text_html" and isinstance(html_version, int):
@@ -1242,6 +1414,7 @@ class ReferenceFetcher:
             lines.append(reference.content)
 
         cache_path.write_text("\n".join(lines), encoding="utf-8")
+        self._remember_cache_file(cache_path)
         if private:
             cache_path.chmod(0o600)
         logger.info(f"Cached {reference.reference_id} to {cache_path}")

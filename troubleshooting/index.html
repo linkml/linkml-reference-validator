@@ -2934,6 +2934,24 @@ future versions, and never certify old text. If refresh is unavailable, legacy
 XML remains available with the existing stale-cache warning and is not rewritten;
 it may still lack table rows. A later process retries the refresh. Existing
 stale HTML rejection remains unchanged.</p>
+<p>Entries that record <em>no</em> content carry their own stamp. A cache entry written
+as <code>content_type: unavailable</code> is a claim about what an extractor could not
+find, so an extractor fix can make it wrong -- and because such an entry carries
+a current <code>extractor_version</code>, nothing would otherwise re-test it and the
+missing text would stay missing permanently. Those entries now carry
+<code>absent_content_version: 1</code>, and a missing or older stamp causes a one-time
+refresh on the next validation fetch. Entries that do have content are
+unaffected, so the refresh is confined to the entries that could be wrong
+rather than falling on the whole cache. Version 1 is reading <code>OtherAbstract</code>,
+where PubMed keeps abstracts contributed by other indexing programs (<code>PIP</code>,
+<code>KIE</code>, <code>NASA</code>, <code>AIDS</code>, mostly on pre-1990 records); before it, such a record was
+stored as having no content at all and a refresh deleted the abstract the cache
+already held (issue #88).</p>
+<p>One gap is worth knowing if you set <code>source_extra_fields</code> for <code>PMID</code>: a record
+with no abstract is then stored as <code>summary</code> carrying the extra-fields blob
+rather than as <code>unavailable</code>, so it falls outside this stamp and is not
+re-tested. Clear such entries by hand if you were running that setting before
+this version.</p>
 <p><strong>A cache-wide refresh adds one line to every enriched entry.</strong> Both index
 providers now set <code>access_type</code> where they previously left it unset, so a
 refreshed public entry gains a <code>full_text_access_type: open</code> line. It means the

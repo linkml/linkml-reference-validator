@@ -204,13 +204,54 @@ class PMIDSource(ReferenceSource):
         """
         return [str(author) for author in author_list if author]
 
+    @staticmethod
+    def _render_abstract_sections(element: Any) -> Optional[str]:
+        """Join an abstract element's ``AbstractText`` nodes into prose.
+
+        Structured abstracts label each section (e.g. ``Label="METHODS"``); the
+        label is preserved as a ``"METHODS:"`` prefix and sections are joined by
+        blank lines, mirroring how PubMed renders them as text.
+
+        Args:
+            element: An ``Abstract`` or ``OtherAbstract`` node
+
+        Returns:
+            The joined prose, or None if the element carries no text
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<Abstract>
+            ...   <AbstractText Label="METHODS">We ran a trial.</AbstractText>
+            ...   <AbstractText Label="RESULTS">It worked.</AbstractText>
+            ... </Abstract>'''
+            >>> element = BeautifulSoup(xml, "xml").find("Abstract")
+            >>> PMIDSource._render_abstract_sections(element)
+            'METHODS: We ran a trial.\\n\\nRESULTS: It worked.'
+        """
+        sections = []
+        for node in element.find_all("AbstractText"):
+            text = node.get_text().strip()
+            if not text:
+                continue
+            label = node.get("Label")
+            sections.append(f"{label}: {text}" if label else text)
+
+        joined = "\n\n".join(sections)
+        return joined if joined else None
+
     def _parse_abstract(self, soup: BeautifulSoup) -> Optional[str]:
         """Parse the abstract from a PubMed article XML document.
 
-        Reconstructs the abstract prose from ``Abstract/AbstractText`` nodes.
-        Structured abstracts label each section (e.g. ``Label="METHODS"``);
-        the label is preserved as a ``"METHODS:"`` prefix and sections are
-        joined by blank lines, mirroring how PubMed renders them as text.
+        Reads ``Abstract`` when the record has one. Otherwise falls back to
+        ``OtherAbstract``, which is where PubMed keeps abstracts contributed by
+        other indexing programs -- ``PIP``, ``KIE``, ``NASA``, ``AIDS`` -- mostly
+        on pre-1990 records. Those are genuine abstracts, and reading only
+        ``Abstract`` reports no content at all for such a record, which on a
+        refresh deletes the text a cache entry already held (issue #88).
+
+        ``OtherAbstract`` also carries translations, so an English one is
+        preferred; a translated abstract is still used when it is the only text
+        available, because reporting nothing would blank the entry.
 
         Args:
             soup: Parsed PubMed article XML
@@ -229,22 +270,43 @@ class PMIDSource(ReferenceSource):
             >>> xml = '<Abstract><AbstractText>A summary.</AbstractText></Abstract>'
             >>> PMIDSource()._parse_abstract(BeautifulSoup(xml, "xml"))
             'A summary.'
+            >>> xml = '''<OtherAbstract Type="PIP" Language="eng">
+            ...   <AbstractText>An indexer's summary.</AbstractText>
+            ... </OtherAbstract>'''
+            >>> PMIDSource()._parse_abstract(BeautifulSoup(xml, "xml"))
+            "An indexer's summary."
         """
         abstract = soup.find("Abstract")
+        if abstract:
+            rendered = self._render_abstract_sections(abstract)
+            if rendered:
+                return rendered
 
-        if not abstract:
+        others = soup.find_all("OtherAbstract")
+        if not others:
             return None
 
-        sections = []
-        for node in abstract.find_all("AbstractText"):
-            text = node.get_text().strip()
-            if not text:
-                continue
-            label = node.get("Label")
-            sections.append(f"{label}: {text}" if label else text)
+        # Prefer English; OtherAbstract is also where translations live, and a
+        # French rendering would stop an English snippet matching its source.
+        # `Language` is #IMPLIED with an `eng` default in the PubMed DTD, so an
+        # attribute-less node is English rather than an unknown translation.
+        def _is_english(node: Any) -> bool:
+            language = node.get("Language")
+            if isinstance(language, list):  # bs4 may split a multi-valued attr
+                language = language[0] if language else None
+            return str(language or "eng").strip().lower() in ("eng", "en")
 
-        joined = "\n\n".join(sections)
-        return joined if joined else None
+        english: list[Any] = []
+        rest: list[Any] = []
+        for node in others:
+            (english if _is_english(node) else rest).append(node)
+
+        for node in english + rest:
+            rendered = self._render_abstract_sections(node)
+            if rendered:
+                return rendered
+
+        return None
 
     def _read_entrez(
         self,

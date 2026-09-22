@@ -420,6 +420,156 @@ class TestPMIDSource:
 
         assert source._parse_abstract(soup) is None
 
+    def test_parse_abstract_falls_back_to_other_abstract(self, source):
+        """A record whose only abstract is in ``OtherAbstract`` must still be read.
+
+        PubMed keeps abstracts contributed by other indexing programs (PIP, KIE,
+        NASA, AIDS) in ``OtherAbstract`` rather than ``Abstract``. Most are
+        pre-1990 records. Reading only ``Abstract`` reports no content for them,
+        which on a refresh *deletes* the abstract a cache entry already held
+        (issue #88).
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText>Glucose absorption raises sodium uptake.</AbstractText>"
+            "</OtherAbstract>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "Glucose absorption raises sodium uptake."
+
+    def test_parse_abstract_prefers_abstract_over_other_abstract(self, source):
+        """``Abstract`` wins when both are present; the fallback is a fallback."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            "<Abstract><AbstractText>The real abstract.</AbstractText></Abstract>"
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText>An indexer's summary.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "The real abstract."
+
+    def test_parse_abstract_prefers_english_other_abstract(self, source):
+        """``OtherAbstract`` also holds translations; snippets are matched in English.
+
+        Picking the first element would return the French here, so an English
+        snippet would stop matching its own source.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            '<OtherAbstract Type="PIP" Language="fre">'
+            "<AbstractText>Un resume en francais.</AbstractText>"
+            "</OtherAbstract>"
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText>An English summary.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "An English summary."
+
+    def test_parse_abstract_takes_non_english_other_abstract_over_nothing(self, source):
+        """With no English option, a translated abstract still beats no content.
+
+        Reporting nothing would blank the cache entry; the text is at least the
+        paper's own summary, and content_type still says abstract_only.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<OtherAbstract Type="PIP" Language="fre">'
+            "<AbstractText>Un resume en francais.</AbstractText>"
+            "</OtherAbstract>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "Un resume en francais."
+
+    def test_parse_abstract_keeps_labels_in_other_abstract(self, source):
+        """A structured ``OtherAbstract`` keeps its section labels like any other."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<OtherAbstract Type="KIE" Language="eng">'
+            '<AbstractText Label="METHODS">We ran a trial.</AbstractText>'
+            '<AbstractText Label="RESULTS">It worked.</AbstractText>'
+            "</OtherAbstract>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == (
+            "METHODS: We ran a trial.\n\nRESULTS: It worked."
+        )
+
+    def test_parse_abstract_falls_through_an_empty_abstract_element(self, source):
+        """A present-but-empty ``Abstract`` must not short-circuit the fallback.
+
+        This is a distinct branch from "no ``Abstract`` at all", and the one that
+        regresses if the guard is ever rewritten back to ``if not abstract:``
+        returning early on element presence alone.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            "<Abstract><AbstractText></AbstractText></Abstract>"
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText>The only real text here.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "The only real text here."
+
+    def test_parse_abstract_treats_a_language_less_other_abstract_as_english(
+        self, source
+    ):
+        """``Language`` is ``#IMPLIED`` with an ``eng`` default in the PubMed DTD.
+
+        Real PIP records often omit it, so the ``or "eng"`` default is
+        load-bearing: without it an attribute-less node would be treated as an
+        unknown translation and deprioritised.
+        """
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            "<PubmedArticle>"
+            '<OtherAbstract Type="PIP">'
+            "<AbstractText>No language attribute at all.</AbstractText>"
+            "</OtherAbstract>"
+            '<OtherAbstract Type="PIP" Language="fre">'
+            "<AbstractText>Un resume en francais.</AbstractText>"
+            "</OtherAbstract>"
+            "</PubmedArticle>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) == "No language attribute at all."
+
+    def test_parse_abstract_skips_empty_other_abstract(self, source):
+        """An empty ``OtherAbstract`` yields None rather than an empty string."""
+        from bs4 import BeautifulSoup
+
+        soup = BeautifulSoup(
+            '<OtherAbstract Type="PIP" Language="eng">'
+            "<AbstractText></AbstractText>"
+            "</OtherAbstract>",
+            "xml",
+        )
+
+        assert source._parse_abstract(soup) is None
+
     def test_parse_abstract_empty(self, source):
         """An Abstract with only empty AbstractText should yield None."""
         from bs4 import BeautifulSoup

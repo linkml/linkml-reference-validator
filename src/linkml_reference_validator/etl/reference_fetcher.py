@@ -93,6 +93,26 @@ HTML_FULL_TEXT_CACHE_VERSION = 1
 #: XML table extraction changes only XML caches, independent of HTML acceptance.
 XML_EXTRACTION_CACHE_VERSION = 1
 
+#: Version the claim "this reference has no content at all", scoped to
+#: ``content_type: unavailable``. Such an entry records what an extractor could
+#: not find, so an extractor fix can make it wrong -- and because the entry
+#: carries a current ``extractor_version`` it would otherwise never be re-tested
+#: and the text would stay lost. Version 1: reading ``OtherAbstract``, where
+#: PubMed keeps PIP/KIE/NASA/AIDS abstracts; before it, such a record was stored
+#: as having no content and a refresh deleted the abstract already cached for it
+#: (issue #88). Scoped rather than bumping EXTRACTOR_CACHE_VERSION because an
+#: entry that records content cannot be wrong in this way, and a blanket bump
+#: would re-fetch every cached reference to find the ones that can be.
+#:
+#: The converse does not hold, and the stamp is deliberately general rather than
+#: targeted: `unavailable` is emitted by doi, url, clinicaltrials, json_api,
+#: entrez and ppr as well as pmid, and the OtherAbstract fix cannot help any of
+#: those. In the dismech cache 1,499 of the 1,735 such entries are DOI, so most
+#: of this refresh is cost rather than repair. That is accepted -- the stamp
+#: means "this no-content claim was made by extractor version N", which a later
+#: fix to any source will want, and it is still a 3% refresh against 100%.
+ABSENT_CONTENT_CACHE_VERSION = 1
+
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
 #: URL reference_id, a title - truncate the block, which loses every field after
@@ -1307,6 +1327,25 @@ class ReferenceFetcher:
         xml_version = (reference.metadata or {}).get("xml_extraction_version")
         if reference.content_type == "full_text_xml" and type(xml_version) is int:
             lines.append(f"xml_extraction_version: {xml_version}")
+        # Written from the constant, unlike the HTML and XML stamps, which come
+        # from `reference.metadata` so a metadata-only rewrite preserves the
+        # original. The invariant that makes that safe: nothing reaches a save
+        # path holding an `unavailable` entry it did not just produce.
+        #
+        # `_load_from_disk` filters stale entries out, so an `unavailable` entry
+        # that survives a cache hit already carries the current stamp and
+        # re-writing it is a no-op -- and at version 2 a stamp-1 entry is stale,
+        # so the cache-hit branch is never taken for it at all.
+        #
+        # The two paths that *do* hold an untouched cached entry are
+        # `_stale_fallback` and `_preserve_cached_full_text`, and both are safe
+        # only because they document that the entry is deliberately not
+        # re-saved. Those are the contracts a future change would have to
+        # violate: re-saving an untouched `unavailable` entry would certify it as
+        # re-tested when it was not, recreating #88 one version up. Move this to
+        # metadata if such a path is ever added.
+        if reference.content_type == "unavailable":
+            lines.append(f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}")
         if reference.title:
             lines.append(f"title: {self._quote_yaml_value(reference.title)}")
         if reference.authors:
@@ -1637,6 +1676,22 @@ class ReferenceFetcher:
         if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_xml":
             xml_version = metadata.get("xml_extraction_version")
             if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
+                return True
+
+        # Scoped to `unavailable`, which leaves one gap: with
+        # `source_extra_fields["PMID"]` configured, a record with no abstract is
+        # stored as `summary` carrying the extra-fields blob, so an
+        # OtherAbstract-only record damaged by #88 lands outside this rule and is
+        # never re-tested. Widening to `summary` is not worth it -- most summary
+        # entries have nothing to do with a missing abstract, so it would cost a
+        # re-fetch of all of them. A deployment using that setting should clear
+        # its affected entries by hand.
+        if isinstance(metadata, dict) and metadata.get("content_type") == "unavailable":
+            absent_version = metadata.get("absent_content_version")
+            if (
+                type(absent_version) is not int
+                or absent_version < ABSENT_CONTENT_CACHE_VERSION
+            ):
                 return True
 
         # A newer stamp is not stale: an older tool reading a cache written by a

@@ -92,6 +92,19 @@ class URLSource(ReferenceSource):
             )
 
         content = self._decode(data, content_type_header)
+
+        if self._is_bot_challenge(content):
+            # An HTTP 200 carrying a challenge page. Nothing about the reference
+            # is known, so this is a transient failure, not an absence: caching
+            # it would record an interstitial's <title> as the paper's title.
+            logger.warning(
+                "Bot-check page returned for %s; not caching it. Retry from an "
+                "unblocked network, or cite the record by identifier (PMID, DOI) "
+                "rather than by URL.",
+                url,
+            )
+            return None
+
         title = self._extract_title(content, url)
 
         return ReferenceContent(
@@ -119,6 +132,61 @@ class URLSource(ReferenceSource):
             return data.decode(charset, errors="replace")
         except LookupError:
             return data.decode("utf-8", errors="replace")
+
+    #: Phrases a bot-check page carries. Matched against the ``<title>``, or
+    #: against the whole document only when it is too short to be an article --
+    #: a paper *about* CAPTCHAs contains these words in its prose, and
+    #: discarding it would be worse than caching an interstitial.
+    _BOT_CHALLENGE_PHRASES = (
+        "checking your browser",
+        "just a moment",
+        "unusual traffic",
+        "verifying you are human",
+        "enable javascript and cookies",
+        "please verify you are a human",
+    )
+
+    #: A challenge page is small. PMC's is ~21 KB against ~150-240 KB for an
+    #: article, so this is well clear of both.
+    _BOT_CHALLENGE_MAX_CHARS = 60_000
+
+    @classmethod
+    def _is_bot_challenge(cls, content: str) -> bool:
+        """Is this a bot-check interstitial rather than the requested document?
+
+        PMC and Cloudflare both serve these on an HTTP 200, so the status code
+        cannot distinguish them and the title becomes the reference title
+        (dismech#12867: "expected 'Pharmacotherapy for Alcohol Use Disorder...'
+        but got 'Checking your browser'").
+
+        Deliberately conservative -- it fires on the title, or on a body too
+        short to be an article. A real paper discussing bot detection is longer
+        than the cap and does not carry the phrase in its title.
+
+        Args:
+            content: The decoded response body
+
+        Returns:
+            True if the response looks like a challenge page
+
+        Examples:
+            >>> URLSource._is_bot_challenge(
+            ...     "<title>Checking your browser before accessing</title>")
+            True
+            >>> URLSource._is_bot_challenge("<title>A real paper</title>" + "x" * 70000)
+            False
+        """
+        lowered = content.lower()
+        title_match = re.search(r"<title[^>]*>([^<]*)</title>", lowered, re.IGNORECASE)
+        if title_match and any(
+            phrase in title_match.group(1) for phrase in cls._BOT_CHALLENGE_PHRASES
+        ):
+            return True
+        if len(content) <= cls._BOT_CHALLENGE_MAX_CHARS and any(
+            phrase in lowered for phrase in cls._BOT_CHALLENGE_PHRASES
+        ):
+            return True
+        return False
 
     def _extract_title(self, content: str, url: str) -> str:
         """Extract title from HTML content or use URL.

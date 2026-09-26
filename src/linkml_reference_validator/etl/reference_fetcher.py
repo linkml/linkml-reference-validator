@@ -424,7 +424,11 @@ class ReferenceFetcher:
         if force_refresh:
             return FetchOutcome(content=None)
 
-        stale = self._load_from_disk(normalized_reference_id, allow_stale=True)
+        stale = self._load_from_disk(
+            normalized_reference_id,
+            allow_stale=True,
+            allow_stale_html=self.config.serve_stale_html_full_text,
+        )
         if stale is None:
             return FetchOutcome(content=None)
 
@@ -520,7 +524,11 @@ class ReferenceFetcher:
         # May its text be served? Asked without the bypass, so stale HTML is
         # withheld here exactly as _stale_fallback withholds it, and validation
         # falls back to the freshly fetched abstract.
-        servable = self._load_from_disk(normalized_reference_id, allow_stale=True)
+        servable = self._load_from_disk(
+            normalized_reference_id,
+            allow_stale=True,
+            allow_stale_html=self.config.serve_stale_html_full_text,
+        )
         return FetchOutcome(content=servable or fresh, served_stale=True)
 
     def _report_shrinking_refresh(

@@ -343,7 +343,18 @@ class ReferenceFetcher:
 
         # Check disk cache
         if not force_refresh:
-            cached = self._load_from_disk(normalized_reference_id)
+            cached = self._load_from_disk(
+                normalized_reference_id,
+                allow_stale=self.config.trust_cached_entries,
+                allow_stale_html=self.config.trust_cached_entries,
+            )
+            if cached and self.config.trust_cached_entries:
+                # Trusted: serve what is on disk. No staleness re-fetch and no
+                # full-text retry, so nothing can shorten the body or replace it
+                # with a bot-check page.
+                return self._remember(
+                    normalized_reference_id, FetchOutcome(content=cached)
+                )
             if cached:
                 # A record cached as abstract_only may predate full-text support, or
                 # reflect a prior transient failure. Give the chain one more chance
@@ -521,9 +532,12 @@ class ReferenceFetcher:
             cached.content_type,
         )
 
-        # May its text be served? Asked without the bypass, so stale HTML is
-        # withheld here exactly as _stale_fallback withholds it, and validation
-        # falls back to the freshly fetched abstract.
+        # May its text be served? Asked with the consumer's serve policy, the
+        # same one _stale_fallback uses. By default stale HTML is withheld and
+        # validation falls back to the freshly fetched abstract; a consumer that
+        # has opted in gets the cached body instead. This is the path a refresh
+        # normally takes -- the source still answers, with an abstract -- so it
+        # is the one most consumers see, not _stale_fallback.
         servable = self._load_from_disk(
             normalized_reference_id,
             allow_stale=True,
@@ -1536,8 +1550,11 @@ class ReferenceFetcher:
         ):
             logger.warning(
                 "Refusing stale HTML full text for %s: it may be a repository "
-                "landing page. Retry when the source serves full text again to "
-                "repair it.",
+                "landing page. A re-fetch repairs it where the source still "
+                "serves full text -- but not for a PMC-only article, which "
+                "answers a Python HTTP client with a bot-check interstitial on "
+                "an HTTP 200. Set serve_stale_html_full_text if this cache is "
+                "one you review.",
                 reference_id,
             )
             return None

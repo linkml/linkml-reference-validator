@@ -524,6 +524,18 @@ class ReferenceValidationConfig(BaseModel):
             "the entry is left un-stamped so a later run still retries."
         ),
     )
+    trust_cached_entries: bool = Field(
+        default=False,
+        description=(
+            "If True, use a cache entry as it is on disk and never re-fetch it "
+            "because an extractor stamp is missing or old. Off by default, so "
+            "caches still migrate. Set it for a committed, reviewed cache, where "
+            "a re-fetch is not an improvement but a risk: it can shorten a body, "
+            "cache a bot-check page, or replace text a curator quoted. Imperfect "
+            "cached text is a content problem to fix deliberately, not on every "
+            "validation run."
+        ),
+    )
     full_text_providers: list[str] = Field(
         default_factory=lambda: ["pmc", "epmc_preprint", "unpaywall", "openalex"],
         description=(

@@ -46,10 +46,16 @@ class TransientFullTextError(RuntimeError):
 #: same element. Matching it alone would match every page's ``<body>``, and the
 #: structural test is the only thing standing between this fetch and caching a
 #: bot-check interstitial served on an HTTP 200.
+#:
+#: Order is a priority order, not an alphabetical one: the first match wins, so
+#: the current wrapper is tried before the legacy ones. It matters for a legacy
+#: page carrying several ``tsec`` sections, where only the first is returned --
+#: the previous code behaved the same way, so this is a known limit rather than
+#: a regression, but reordering the tuple would change which section that is.
 PMC_ARTICLE_BODY_CLASSES = ("main-article-body", "article-body", "tsec")
 
 
-def _find_pmc_article_body(soup: BeautifulSoup) -> Optional[Any]:
+def find_pmc_article_body(soup: BeautifulSoup) -> Optional[Any]:
     """Return PMC's article-body element, or None if the page has none.
 
     Matches on class rather than element name: the container moved from ``div``
@@ -65,9 +71,9 @@ def _find_pmc_article_body(soup: BeautifulSoup) -> Optional[Any]:
     Examples:
         >>> from bs4 import BeautifulSoup
         >>> html = '<section class="body main-article-body"><p>Text.</p></section>'
-        >>> _find_pmc_article_body(BeautifulSoup(html, "html.parser")) is not None
+        >>> find_pmc_article_body(BeautifulSoup(html, "html.parser")) is not None
         True
-        >>> _find_pmc_article_body(BeautifulSoup("<body><p>x</p></body>", "html.parser")) is None
+        >>> find_pmc_article_body(BeautifulSoup("<body><p>x</p></body>", "html.parser")) is None
         True
     """
     for class_name in PMC_ARTICLE_BODY_CLASSES:
@@ -192,7 +198,7 @@ class PMCFullTextProvider(FullTextProvider):
             )
 
         soup = BeautifulSoup(response.content, "html.parser")
-        article_body = _find_pmc_article_body(soup)
+        article_body = find_pmc_article_body(soup)
         if article_body:
             # The region is selected here, but the text comes out of the shared
             # extractor rather than a private copy of the paragraph walk, so

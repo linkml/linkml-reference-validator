@@ -6,7 +6,7 @@ fetched from the PMC XML API (with an HTML fallback) and extracted via XMLExtrac
 
 import logging
 import time
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
 from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -36,6 +36,45 @@ class TransientFullTextError(RuntimeError):
     returning ``None`` is how a provider says "ask me again" instead of "there
     is nothing here".
     """
+
+
+#: Classes PMC has used for the article body. ``main-article-body`` is what it
+#: serves now, on a ``<section>``; the two ``div`` classes are the older markup
+#: and are kept so entries cached against them still re-extract.
+#:
+#: Deliberately not ``body``, which PMC pairs with ``main-article-body`` on the
+#: same element. Matching it alone would match every page's ``<body>``, and the
+#: structural test is the only thing standing between this fetch and caching a
+#: bot-check interstitial served on an HTTP 200.
+PMC_ARTICLE_BODY_CLASSES = ("main-article-body", "article-body", "tsec")
+
+
+def _find_pmc_article_body(soup: BeautifulSoup) -> Optional[Any]:
+    """Return PMC's article-body element, or None if the page has none.
+
+    Matches on class rather than element name: the container moved from ``div``
+    to ``section`` when PMC changed its markup, so pinning the tag is what broke
+    the previous version for every article.
+
+    Args:
+        soup: A parsed PMC article page
+
+    Returns:
+        The article-body element, or None
+
+    Examples:
+        >>> from bs4 import BeautifulSoup
+        >>> html = '<section class="body main-article-body"><p>Text.</p></section>'
+        >>> _find_pmc_article_body(BeautifulSoup(html, "html.parser")) is not None
+        True
+        >>> _find_pmc_article_body(BeautifulSoup("<body><p>x</p></body>", "html.parser")) is None
+        True
+    """
+    for class_name in PMC_ARTICLE_BODY_CLASSES:
+        found = soup.find(class_=class_name)
+        if found is not None:
+            return found
+    return None
 
 
 @FullTextProviderRegistry.register
@@ -132,7 +171,8 @@ class PMCFullTextProvider(FullTextProvider):
 
         This is the one page fetch the OA providers' "a landing page is not full
         text" rule does not cover, and what makes it safe is the requirement
-        below: text is returned only from a ``div.article-body`` or ``div.tsec``.
+        below: text is returned only from an element carrying one of
+        :data:`PMC_ARTICLE_BODY_CLASSES`.
         A bot-check interstitial -- which PMC serves on an HTTP 200, so no status
         check sees it -- carries neither, so this yields ``None`` rather than
         caching the page. The ``oa_url`` fallback that was removed had no such
@@ -152,7 +192,7 @@ class PMCFullTextProvider(FullTextProvider):
             )
 
         soup = BeautifulSoup(response.content, "html.parser")
-        article_body = soup.find("div", class_="article-body") or soup.find("div", class_="tsec")
+        article_body = _find_pmc_article_body(soup)
         if article_body:
             # The region is selected here, but the text comes out of the shared
             # extractor rather than a private copy of the paragraph walk, so

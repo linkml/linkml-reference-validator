@@ -510,6 +510,20 @@ class ReferenceValidationConfig(BaseModel):
             "when a metadata source does not already return full text."
         ),
     )
+    serve_stale_html_full_text: bool = Field(
+        default=False,
+        description=(
+            "If True, serve a stale full_text_html cache entry as evidence instead "
+            "of withholding it. Off by default: a pre-stamp HTML entry may be a "
+            "publisher landing page rather than the article, and the default "
+            "assumes a re-fetch can repair it. Set this only for a cache you "
+            "control and review -- for a PMC-only article the repair route is "
+            "unreachable (PMC answers a Python HTTP client with a bot-check "
+            "interstitial on an HTTP 200), so the guard withholds text that "
+            "cannot be recovered. Affects serving only, never overwriting, and "
+            "the entry is left un-stamped so a later run still retries."
+        ),
+    )
     full_text_providers: list[str] = Field(
         default_factory=lambda: ["pmc", "epmc_preprint", "unpaywall", "openalex"],
         description=(

@@ -76,7 +76,21 @@ def _write_cache(cache_dir, reference_id, content_type, body, stamped=False):
 
 @pytest.fixture
 def fetcher(tmp_path):
-    return ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path, email="me@example.org"))
+    """A fetcher with the full-text chain off.
+
+    These tests are about what a *refresh that loses full text* does to the
+    cached file, so the chain has to be absent rather than merely expected to
+    fail. With it on they reach the network: the PMC HTML fallback fires and the
+    outcome depends on what PMC serves for PMC21078 that minute. They passed for
+    a while only because the fallback's container selector matched nothing at
+    all -- fixing that (dismech#12672) turned two of them red, which is the test
+    depending on a bug rather than the bug being load-bearing.
+    """
+    return ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=tmp_path, email="me@example.org", fetch_full_text=False
+        )
+    )
 
 
 def _fetch_returning(fetcher, content_type, body):

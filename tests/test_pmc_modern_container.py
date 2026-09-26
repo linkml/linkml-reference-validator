@@ -18,7 +18,7 @@ from __future__ import annotations
 import pytest
 from bs4 import BeautifulSoup
 
-from linkml_reference_validator.etl.fulltext.pmc import _find_pmc_article_body
+from linkml_reference_validator.etl.fulltext.pmc import find_pmc_article_body
 
 BODY = "<p>" + ("Real article prose. " * 40) + "</p>"
 
@@ -34,7 +34,7 @@ BODY = "<p>" + ("Real article prose. " * 40) + "</p>"
 )
 def test_article_containers_are_found(markup, label):
     soup = BeautifulSoup(markup, "html.parser")
-    assert _find_pmc_article_body(soup) is not None, f"{label} should be recognised"
+    assert find_pmc_article_body(soup) is not None, f"{label} should be recognised"
 
 
 @pytest.mark.parametrize(
@@ -49,11 +49,27 @@ def test_article_containers_are_found(markup, label):
 )
 def test_pages_without_an_article_container_are_declined(markup, label):
     soup = BeautifulSoup(markup, "html.parser")
-    assert _find_pmc_article_body(soup) is None, f"{label} must not be accepted"
+    assert find_pmc_article_body(soup) is None, f"{label} must not be accepted"
 
 
 def test_a_bare_body_element_is_not_an_article_container():
     """``<body>`` is on every page, so matching class="body" alone would accept
     an interstitial. Only the article-body classes count."""
     soup = BeautifulSoup(f"<html><body>{BODY}</body></html>", "html.parser")
-    assert _find_pmc_article_body(soup) is None
+    assert find_pmc_article_body(soup) is None
+
+
+def test_a_challenge_page_carrying_a_classed_body_is_still_declined():
+    """The interstitial arrives on an HTTP 200, so this selector is the only check.
+
+    PMC's challenge page carries a classed ``<body>``. None of its classes may
+    overlap the article-body list, or a bot-check page gets cached as full text.
+    """
+    markup = (
+        '<html><body class="usa-page bot-check">'
+        "<h1>Checking your browser before accessing</h1>"
+        "<p>Enable JavaScript and cookies to continue.</p>"
+        "</body></html>"
+    )
+    soup = BeautifulSoup(markup, "html.parser")
+    assert find_pmc_article_body(soup) is None

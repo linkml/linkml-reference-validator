@@ -23,6 +23,7 @@ from Bio import Entrez  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
 import requests  # type: ignore
 
+from linkml_reference_validator.etl.fulltext.pmc import find_pmc_article_body
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
@@ -582,12 +583,7 @@ class PMIDSource(ReferenceSource):
             return None
 
         soup = BeautifulSoup(response.content, "html.parser")
-        # Shared with the PMC full-text provider: the container moved from a
-        # ``div`` to a ``section`` and changed class, so both call sites went
-        # blind at once (dismech#12672).
-        from linkml_reference_validator.etl.fulltext.pmc import _find_pmc_article_body
-
-        article_body = _find_pmc_article_body(soup)
+        article_body = find_pmc_article_body(soup)
 
         if article_body:
             # Region selected here, text extracted by the shared extractor, for

@@ -1384,9 +1384,17 @@ def test_entry_whose_id_contains_a_horizontal_rule_is_not_perpetually_stale(fetc
     re-fetched, be rewritten with the same id, and read as unstamped again on
     every single run.
     """
+    from linkml_reference_validator.etl.reference_fetcher import URL_SOURCE_CACHE_VERSION
+
     reference_id = "url:https://example.com/a---b"
+    # Stamped as a fresh URLSource fetch would be. The stamp is written below
+    # reference_id, so a truncated block would hide it too.
     fetcher._save_to_disk(
-        ReferenceContent(reference_id=reference_id, content="Body text.")
+        ReferenceContent(
+            reference_id=reference_id,
+            content="Body text.",
+            metadata={"url_source_version": URL_SOURCE_CACHE_VERSION},
+        )
     )
 
     assert not fetcher._is_stale_cache_entry(_cached_text(fetcher, reference_id))

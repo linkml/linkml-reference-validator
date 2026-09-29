@@ -89,7 +89,7 @@ URLs are cached the same way as PMID and DOI references:
 
 ### Title Extraction
 
-For HTML pages, the title is extracted from the `<title>` tag. For other content types, the URL itself is used as the title.
+For HTML pages, the title is the `citation_title` meta tag when present, then the `<title>` tag. For PDFs, the validator tries a publisher landing page's `citation_title` and then the PDF's embedded title. When neither is found, and for other content types, the URL itself is used as the title. See [Validating URLs](validate-urls.md#titles).
 
 ### Example: Validating Against a Web Page
 
@@ -145,6 +145,6 @@ Both file and URL references work in LinkML data files:
 
 ## Limitations
 
-- **PDF files**: Not yet supported (planned for future)
+- **Local PDF files**: Not yet supported as `file:` references. PDFs fetched by `url:` are supported.
 - **Authentication**: URLs requiring login are not supported
 - **Dynamic content**: JavaScript-rendered pages may not work

@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from linkml_reference_validator.etl import rules
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract.xml import (
     MAX_STUB_NOTICE_CHARS,
@@ -129,28 +130,21 @@ def test_non_utf8_encoded_article_is_extracted():
     assert "François" in text
 
 
-@pytest.mark.parametrize(
-    "notice",
-    [
-        "The publisher of this article does not allow downloading of the full "
-        "text in XML form from PMC.",
-        "The full text of this article cannot be obtained from PMC.",
-        "This article is not available from PMC.",
-        "Access to the full text is restricted by the publisher.",
-        # Wordings an exhaustive phrase list would miss; the length gate is
-        # what lets a broad "restricted" catch them safely.
-        "Access to this article is restricted.",
-        "Full text is restricted.",
-    ],
-)
+#: Every notice filed in etl/rules.py, as one flat list.
+STUB_NOTICES = [n for notices in rules.STUB_NOTICE_EXAMPLES.values() for n in notices]
+CANNOT_BE_OBTAINED = rules.STUB_NOTICE_EXAMPLES["cannot be obtained"][0]
+DOES_NOT_ALLOW = rules.STUB_NOTICE_EXAMPLES["does not allow downloading"][0]
+
+
+@pytest.mark.parametrize("notice", STUB_NOTICES)
 def test_short_stub_notice_is_rejected(notice):
-    """Genuine PMC placeholder documents must still be discarded."""
+    """Genuine PMC placeholder documents must still be discarded, as whole JATS."""
     assert XMLExtractor().extract(_jats(notice), content_type="application/xml") is None
 
 
 def test_is_stub_notice_requires_short_text():
     """A stub is short by definition; length is what makes the phrases safe."""
-    notice = "The full text of this article cannot be obtained from PMC."
+    notice = CANNOT_BE_OBTAINED
 
     assert is_stub_notice(notice) is True
     assert is_stub_notice(notice + " " + "x" * MAX_STUB_NOTICE_CHARS) is False
@@ -194,10 +188,7 @@ def test_pmc_xml_fetch_keeps_article_mentioning_restricted(mock_efetch):
 def test_pmc_xml_fetch_still_rejects_stub(mock_efetch):
     """A real placeholder response is still recognised as having no full text."""
     handle = MagicMock()
-    handle.read.return_value = _jats(
-        "The publisher of this article does not allow downloading of the full "
-        "text in XML form from PMC."
-    ).decode()
+    handle.read.return_value = _jats(DOES_NOT_ALLOW).decode()
     mock_efetch.return_value = handle
 
     text = PMIDSource()._fetch_pmc_xml(

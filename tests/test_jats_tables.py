@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from linkml_reference_validator.etl import rules
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.models import (
@@ -91,7 +92,8 @@ def test_row_cap(count):
 
 def test_stub_is_checked_before_tables():
     """Table size cannot disguise a restricted body notice."""
-    xml = "<article><body><p>Text cannot be obtained from PMC.</p></body><table-wrap><table>"
+    notice = rules.STUB_NOTICE_EXAMPLES["cannot be obtained"][0]
+    xml = f"<article><body><p>{notice}</p></body><table-wrap><table>"
     xml += "<tr><td>Data</td></tr>" * 200 + "</table></table-wrap></article>"
     assert XMLExtractor().extract(xml) is None
 

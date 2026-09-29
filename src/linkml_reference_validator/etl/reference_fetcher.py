@@ -113,6 +113,15 @@ XML_EXTRACTION_CACHE_VERSION = 1
 #: fix to any source will want, and it is still a 3% refresh against 100%.
 ABSENT_CONTENT_CACHE_VERSION = 1
 
+#: Version what URLSource writes, scoped to ``url:`` entries. Version 1: HTML
+#: is sanitized before caching, so page scripts and attributes stop reaching
+#: committed caches (#92), and a PDF's title is recovered rather than set to its
+#: URL (#93). Neither fix rewrites an entry already written, and both kinds of
+#: entry carry a current ``extractor_version``, so without this they would be
+#: served as they are forever. Stamped from ``reference.metadata``, like the
+#: HTML stamp, and only on a fresh URLSource fetch.
+URL_SOURCE_CACHE_VERSION = 1
+
 #: A cache file's frontmatter delimiter: a line that is exactly ``---``.
 #: Splitting on the bare string instead lets any *value* containing ``---`` - a
 #: URL reference_id, a title - truncate the block, which loses every field after
@@ -386,6 +395,11 @@ class ReferenceFetcher:
         if content and content.content_type == "full_text_xml":
             content.metadata = dict(
                 content.metadata or {}, xml_extraction_version=XML_EXTRACTION_CACHE_VERSION
+            )
+
+        if content and normalized_reference_id.startswith("url:"):
+            content.metadata = dict(
+                content.metadata or {}, url_source_version=URL_SOURCE_CACHE_VERSION
             )
 
         if content and self.config.fetch_full_text and self.needs_full_text(content):
@@ -1349,6 +1363,9 @@ class ReferenceFetcher:
         xml_version = (reference.metadata or {}).get("xml_extraction_version")
         if reference.content_type == "full_text_xml" and type(xml_version) is int:
             lines.append(f"xml_extraction_version: {xml_version}")
+        url_version = (reference.metadata or {}).get("url_source_version")
+        if type(url_version) is int:
+            lines.append(f"url_source_version: {url_version}")
         # Written from the constant, unlike the HTML and XML stamps, which come
         # from `reference.metadata` so a metadata-only rewrite preserves the
         # original. The invariant that makes that safe: nothing reaches a save
@@ -1703,6 +1720,13 @@ class ReferenceFetcher:
             if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
                 return True
 
+        if isinstance(metadata, dict) and str(metadata.get("reference_id", "")).startswith(
+            "url:"
+        ):
+            url_version = metadata.get("url_source_version")
+            if type(url_version) is not int or url_version < URL_SOURCE_CACHE_VERSION:
+                return True
+
         # Scoped to `unavailable`, which leaves one gap: with
         # `source_extra_fields["PMID"]` configured, a record with no abstract is
         # stored as `summary` carrying the extra-fields blob, so an
@@ -1762,6 +1786,8 @@ class ReferenceFetcher:
             metadata["xml_extraction_version"] = frontmatter["xml_extraction_version"]
         if "html_full_text_version" in frontmatter:
             metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
+        if "url_source_version" in frontmatter:
+            metadata["url_source_version"] = frontmatter["url_source_version"]
         if "extra_fields_captured" in frontmatter:
             metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
 

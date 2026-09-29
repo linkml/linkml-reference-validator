@@ -10,24 +10,37 @@ Examples:
     True
 """
 
+import html
 import logging
 import re
 from typing import Optional
 
+import requests
+
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
-from linkml_reference_validator.etl.acquire import ContentAcquirer
+from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
+from linkml_reference_validator.etl.extract.html import sanitize_html
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.rules import LANDING_PAGE_RULES
 
 logger = logging.getLogger(__name__)
+
+_META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+# Attribute names follow whitespace. A \b boundary would also match inside
+# data-name= and data-content=, since "-" is a word boundary.
+_META_NAME = re.compile(r"""(?<=\s)name\s*=\s*["']citation_title["']""", re.IGNORECASE)
+_META_CONTENT = re.compile(r"""(?<=\s)content\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
 
 
 @ReferenceSourceRegistry.register
 class URLSource(ReferenceSource):
     """Fetch reference content from web URLs.
 
-    Fetches HTML and plain text content. HTML is returned as-is (no parsing).
-    Content is cached to disk like other sources.
+    Fetches HTML and plain text content. HTML keeps its markup but is
+    sanitized (see :func:`sanitize_html`) so page scripts and attributes do not
+    reach the cache. Plain text and XML are stored as fetched. Content is cached
+    to disk like other sources.
 
     Examples:
         >>> source = URLSource()
@@ -71,7 +84,11 @@ class URLSource(ReferenceSource):
         # Stream through ContentAcquirer so the size cap, rate-limit delay, and
         # User-Agent are applied uniformly. A url: pointing at a large PDF would
         # otherwise be buffered entirely into memory by a plain requests.get.
-        data, content_type = ContentAcquirer().fetch_bytes(url, config)
+        try:  # external system boundary: requests raises when offline or on timeout
+            data, content_type = ContentAcquirer().fetch_bytes(url, config)
+        except requests.RequestException as e:
+            logger.warning(f"Failed to fetch {url}: {e}")
+            return None
         if data is None:
             # non-200 or the size cap was exceeded (the acquirer logs the reason)
             return None
@@ -85,14 +102,17 @@ class URLSource(ReferenceSource):
             )
             return ReferenceContent(
                 reference_id=f"url:{url}",
-                title=url,
+                title=self._recover_pdf_title(url, data, config),
                 content=text,
                 content_type="full_text_pdf" if text else "unavailable",
                 full_text_url=url,
             )
 
         content = self._decode(data, content_type_header)
+        # Before sanitizing: citation_title lives in a <meta> attribute.
         title = self._extract_title(content, url)
+        if "html" in content_type_header or self._looks_like_html(data):
+            content = sanitize_html(content)
 
         return ReferenceContent(
             reference_id=f"url:{url}",
@@ -100,6 +120,103 @@ class URLSource(ReferenceSource):
             content=content,
             content_type="url",
         )
+
+    def _recover_pdf_title(
+        self, url: str, data: bytes, config: ReferenceValidationConfig
+    ) -> str:
+        """Find a real title for a PDF, falling back to its URL.
+
+        Tries, in order: the ``citation_title`` of a landing page found by
+        ``LANDING_PAGE_RULES``, then the PDF's embedded ``/Title``. When both
+        fail the URL is returned, so ``title == url`` still means none was found.
+        """
+        landing = self._landing_page_url(url)
+        if landing is not None:
+            title = self._landing_page_title(landing, config)
+            if title:
+                return title
+            logger.debug(f"No citation_title at landing page {landing} for {url}")
+
+        embedded = PDFExtractor(backend=config.pdf_backend).extract_title(data)
+        return embedded or url
+
+    def _landing_page_title(
+        self, landing: str, config: ReferenceValidationConfig
+    ) -> Optional[str]:
+        """Return the ``citation_title`` of a landing page, or None if it cannot be had."""
+        try:  # external system boundary: the title is best-effort, the PDF is not
+            page, content_type = ContentAcquirer().fetch_bytes(landing, config)
+        except requests.RequestException as e:
+            logger.debug(f"Landing page {landing} could not be fetched: {e}")
+            return None
+        if page is None:
+            return None
+        return self._citation_title(self._decode(page, (content_type or "").lower()))
+
+    @staticmethod
+    def _landing_page_url(url: str) -> Optional[str]:
+        """Return the landing page for a PDF URL, if a rule in ``LANDING_PAGE_RULES`` matches.
+
+        Examples:
+            >>> URLSource._landing_page_url(
+            ...     "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_pdf/-char/ja")
+            'https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_article/-char/ja'
+            >>> URLSource._landing_page_url("https://example.org/paper.pdf") is None
+            True
+        """
+        for pattern, replacement in LANDING_PAGE_RULES.values():
+            if re.match(pattern, url):
+                return re.sub(pattern, replacement, url)
+        return None
+
+    @staticmethod
+    def _citation_title(content: str) -> Optional[str]:
+        """Return the ``citation_title`` meta tag's content, if present.
+
+        Examples:
+            >>> URLSource._citation_title('<meta name="citation_title" content="A &amp; B">')
+            'A & B'
+            >>> URLSource._citation_title("<meta content='Reversed' name='citation_title'>")
+            'Reversed'
+            >>> URLSource._citation_title("<title>Only a title</title>") is None
+            True
+        """
+        for tag in _META_TAG.findall(content):
+            if _META_NAME.search(tag):
+                match = _META_CONTENT.search(tag)
+                if match:
+                    title = " ".join(html.unescape(match.group(2)).split())
+                    if title:
+                        return title
+        return None
+
+    @staticmethod
+    def _looks_like_html(data: bytes) -> bool:
+        """Report whether a body is an HTML page, whatever its content type said.
+
+        Skips a UTF-8 byte order mark and leading comments (a saved page often
+        begins with one), then accepts a doctype, ``<html>``, ``<head>`` or
+        ``<body>``. Text that merely mentions a tag is not a page.
+
+        Examples:
+            >>> URLSource._looks_like_html(b"\\xef\\xbb\\xbf<!DOCTYPE html><html>")
+            True
+            >>> URLSource._looks_like_html(b"<!-- saved -->\\n<html><body>")
+            True
+            >>> URLSource._looks_like_html(b"<head><title>T</title></head>")
+            True
+            >>> URLSource._looks_like_html(b"Notes on the <html> element")
+            False
+            >>> URLSource._looks_like_html(b'<?xml version="1.0"?><record/>')
+            False
+        """
+        head = data[:8192].removeprefix(b"\xef\xbb\xbf").lstrip()
+        while head.startswith(b"<!--"):
+            end = head.find(b"-->")
+            if end == -1:
+                return False
+            head = head[end + 3 :].lstrip()
+        return sniff_format(head) == "html" or head[:5].lower() in (b"<head", b"<body")
 
     def _decode(self, data: bytes, content_type: str) -> str:
         """Decode HTML/text bytes using the content-type charset, defaulting to UTF-8.
@@ -123,7 +240,7 @@ class URLSource(ReferenceSource):
     def _extract_title(self, content: str, url: str) -> str:
         """Extract title from HTML content or use URL.
 
-        Looks for <title> tag in HTML. Falls back to URL.
+        Prefers a ``citation_title`` meta tag, then the <title> tag. Falls back to URL.
 
         Args:
             content: Page content
@@ -136,9 +253,17 @@ class URLSource(ReferenceSource):
             >>> source = URLSource()
             >>> source._extract_title("<html><title>Page Title</title></html>", "https://x.com")
             'Page Title'
+            >>> source._extract_title(
+            ...     '<title>Journal | Home</title><meta name="citation_title" content="Article">',
+            ...     "https://x.com")
+            'Article'
             >>> source._extract_title("plain text", "https://example.com/doc.txt")
             'https://example.com/doc.txt'
         """
+        citation_title = self._citation_title(content)
+        if citation_title:
+            return citation_title
+
         # Look for HTML title tag (simple regex, no BeautifulSoup)
         match = re.search(r"<title[^>]*>([^<]+)</title>", content, re.IGNORECASE)
         if match:

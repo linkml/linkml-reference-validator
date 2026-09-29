@@ -12,23 +12,12 @@ from typing import Optional, Union
 from bs4 import BeautifulSoup, CData, NavigableString, Tag  # type: ignore
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+from linkml_reference_validator.etl.rules import STUB_NOTICE_PHRASES
 
 logger = logging.getLogger(__name__)
 
-#: Phrases appearing in the placeholder documents PMC serves in place of an
-#: article whose full text it cannot supply. Deliberately broad, because the
-#: length gate below - not the wording - is what keeps matching safe. PMC
-#: phrases these notices several ways ("access to this article is
-#: restricted", "full text is restricted", ...), and an exhaustive list would
-#: trade the old false positives for false negatives.
-STUB_NOTICE_PHRASES = (
-    "restricted",
-    "does not allow downloading",
-    "cannot be obtained",
-    "not available from pmc",
-)
-
-#: Longest a placeholder notice can plausibly be. Stub phrases are only
+#: Longest a placeholder notice can plausibly be. Stub phrases
+#: (:data:`~linkml_reference_validator.etl.rules.STUB_NOTICE_PHRASES`) are only
 #: honoured below this length: a real article runs to tens of thousands of
 #: characters and may legitimately use the same words - Morris 2019 restricts
 #: an analysis "to up to 13,977,204 high quality HRC imputed variants", and a

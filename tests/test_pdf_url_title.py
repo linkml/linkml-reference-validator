@@ -71,3 +71,16 @@ def test_extractor_ignores_placeholder_titles(junk):
 
 def test_extractor_title_on_unparseable_bytes_is_none():
     assert PDFExtractor().extract_title(b"%PDF-1.4 not really a pdf") is None
+
+
+# --- citation_title on ordinary HTML fetches -------------------------------
+
+
+def test_html_prefers_citation_title_over_title_tag(config):
+    url = "https://example.org/article/1"
+    page = (
+        b"<html><head><title>Example Journal | Home</title>"
+        b'<meta name="citation_title" content="Actual Article Title"></head></html>'
+    )
+    result, _ = _fetch(url, {url: (page, "text/html")}, config)
+    assert result.title == "Actual Article Title"

@@ -10,6 +10,7 @@ Examples:
     True
 """
 
+import html
 import logging
 import re
 from typing import Optional
@@ -20,6 +21,10 @@ from linkml_reference_validator.etl.acquire import ContentAcquirer
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
 logger = logging.getLogger(__name__)
+
+_META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+_META_NAME = re.compile(r"""\bname\s*=\s*["']citation_title["']""", re.IGNORECASE)
+_META_CONTENT = re.compile(r"""\bcontent\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
 
 
 @ReferenceSourceRegistry.register
@@ -101,6 +106,27 @@ class URLSource(ReferenceSource):
             content_type="url",
         )
 
+    @staticmethod
+    def _citation_title(content: str) -> Optional[str]:
+        """Return the ``citation_title`` meta tag's content, if present.
+
+        Examples:
+            >>> URLSource._citation_title('<meta name="citation_title" content="A &amp; B">')
+            'A & B'
+            >>> URLSource._citation_title("<meta content='Reversed' name='citation_title'>")
+            'Reversed'
+            >>> URLSource._citation_title("<title>Only a title</title>") is None
+            True
+        """
+        for tag in _META_TAG.findall(content):
+            if _META_NAME.search(tag):
+                match = _META_CONTENT.search(tag)
+                if match:
+                    title = " ".join(html.unescape(match.group(2)).split())
+                    if title:
+                        return title
+        return None
+
     def _decode(self, data: bytes, content_type: str) -> str:
         """Decode HTML/text bytes using the content-type charset, defaulting to UTF-8.
 
@@ -123,7 +149,7 @@ class URLSource(ReferenceSource):
     def _extract_title(self, content: str, url: str) -> str:
         """Extract title from HTML content or use URL.
 
-        Looks for <title> tag in HTML. Falls back to URL.
+        Prefers a ``citation_title`` meta tag, then the <title> tag. Falls back to URL.
 
         Args:
             content: Page content
@@ -136,9 +162,17 @@ class URLSource(ReferenceSource):
             >>> source = URLSource()
             >>> source._extract_title("<html><title>Page Title</title></html>", "https://x.com")
             'Page Title'
+            >>> source._extract_title(
+            ...     '<title>Journal | Home</title><meta name="citation_title" content="Article">',
+            ...     "https://x.com")
+            'Article'
             >>> source._extract_title("plain text", "https://example.com/doc.txt")
             'https://example.com/doc.txt'
         """
+        citation_title = self._citation_title(content)
+        if citation_title:
+            return citation_title
+
         # Look for HTML title tag (simple regex, no BeautifulSoup)
         match = re.search(r"<title[^>]*>([^<]+)</title>", content, re.IGNORECASE)
         if match:

@@ -2952,6 +2952,22 @@ with no abstract is then stored as <code>summary</code> carrying the extra-field
 rather than as <code>unavailable</code>, so it falls outside this stamp and is not
 re-tested. Clear such entries by hand if you were running that setting before
 this version.</p>
+<p><code>url:</code> entries carry their own stamp, <code>url_source_version: 1</code>. Version 1 is
+two URLSource changes: HTML is sanitized before caching, so page scripts,
+comments and attributes stop reaching the cache (issue #92), and a PDF's title
+is recovered from a publisher landing page or its embedded metadata rather than
+set to its URL (issue #93). A <code>url:</code> entry with a missing or older stamp is
+re-fetched once on the next validation fetch. If the page cannot be reached,
+the old entry is still served and is not rewritten, so a later run retries.
+Other sources are unaffected. With <code>trust_cached_entries</code> set, old entries are
+served as they are and are not refreshed.</p>
+<p><strong>A quote that verified against a <code>url:</code> page can fail after that refresh.</strong>
+Sanitizing removes <code>&lt;noscript&gt;</code> and <code>&lt;template&gt;</code> elements with their text.
+Some publisher pages put a fallback copy of the abstract inside <code>&lt;noscript&gt;</code>,
+for readers without JavaScript. A quote that only ever matched that copy will
+stop matching once the entry is re-fetched. If the same text appears elsewhere
+on the page, nothing changes. If it does not, cite a source that carries it,
+such as the <code>PMID:</code> or <code>DOI:</code> of the article.</p>
 <p><strong>A cache-wide refresh adds one line to every enriched entry.</strong> Both index
 providers now set <code>access_type</code> where they previously left it unset, so a
 refreshed public entry gains a <code>full_text_access_type: open</code> line. It means the

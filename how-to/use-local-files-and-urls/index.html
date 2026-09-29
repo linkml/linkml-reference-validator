@@ -1733,7 +1733,7 @@ HTTP/HTTPS URLs and will be normalized to <code>url:</code> internally):</p>
 <li>Use <code>linkml-reference-validator cache reference url:https://... --force</code> to re-fetch</li>
 </ul>
 <h3 id="title-extraction">Title Extraction</h3>
-<p>For HTML pages, the title is extracted from the <code>&lt;title&gt;</code> tag. For other content types, the URL itself is used as the title.</p>
+<p>For HTML pages, the title is the <code>citation_title</code> meta tag when present, then the <code>&lt;title&gt;</code> tag. For PDFs, the validator tries a publisher landing page's <code>citation_title</code> and then the PDF's embedded title. When neither is found, and for other content types, the URL itself is used as the title. See <a href="../validate-urls/#titles">Validating URLs</a>.</p>
 <h3 id="example-validating-against-a-web-page">Example: Validating Against a Web Page</h3>
 <pre><code class="language-bash"># First validation fetches and caches
 linkml-reference-validator validate text \
@@ -1803,7 +1803,7 @@ linkml-reference-validator validate text \
 </ul>
 <h2 id="limitations">Limitations</h2>
 <ul>
-<li><strong>PDF files</strong>: Not yet supported (planned for future)</li>
+<li><strong>Local PDF files</strong>: Not yet supported as <code>file:</code> references. PDFs fetched by <code>url:</code> are supported.</li>
 <li><strong>Authentication</strong>: URLs requiring login are not supported</li>
 <li><strong>Dynamic content</strong>: JavaScript-rendered pages may not work</li>
 </ul>

@@ -810,6 +810,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Content Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#titles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Titles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1627,6 +1644,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="2. Content Storage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#titles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Titles
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
         
           <li class="md-nav__item">
@@ -1873,8 +1907,8 @@
 <p>When a reference field contains a URL, the validator:</p>
 <ol>
 <li>Fetches the web page content</li>
-<li>Extracts the page title from <code>&lt;title&gt;</code> tag (for HTML)</li>
-<li>Caches the content for future validations</li>
+<li>Extracts the page title (see <a href="#titles">Titles</a>)</li>
+<li>Sanitizes HTML and caches the content for future validations</li>
 <li>Validates your supporting text against the page content</li>
 </ol>
 <h2 id="url-format">URL Format</h2>
@@ -1920,14 +1954,41 @@ HTTP/HTTPS URLs and will be normalized to <code>url:</code> internally):</p>
 <h3 id="2-content-storage">2. Content Storage</h3>
 <p>The fetcher stores:</p>
 <ul>
-<li><strong>Title</strong>: Extracted from the <code>&lt;title&gt;</code> tag (for HTML pages)</li>
-<li><strong>Content</strong>: The raw page content as received</li>
-<li><strong>Content type</strong>: Marked as <code>url</code> to distinguish from other reference types</li>
+<li><strong>Title</strong>: See <a href="#titles">Titles</a></li>
+<li><strong>Content</strong>: Sanitized HTML for HTML pages; plain text and XML as received;
+  extracted text for PDFs</li>
+<li><strong>Content type</strong>: <code>url</code> for pages, <code>full_text_pdf</code> for PDFs with text</li>
 </ul>
-<p>Note: The validator stores raw page content without HTML-to-text conversion.
-HTML tags remain in the cached file, and tag names can surface during
-normalization. If validation fails because tags interrupt the text, consider
-extracting plain text and validating against a local <code>file:</code> reference instead.</p>
+<p>HTML is sanitized before it is cached, because caches are often committed to
+public repositories and page scripts routinely carry signed asset URLs and API
+keys. <code>&lt;script&gt;</code>, <code>&lt;style&gt;</code>, <code>&lt;noscript&gt;</code> and <code>&lt;template&gt;</code> elements and HTML
+comments are removed. So are <code>&lt;meta&gt;</code>, <code>&lt;link&gt;</code> and <code>&lt;base&gt;</code>, which hold nothing
+but attributes. Every other tag attribute is removed except <code>rowspan</code>,
+<code>colspan</code> and <code>scope</code>, which carry table structure. Body markup and text are
+kept. There is no HTML-to-text conversion, so tag names can still surface
+during normalization. If validation fails because tags interrupt the text,
+consider extracting plain text and validating against a local <code>file:</code>
+reference instead.</p>
+<h4 id="titles">Titles</h4>
+<p>For HTML pages the title is the <code>citation_title</code> meta tag when present (the
+Highwire / Google Scholar convention, which names the article rather than the
+site), then the <code>&lt;title&gt;</code> tag.</p>
+<p>For PDFs the validator tries, in order:</p>
+<ol>
+<li>The <code>citation_title</code> of the publisher's landing page, where a known rule
+   maps the PDF URL to it. Currently J-STAGE: <code>.../_pdf</code> becomes
+   <code>.../_article</code>.</li>
+<li>The PDF's embedded <code>/Title</code> metadata, ignoring placeholders such as
+   <code>Microsoft Word - draft.doc</code>, bare filenames and <code>Untitled</code>.</li>
+<li>The URL itself.</li>
+</ol>
+<p>So a PDF entry whose <code>title</code> equals its URL is one for which no title was
+found.</p>
+<p>The landing-page rules and the placeholder titles are kept in
+<code>src/linkml_reference_validator/etl/rules.py</code>, with the other publisher and
+site rules. Each rule sits beside examples of what it must and must not match.
+To support another publisher, add a rule there with at least one example;
+<code>tests/test_rules.py</code> fails for a rule without one.</p>
 <h3 id="3-caching">3. Caching</h3>
 <p>Fetched URL content is cached to disk in markdown format with YAML frontmatter:</p>
 <pre><code class="language-markdown">---
@@ -1941,9 +2002,9 @@ content_type: url
 ## Content
 
 &lt;html&gt;
-  &lt;head&gt;
-    &lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
-  &lt;/head&gt;
+&lt;head&gt;
+&lt;title&gt;Chapter 3: Cell Structure and Function&lt;/title&gt;
+&lt;/head&gt;
   ...
 </code></pre>
 <p>Cache files are stored in the configured cache directory (default: <code>references_cache/</code>).</p>
@@ -1970,9 +2031,10 @@ cache_dir: &quot;.cache/references&quot;  # Where to cache fetched content
 <li>Frequently changing content</li>
 </ul>
 <h3 id="raw-content">Raw Content</h3>
-<p>The validator stores raw page content. For HTML pages:</p>
+<p>The validator stores sanitized page markup, not extracted text. For HTML pages:</p>
 <ul>
-<li>HTML tags are preserved in the cache</li>
+<li>HTML tags are preserved in the cache, without attributes other than
+  <code>rowspan</code>, <code>colspan</code> and <code>scope</code></li>
 <li>The text normalization during validation handles most cases</li>
 <li>Complex HTML layouts may require careful text extraction</li>
 </ul>

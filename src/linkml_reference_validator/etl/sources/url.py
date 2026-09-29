@@ -15,6 +15,8 @@ import logging
 import re
 from typing import Optional
 
+import requests
+
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
@@ -131,15 +133,26 @@ class URLSource(ReferenceSource):
         """
         landing = self._landing_page_url(url)
         if landing is not None:
-            page, content_type = ContentAcquirer().fetch_bytes(landing, config)
-            if page is not None:
-                title = self._citation_title(self._decode(page, (content_type or "").lower()))
-                if title:
-                    return title
+            title = self._landing_page_title(landing, config)
+            if title:
+                return title
             logger.debug(f"No citation_title at landing page {landing} for {url}")
 
         embedded = PDFExtractor(backend=config.pdf_backend).extract_title(data)
         return embedded or url
+
+    def _landing_page_title(
+        self, landing: str, config: ReferenceValidationConfig
+    ) -> Optional[str]:
+        """Return the ``citation_title`` of a landing page, or None if it cannot be had."""
+        try:  # external system boundary: the title is best-effort, the PDF is not
+            page, content_type = ContentAcquirer().fetch_bytes(landing, config)
+        except requests.RequestException as e:
+            logger.debug(f"Landing page {landing} could not be fetched: {e}")
+            return None
+        if page is None:
+            return None
+        return self._citation_title(self._decode(page, (content_type or "").lower()))
 
     @staticmethod
     def _landing_page_url(url: str) -> Optional[str]:

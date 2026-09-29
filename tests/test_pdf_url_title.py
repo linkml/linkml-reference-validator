@@ -10,6 +10,7 @@ import io
 from unittest.mock import patch
 
 import pytest
+import requests
 from pypdf import PdfWriter
 
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
@@ -37,11 +38,20 @@ def config(tmp_path):
 
 
 def _fetch(url, responses, config):
-    """Fetch ``url`` with the acquirer answering from ``responses`` (url -> (bytes, ctype))."""
+    """Fetch ``url`` with the acquirer answering from ``responses``.
+
+    Each value is ``(bytes, content_type)``, or an exception to raise, as
+    ``requests`` does on a timeout or a refused connection.
+    """
+
+    def answer(u, _config):
+        response = responses.get(u, (None, None))
+        if isinstance(response, Exception):
+            raise response
+        return response
+
     with patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as MockAcquirer:
-        MockAcquirer.return_value.fetch_bytes.side_effect = (
-            lambda u, _config: responses.get(u, (None, None))
-        )
+        MockAcquirer.return_value.fetch_bytes.side_effect = answer
         result = URLSource().fetch(url, config)
         requested = [c.args[0] for c in MockAcquirer.return_value.fetch_bytes.call_args_list]
     return result, requested
@@ -152,6 +162,22 @@ def test_landing_page_without_citation_title_falls_through_to_embedded(config):
         },
         config,
     )
+    assert result.title == "Embedded Title"
+
+
+@pytest.mark.parametrize(
+    "error", [requests.Timeout("slow"), requests.ConnectionError("refused")]
+)
+def test_landing_page_error_keeps_the_pdf(config, error):
+    """The title is best-effort. A failed landing page must not cost the PDF."""
+    result, requested = _fetch(
+        JSTAGE_PDF,
+        {JSTAGE_PDF: (_pdf("Embedded Title"), "application/pdf"), JSTAGE_ARTICLE: error},
+        config,
+    )
+    assert requested == [JSTAGE_PDF, JSTAGE_ARTICLE]
+    assert result is not None
+    assert result.full_text_url == JSTAGE_PDF
     assert result.title == "Embedded Title"
 
 

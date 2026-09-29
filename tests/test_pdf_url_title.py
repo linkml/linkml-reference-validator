@@ -236,3 +236,12 @@ def test_html_prefers_citation_title_over_title_tag(config):
 def test_citation_title_ignores_look_alike_attributes(page):
     """``data-name`` and ``data-content`` are other attributes, not ``name`` and ``content``."""
     assert URLSource._citation_title(page) == "Right"
+
+
+@pytest.mark.parametrize(
+    "title",
+    ["Converting LaTeX Manuscripts to report.pdf", "Why we stopped using .docx"],
+)
+def test_extractor_keeps_a_real_title_that_ends_like_a_filename(title):
+    """Only a bare filename is a placeholder. A sentence ending in one is a title."""
+    assert PDFExtractor().extract_title(_pdf(title)) == title

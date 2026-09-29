@@ -62,9 +62,10 @@ class PypdfBackend:
         return str(title) if isinstance(title, str) else None
 
 
-# Authoring tools stamp these into /Title in place of a real one.
+# Authoring tools stamp these into /Title in place of a real one. A filename
+# counts only when bare (no spaces), so a real title ending in ".pdf" is kept.
 _PLACEHOLDER_TITLE = re.compile(
-    r"^(untitled(\s+document)?|microsoft (word|powerpoint) - .*|.*\.(pdf|docx?|rtf|odt|tex|indd))$",
+    r"^(untitled(\s+document)?|microsoft (word|powerpoint) - .*|\S+\.(pdf|docx?|rtf|odt|tex|indd))$",
     re.IGNORECASE,
 )
 

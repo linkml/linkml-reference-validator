@@ -89,7 +89,11 @@ class URLSource(ReferenceSource):
         # Stream through ContentAcquirer so the size cap, rate-limit delay, and
         # User-Agent are applied uniformly. A url: pointing at a large PDF would
         # otherwise be buffered entirely into memory by a plain requests.get.
-        data, content_type = ContentAcquirer().fetch_bytes(url, config)
+        try:  # external system boundary: requests raises when offline or on timeout
+            data, content_type = ContentAcquirer().fetch_bytes(url, config)
+        except requests.RequestException as e:
+            logger.warning(f"Failed to fetch {url}: {e}")
+            return None
         if data is None:
             # non-200 or the size cap was exceeded (the acquirer logs the reason)
             return None

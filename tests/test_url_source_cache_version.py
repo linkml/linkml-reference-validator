@@ -12,6 +12,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 import pytest
+import requests
 
 from linkml_reference_validator.etl.reference_fetcher import (
     ABSENT_CONTENT_CACHE_VERSION,
@@ -110,14 +111,29 @@ def test_old_raw_entry_is_refetched_and_sanitized(fetcher):
     assert "SECRET-KEY-123" not in cache_path.read_text()
 
 
-def test_old_raw_entry_is_still_served_when_offline(fetcher):
-    """Out of date is better than not found. It is not re-saved, so it stays stale."""
+@pytest.mark.parametrize(
+    "unreachable",
+    [
+        (None, None),  # the acquirer's own refusal: non-200, or over the size cap
+        requests.ConnectionError("network is unreachable"),  # really offline
+        requests.Timeout("timed out"),
+    ],
+)
+def test_old_raw_entry_is_still_served_when_offline(fetcher, unreachable):
+    """Out of date is better than not found. It is not re-saved, so it stays stale.
+
+    Every unstamped url: entry goes back to the network after this change, so
+    the first offline run is where this has to hold.
+    """
     cache_path = fetcher.get_cache_path(f"url:{URL}")
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(_entry(f"url:{URL}", "url", body=RAW_PAGE))
 
     with patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as MockAcquirer:
-        MockAcquirer.return_value.fetch_bytes.return_value = (None, None)
+        if isinstance(unreachable, Exception):
+            MockAcquirer.return_value.fetch_bytes.side_effect = unreachable
+        else:
+            MockAcquirer.return_value.fetch_bytes.return_value = unreachable
         result = fetcher.fetch(f"url:{URL}")
 
     assert result is not None

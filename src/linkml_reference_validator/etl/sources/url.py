@@ -22,6 +22,14 @@ from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
 logger = logging.getLogger(__name__)
 
+# Publishers that serve a PDF at one URL and its metadata page at a predictable
+# sibling. Each rule is (pattern, replacement) for ``re.sub`` on the PDF URL.
+# The landing page is consulted only for its ``citation_title`` meta tag.
+LANDING_PAGE_RULES: list[tuple[str, str]] = [
+    # J-STAGE: .../<article>/_pdf[/-char/ja] -> .../<article>/_article[/-char/ja]
+    (r"^(https?://www\.jstage\.jst\.go\.jp/article/.+)/_pdf(/.*)?$", r"\1/_article\2"),
+]
+
 _META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 _META_NAME = re.compile(r"""\bname\s*=\s*["']citation_title["']""", re.IGNORECASE)
 _META_CONTENT = re.compile(r"""\bcontent\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
@@ -90,7 +98,7 @@ class URLSource(ReferenceSource):
             )
             return ReferenceContent(
                 reference_id=f"url:{url}",
-                title=url,
+                title=self._recover_pdf_title(url, data, config),
                 content=text,
                 content_type="full_text_pdf" if text else "unavailable",
                 full_text_url=url,
@@ -105,6 +113,43 @@ class URLSource(ReferenceSource):
             content=content,
             content_type="url",
         )
+
+    def _recover_pdf_title(
+        self, url: str, data: bytes, config: ReferenceValidationConfig
+    ) -> str:
+        """Find a real title for a PDF, falling back to its URL.
+
+        Tries, in order: the ``citation_title`` of a landing page found by
+        ``LANDING_PAGE_RULES``, then the PDF's embedded ``/Title``. When both
+        fail the URL is returned, so ``title == url`` still means none was found.
+        """
+        landing = self._landing_page_url(url)
+        if landing is not None:
+            page, content_type = ContentAcquirer().fetch_bytes(landing, config)
+            if page is not None:
+                title = self._citation_title(self._decode(page, (content_type or "").lower()))
+                if title:
+                    return title
+            logger.debug(f"No citation_title at landing page {landing} for {url}")
+
+        embedded = PDFExtractor(backend=config.pdf_backend).extract_title(data)
+        return embedded or url
+
+    @staticmethod
+    def _landing_page_url(url: str) -> Optional[str]:
+        """Return the landing page for a PDF URL, if a rule in ``LANDING_PAGE_RULES`` matches.
+
+        Examples:
+            >>> URLSource._landing_page_url(
+            ...     "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_pdf/-char/ja")
+            'https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_article/-char/ja'
+            >>> URLSource._landing_page_url("https://example.org/paper.pdf") is None
+            True
+        """
+        for pattern, replacement in LANDING_PAGE_RULES:
+            if re.match(pattern, url):
+                return re.sub(pattern, replacement, url)
+        return None
 
     @staticmethod
     def _citation_title(content: str) -> Optional[str]:

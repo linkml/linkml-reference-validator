@@ -73,6 +73,94 @@ def test_extractor_title_on_unparseable_bytes_is_none():
     assert PDFExtractor().extract_title(b"%PDF-1.4 not really a pdf") is None
 
 
+def test_pdf_url_uses_embedded_title(config):
+    url = "https://example.org/files/paper.pdf"
+    result, _ = _fetch(url, {url: (_pdf("A Real Paper Title"), "application/pdf")}, config)
+    assert result is not None
+    assert result.title == "A Real Paper Title"
+
+
+def test_pdf_url_without_any_title_falls_back_to_url(config):
+    """With nothing to recover, the URL stays, so ``title == url`` still means 'none found'."""
+    url = "https://example.org/files/paper.pdf"
+    result, requested = _fetch(url, {url: (_pdf(), "application/pdf")}, config)
+    assert result is not None
+    assert result.title == url
+    assert requested == [url], "no landing-page rule matches, so nothing else is fetched"
+
+
+# --- landing page discovery ------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "pdf_url,landing",
+    [
+        (JSTAGE_PDF, JSTAGE_ARTICLE),
+        (
+            "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_pdf",
+            "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_article",
+        ),
+        ("https://example.org/files/paper.pdf", None),
+    ],
+)
+def test_landing_page_rule(pdf_url, landing):
+    assert URLSource._landing_page_url(pdf_url) == landing
+
+
+def test_jstage_pdf_takes_citation_title_from_article_page(config):
+    article = (
+        b'<html><head><title>J-STAGE</title>'
+        b'<meta name="citation_title" content="Feline Infectious Peritonitis &amp; Its Diagnosis">'
+        b"</head><body></body></html>"
+    )
+    result, requested = _fetch(
+        JSTAGE_PDF,
+        {
+            JSTAGE_PDF: (_pdf("Microsoft Word - 64_1_1.doc"), "application/pdf"),
+            JSTAGE_ARTICLE: (article, "text/html; charset=utf-8"),
+        },
+        config,
+    )
+    assert result is not None
+    assert result.title == "Feline Infectious Peritonitis & Its Diagnosis"
+    assert result.content_type == "unavailable"  # blank page, no text: unchanged behavior
+    assert requested == [JSTAGE_PDF, JSTAGE_ARTICLE]
+
+
+def test_landing_page_title_beats_embedded_title(config):
+    """The publisher's page is authoritative. Embedded /Title is often stale."""
+    article = b'<meta content="The Published Title" name="citation_title">'
+    result, _ = _fetch(
+        JSTAGE_PDF,
+        {
+            JSTAGE_PDF: (_pdf("Submitted Draft Title"), "application/pdf"),
+            JSTAGE_ARTICLE: (article, "text/html"),
+        },
+        config,
+    )
+    assert result.title == "The Published Title"
+
+
+def test_landing_page_without_citation_title_falls_through_to_embedded(config):
+    """A bare <title> on a landing page is often the site name, so it is not used."""
+    article = b"<html><head><title>J-STAGE</title></head></html>"
+    result, _ = _fetch(
+        JSTAGE_PDF,
+        {
+            JSTAGE_PDF: (_pdf("Embedded Title"), "application/pdf"),
+            JSTAGE_ARTICLE: (article, "text/html"),
+        },
+        config,
+    )
+    assert result.title == "Embedded Title"
+
+
+def test_landing_page_fetch_failure_falls_through_to_url(config):
+    result, _ = _fetch(JSTAGE_PDF, {JSTAGE_PDF: (_pdf(), "application/pdf")}, config)
+    assert result is not None
+    assert result.title == JSTAGE_PDF
+
+
 # --- citation_title on ordinary HTML fetches -------------------------------
 
 

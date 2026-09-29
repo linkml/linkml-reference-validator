@@ -131,3 +131,31 @@ def test_xml_is_left_alone(config):
 def test_sanitize_html_is_idempotent():
     once = sanitize_html(PAGE.decode())
     assert sanitize_html(once) == once
+
+
+SCRIPTED = b'<p>Text</p><script>var apiKey = "SECRET-KEY-123";</script>'
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"\xef\xbb\xbf<!DOCTYPE html><html><body>" + SCRIPTED + b"</body></html>",
+        b"<!-- saved from url=(0042)https://example.org -->\n<html><body>" + SCRIPTED,
+        b"<!-- a -->\n<!-- b -->\n<!DOCTYPE html><html>" + SCRIPTED,
+        b"<head><title>T</title></head><body>" + SCRIPTED,
+        b"\n  <body>" + SCRIPTED,
+    ],
+    ids=["bom", "comment", "two-comments", "head-first", "body-first"],
+)
+@pytest.mark.parametrize("content_type", [None, "text/plain"])
+def test_html_is_recognized_past_a_bom_or_leading_comments(config, body, content_type):
+    """A mislabelled page is still a page. Its scripts must not reach the cache."""
+    result = _fetch("https://example.org/a", body, content_type, config)
+    assert "SECRET-KEY-123" not in result.content
+    assert "Text" in result.content
+
+
+def test_text_that_mentions_html_is_left_alone(config):
+    body = b"Notes on the <html> element and <script> tags."
+    result = _fetch("https://example.org/notes.txt", body, "text/plain", config)
+    assert result.content == body.decode()

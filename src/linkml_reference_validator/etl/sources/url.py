@@ -118,7 +118,7 @@ class URLSource(ReferenceSource):
         content = self._decode(data, content_type_header)
         # Before sanitizing: citation_title lives in a <meta> attribute.
         title = self._extract_title(content, url)
-        if "html" in content_type_header or sniff_format(data) == "html":
+        if "html" in content_type_header or self._looks_like_html(data):
             content = sanitize_html(content)
 
         return ReferenceContent(
@@ -196,6 +196,34 @@ class URLSource(ReferenceSource):
                     if title:
                         return title
         return None
+
+    @staticmethod
+    def _looks_like_html(data: bytes) -> bool:
+        """Report whether a body is an HTML page, whatever its content type said.
+
+        Skips a UTF-8 byte order mark and leading comments (a saved page often
+        begins with one), then accepts a doctype, ``<html>``, ``<head>`` or
+        ``<body>``. Text that merely mentions a tag is not a page.
+
+        Examples:
+            >>> URLSource._looks_like_html(b"\\xef\\xbb\\xbf<!DOCTYPE html><html>")
+            True
+            >>> URLSource._looks_like_html(b"<!-- saved -->\\n<html><body>")
+            True
+            >>> URLSource._looks_like_html(b"<head><title>T</title></head>")
+            True
+            >>> URLSource._looks_like_html(b"Notes on the <html> element")
+            False
+            >>> URLSource._looks_like_html(b'<?xml version="1.0"?><record/>')
+            False
+        """
+        head = data[:8192].removeprefix(b"\xef\xbb\xbf").lstrip()
+        while head.startswith(b"<!--"):
+            end = head.find(b"-->")
+            if end == -1:
+                return False
+            head = head[end + 3 :].lstrip()
+        return sniff_format(head) == "html" or head[:5].lower() in (b"<head", b"<body")
 
     def _decode(self, data: bytes, content_type: str) -> str:
         """Decode HTML/text bytes using the content-type charset, defaulting to UTF-8.

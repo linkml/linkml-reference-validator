@@ -24,6 +24,7 @@ from linkml_reference_validator.etl.fulltext.base import (
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
+from linkml_reference_validator.etl.rules import PMC_ARTICLE_BODY_CLASSES
 
 logger = logging.getLogger(__name__)
 
@@ -42,17 +43,6 @@ class TransientFullTextError(RuntimeError):
 #: serves now, on a ``<section>``; the two ``div`` classes are the older markup
 #: and are kept so entries cached against them still re-extract.
 #:
-#: Deliberately not ``body``, which PMC pairs with ``main-article-body`` on the
-#: same element. Matching it alone would match every page's ``<body>``, and the
-#: structural test is the only thing standing between this fetch and caching a
-#: bot-check interstitial served on an HTTP 200.
-#:
-#: Order is a priority order, not an alphabetical one: the first match wins, so
-#: the current wrapper is tried before the legacy ones. It matters for a legacy
-#: page carrying several ``tsec`` sections, where only the first is returned --
-#: the previous code behaved the same way, so this is a known limit rather than
-#: a regression, but reordering the tuple would change which section that is.
-PMC_ARTICLE_BODY_CLASSES = ("main-article-body", "article-body", "tsec")
 
 
 def find_pmc_article_body(soup: BeautifulSoup) -> Optional[Any]:

@@ -6,10 +6,10 @@ backends (docling, grobid) can be swapped in later without touching callers.
 
 import io
 import logging
-import re
 from typing import Optional, Protocol, Union
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+from linkml_reference_validator.etl.rules import PDF_PLACEHOLDER_TITLE
 
 logger = logging.getLogger(__name__)
 
@@ -62,16 +62,10 @@ class PypdfBackend:
         return str(title) if isinstance(title, str) else None
 
 
-# Authoring tools stamp these into /Title in place of a real one. A filename
-# counts only when bare (no spaces), so a real title ending in ".pdf" is kept.
-_PLACEHOLDER_TITLE = re.compile(
-    r"^(untitled(\s+document)?|microsoft (word|powerpoint) - .*|\S+\.(pdf|docx?|rtf|odt|tex|indd))$",
-    re.IGNORECASE,
-)
-
-
 def clean_pdf_title(title: Optional[str]) -> Optional[str]:
     """Return ``title`` stripped, or None if it is empty or a known placeholder.
+
+    Placeholders are :data:`~linkml_reference_validator.etl.rules.PDF_PLACEHOLDER_TITLE`.
 
     Examples:
         >>> clean_pdf_title("  Canine Distemper in Dogs ")
@@ -90,7 +84,7 @@ def clean_pdf_title(title: Optional[str]) -> Optional[str]:
     if title is None:
         return None
     title = " ".join(title.split())
-    if not title or _PLACEHOLDER_TITLE.match(title):
+    if not title or PDF_PLACEHOLDER_TITLE.match(title):
         return None
     return title
 

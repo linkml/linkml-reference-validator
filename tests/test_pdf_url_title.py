@@ -13,12 +13,17 @@ import pytest
 import requests
 from pypdf import PdfWriter
 
+from linkml_reference_validator.etl import rules
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 from linkml_reference_validator.etl.sources.url import URLSource
 from linkml_reference_validator.models import ReferenceValidationConfig
 
-JSTAGE_PDF = "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_pdf/-char/ja"
-JSTAGE_ARTICLE = "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_article/-char/ja"
+# Rule examples live in etl/rules.py; tests/test_rules.py runs them all. These
+# tests take one from there to exercise the fetch around the rule.
+JSTAGE_PDF, JSTAGE_ARTICLE = rules.LANDING_PAGE_EXAMPLES["J-STAGE"][0]
+WORD_PLACEHOLDER = next(
+    t for t in rules.PDF_PLACEHOLDER_TITLE_EXAMPLES if t.startswith("Microsoft Word")
+)
 
 
 def _pdf(title=None) -> bytes:
@@ -60,19 +65,13 @@ def _fetch(url, responses, config):
 # --- embedded PDF metadata -------------------------------------------------
 
 
-def test_extractor_reads_embedded_title():
-    assert PDFExtractor().extract_title(_pdf("Canine Distemper in Dogs")) == (
-        "Canine Distemper in Dogs"
-    )
-
-
 def test_extractor_title_absent_is_none():
     assert PDFExtractor().extract_title(_pdf()) is None
 
 
 @pytest.mark.parametrize(
     "junk",
-    ["", "   ", "untitled", "Untitled", "Microsoft Word - draft_v3.doc", "paper.pdf", "manuscript.docx"],
+    ["", "   ", *rules.PDF_PLACEHOLDER_TITLE_EXAMPLES],
 )
 def test_extractor_ignores_placeholder_titles(junk):
     """Authoring tools stamp filenames and placeholders into /Title. Those are not titles."""
@@ -127,21 +126,6 @@ def test_pdf_url_without_any_title_falls_back_to_url(config):
 # --- landing page discovery ------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "pdf_url,landing",
-    [
-        (JSTAGE_PDF, JSTAGE_ARTICLE),
-        (
-            "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_pdf",
-            "https://www.jstage.jst.go.jp/article/jvms/64/1/64_1_1/_article",
-        ),
-        ("https://example.org/files/paper.pdf", None),
-    ],
-)
-def test_landing_page_rule(pdf_url, landing):
-    assert URLSource._landing_page_url(pdf_url) == landing
-
-
 def test_jstage_pdf_takes_citation_title_from_article_page(config):
     article = (
         b'<html><head><title>J-STAGE</title>'
@@ -151,7 +135,7 @@ def test_jstage_pdf_takes_citation_title_from_article_page(config):
     result, requested = _fetch(
         JSTAGE_PDF,
         {
-            JSTAGE_PDF: (_pdf("Microsoft Word - 64_1_1.doc"), "application/pdf"),
+            JSTAGE_PDF: (_pdf(WORD_PLACEHOLDER), "application/pdf"),
             JSTAGE_ARTICLE: (article, "text/html; charset=utf-8"),
         },
         config,
@@ -238,10 +222,7 @@ def test_citation_title_ignores_look_alike_attributes(page):
     assert URLSource._citation_title(page) == "Right"
 
 
-@pytest.mark.parametrize(
-    "title",
-    ["Converting LaTeX Manuscripts to report.pdf", "Why we stopped using .docx"],
-)
-def test_extractor_keeps_a_real_title_that_ends_like_a_filename(title):
-    """Only a bare filename is a placeholder. A sentence ending in one is a title."""
+@pytest.mark.parametrize("title", rules.PDF_PLACEHOLDER_TITLE_COUNTEREXAMPLES)
+def test_extractor_keeps_a_real_title(title):
+    """Through a real PDF: only a bare filename is a placeholder, not a title ending in one."""
     assert PDFExtractor().extract_title(_pdf(title)) == title

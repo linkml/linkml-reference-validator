@@ -13,6 +13,7 @@ from typing import Optional, Union
 from bs4 import BeautifulSoup, Comment, Tag  # type: ignore
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+from linkml_reference_validator.etl.rules import ARTICLE_BODY_SELECTORS
 
 logger = logging.getLogger(__name__)
 
@@ -27,12 +28,9 @@ BLOCK_LEVEL_TAGS = (
     "table", "td", "th", "tr", "ul",
 )
 
-# Explicit article-body containers; generic layout IDs such as #body are not
-# evidence that a page contains an article.
-ARTICLE_BODY_SELECTOR = (
-    '[itemprop="articleBody"], .article-text, #artText, '
-    '.article-body, .article__body, .c-article-body'
-)
+#: One CSS selector list for the article-body containers in
+#: :data:`~linkml_reference_validator.etl.rules.ARTICLE_BODY_SELECTORS`.
+ARTICLE_BODY_SELECTOR = ", ".join(ARTICLE_BODY_SELECTORS)
 
 
 #: Elements that never hold reference text. Page scripts routinely carry signed

@@ -113,6 +113,12 @@ For PDFs the validator tries, in order:
 So a PDF entry whose `title` equals its URL is one for which no title was
 found.
 
+The landing-page rules and the placeholder titles are kept in
+`src/linkml_reference_validator/etl/rules.py`, with the other publisher and
+site rules. Each rule sits beside examples of what it must and must not match.
+To support another publisher, add a rule there with at least one example;
+`tests/test_rules.py` fails for a rule without one.
+
 ### 3. Caching
 
 Fetched URL content is cached to disk in markdown format with YAML frontmatter:

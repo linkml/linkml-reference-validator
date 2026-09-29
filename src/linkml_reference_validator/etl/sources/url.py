@@ -22,16 +22,9 @@ from linkml_reference_validator.etl.sources.base import ReferenceSource, Referen
 from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
 from linkml_reference_validator.etl.extract.html import sanitize_html
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.rules import LANDING_PAGE_RULES
 
 logger = logging.getLogger(__name__)
-
-# Publishers that serve a PDF at one URL and its metadata page at a predictable
-# sibling. Each rule is (pattern, replacement) for ``re.sub`` on the PDF URL.
-# The landing page is consulted only for its ``citation_title`` meta tag.
-LANDING_PAGE_RULES: list[tuple[str, str]] = [
-    # J-STAGE: .../<article>/_pdf[/-char/ja] -> .../<article>/_article[/-char/ja]
-    (r"^(https?://www\.jstage\.jst\.go\.jp/article/.+)/_pdf(/.*)?$", r"\1/_article\2"),
-]
 
 _META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 # Attribute names follow whitespace. A \b boundary would also match inside
@@ -171,7 +164,7 @@ class URLSource(ReferenceSource):
             >>> URLSource._landing_page_url("https://example.org/paper.pdf") is None
             True
         """
-        for pattern, replacement in LANDING_PAGE_RULES:
+        for pattern, replacement in LANDING_PAGE_RULES.values():
             if re.match(pattern, url):
                 return re.sub(pattern, replacement, url)
         return None

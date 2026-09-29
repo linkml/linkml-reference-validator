@@ -902,6 +902,16 @@ rather than as `unavailable`, so it falls outside this stamp and is not
 re-tested. Clear such entries by hand if you were running that setting before
 this version.
 
+`url:` entries carry their own stamp, `url_source_version: 1`. Version 1 is
+two URLSource changes: HTML is sanitized before caching, so page scripts,
+comments and attributes stop reaching the cache (issue #92), and a PDF's title
+is recovered from a publisher landing page or its embedded metadata rather than
+set to its URL (issue #93). A `url:` entry with a missing or older stamp is
+re-fetched once on the next validation fetch. If the page cannot be reached,
+the old entry is still served and is not rewritten, so a later run retries.
+Other sources are unaffected. With `trust_cached_entries` set, old entries are
+served as they are and are not refreshed.
+
 **A cache-wide refresh adds one line to every enriched entry.** Both index
 providers now set `access_type` where they previously left it unset, so a
 refreshed public entry gains a `full_text_access_type: open` line. It means the

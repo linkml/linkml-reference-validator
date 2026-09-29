@@ -55,9 +55,11 @@ class PypdfBackend:
         except PyPdfError as e:
             logger.debug(f"Could not read PDF metadata: {e}")
             return None
-        if metadata is None or metadata.title is None:
+        if metadata is None:
             return None
-        return str(metadata.title)
+        # pypdf returns /Title as whatever object it holds; only text is a title.
+        title = metadata.title
+        return str(title) if isinstance(title, str) else None
 
 
 # Authoring tools stamp these into /Title in place of a real one.

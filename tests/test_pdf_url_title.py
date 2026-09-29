@@ -79,6 +79,31 @@ def test_extractor_ignores_placeholder_titles(junk):
     assert PDFExtractor().extract_title(_pdf(junk)) is None
 
 
+def _pdf_with_raw_title(raw: bytes) -> bytes:
+    """Build a PDF whose /Title is the literal PDF object ``raw``.
+
+    ``add_metadata`` turns every value into a string, so the object is written
+    over a same-length placeholder in the file, which keeps the xref offsets.
+    """
+    placeholder = b"(" + b"X" * 20 + b")"
+    data = _pdf("X" * 20)
+    assert placeholder in data and len(raw) <= len(placeholder)
+    return data.replace(placeholder, raw.ljust(len(placeholder)))
+
+
+@pytest.mark.parametrize(
+    "raw", [b"5", b"[(a)]", b"<< /A 1 >>"], ids=["number", "array", "dictionary"]
+)
+def test_extractor_ignores_a_title_that_is_not_text(raw):
+    """pypdf returns /Title as whatever object it holds. A number is not a title."""
+    assert PDFExtractor().extract_title(_pdf_with_raw_title(raw)) is None
+
+
+def test_raw_title_helper_writes_a_readable_title():
+    """The helper itself: a string written the same way is read back."""
+    assert PDFExtractor().extract_title(_pdf_with_raw_title(b"(Real Title)")) == "Real Title"
+
+
 def test_extractor_title_on_unparseable_bytes_is_none():
     assert PDFExtractor().extract_title(b"%PDF-1.4 not really a pdf") is None
 

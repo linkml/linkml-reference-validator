@@ -15,8 +15,8 @@ The linkml-reference-validator supports validating references that point to web 
 When a reference field contains a URL, the validator:
 
 1. Fetches the web page content
-2. Extracts the page title from `<title>` tag (for HTML)
-3. Caches the content for future validations
+2. Extracts the page title (see [Titles](#titles))
+3. Sanitizes HTML and caches the content for future validations
 4. Validates your supporting text against the page content
 
 ## URL Format
@@ -79,14 +79,39 @@ When the validator encounters a URL reference, it:
 
 The fetcher stores:
 
-- **Title**: Extracted from the `<title>` tag (for HTML pages)
-- **Content**: The raw page content as received
-- **Content type**: Marked as `url` to distinguish from other reference types
+- **Title**: See [Titles](#titles)
+- **Content**: Sanitized HTML for HTML pages; plain text and XML as received;
+  extracted text for PDFs
+- **Content type**: `url` for pages, `full_text_pdf` for PDFs with text
 
-Note: The validator stores raw page content without HTML-to-text conversion.
-HTML tags remain in the cached file, and tag names can surface during
-normalization. If validation fails because tags interrupt the text, consider
-extracting plain text and validating against a local `file:` reference instead.
+HTML is sanitized before it is cached, because caches are often committed to
+public repositories and page scripts routinely carry signed asset URLs and API
+keys. `<script>`, `<style>`, `<noscript>` and `<template>` elements and HTML
+comments are removed. So are `<meta>`, `<link>` and `<base>`, which hold nothing
+but attributes. Every other tag attribute is removed except `rowspan`,
+`colspan` and `scope`, which carry table structure. Body markup and text are
+kept. There is no HTML-to-text conversion, so tag names can still surface
+during normalization. If validation fails because tags interrupt the text,
+consider extracting plain text and validating against a local `file:`
+reference instead.
+
+#### Titles
+
+For HTML pages the title is the `citation_title` meta tag when present (the
+Highwire / Google Scholar convention, which names the article rather than the
+site), then the `<title>` tag.
+
+For PDFs the validator tries, in order:
+
+1. The `citation_title` of the publisher's landing page, where a known rule
+   maps the PDF URL to it. Currently J-STAGE: `.../_pdf` becomes
+   `.../_article`.
+2. The PDF's embedded `/Title` metadata, ignoring placeholders such as
+   `Microsoft Word - draft.doc`, bare filenames and `Untitled`.
+3. The URL itself.
+
+So a PDF entry whose `title` equals its URL is one for which no title was
+found.
 
 ### 3. Caching
 
@@ -104,9 +129,9 @@ content_type: url
 ## Content
 
 <html>
-  <head>
-    <title>Chapter 3: Cell Structure and Function</title>
-  </head>
+<head>
+<title>Chapter 3: Cell Structure and Function</title>
+</head>
   ...
 ```
 
@@ -145,9 +170,10 @@ URL validation is designed for static web pages. It may not work well with:
 
 ### Raw Content
 
-The validator stores raw page content. For HTML pages:
+The validator stores sanitized page markup, not extracted text. For HTML pages:
 
-- HTML tags are preserved in the cache
+- HTML tags are preserved in the cache, without attributes other than
+  `rowspan`, `colspan` and `scope`
 - The text normalization during validation handles most cases
 - Complex HTML layouts may require careful text extraction
 

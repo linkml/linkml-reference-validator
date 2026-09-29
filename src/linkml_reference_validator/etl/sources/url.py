@@ -34,8 +34,10 @@ LANDING_PAGE_RULES: list[tuple[str, str]] = [
 ]
 
 _META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
-_META_NAME = re.compile(r"""\bname\s*=\s*["']citation_title["']""", re.IGNORECASE)
-_META_CONTENT = re.compile(r"""\bcontent\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
+# Attribute names follow whitespace. A \b boundary would also match inside
+# data-name= and data-content=, since "-" is a word boundary.
+_META_NAME = re.compile(r"""(?<=\s)name\s*=\s*["']citation_title["']""", re.IGNORECASE)
+_META_CONTENT = re.compile(r"""(?<=\s)content\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
 
 
 @ReferenceSourceRegistry.register

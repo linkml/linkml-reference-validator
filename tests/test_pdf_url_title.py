@@ -198,3 +198,16 @@ def test_html_prefers_citation_title_over_title_tag(config):
     )
     result, _ = _fetch(url, {url: (page, "text/html")}, config)
     assert result.title == "Actual Article Title"
+
+
+@pytest.mark.parametrize(
+    "page",
+    [
+        '<meta data-name="citation_title" content="Wrong"><meta name="citation_title" content="Right">',
+        '<meta name="citation_title" data-content="Wrong" content="Right">',
+        '<meta\nname="citation_title"\ncontent="Right">',
+    ],
+)
+def test_citation_title_ignores_look_alike_attributes(page):
+    """``data-name`` and ``data-content`` are other attributes, not ``name`` and ``content``."""
+    assert URLSource._citation_title(page) == "Right"

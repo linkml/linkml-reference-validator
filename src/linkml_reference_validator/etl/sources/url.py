@@ -17,7 +17,8 @@ from typing import Optional
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
-from linkml_reference_validator.etl.acquire import ContentAcquirer
+from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
+from linkml_reference_validator.etl.extract.html import sanitize_html
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
 logger = logging.getLogger(__name__)
@@ -39,8 +40,10 @@ _META_CONTENT = re.compile(r"""\bcontent\s*=\s*(["'])(.*?)\1""", re.IGNORECASE |
 class URLSource(ReferenceSource):
     """Fetch reference content from web URLs.
 
-    Fetches HTML and plain text content. HTML is returned as-is (no parsing).
-    Content is cached to disk like other sources.
+    Fetches HTML and plain text content. HTML keeps its markup but is
+    sanitized (see :func:`sanitize_html`) so page scripts and attributes do not
+    reach the cache. Plain text and XML are stored as fetched. Content is cached
+    to disk like other sources.
 
     Examples:
         >>> source = URLSource()
@@ -105,7 +108,10 @@ class URLSource(ReferenceSource):
             )
 
         content = self._decode(data, content_type_header)
+        # Before sanitizing: citation_title lives in a <meta> attribute.
         title = self._extract_title(content, url)
+        if "html" in content_type_header or sniff_format(data) == "html":
+            content = sanitize_html(content)
 
         return ReferenceContent(
             reference_id=f"url:{url}",

@@ -10,7 +10,7 @@ import logging
 import re
 from typing import Optional, Union
 
-from bs4 import BeautifulSoup, Tag  # type: ignore
+from bs4 import BeautifulSoup, Comment, Tag  # type: ignore
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 
@@ -34,6 +34,50 @@ ARTICLE_BODY_SELECTOR = (
     '.article-body, .article__body, .c-article-body'
 )
 
+
+#: Elements that never hold reference text. Page scripts routinely carry signed
+#: asset URLs and API-key parameters, which must not reach a committed cache.
+#: ``meta``, ``link`` and ``base`` hold nothing but attributes, so once those
+#: are stripped they would remain only as empty tags.
+NON_CONTENT_TAGS = ("script", "style", "noscript", "template", "meta", "link", "base")
+
+#: The only attributes that carry meaning for a quoted excerpt: table structure.
+KEPT_ATTRIBUTES = frozenset({"rowspan", "colspan", "scope"})
+
+
+def sanitize_html(content: str) -> str:
+    """Strip an HTML page to its body markup and text, for caching.
+
+    Drops ``NON_CONTENT_TAGS`` and comments, and every attribute not in
+    ``KEPT_ATTRIBUTES``. Markup is kept, unlike :class:`HTMLExtractor`, which
+    flattens to plain text; this is for ``url:`` pages stored as HTML.
+
+    Examples:
+        >>> sanitize_html('<p class="x" onclick="f()">Hi<script>k=1</script><!-- c --></p>')
+        '<p>Hi</p>'
+        >>> sanitize_html('<head><meta charset="utf-8"><link rel="x"><title>T</title></head>')
+        '<head><title>T</title></head>'
+        >>> sanitize_html('<td rowspan="2" style="s">A</td>')
+        '<td rowspan="2">A</td>'
+        >>> sanitize_html("<pre><b>x</b>    <b>y</b></pre>")
+        '<pre><b>x</b>    <b>y</b></pre>'
+    """
+    soup = BeautifulSoup(content, "html.parser")
+    for tag in soup.find_all(NON_CONTENT_TAGS):
+        if not tag.decomposed:  # already gone with an enclosing non-content tag
+            tag.decompose()
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
+    for tag in soup.find_all(True):
+        tag.attrs = {k: v for k, v in tag.attrs.items() if k in KEPT_ATTRIBUTES}
+    # Removed elements leave runs of indentation behind. Collapse each
+    # whitespace-only gap to one break so a second pass changes nothing.
+    soup.smooth()
+    for text in soup.find_all(string=True):
+        if text.strip() or text in ("\n", " ") or text.find_parent("pre"):
+            continue
+        text.replace_with("\n" if "\n" in text else " ")
+    return str(soup)
 
 @ExtractorRegistry.register
 class HTMLExtractor(Extractor):

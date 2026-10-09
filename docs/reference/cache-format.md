@@ -28,8 +28,8 @@ filename fails its separate check; otherwise it is `None`.
 
 `scan_cache_dir(directory, recursive=False)` returns a list in path order. It
 checks immediate `*.md` files by default; pass `recursive=True` to include nested
-directories. It skips symlinked directories during recursion. Non-Markdown files,
-including legacy `.txt` caches and downloaded XML/PDF files, are outside this
+directories. It skips symlinked directories during recursion but reads symlinked
+Markdown files. Non-Markdown files, including legacy `.txt` caches and downloaded XML/PDF files, are outside this
 contract and are ignored. An existing empty directory returns `[]`. Missing,
 unreadable, or non-directory scan roots raise `OSError` (including its subclasses)
 so a mistaken path cannot silently pass a gate. Individual file errors are
@@ -37,8 +37,8 @@ reported as findings and do not stop the scan.
 
 ## Frontmatter contract
 
-Files contain UTF-8 text with a YAML mapping between opening and closing `---`
-lines, beginning on the first line. The remaining text is an unrestricted Markdown
+Files contain UTF-8 text without a byte-order mark (BOM), with a YAML mapping
+between opening and closing `---` lines, beginning on the first line. The remaining text is an unrestricted Markdown
 body. Duplicate YAML keys are invalid.
 
 Only `reference_id` and `content_type` are required; both must be nonblank strings.
@@ -62,7 +62,10 @@ captured field names are lists of strings. `year` accepts a string or an integer
 for compatibility with older unquoted YAML years. Other scalar metadata is text.
 Each supplementary file requires a nonempty string `filename`; its optional fields
 are `download_url`, `content_type`, `size_bytes`, `checksum`, `description`, and
-`local_path`.
+`local_path`. Older cache files may contain unquoted numeric values in fields
+such as `checksum` that require strings. These are reported as `invalid_field`;
+quote the intended text to repair them. The validator does not guess at a string
+representation that could change leading zeros or scientific notation.
 
 **Unknown keys are allowed and preserved**, both in the header and in
 supplementary-file metadata. No extension namespace is required: a consumer's
@@ -70,6 +73,23 @@ supplementary-file metadata. No extension namespace is required: a consumer's
 `peer_review_status`, and `full_text_access_type` are open, so future values do not
 break older consumers. Extraction stamps may be absent, old, or newer than this
 library; format validity does not imply freshness.
+
+When rewriting an existing cache with a valid header for the same reference,
+the fetcher carries over unknown fields, including explicit null values. Known
+fields always come from the new reference. Attachment extensions follow filenames
+that are unique in both the old and new attachment lists; removed or ambiguous
+attachments do not transfer their extensions. Preservation reads only the file
+being overwritten, so metadata is not copied between public and private caches
+or between different references whose sanitized filenames collide. A damaged
+header cannot supply validated extensions: the fetcher logs a warning and permits
+a fresh fetch to repair the file.
+
+The writer omits empty optional attachment strings, retaining the historical
+serialization policy. Invalid known metadata supplied by a source or carried
+through a lenient read raises `pydantic.ValidationError` before a cache write;
+`fetch()` propagates that error. An existing cache file is left intact. This
+makes a source's type-contract error visible instead of silently coercing values
+or reporting a successful cache write that never happened.
 
 `CacheFrontmatter` is a public Pydantic model released with the library. The writer
 serializes this same model. To inspect the complete, machine-readable contract:
@@ -108,7 +128,9 @@ Apply local requirements after `result.is_valid`, using `result.frontmatter`.
 Requiring authors or a journal for particular reference sources, for example,
 is a consumer policy rather than a format rule. The ordinary fetcher's reader
 remains lenient for recovering old cache data; the checker reports malformed
-known fields instead of silently recovering them.
+known fields instead of silently recovering them. In particular, the reader
+accepts text before the opening frontmatter delimiter; the checker requires the
+opening delimiter on the first line.
 
 Validation cannot prove that a file was never hand-edited, that its text agrees
 with the publication, or that its bibliography is complete. A well-formed edit

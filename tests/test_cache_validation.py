@@ -265,3 +265,193 @@ def test_nested_extensions_and_windows_newlines(tmp_path):
 def test_empty_directory_is_an_empty_scan(tmp_path):
     """An existing empty cache differs from a mistyped directory path."""
     assert scan_cache_dir(tmp_path) == []
+
+
+def test_consumer_extension_survives_stale_refetch(tmp_path):
+    """A real local-file fetch refreshes content without erasing local policy."""
+    source = tmp_path / "source.txt"
+    source.write_text("Fresh evidence.", encoding="utf-8")
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path / "cache"))
+    reference_id = f"file:{source}"
+    path = fetcher.get_cache_path(reference_id)
+    write_cache(
+        path.parent,
+        f"reference_id: {reference_id}\ncontent_type: local_file\n"
+        "extractor_version: 0\ndatabase: Orphanet\nnullable: null\nfuture_field: {nested: [1, true]}",
+        path.name,
+    )
+    result = fetcher.fetch_with_provenance(reference_id)
+    assert not result.served_stale
+    assert result.content.content == "Fresh evidence."
+    validated = validate_cache_file(path)
+    assert validated.is_valid
+    assert validated.frontmatter.extractor_version > 0
+    assert validated.frontmatter.model_extra == {
+        "database": "Orphanet",
+        "future_field": {"nested": [1, True]},
+        "nullable": None,
+    }
+
+
+def test_attachment_extensions_follow_filenames_on_rewrite(tmp_path):
+    """Reordering attachments must not transfer extensions to another file."""
+    path = write_cache(
+        tmp_path,
+        "reference_id: PMID:1\ncontent_type: unknown\ndatabase: Orphanet\n"
+        "supplementary_files:\n"
+        "- filename: a.csv\n  database: ICEES\n  nullable: null\n  checksum: old\n"
+        "- filename: b.csv\n  database: ClinGen\n"
+        "- filename: removed.csv\n  database: removed",
+    )
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    reference = fetcher._load_markdown_format(path.read_text(), "PMID:1")
+    reference.supplementary_files = [
+        SupplementaryFile(filename="b.csv", checksum="new"),
+        SupplementaryFile(filename="a.csv"),
+        SupplementaryFile(filename="added.csv"),
+    ]
+    fetcher._save_to_disk(reference)
+    header = validate_cache_file(path).frontmatter
+    assert header.model_extra == {"database": "Orphanet"}
+    assert [sf.model_extra for sf in header.supplementary_files] == [
+        {"database": "ClinGen"},
+        {"database": "ICEES", "nullable": None},
+        {},
+    ]
+    assert header.supplementary_files[0].checksum == "new"
+    assert header.supplementary_files[1].checksum is None
+
+
+@pytest.mark.parametrize(
+    "reference_id, fresh_id",
+    [
+        ("url:https://example.org/a/b", "url:https://example.org/a_b"),
+        ("DOI:10.1/a/b", "DOI:10.1/a_b"),
+    ],
+)
+def test_extensions_are_not_copied_between_colliding_reference_ids(
+    tmp_path, reference_id, fresh_id
+):
+    """Filename sanitization collisions do not confer ownership of metadata."""
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    path = fetcher.get_cache_path(reference_id)
+    write_cache(
+        tmp_path,
+        f"reference_id: {reference_id}\ncontent_type: unknown\ndatabase: Orphanet",
+        path.name,
+    )
+    fresh = ReferenceContent(reference_id=fresh_id)
+    assert fetcher.get_cache_path(fresh.reference_id) == path
+    fetcher._save_to_disk(fresh)
+    assert validate_cache_file(path).frontmatter.model_extra == {}
+    assert validate_cache_file(path).frontmatter.reference_id == fresh_id
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("journal", 123),
+        ("authors", [123]),
+        ("is_preprint", "false"),
+        ("full_text_source_item_id", 123),
+    ],
+)
+def test_invalid_source_metadata_raises_without_replacing_cache(tmp_path, field, value):
+    """A plugin contract error is visible and cannot corrupt an existing file."""
+    path = write_cache(tmp_path, "reference_id: PMID:1\ncontent_type: unknown")
+    before = path.read_bytes()
+    reference = ReferenceContent(reference_id="PMID:1")
+    setattr(reference, field, value)
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    with pytest.raises(ValidationError):
+        fetcher._save_to_disk(reference)
+    assert path.read_bytes() == before
+
+
+def test_empty_optional_attachment_strings_are_omitted(tmp_path):
+    """The model writer retains the old omission policy, including zero sizes."""
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:1",
+            supplementary_files=[
+                SupplementaryFile(
+                    filename="data.csv",
+                    download_url="",
+                    content_type="",
+                    size_bytes=0,
+                    checksum="",
+                    description="",
+                    local_path="",
+                )
+            ],
+        )
+    )
+    text = fetcher.get_cache_path("PMID:1").read_text()
+    metadata = YAML(typ="safe").load(ReferenceFetcher._split_frontmatter(text)[0])
+    assert metadata["supplementary_files"] == [
+        {"filename": "data.csv", "size_bytes": 0}
+    ]
+
+
+def test_recursive_scan_skips_directory_symlinks_and_reads_file_symlinks(tmp_path):
+    """A link to a parent directory cannot cause an unbounded recursive scan."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    source = write_cache(tmp_path, "reference_id: PMID:1\ncontent_type: unknown")
+    (cache / source.name).symlink_to(source)
+    (cache / "parent").symlink_to(tmp_path, target_is_directory=True)
+    results = scan_cache_dir(cache, recursive=True)
+    assert len(results) == 1
+    assert results[0].path == cache / source.name
+    assert results[0].is_valid
+
+
+def test_fetch_propagates_invalid_metadata_from_a_lenient_read(tmp_path):
+    """Public fetch must not report a successful rewrite for invalid metadata."""
+    path = write_cache(
+        tmp_path,
+        "reference_id: PMID:1\ncontent_type: abstract_only\n"
+        "extractor_version: 1\nis_preprint: 'false'",
+    )
+    before = path.read_bytes()
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=tmp_path,
+            full_text_providers=[],
+        )
+    )
+    with pytest.raises(ValidationError):
+        fetcher.fetch("PMID:1")
+    assert path.read_bytes() == before
+
+
+def test_invalid_old_header_does_not_block_repair(tmp_path, caplog):
+    """Repair remains possible, with notice that extensions cannot be retained."""
+    path = write_cache(tmp_path, "reference_id: PMID:1\ncontent_type: [broken]")
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:1", content="Fresh evidence.")
+    )
+    assert validate_cache_file(path).is_valid
+    assert "Cannot preserve extension fields" in caplog.text
+
+
+def test_ambiguous_attachment_names_do_not_transfer_extensions(tmp_path):
+    """Duplicate filenames do not identify which attachment owns an extension."""
+    path = write_cache(
+        tmp_path,
+        "reference_id: PMID:1\ncontent_type: unknown\n"
+        "supplementary_files:\n- filename: a.csv\n  database: first\n"
+        "- filename: a.csv\n  database: second",
+    )
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id="PMID:1",
+            supplementary_files=[SupplementaryFile(filename="a.csv")],
+        )
+    )
+    assert (
+        validate_cache_file(path).frontmatter.supplementary_files[0].model_extra == {}
+    )

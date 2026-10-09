@@ -7,6 +7,7 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 import json
 import logging
 import re
+from collections import Counter
 from collections.abc import Iterator
 from dataclasses import asdict, dataclass
 from io import StringIO
@@ -17,9 +18,11 @@ from ruamel.yaml import YAML  # type: ignore
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from linkml_reference_validator.cache import (
+    _FRONTMATTER_DELIMITER,
     CacheFrontmatter,
     CacheSupplementaryFile,
     cache_filename,
+    validate_cache_file,
 )
 
 from linkml_reference_validator.models import (
@@ -129,14 +132,6 @@ ABSENT_CONTENT_CACHE_VERSION = 1
 #: served as they are forever. Stamped from ``reference.metadata``, like the
 #: HTML stamp, and only on a fresh URLSource fetch.
 URL_SOURCE_CACHE_VERSION = 1
-
-#: A cache file's frontmatter delimiter: a line that is exactly ``---``.
-#: Splitting on the bare string instead lets any *value* containing ``---`` - a
-#: URL reference_id, a title - truncate the block, which loses every field after
-#: it and hides the version stamp. An entry whose stamp is hidden reads as
-#: unstamped, so it is re-fetched, rewritten with the same id, and read as
-#: unstamped again: a re-fetch on every run, forever.
-_FRONTMATTER_DELIMITER = re.compile(r"^---[ \t]*$", re.MULTILINE)
 
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",
@@ -315,6 +310,10 @@ class ReferenceFetcher:
 
         Returns:
             ReferenceContent if found, None otherwise
+
+        Raises:
+            pydantic.ValidationError: Source metadata violates the cache model.
+                Validation happens before writing, leaving an existing file intact.
 
         Examples:
             >>> config = ReferenceValidationConfig()
@@ -1167,7 +1166,11 @@ class ReferenceFetcher:
                 for position, line in enumerate(handle):
                     if line.startswith("reference_id:"):
                         stored = line.split(":", 1)[1].strip()
-                        return stored or reference.reference_id
+                        # A sanitized filename can also collide for distinct
+                        # DOIs. Preserve case only when it is the same DOI.
+                        if stored.casefold() == reference.reference_id.casefold():
+                            return stored
+                        return reference.reference_id
                     # The opening delimiter is the first line; the closing one
                     # ends the frontmatter and with it anywhere the id can be.
                     if position and line.strip() == "---":
@@ -1341,6 +1344,11 @@ class ReferenceFetcher:
 
         Args:
             reference: Reference content to save
+
+        Raises:
+            pydantic.ValidationError: Invalid known metadata from a source or
+                lenient cache read. Do not silently coerce it or claim a cache
+                write succeeded; leave any existing cache file untouched.
         """
         cache_path = self._cache_path(
             reference.reference_id,
@@ -1407,10 +1415,14 @@ class ReferenceFetcher:
             full_text_source_item_id=reference.full_text_source_item_id or None,
             extra_fields_captured=captured,
             supplementary_files=[
-                CacheSupplementaryFile.model_validate(asdict(sf))
+                CacheSupplementaryFile.model_validate({
+                    key: None if value == "" and key != "filename" else value
+                    for key, value in asdict(sf).items()
+                })
                 for sf in reference.supplementary_files
             ] if reference.supplementary_files else None,
         )
+        frontmatter = self._preserve_cache_extensions(cache_path, frontmatter)
         lines = ["---", self._dump_frontmatter(frontmatter).rstrip("\n"), "---", ""]
 
         if reference.title:
@@ -1439,6 +1451,49 @@ class ReferenceFetcher:
             cache_path.chmod(0o600)
         logger.info(f"Cached {reference.reference_id} to {cache_path}")
 
+    @staticmethod
+    def _preserve_cache_extensions(
+        path: Path, frontmatter: CacheFrontmatter
+    ) -> CacheFrontmatter:
+        """Carry consumer metadata across rewrites of the same reference.
+
+        Only unknown keys survive; current fetched values own all known fields.
+        Attachment extensions follow unique filenames, not list positions.
+        Read only the destination cache, so public/private metadata stays apart.
+        A damaged old header must not prevent a fresh fetch from repairing it.
+        """
+        if not path.exists():
+            return frontmatter
+        previous = validate_cache_file(path).frontmatter
+        if previous is None:
+            logger.warning(
+                "Cannot preserve extension fields from invalid cache header %s; "
+                "replacing it with fresh metadata.", path,
+            )
+            return frontmatter
+        old_id, new_id = previous.reference_id, frontmatter.reference_id
+        if new_id.upper().startswith("DOI:"):
+            old_id, new_id = old_id.casefold(), new_id.casefold()
+        if old_id != new_id:
+            return frontmatter
+
+        frontmatter = frontmatter.model_copy(update=previous.model_extra or {})
+        old_files = previous.supplementary_files or []
+        new_files = frontmatter.supplementary_files or []
+        old_counts = Counter(sf.filename for sf in old_files)
+        new_counts = Counter(sf.filename for sf in new_files)
+        by_filename = {
+            sf.filename: sf for sf in old_files
+            if old_counts[sf.filename] == new_counts[sf.filename] == 1
+        }
+        if new_files:
+            frontmatter.supplementary_files = [
+                sf.model_copy(update=by_filename[sf.filename].model_extra or {})
+                if sf.filename in by_filename else sf
+                for sf in new_files
+            ]
+        return frontmatter
+
     def _dump_frontmatter(self, frontmatter: CacheFrontmatter) -> str:
         """Serialize the public model, preserving string types and special text.
 
@@ -1456,7 +1511,14 @@ class ReferenceFetcher:
                 return {key: quoted(item) for key, item in value.items()}
             return value
 
-        data = quoted(frontmatter.model_dump(exclude_none=True))
+        data = frontmatter.model_dump(exclude_none=True)
+        # Omit absent known fields, but preserve explicit null extension values.
+        data.update(frontmatter.model_extra or {})
+        for entry, attachment in zip(
+            data.get("supplementary_files", []), frontmatter.supplementary_files or []
+        ):
+            entry.update(attachment.model_extra or {})
+        data = quoted(data)
         # IDs have historically been plain YAML scalars. Keep that spelling;
         # ruamel will still quote an ID if its contents require it.
         data["reference_id"] = frontmatter.reference_id

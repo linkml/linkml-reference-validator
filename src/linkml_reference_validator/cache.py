@@ -13,6 +13,10 @@ from ruamel.yaml import YAML
 from ruamel.yaml.error import YAMLError
 
 
+# Match delimiter lines, never a --- substring inside a metadata value.
+_FRONTMATTER_DELIMITER = re.compile(r"^---[ \t]*$", re.MULTILINE)
+
+
 class CacheSupplementaryFile(BaseModel):
     """Typed supplementary-file metadata, with unrestricted extension fields."""
 
@@ -129,7 +133,7 @@ def validate_cache_file(path: str | Path) -> CacheValidationResult:
         result.findings.append(CacheFinding("read_error", str(exc)))
         return result
 
-    parts = re.split(r"^---[ \t]*$", text, maxsplit=2, flags=re.MULTILINE)
+    parts = _FRONTMATTER_DELIMITER.split(text, maxsplit=2)
     if len(parts) != 3 or parts[0]:
         result.findings.append(
             CacheFinding(
@@ -138,6 +142,7 @@ def validate_cache_file(path: str | Path) -> CacheValidationResult:
             )
         )
         return result
+    # Keep parser state local so a malformed file cannot affect a later scan entry.
     try:
         metadata = YAML(typ="safe").load(parts[1])
     except YAMLError as exc:

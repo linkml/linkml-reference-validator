@@ -455,3 +455,58 @@ def test_ambiguous_attachment_names_do_not_transfer_extensions(tmp_path):
     assert (
         validate_cache_file(path).frontmatter.supplementary_files[0].model_extra == {}
     )
+
+
+@pytest.mark.parametrize(
+    "legacy_field,value",
+    [
+        ("checksum", "12345"),
+        ("title", "12345"),
+        ("journal", "12345"),
+        ("doi", "12345"),
+        ("oa_status", "12345"),
+        ("full_text_provider", "12345"),
+        ("full_text_source_item_id", "12345"),
+    ],
+)
+def test_legacy_unquoted_scalars_survive_fetch_and_keep_extensions(
+    tmp_path, legacy_field, value
+):
+    """Metadata written unquoted by older writers must not break a cache retry."""
+    fields = "reference_id: PMID:1\ncontent_type: abstract_only\nextractor_version: 1\ndatabase: Orphanet\n"
+    if legacy_field != "checksum":
+        fields += f"{legacy_field}: {value}\n"
+    fields += "supplementary_files:\n- filename: data.csv\n  database: ICEES\n"
+    if legacy_field == "checksum":
+        fields += f"  checksum: {value}\n"
+    path = write_cache(tmp_path, fields)
+    assert not validate_cache_file(path).is_valid  # The public checker remains strict.
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=tmp_path, full_text_providers=[])
+    )
+    fetched = fetcher.fetch("PMID:1")
+    assert fetched is not None
+    assert fetched.full_text_attempted
+    result = validate_cache_file(path)
+    assert result.is_valid, result.findings
+    header = result.frontmatter
+    assert header.model_extra == {"database": "Orphanet"}
+    assert header.supplementary_files[0].model_extra == {"database": "ICEES"}
+    actual = (
+        header.supplementary_files[0].checksum
+        if legacy_field == "checksum"
+        else getattr(header, legacy_field)
+    )
+    assert actual == value
+
+
+def test_numeric_checksum_from_a_source_still_raises(tmp_path):
+    """Legacy file recovery does not weaken the source plugin's type contract."""
+    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
+    reference = ReferenceContent(
+        reference_id="PMID:1",
+        supplementary_files=[SupplementaryFile(filename="data.csv", checksum=12345)],
+    )
+    with pytest.raises(ValidationError):
+        fetcher._save_to_disk(reference)
+    assert not fetcher.get_cache_path("PMID:1").exists()

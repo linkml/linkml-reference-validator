@@ -116,6 +116,43 @@ def cache_filename(reference_id: str) -> str:
     return re.sub(r"[:/?=]", "_", reference_id) + ".md"
 
 
+def _same_reference_id(first: str, second: str) -> bool:
+    """Compare stored IDs exactly, except for case-insensitive DOI identity."""
+    if first.upper().startswith("DOI:"):
+        return first.casefold() == second.casefold()
+    return first == second
+
+
+def _recover_legacy_scalars(metadata: dict) -> dict:
+    """Recover scalar text that older writers emitted without YAML quoting.
+
+    Restricted to disk reads, never the public checker or source plugin values.
+    Collections remain invalid, and extension values are left untouched.
+    """
+
+    def recover(fields: dict, model: type[BaseModel]) -> dict:
+        """Copy a mapping, recovering scalar text according to the public model."""
+        fields = fields.copy()
+        for name, spec in model.model_fields.items():
+            # A bare number cannot be a normalized reference ID. Booleans and
+            # versions are typed fields, not legacy text, so remain untouched.
+            if name == "reference_id" or spec.annotation not in (str, str | None):
+                continue
+            value = fields.get(name)
+            if isinstance(value, (int, float)):
+                fields[name] = str(value)
+        return fields
+
+    metadata = recover(metadata, CacheFrontmatter)
+    attachments = metadata.get("supplementary_files")
+    if isinstance(attachments, list):
+        metadata["supplementary_files"] = [
+            recover(item, CacheSupplementaryFile) if isinstance(item, dict) else item
+            for item in attachments
+        ]
+    return metadata
+
+
 def validate_cache_file(path: str | Path) -> CacheValidationResult:
     """Check a UTF-8 Markdown cache file without fetching or changing anything.
 
@@ -125,6 +162,13 @@ def validate_cache_file(path: str | Path) -> CacheValidationResult:
     detect a well-formed hand edit or verify the truth of the cached source text.
     Legacy ``.txt`` caches are outside this contract.
     """
+    return _validate_cache_file(path)
+
+
+def _validate_cache_file(
+    path: str | Path, *, recover_legacy_scalars: bool = False
+) -> CacheValidationResult:
+    """Read a header, optionally applying the fetcher's legacy scalar recovery."""
     path = Path(path)
     result = CacheValidationResult(path=path)
     try:
@@ -153,6 +197,8 @@ def validate_cache_file(path: str | Path) -> CacheValidationResult:
             CacheFinding("invalid_frontmatter", "Frontmatter must be a YAML mapping.")
         )
         return result
+    if recover_legacy_scalars:
+        metadata = _recover_legacy_scalars(metadata)
     try:
         result.frontmatter = CacheFrontmatter.model_validate(metadata)
     except ValidationError as exc:

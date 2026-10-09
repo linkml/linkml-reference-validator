@@ -19,10 +19,12 @@ from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from linkml_reference_validator.cache import (
     _FRONTMATTER_DELIMITER,
+    _recover_legacy_scalars,
+    _same_reference_id,
+    _validate_cache_file,
     CacheFrontmatter,
     CacheSupplementaryFile,
     cache_filename,
-    validate_cache_file,
 )
 
 from linkml_reference_validator.models import (
@@ -1168,7 +1170,7 @@ class ReferenceFetcher:
                         stored = line.split(":", 1)[1].strip()
                         # A sanitized filename can also collide for distinct
                         # DOIs. Preserve case only when it is the same DOI.
-                        if stored.casefold() == reference.reference_id.casefold():
+                        if _same_reference_id(stored, reference.reference_id):
                             return stored
                         return reference.reference_id
                     # The opening delimiter is the first line; the closing one
@@ -1464,17 +1466,14 @@ class ReferenceFetcher:
         """
         if not path.exists():
             return frontmatter
-        previous = validate_cache_file(path).frontmatter
+        previous = _validate_cache_file(path, recover_legacy_scalars=True).frontmatter
         if previous is None:
             logger.warning(
                 "Cannot preserve extension fields from invalid cache header %s; "
                 "replacing it with fresh metadata.", path,
             )
             return frontmatter
-        old_id, new_id = previous.reference_id, frontmatter.reference_id
-        if new_id.upper().startswith("DOI:"):
-            old_id, new_id = old_id.casefold(), new_id.casefold()
-        if old_id != new_id:
+        if not _same_reference_id(previous.reference_id, frontmatter.reference_id):
             return frontmatter
 
         frontmatter = frontmatter.model_copy(update=previous.model_extra or {})
@@ -1797,6 +1796,8 @@ class ReferenceFetcher:
 
         yaml_parser = YAML(typ="safe")
         frontmatter = yaml_parser.load(split[0])
+        if isinstance(frontmatter, dict):
+            frontmatter = _recover_legacy_scalars(frontmatter)
         body = split[1].strip()
 
         content = self._extract_content_from_markdown(body)

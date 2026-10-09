@@ -29,8 +29,8 @@ filename fails its separate check; otherwise it is `None`.
 `scan_cache_dir(directory, recursive=False)` returns a list in path order. It
 checks immediate `*.md` files by default; pass `recursive=True` to include nested
 directories. It skips symlinked directories during recursion but reads symlinked
-Markdown files. Non-Markdown files, including legacy `.txt` caches and downloaded XML/PDF files, are outside this
-contract and are ignored. An existing empty directory returns `[]`. Missing,
+Markdown files. Non-Markdown files, including legacy `.txt` caches and downloaded
+XML/PDF files, are outside this contract and are ignored. An existing empty directory returns `[]`. Missing,
 unreadable, or non-directory scan roots raise `OSError` (including its subclasses)
 so a mistaken path cannot silently pass a gate. Individual file errors are
 reported as findings and do not stop the scan.
@@ -38,8 +38,8 @@ reported as findings and do not stop the scan.
 ## Frontmatter contract
 
 Files contain UTF-8 text without a byte-order mark (BOM), with a YAML mapping
-between opening and closing `---` lines, beginning on the first line. The remaining text is an unrestricted Markdown
-body. Duplicate YAML keys are invalid.
+between opening and closing `---` lines, beginning on the first line. The remaining
+text is an unrestricted Markdown body. Duplicate YAML keys are invalid.
 
 Only `reference_id` and `content_type` are required; both must be nonblank strings.
 All other known fields are optional and may be null:
@@ -64,8 +64,16 @@ Each supplementary file requires a nonempty string `filename`; its optional fiel
 are `download_url`, `content_type`, `size_bytes`, `checksum`, `description`, and
 `local_path`. Older cache files may contain unquoted numeric values in fields
 such as `checksum` that require strings. These are reported as `invalid_field`;
-quote the intended text to repair them. The validator does not guess at a string
-representation that could change leading zeros or scientific notation.
+quote the intended text to repair them. The lenient fetcher also recovers numeric
+and boolean scalars in string-valued metadata fields (including attachment
+metadata) by converting their parsed values to strings. The field types come
+from the public model; reference IDs, version stamps, booleans, lists, and
+unknown extension fields are not coerced.
+A cache rewrite then quotes these strings and retains consumer extensions.
+This compatibility recovery applies only to disk reads, not source plugin output
+or the public validator. It cannot reconstruct leading zeros or original
+scientific notation already lost during YAML parsing; check the source when the
+exact spelling matters.
 
 **Unknown keys are allowed and preserved**, both in the header and in
 supplementary-file metadata. No extension namespace is required: a consumer's
@@ -75,13 +83,16 @@ break older consumers. Extraction stamps may be absent, old, or newer than this
 library; format validity does not imply freshness.
 
 When rewriting an existing cache with a valid header for the same reference,
-the fetcher carries over unknown fields, including explicit null values. Known
+the fetcher carries over unknown fields, including explicit null values. Unknown
+fields are retained as-is, not recalculated or certified current on refresh;
+this also applies to fields written by a newer version of the library. Known
 fields always come from the new reference. Attachment extensions follow filenames
 that are unique in both the old and new attachment lists; removed or ambiguous
 attachments do not transfer their extensions. Preservation reads only the file
 being overwritten, so metadata is not copied between public and private caches
 or between different references whose sanitized filenames collide. A damaged
-header cannot supply validated extensions: the fetcher logs a warning and permits
+header that remains invalid after legacy scalar recovery cannot supply validated
+extensions: the fetcher logs a warning and permits
 a fresh fetch to repair the file.
 
 The writer omits empty optional attachment strings, retaining the historical

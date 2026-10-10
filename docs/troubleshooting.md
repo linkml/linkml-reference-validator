@@ -902,11 +902,14 @@ rather than as `unavailable`, so it falls outside this stamp and is not
 re-tested. Clear such entries by hand if you were running that setting before
 this version.
 
-`url:` entries carry their own stamp, `url_source_version: 1`. Version 1 is
+`url:` entries carry their own stamp, `url_source_version`. Version 1 is
 two URLSource changes: HTML is sanitized before caching, so page scripts,
 comments and attributes stop reaching the cache (issue #92), and a PDF's title
 is recovered from a publisher landing page or its embedded metadata rather than
-set to its URL (issue #93). A `url:` entry with a missing or older stamp is
+set to its URL (issue #93). Version 2 caches an HTML page as readable text
+rather than markup, so a quote that runs through a link or bold text matches
+(issue #102). Every quote that matched the version 1 markup still matches the
+text, provided the page itself has not changed. A `url:` entry with a missing or older stamp is
 re-fetched once on the next validation fetch. If the page cannot be reached,
 the old entry is still served and is not rewritten, so a later run retries.
 Other sources are unaffected. With `trust_cached_entries` set, old entries are
@@ -919,6 +922,18 @@ for readers without JavaScript. A quote that only ever matched that copy will
 stop matching once the entry is re-fetched. If the same text appears elsewhere
 on the page, nothing changes. If it does not, cite a source that carries it,
 such as the `PMID:` or `DOI:` of the article.
+
+**The version 2 refresh rewrites every cached HTML page.** Each `url:` HTML
+entry changes from one line of markup to many lines of text, so expect a large
+diff in a committed cache. The refresh fetches each page again, so a page that
+has changed or gone since it was cached can stop supporting a quote; an
+unreachable page keeps its old entry, as above. To keep that diff reviewable,
+refresh in a commit of its own: right after upgrading, run your usual
+validation on an otherwise unchanged checkout and commit only the rewritten
+cache files, before any curation changes. Entries are refreshed only as a
+validation uses them (see
+[Cached references re-fetched after upgrading](#cached-references-re-fetched-after-upgrading)),
+so a page no validation cites keeps its old entry until one does.
 
 **A cache-wide refresh adds one line to every enriched entry.** Both index
 providers now set `access_type` where they previously left it unset, so a

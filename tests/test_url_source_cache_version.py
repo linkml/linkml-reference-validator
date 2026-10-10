@@ -58,6 +58,12 @@ def test_current_url_entry_is_fresh(content_type):
     assert not ReferenceFetcher._is_stale_cache_entry(entry)
 
 
+def test_a_version_1_entry_is_stale():
+    """Version 1 cached sanitized markup; version 2 caches readable text (#102)."""
+    assert URL_SOURCE_CACHE_VERSION >= 2
+    assert ReferenceFetcher._is_stale_cache_entry(_entry(f"url:{URL}", "url", url_version=1))
+
+
 def test_a_newer_stamp_is_not_stale():
     entry = _entry(f"url:{URL}", "url", url_version=URL_SOURCE_CACHE_VERSION + 1)
     assert not ReferenceFetcher._is_stale_cache_entry(entry)

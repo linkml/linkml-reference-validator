@@ -52,6 +52,9 @@ KEPT_ATTRIBUTES = frozenset({"rowspan", "colspan", "scope"})
 
 #: Tags that start a new line in :func:`html_to_text`: the extractor's block
 #: tags, plus the document-level and form containers a whole page also has.
+#: ``td`` and ``th`` stay in it although a row's cells are joined on one line
+#: by :func:`_row_cells`: that path is taken only inside a ``<tr>``, so a cell
+#: met anywhere else still gets a line of its own.
 TEXT_BREAK_TAGS = frozenset(BLOCK_LEVEL_TAGS) | {
     "body", "caption", "center", "details", "dialog", "fieldset", "form",
     "head", "html", "legend", "menu", "option", "summary", "tbody", "textarea",

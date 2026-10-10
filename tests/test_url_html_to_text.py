@@ -207,3 +207,8 @@ def test_a_deeply_nested_page_is_flattened():
     depth = 5000
     page = "<div>" * depth + "deep <b>text</b>" + "</div>" * depth
     assert html_to_text(page) == "deep text"
+
+
+def test_blank_lines_are_kept_only_inside_pre():
+    text = html_to_text("<p>one</p>\n\n<div> </div><pre>a\n\n  b</pre><p>two</p>")
+    assert text == "one\na\n\n  b\ntwo"

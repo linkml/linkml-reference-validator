@@ -143,7 +143,11 @@ def html_to_text(content: str) -> str:
 
 
 def _lines(node: Tag) -> list[str]:
-    """The non-blank lines of ``node``'s text, the last one included.
+    """The lines of ``node``'s text, the last one included.
+
+    Lines outside ``<pre>`` are never blank and carry no leading or trailing
+    whitespace. A ``<pre>`` block's lines are kept as written, blank ones and
+    indentation included, since its whitespace is part of its text.
 
     Walks the tree with a stack of its own rather than by recursion, so a page
     nested deeper than Python's recursion limit is flattened like any other.

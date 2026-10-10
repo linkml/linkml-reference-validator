@@ -63,7 +63,8 @@ TEXT_BREAK_TAGS = frozenset(BLOCK_LEVEL_TAGS) | {
 
 #: Between the cells of a table row. Normalization drops punctuation, so a
 #: quote copied from a rendered row, with the cells separated by spaces, still
-#: matches.
+#: matches. Empty cells are left out, so a row's columns need not line up with
+#: the row above; this is text for matching and reading, not a table.
 CELL_SEPARATOR = " | "
 
 

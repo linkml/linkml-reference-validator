@@ -64,6 +64,10 @@ TEXT_BREAK_TAGS = frozenset(BLOCK_LEVEL_TAGS) | {
 CELL_SEPARATOR = " | "
 
 
+#: Marks, on the walk's stack, the end of a block-level element.
+_BLOCK_END = object()
+
+
 def _without_non_content(content: str) -> BeautifulSoup:
     """Parse a page, dropping ``NON_CONTENT_TAGS`` and comments."""
     soup = BeautifulSoup(content, "html.parser")
@@ -139,18 +143,22 @@ def html_to_text(content: str) -> str:
 
 
 def _lines(node: Tag) -> list[str]:
-    """The non-blank lines of ``node``'s text, the last one included."""
+    """The non-blank lines of ``node``'s text, the last one included.
+
+    Walks the tree with a stack of its own rather than by recursion, so a page
+    nested deeper than Python's recursion limit is flattened like any other.
+    Only a table nested in a table cell recurses, through :func:`_row_cells`.
+    """
     lines: list[str] = []
     line: list[str] = []
-    _flatten(node, lines, line)
-    _end_line(lines, line)
-    return lines
-
-
-def _flatten(node: Tag, lines: list[str], line: list[str]) -> None:
-    """Append ``node``'s text to ``lines``; ``line`` holds the line being built."""
-    for child in node.children:
-        if isinstance(child, PreformattedString) and not isinstance(child, CData):
+    # Children are pushed in reverse so they pop in document order. A block's
+    # closing break is pushed beneath its children, to end its last line.
+    stack: list[object] = list(reversed(list(node.children)))
+    while stack:
+        child = stack.pop()
+        if child is _BLOCK_END:
+            _end_line(lines, line)
+        elif isinstance(child, PreformattedString) and not isinstance(child, CData):
             continue  # a doctype, declaration or processing instruction: not text
         elif isinstance(child, NavigableString):
             line.append(re.sub(r"\s+", " ", str(child)))
@@ -168,10 +176,12 @@ def _flatten(node: Tag, lines: list[str], line: list[str]) -> None:
                 lines.append(row)
         elif child.name in TEXT_BREAK_TAGS:
             _end_line(lines, line)
-            _flatten(child, lines, line)
-            _end_line(lines, line)
+            stack.append(_BLOCK_END)
+            stack.extend(reversed(list(child.children)))
         else:
-            _flatten(child, lines, line)
+            stack.extend(reversed(list(child.children)))
+    _end_line(lines, line)
+    return lines
 
 
 def _end_line(lines: list[str], line: list[str]) -> None:

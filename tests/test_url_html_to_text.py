@@ -200,3 +200,10 @@ def test_text_in_a_row_outside_its_cells_is_kept(row, expected):
 def test_br_inside_pre_breaks_a_line():
     """get_text() ignores <br>, which would weld "a<br>b" into "ab"."""
     assert html_to_text("<pre>a<br>b\n  c</pre>") == "a\nb\n  c"
+
+
+def test_a_deeply_nested_page_is_flattened():
+    """Nesting past Python's recursion limit must not make a page uncacheable."""
+    depth = 5000
+    page = "<div>" * depth + "deep <b>text</b>" + "</div>" * depth
+    assert html_to_text(page) == "deep text"

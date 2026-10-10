@@ -163,8 +163,7 @@ def _flatten(node: Tag, lines: list[str], line: list[str]) -> None:
             lines.extend(child.get_text().strip("\n").splitlines())
         elif child.name == "tr":
             _end_line(lines, line)
-            cells = [_cell_text(cell) for cell in child.find_all(["td", "th"], recursive=False)]
-            row = CELL_SEPARATOR.join(cell for cell in cells if cell)
+            row = CELL_SEPARATOR.join(cell for cell in _row_cells(child) if cell)
             if row:
                 lines.append(row)
         elif child.name in TEXT_BREAK_TAGS:
@@ -181,6 +180,31 @@ def _end_line(lines: list[str], line: list[str]) -> None:
     if text:
         lines.append(text)
     line.clear()
+
+
+def _row_cells(row: Tag) -> list[str]:
+    """The text of each cell in a table row, and of anything else it holds.
+
+    A cell may sit inside a wrapper, as in the ``<tr><form><td>`` of older
+    layouts, and a row may hold stray text. Neither is dropped: the sanitized
+    markup kept that text, so a quote may already match it.
+
+    Examples:
+        >>> row = BeautifulSoup("<tr>x<form><td>a</td><td>b</td></form></tr>", "html.parser")
+        >>> _row_cells(row.tr)
+        ['x', 'a', 'b']
+    """
+    cells: list[str] = []
+    for child in row.children:
+        if isinstance(child, Tag) and child.name in ("td", "th"):
+            cells.append(_cell_text(child))
+        elif isinstance(child, Tag) and child.find(["td", "th"]) is not None:
+            cells.extend(_row_cells(child))
+        elif isinstance(child, Tag):
+            cells.append(_cell_text(child))
+        elif type(child) is NavigableString or isinstance(child, CData):
+            cells.append(" ".join(child.split()))
+    return cells
 
 
 def _cell_text(cell: Tag) -> str:

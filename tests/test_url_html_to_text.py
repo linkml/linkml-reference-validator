@@ -181,3 +181,17 @@ def test_every_text_node_of_the_sanitized_markup_survives(name, page):
         expected = normalize(str(node))
         if expected:
             assert expected in flat, f"{name}: lost {expected!r}"
+
+
+@pytest.mark.parametrize(
+    "row, expected",
+    [
+        ("<tr><form><td>a</td><td>b</td></form></tr>", "a | b"),
+        ("<tr>loose<td>a</td></tr>", "loose | a"),
+        ("<tr><td>a</td><span>between</span><td>b</td></tr>", "a | between | b"),
+    ],
+    ids=["cells-in-a-form", "stray-text", "stray-element"],
+)
+def test_text_in_a_row_outside_its_cells_is_kept(row, expected):
+    """Older layouts wrap a row's cells in <form>; none of their text may be lost."""
+    assert html_to_text(f"<table>{row}</table>") == expected

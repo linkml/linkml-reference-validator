@@ -927,7 +927,13 @@ such as the `PMID:` or `DOI:` of the article.
 entry changes from one line of markup to many lines of text, so expect a large
 diff in a committed cache. The refresh fetches each page again, so a page that
 has changed or gone since it was cached can stop supporting a quote; an
-unreachable page keeps its old entry, as above.
+unreachable page keeps its old entry, as above. To keep that diff reviewable,
+refresh in a commit of its own: right after upgrading, run your usual
+validation on an otherwise unchanged checkout and commit only the rewritten
+cache files, before any curation changes. Entries are refreshed only as a
+validation uses them (see
+[Cached references re-fetched after upgrading](#cached-references-re-fetched-after-upgrading)),
+so a page no validation cites keeps its old entry until one does.
 
 **A cache-wide refresh adds one line to every enriched entry.** Both index
 providers now set `access_type` where they previously left it unset, so a

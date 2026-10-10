@@ -10,7 +10,14 @@ import logging
 import re
 from typing import Optional, Union
 
-from bs4 import BeautifulSoup, Comment, Tag  # type: ignore
+from bs4 import (  # type: ignore
+    BeautifulSoup,
+    CData,
+    Comment,
+    NavigableString,
+    Tag,
+)
+from bs4.element import PreformattedString  # type: ignore
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.rules import ARTICLE_BODY_SELECTORS
@@ -43,6 +50,31 @@ NON_CONTENT_TAGS = ("script", "style", "noscript", "template", "meta", "link", "
 KEPT_ATTRIBUTES = frozenset({"rowspan", "colspan", "scope"})
 
 
+#: Tags that start a new line in :func:`html_to_text`: the extractor's block
+#: tags, plus the document-level and form containers a whole page also has.
+TEXT_BREAK_TAGS = frozenset(BLOCK_LEVEL_TAGS) | {
+    "body", "caption", "center", "details", "dialog", "fieldset", "form",
+    "head", "html", "legend", "menu", "option", "summary", "tbody", "textarea",
+    "tfoot", "thead", "title",
+}
+
+#: Between the cells of a table row. Normalization drops punctuation, so a
+#: quote copied from a rendered row, with the cells separated by spaces, still
+#: matches.
+CELL_SEPARATOR = " | "
+
+
+def _without_non_content(content: str) -> BeautifulSoup:
+    """Parse a page, dropping ``NON_CONTENT_TAGS`` and comments."""
+    soup = BeautifulSoup(content, "html.parser")
+    for tag in soup.find_all(NON_CONTENT_TAGS):
+        if not tag.decomposed:  # already gone with an enclosing non-content tag
+            tag.decompose()
+    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
+        comment.extract()
+    return soup
+
+
 def sanitize_html(content: str) -> str:
     """Strip an HTML page to its body markup and text, for caching.
 
@@ -60,12 +92,7 @@ def sanitize_html(content: str) -> str:
         >>> sanitize_html("<pre><b>x</b>    <b>y</b></pre>")
         '<pre><b>x</b>    <b>y</b></pre>'
     """
-    soup = BeautifulSoup(content, "html.parser")
-    for tag in soup.find_all(NON_CONTENT_TAGS):
-        if not tag.decomposed:  # already gone with an enclosing non-content tag
-            tag.decompose()
-    for comment in soup.find_all(string=lambda text: isinstance(text, Comment)):
-        comment.extract()
+    soup = _without_non_content(content)
     for tag in soup.find_all(True):
         tag.attrs = {k: v for k, v in tag.attrs.items() if k in KEPT_ATTRIBUTES}
     # Removed elements leave runs of indentation behind. Collapse each
@@ -76,6 +103,94 @@ def sanitize_html(content: str) -> str:
             continue
         text.replace_with("\n" if "\n" in text else " ")
     return str(soup)
+
+
+def html_to_text(content: str) -> str:
+    r"""Flatten a whole HTML page to readable text, for caching ``url:`` pages.
+
+    Drops what :func:`sanitize_html` drops, then unwraps every inline tag in
+    place and starts a new line at each block-level tag and ``<br>``. A table
+    row becomes one line, its cells joined by ``CELL_SEPARATOR``. ``<pre>``
+    keeps its whitespace; elsewhere whitespace runs collapse to one space, as
+    a browser would render them. Entities are unescaped.
+
+    Unlike :class:`HTMLExtractor`, which serves article text, nothing is
+    narrowed to ``<article>`` or ``<main>`` and no ``<p>``-only shortcut is
+    taken. Every text node of the sanitized markup appears, contiguous, in
+    the result, so a quote that matched the markup still matches, and a quote
+    through a link or bold text now matches too.
+
+    Examples:
+        >>> html_to_text('<p>Produced by <a href="/x">the City of Flint</a>.</p>')
+        'Produced by the City of Flint.'
+        >>> html_to_text("<p>The <b>Flint water crisis</b> was</p><ul><li>one</li><li>two</li></ul>")
+        'The Flint water crisis was\none\ntwo'
+        >>> html_to_text("<p>Line one<br>Line two</p>")
+        'Line one\nLine two'
+        >>> html_to_text("<table><tr><th>Gene</th><th>Finding</th></tr><tr><td>POLG</td><td>A &amp; B</td></tr></table>")
+        'Gene | Finding\nPOLG | A & B'
+        >>> html_to_text("<pre>x    y\n  z</pre>")
+        'x    y\n  z'
+        >>> html_to_text("<p>near (<i>GUSB</i>, <i>GRN</i>)\n   here</p><script>k=1</script>")
+        'near (GUSB, GRN) here'
+    """
+    return "\n".join(_lines(_without_non_content(content)))
+
+
+def _lines(node: Tag) -> list[str]:
+    """The non-blank lines of ``node``'s text, the last one included."""
+    lines: list[str] = []
+    line: list[str] = []
+    _flatten(node, lines, line)
+    _end_line(lines, line)
+    return lines
+
+
+def _flatten(node: Tag, lines: list[str], line: list[str]) -> None:
+    """Append ``node``'s text to ``lines``; ``line`` holds the line being built."""
+    for child in node.children:
+        if isinstance(child, PreformattedString) and not isinstance(child, CData):
+            continue  # a doctype, declaration or processing instruction: not text
+        elif isinstance(child, NavigableString):
+            line.append(re.sub(r"\s+", " ", str(child)))
+        elif not isinstance(child, Tag):
+            continue
+        elif child.name == "br":
+            _end_line(lines, line)
+        elif child.name == "pre":
+            _end_line(lines, line)
+            lines.extend(child.get_text().strip("\n").splitlines())
+        elif child.name == "tr":
+            _end_line(lines, line)
+            cells = [_cell_text(cell) for cell in child.find_all(["td", "th"], recursive=False)]
+            row = CELL_SEPARATOR.join(cell for cell in cells if cell)
+            if row:
+                lines.append(row)
+        elif child.name in TEXT_BREAK_TAGS:
+            _end_line(lines, line)
+            _flatten(child, lines, line)
+            _end_line(lines, line)
+        else:
+            _flatten(child, lines, line)
+
+
+def _end_line(lines: list[str], line: list[str]) -> None:
+    """Move the line being built onto ``lines``, unless it holds only whitespace."""
+    text = re.sub(r" +", " ", "".join(line)).strip()
+    if text:
+        lines.append(text)
+    line.clear()
+
+
+def _cell_text(cell: Tag) -> str:
+    """One table cell's text on one line, whatever blocks it holds.
+
+    Examples:
+        >>> _cell_text(BeautifulSoup("<td><p>a</p><p>b <i>c</i></p></td>", "html.parser").td)
+        'a b c'
+    """
+    return " ".join(_lines(cell))
+
 
 @ExtractorRegistry.register
 class HTMLExtractor(Extractor):

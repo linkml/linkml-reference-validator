@@ -11,11 +11,14 @@ held is lost.
 """
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 from bs4 import BeautifulSoup, NavigableString  # type: ignore
 
 from linkml_reference_validator.etl.extract.html import html_to_text, sanitize_html
+from linkml_reference_validator.etl.sources.url import URLSource
+from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
@@ -33,6 +36,16 @@ FLINT = b"""<!DOCTYPE html><html><head><title>Flint | Patch</title></head><body>
 </body></html>
 """
 
+WIKIPEDIA = (
+    b"<html><body><div><p>The <b>Flint water crisis</b> was a public health crisis "
+    b"that lasted from 2014 to 2019.</p></div></body></html>"
+)
+
+ZFIN = (
+    b'<html><body><p>Data are licensed under a <a rel="license" '
+    b'href="https://creativecommons.org/licenses/by/4.0/">Creative Commons '
+    b"Attribution 4.0 International License</a>.</p></body></html>"
+)
 
 MIXED = b"""<html><body>
 <h2>Findings</h2>
@@ -48,6 +61,53 @@ MIXED = b"""<html><body>
 </body></html>
 """
 
+
+@pytest.fixture
+def config(tmp_path):
+    return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+
+
+def _fetch(url, body, content_type, config):
+    with patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as MockAcquirer:
+        MockAcquirer.return_value.fetch_bytes.return_value = (body, content_type)
+        return URLSource().fetch(url, config)
+
+
+def _found(quote, reference, config):
+    return SupportingTextValidator(config).find_text_in_reference(quote, reference).found
+
+
+@pytest.mark.parametrize(
+    "body, quote",
+    [
+        (FLINT, "This press release was produced by the City of Flint."),
+        (WIKIPEDIA, "The Flint water crisis was a public health crisis"),
+        (ZFIN, "licensed under a Creative Commons Attribution 4.0 International License"),
+    ],
+    ids=["flint-link", "wikipedia-bold", "zfin-link"],
+)
+def test_a_quote_through_inline_markup_matches(config, body, quote):
+    reference = _fetch("https://example.org/page", body, "text/html", config)
+    assert _found(quote, reference, config)
+
+
+def test_the_cache_holds_no_markup(config):
+    reference = _fetch("https://example.org/page", FLINT, "text/html", config)
+    assert "<" not in reference.content
+    assert "This press release was produced by the City of Flint." in reference.content
+
+
+def test_text_outside_article_is_kept(config):
+    """A generic page is not narrowed to its <article>, as HTMLExtractor would."""
+    reference = _fetch("https://example.org/page", FLINT, "text/html", config)
+    assert "Home" in reference.content
+    assert "Related: Flint news." in reference.content
+
+
+def test_title_still_comes_from_the_raw_page(config):
+    body = b'<head><meta name="citation_title" content="Real Title"><title>T</title></head>'
+    reference = _fetch("https://example.org/page", body + FLINT, "text/html", config)
+    assert reference.title == "Real Title"
 
 
 def test_list_and_table_text_is_kept_beside_paragraphs():
@@ -70,6 +130,10 @@ def test_a_table_row_is_one_line_with_separated_cells():
     assert "Gene | Finding" in lines
     assert "POLG | depletion | severe" in lines
 
+
+def test_a_quote_copied_from_a_rendered_table_row_matches(config):
+    reference = _fetch("https://example.org/page", MIXED, "text/html", config)
+    assert _found("POLG depletion severe", reference, config)
 
 
 def test_pre_keeps_its_whitespace():

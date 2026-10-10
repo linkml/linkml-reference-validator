@@ -79,8 +79,9 @@ def sanitize_html(content: str) -> str:
     """Strip an HTML page to its body markup and text, for caching.
 
     Drops ``NON_CONTENT_TAGS`` and comments, and every attribute not in
-    ``KEPT_ATTRIBUTES``. Markup is kept, unlike :class:`HTMLExtractor`, which
-    flattens to plain text; this is for ``url:`` pages stored as HTML.
+    ``KEPT_ATTRIBUTES``. Markup is kept, unlike :class:`HTMLExtractor` and
+    :func:`html_to_text`, which flatten to plain text. ``url:`` pages are
+    cached through :func:`html_to_text` since #102.
 
     Examples:
         >>> sanitize_html('<p class="x" onclick="f()">Hi<script>k=1</script><!-- c --></p>')

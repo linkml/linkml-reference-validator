@@ -212,3 +212,15 @@ def test_a_deeply_nested_page_is_flattened():
 def test_blank_lines_are_kept_only_inside_pre():
     text = html_to_text("<p>one</p>\n\n<div> </div><pre>a\n\n  b</pre><p>two</p>")
     assert text == "one\na\n\n  b\ntwo"
+
+
+def test_a_table_nested_in_a_cell_folds_into_that_cell():
+    """The inner table stays on the outer row's line: its rows joined by a space."""
+    page = (
+        "<table><tr><td>Gene<table><tr><td>POLG</td><td>TWNK</td></tr>"
+        "<tr><td>OPA1</td></tr></table></td><td>mtDNA</td></tr></table>"
+    )
+    text = html_to_text(page)
+    assert text == "Gene POLG | TWNK OPA1 | mtDNA"
+    normalize = SupportingTextValidator.normalize_text
+    assert normalize("Gene POLG TWNK OPA1 mtDNA") in normalize(text)

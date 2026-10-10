@@ -195,3 +195,8 @@ def test_every_text_node_of_the_sanitized_markup_survives(name, page):
 def test_text_in_a_row_outside_its_cells_is_kept(row, expected):
     """Older layouts wrap a row's cells in <form>; none of their text may be lost."""
     assert html_to_text(f"<table>{row}</table>") == expected
+
+
+def test_br_inside_pre_breaks_a_line():
+    """get_text() ignores <br>, which would weld "a<br>b" into "ab"."""
+    assert html_to_text("<pre>a<br>b\n  c</pre>") == "a\nb\n  c"

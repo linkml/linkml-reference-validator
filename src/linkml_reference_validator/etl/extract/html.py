@@ -160,7 +160,7 @@ def _flatten(node: Tag, lines: list[str], line: list[str]) -> None:
             _end_line(lines, line)
         elif child.name == "pre":
             _end_line(lines, line)
-            lines.extend(child.get_text().strip("\n").splitlines())
+            lines.extend(_pre_text(child).strip("\n").splitlines())
         elif child.name == "tr":
             _end_line(lines, line)
             row = CELL_SEPARATOR.join(cell for cell in _row_cells(child) if cell)
@@ -180,6 +180,24 @@ def _end_line(lines: list[str], line: list[str]) -> None:
     if text:
         lines.append(text)
     line.clear()
+
+
+def _pre_text(pre: Tag) -> str:
+    r"""A ``<pre>`` block's text, whitespace kept and each ``<br>`` a line break.
+
+    ``get_text()`` would ignore ``<br>`` and weld the words either side.
+
+    Examples:
+        >>> _pre_text(BeautifulSoup("<pre>a<br>b  <i>c</i></pre>", "html.parser").pre)
+        'a\nb  c'
+    """
+    return "".join(
+        "\n" if isinstance(node, Tag) else str(node)
+        for node in pre.descendants
+        if (isinstance(node, Tag) and node.name == "br")
+        or type(node) is NavigableString
+        or isinstance(node, CData)
+    )
 
 
 def _row_cells(row: Tag) -> list[str]:

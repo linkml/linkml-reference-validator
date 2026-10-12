@@ -21,9 +21,13 @@ _CONTENT_TYPE_FORMATS = {
     "text/xml": "xml",
     "text/plain": "text",
     "image/svg+xml": "svg",
+    "application/vnd.jgraph.mxfile": "drawio",
 }
 
 _SUFFIX_FORMATS = {
+    # Before ".xml": the first suffix that matches wins.
+    ".drawio.xml": "drawio",
+    ".drawio": "drawio",
     ".pdf": "pdf",
     ".html": "html",
     ".htm": "html",
@@ -82,6 +86,10 @@ def sniff_format(data: bytes) -> Optional[str]:
     prolog_starts = (b"<svg", b"<?xml", b"<!--", b"<!doctype svg")
     if prolog.startswith(prolog_starts) and _root_element(data) in (b"svg", b"svg:svg"):
         return "svg"
+    if prolog.startswith((b"<mxfile", b"<mxgraphmodel", b"<?xml", b"<!--")) and _root_element(
+        data
+    ) in (b"mxfile", b"mxgraphmodel"):
+        return "drawio"
     if head.startswith(b"<?xml"):
         return "xml"
     return None

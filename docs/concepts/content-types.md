@@ -12,6 +12,7 @@ When fetching references, the validator tracks what type of content was retrieve
 | `summary` | GEO, BioProject, BioSample, ClinicalTrials | Database summary/description field |
 | `local_file` | file: | Content read from local filesystem |
 | `local_svg` | file: (`.svg`) | Text an SVG figure renders, a blank line between labels; a quote must fall within one label |
+| `local_drawio` | file: (`.drawio`) | Labels a drawio diagram draws, read like `local_svg` |
 | `url` | url: | Content fetched from web URL |
 | `unavailable` | Any | No content could be retrieved |
 

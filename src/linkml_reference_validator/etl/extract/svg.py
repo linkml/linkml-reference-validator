@@ -15,6 +15,18 @@ say) run on. A ``<foreignObject>``, where drawio's SVG export puts its labels,
 is one label of one line per block, as
 :func:`~linkml_reference_validator.etl.extract.html.html_to_text` would read it.
 
+After them come edge lines, one label each: ``"<source> <edge label>
+<target>"`` for a connector that names its nodes with ``data-source`` and
+``data-target`` (their ids). Those attributes are not drawn, so an edge line
+is emitted only when the drawing agrees with them: the connector, its
+painted stroke and its label, and both nodes and their labels, are rendered,
+and the stroked path joins the two nodes' boxes (see
+:mod:`~linkml_reference_validator.etl.extract.svg_geometry`). Drawn
+arrowheads give the direction, as in drawio: one at either end reads from the
+other node to the one it points at, whatever the attributes say, and one at
+each end reads both ways. A line with no arrowhead reads in the attributes'
+order, ``data-source`` first, since nothing drawn says otherwise.
+
 Visibility follows the CSS cascade as far as it matters here: presentation
 attributes, then ``<style>`` rules by specificity and order, then the ``style``
 attribute, then ``!important``. ``display``, ``opacity`` and
@@ -63,13 +75,25 @@ Examples:
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Union
 
+from xml.sax.saxutils import escape as xml_escape
+
 from lxml import etree  # type: ignore[import-untyped]
+from lxml import html as lxml_html  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
+from linkml_reference_validator.etl.extract.svg_geometry import (
+    SHAPES,
+    connector_endpoints,
+    declares_geometry,
+    has_inner_vertices,
+    meets,
+    node_bbox,
+    touches,
+)
 from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR
 
 logger = logging.getLogger(__name__)
@@ -156,7 +180,7 @@ _COMPUTED_VALUE = re.compile(r"\b(?:var|calc|env|attr|min|max|clamp)\(", re.IGNO
 _COLOR_FUNCTION = re.compile(r"^(?:rgba?|hsla?)\((.*)\)$")
 
 
-class _Unrenderable(Exception):
+class Unrenderable(Exception):
     """The text this SVG renders cannot be determined statically."""
 
 
@@ -312,7 +336,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
     """Rules of a stylesheet that set visibility properties.
 
     Raises:
-        _Unrenderable: A rule sets a visibility property in a way this
+        Unrenderable: A rule sets a visibility property in a way this
             extractor does not evaluate.
 
     Examples:
@@ -321,7 +345,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
         >>> _parse_stylesheet("g > text {display:none}", 0)
         Traceback (most recent call last):
         ...
-        linkml_reference_validator.etl.extract.svg._Unrenderable: stylesheet selector 'g > text' sets visibility
+        linkml_reference_validator.etl.extract.svg.Unrenderable: stylesheet selector 'g > text' sets visibility
     """
     # Skip quoted strings, so a "/*" inside a value cannot swallow the rules
     # after it - a display:none among them - as though they were a comment.
@@ -331,16 +355,16 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
         if prelude.startswith("@"):
             name = re.match(r"@([\w-]*)", prelude).group(1).lower()  # type: ignore[union-attr]
             if name == "import":
-                raise _Unrenderable("stylesheet imports another stylesheet")
+                raise Unrenderable("stylesheet imports another stylesheet")
             if name not in HARMLESS_AT_RULES and body and _declares_visibility(body):
-                raise _Unrenderable(f"@{name} rule sets visibility")
+                raise Unrenderable(f"@{name} rule sets visibility")
             continue
         if body is None:
             continue
         all_declarations = _declarations(body)
         for prop, value, _ in all_declarations:
             if _changes_text(prop, value):
-                raise _Unrenderable(f"stylesheet rule {prelude!r} sets {prop}: {value}")
+                raise Unrenderable(f"stylesheet rule {prelude!r} sets {prop}: {value}")
         declarations = tuple(d for d in all_declarations if d[0] in VISIBILITY_PROPERTIES)
         if not declarations:
             continue
@@ -352,7 +376,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
                 continue
             match = _SIMPLE_SELECTOR.fullmatch(selector)
             if not selector or not match:
-                raise _Unrenderable(f"stylesheet selector {selector!r} sets visibility")
+                raise Unrenderable(f"stylesheet selector {selector!r} sets visibility")
             tag = match.group(1) if match.group(1) != "*" else None
             parts = re.findall(r"[.#][\w-]+", match.group(2))
             rules.append(
@@ -461,6 +485,180 @@ def _is_drawable(node: etree._Element) -> bool:
     return qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG
 
 
+#: Animations that move, resize or reshape what they animate.
+MOVING_ANIMATIONS = frozenset({"animateTransform", "animateMotion"})
+
+#: Attributes whose animation moves, resizes or reshapes a shape.
+GEOMETRY_ATTRIBUTES = frozenset({
+    "x", "y", "cx", "cy", "r", "rx", "ry", "width", "height", "d", "points",
+    "x1", "y1", "x2", "y2", "transform", "clip-path", "mask", "filter", "style", "class",
+})
+
+
+def _geometry_is_static(root: etree._Element) -> bool:
+    """Whether every shape is placed by its attributes alone, for good.
+
+    False when a stylesheet sets a geometry property (see
+    ``GEOMETRY_PROPERTIES``) or an animation moves or reshapes anything: the
+    extractor cannot then say where shapes are drawn, so it confirms no edges.
+    Labels are unaffected.
+    """
+    for element in root.iter():
+        if not isinstance(element.tag, str):
+            continue
+        name = etree.QName(element).localname
+        if name in MOVING_ANIMATIONS:
+            return False
+        if name in ("animate", "set") and element.get("attributeName", "").strip() in GEOMETRY_ATTRIBUTES:
+            return False
+        if name == "style":
+            css = "".join(element.itertext())
+            if declares_geometry(css) or re.search(
+                r"(?<![\w-])(marker(-start|-end|-mid)?|stroke-dasharray)\s*:", css, re.I
+            ):
+                return False
+    return True
+
+
+def _marker(shape: etree._Element, at: str) -> Optional[str]:
+    """The marker a shape draws at its ``start`` or ``end``, or None.
+
+    Markers are inherited (see :func:`_inherited`); ``none`` means none.
+
+    Examples:
+        >>> g = etree.fromstring('<g marker-start="url(#a)"><path/></g>')
+        >>> _marker(g[0], "start"), _marker(g[0], "end")
+        ('url(#a)', None)
+        >>> _marker(etree.fromstring('<path marker-end="url(#a)" style="marker-end:none"/>'), "end") is None
+        True
+    """
+    value = _inherited(shape, f"marker-{at}", "marker")
+    return None if value is None or value.lower() in ("none", "") else value
+
+
+def _inherited(shape: etree._Element, *props: str) -> Optional[str]:
+    """The value of an inherited property on a shape or its nearest ancestor.
+
+    ``props`` are the names that set it, most specific first (for a marker,
+    ``marker-end`` and then its shorthand ``marker``). On one element the
+    last such declaration in ``style`` wins, then the attribute; ``inherit``
+    or ``unset`` passes the question to the parent.
+
+    Examples:
+        >>> g = etree.fromstring('<g a="1"><path a="inherit" style="b:2; a:3"/></g>')
+        >>> _inherited(g[0], "a"), _inherited(g[0], "a", "b")
+        ('3', '3')
+        >>> _inherited(etree.fromstring('<g a="1"><path a="inherit"/></g>')[0], "a")
+        '1'
+    """
+    node: Optional[etree._Element] = shape
+    while node is not None:
+        value = None
+        for prop, declared, _ in _declarations(node.get("style") or ""):
+            if prop in props:
+                value = declared
+        if value is None:
+            value = next((str(node.get(p)) for p in props if node.get(p) is not None), None)
+        if value is not None and value.strip().lower() not in ("inherit", "unset"):
+            return value.strip()
+        node = node.getparent()
+    return None
+
+
+def _dashes_draw(shape: etree._Element) -> bool:
+    """Whether a shape's dash pattern draws any of its stroke.
+
+    A pattern whose dashes are all zero long, such as ``0 1000``, draws
+    nothing. The pattern repeats twice over when it has an odd length, so
+    the dashes are its even entries of the doubled list.
+
+    Examples:
+        >>> _dashes_draw(etree.fromstring('<path stroke-dasharray="0 9"/>'))
+        False
+        >>> _dashes_draw(etree.fromstring('<path stroke-dasharray="4 2"/>'))
+        True
+    """
+    value = _inherited(shape, "stroke-dasharray")
+    if value is None or value.lower() in ("none", ""):
+        return True
+    lengths = [float(n) for n in re.findall(r"[+-]?(?:\d+\.?\d*|\.\d+)", value)]
+    if not lengths:
+        return True
+    if len(lengths) % 2:
+        lengths = lengths * 2
+    return any(length > 0 for length in lengths[0::2])
+
+
+def _nested(source: etree._Element, target: etree._Element, connector: etree._Element) -> bool:
+    """Whether one node holds the other, or either holds the connector.
+
+    A node's labels and box are everything inside it, so a compartment
+    holding its target would lend it the target's label and box, and a node
+    holding the connector would take in the edge label - as a connector
+    holding a node would take in the node's. A self-loop (one
+    node as both source and target) is not nested.
+
+    Examples:
+        >>> outer = etree.fromstring('<g><g/><path/></g>')
+        >>> inner, path = outer[0], outer[1]
+        >>> _nested(outer, inner, path), _nested(inner, inner, path)
+        (True, False)
+    """
+    def holds(outer: etree._Element, inner: etree._Element) -> bool:
+        return outer is not inner and any(a is outer for a in inner.iterancestors())
+
+    if holds(source, target) or holds(target, source):
+        return True
+    if connector in (source, target) or any(holds(connector, node) for node in (source, target)):
+        return True  # the edge label would take in the node's labels
+    return holds(source, connector) or holds(target, connector)
+
+
+#: Shapes that can draw a connector between two nodes.
+CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
+
+#: Shapes an exporter draws behind a label, which in a connector are taken
+#: for an arrowhead only at the line's ends or on a node.
+BACKGROUND_SHAPES = frozenset({"rect", "circle", "ellipse"})
+
+#: Elements inside a ``<marker>`` that draw nothing themselves. Anything else
+#: that is not a shape (text, an image, a ``<use>``) may draw an arrowhead the
+#: marker check can't see, which leaves the direction uncertain.
+MARKER_CONTAINERS = frozenset({"g", "a", "switch"})
+
+
+def _readings(forward: bool, backward: bool, at_start: bool, at_end: bool) -> list[bool]:
+    """Which ways an edge reads: True for source first, False for target first.
+
+    ``forward`` and ``backward`` say whether the path runs from the source's
+    box to the target's, or the other way; ``at_start`` and ``at_end`` whether
+    an arrowhead is drawn there. An arrowhead at one end points at the node
+    there; at both ends the edge reads both ways; with none it reads source
+    first. An arrowhead on a path that touches both nodes at both ends points
+    at neither in particular, so it gives no reading.
+
+    Examples:
+        >>> _readings(True, False, False, True), _readings(True, False, True, False)
+        ([True], [False])
+        >>> _readings(False, True, False, True), _readings(True, False, True, True)
+        ([False], [True, False])
+        >>> _readings(False, True, False, False), _readings(True, True, False, True)
+        ([True], [])
+    """
+    if at_start and at_end:
+        return [True, False]
+    if not (at_start or at_end):
+        return [True]
+    if forward == backward:
+        return []
+    return [forward == at_end]
+
+
+def _words(labels: list[list[str]]) -> str:
+    """Labels' lines run together with spaces, as one phrase."""
+    return " ".join(line for label in labels for line in label)
+
+
 def _is_html(node: etree._Element, name: str) -> bool:
     """Whether a node is the XHTML element ``name``."""
     return isinstance(node.tag, str) and node.tag == f"{{{XHTML_NS}}}{name}"
@@ -495,16 +693,221 @@ class _RenderedText:
         self.labels: list[list[str]] = [[]]
         self.budget = VISIT_BUDGET_PER_NODE * len(nodes) + 10_000
         self.path: set[int] = set()
+        # For edge lines: the labels each drawn element holds, and whether each
+        # drawn connector shape's stroke is painted. Recorded only outside
+        # <use>, whose copies are drawn somewhere the geometry does not follow.
+        # Keyed by the element itself, not id(): lxml frees an element's
+        # Python proxy when nothing holds it, so its id() is not stable.
+        self.use_depth = 0
+        self.drawn_labels: dict[etree._Element, list[list[str]]] = {}
+        self.stroked: dict[etree._Element, bool] = {}
+        self.painted_shapes: set[etree._Element] = set()
+        self.marker_drawn: dict[etree._Element, Optional[bool]] = {}
 
     def run(self, root: etree._Element) -> list[list[str]]:
         """Walk from the root element, returning each label's lines."""
         self.svg(root, _State())
-        return [label for label in self.labels if label]
+        labels = [label for label in self.labels if label]
+        return labels + [[line] for line in self.edge_lines(root)]
+
+    # --- edge lines ----------------------------------------------------------
+
+    def draws_arrowhead(self, shape: etree._Element, at: str) -> Optional[bool]:
+        """Whether a shape's marker at ``at`` draws something there.
+
+        The marker must name a ``<marker>`` in the figure that is not sized
+        to nothing and holds a shape that paints; anything less draws no
+        arrowhead. None when that can't be told from the markup, as for a
+        ``var()`` value or a ``<use>`` inside the marker: then neither an
+        arrowhead nor its absence is safe to read a direction from.
+        """
+        match = re.fullmatch(
+            r"url\(\s*['\"]?#([^'\")]+)['\"]?\s*\)", _marker(shape, at) or ""
+        )
+        marker = self.ids.get(match.group(1)) if match else None
+        if marker is None or etree.QName(marker).localname != "marker":
+            return False
+        if marker not in self.marker_drawn:
+            try:
+                self.marker_drawn[marker] = self._marker_paints(marker)
+            except Unrenderable:
+                # Only this arrowhead is uncertain, so only its edge is lost.
+                self.marker_drawn[marker] = None
+        return self.marker_drawn[marker]
+
+    def _marker_paints(self, marker: etree._Element) -> Optional[bool]:
+        """Whether a ``<marker>`` holds a shape that paints, with the cascade applied.
+
+        ``display`` does not apply to a marker, though ``opacity`` does.
+        ``context-fill`` counts as unpainted: it takes the connector's fill,
+        which is not checked. None when the marker holds something else that
+        may draw, which this check doesn't model.
+        """
+        for size in ("markerWidth", "markerHeight"):
+            value = _NUMBER.match(marker.get(size) or "3")
+            if value is None or float(value.group(1)) <= 0:
+                return False
+        view_box = [_NUMBER.match(v) for v in re.split(r"[\s,]+", (marker.get("viewBox") or "0 0 1 1").strip())]
+        if len(view_box) != 4 or any(v is None or v.group(2) for v in view_box):
+            return None
+        if min(float(v.group(1)) for v in view_box[2:] if v is not None) <= 0:
+            return False
+        # Its content inherits from the marker's own ancestors, root first;
+        # their display and opacity do not apply where the marker is drawn.
+        state = _State()
+        for element in reversed(list(marker.iterancestors())):
+            _, state = self.cascade(element, state)
+        displayed, state = self.cascade(marker, state, ignore_display=True)
+        if not displayed:
+            return False
+        uncertain = False
+        stack = [(child, state) for child in marker]
+        while stack:
+            element, parent_state = stack.pop()
+            if not isinstance(element.tag, str):
+                continue
+            name = etree.QName(element).localname
+            if name in NON_RENDERED_SVG:
+                continue
+            displayed, element_state = self.cascade(element, parent_state)
+            if not displayed:
+                continue
+            if name in MARKER_CONTAINERS:
+                stack.extend((child, element_state) for child in element)
+            elif name not in SHAPES:
+                uncertain = True
+            elif self._marker_shape_paints(element, element_state):
+                return True
+        return None if uncertain else False
+
+    def _marker_shape_paints(self, shape: etree._Element, state: _State) -> bool:
+        """Whether a shape inside a marker paints, ``context-fill`` counting as none."""
+        state = replace(
+            state,
+            fill="none" if state.fill.strip().lower() == "context-fill" else state.fill,
+            stroke="none" if state.stroke.strip().lower() == "context-fill" else state.stroke,
+        )
+        # The fill alone, then the stroke, which also needs dashes that draw.
+        filled = self.shape_painted(replace(state, stroke="none"))
+        return filled or (self.stroke_painted(state) and _dashes_draw(shape))
+
+    def edge_lines(self, root: etree._Element) -> list[str]:
+        """``"<source> <edge label> <target>"`` for each connector the drawing confirms.
+
+        A connector is an element with ``data-source`` and ``data-target``
+        naming two node ids; its own labels are the edge label. The attributes
+        are not drawn, so they count only when the drawing agrees with them:
+        the connector, its stroke, its label and both nodes and their labels
+        are rendered, and the stroked path joins the two nodes' boxes. Drawn
+        arrowheads decide which way the line reads (see :func:`_readings`).
+        """
+        if not _geometry_is_static(root):
+            return []
+        boxes: dict[etree._Element, Optional[tuple[float, float, float, float]]] = {}
+
+        def box(node: etree._Element) -> Optional[tuple[float, float, float, float]]:
+            if node not in boxes:
+                boxes[node] = node_bbox(node, root, self.painted_shapes)
+            return boxes[node]
+
+        lines: list[str] = []
+        for element in root.iter():
+            if not isinstance(element.tag, str):
+                continue
+            source = self.ids.get(element.get("data-source") or "")
+            target = self.ids.get(element.get("data-target") or "")
+            edge_labels = self.drawn_labels.get(element)
+            if source is None or target is None or not edge_labels:
+                continue
+            if _nested(source, target, element):
+                continue
+            strokes = [
+                e for e in element.iter()
+                if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
+                and self.stroked.get(e)
+            ]
+            source_labels = self.drawn_labels.get(source)
+            target_labels = self.drawn_labels.get(target)
+            source_box, target_box = box(source), box(target)
+            if not (source_labels and target_labels and source_box and target_box):
+                continue
+            # Any stroked shape of the connector may join the nodes: an
+            # arrowhead drawn before the line must not hide the line.
+            for stroke in strokes:
+                if not _dashes_draw(stroke):
+                    continue
+                at_start = self.draws_arrowhead(stroke, "start")
+                at_end = self.draws_arrowhead(stroke, "end")
+                ends = connector_endpoints(stroke, root)
+                if at_start is None or at_end is None or not ends:
+                    continue
+                # Arrowheads at inner vertices may point either way along the line.
+                if has_inner_vertices(stroke) and self.draws_arrowhead(stroke, "mid") is not False:
+                    continue
+                # With no marker, another shape of the connector may be an
+                # arrowhead drawn on its own, which may point either way.
+                if not (at_start or at_end) and self._may_be_arrowhead(
+                    element, stroke, ends, (source_box, target_box), root
+                ):
+                    continue
+                forward = touches(ends[0], source_box) and touches(ends[1], target_box)
+                backward = source is not target and touches(ends[0], target_box) and touches(ends[1], source_box)
+                if not (forward or backward):
+                    continue
+                readings = _readings(forward, backward, at_start, at_end)
+                if not readings:
+                    continue
+                read: list[str] = []
+                for source_first in readings:
+                    first, last = (source_labels, target_labels) if source_first else (target_labels, source_labels)
+                    line = " ".join(_words(x) for x in (first, edge_labels, last))
+                    if line not in read:  # a self-loop reads the same both ways
+                        read.append(line)
+                lines.extend(read)
+                break
+        return lines
+
+    def _may_be_arrowhead(
+        self,
+        connector: etree._Element,
+        stroke: etree._Element,
+        ends: tuple[tuple[float, float], tuple[float, float]],
+        nodes: tuple[tuple[float, float, float, float], tuple[float, float, float, float]],
+        root: etree._Element,
+    ) -> bool:
+        """Whether a connector draws something besides ``stroke`` that may be an arrowhead.
+
+        That is a ``<polygon>``, ``<polyline>``, ``<path>`` or ``<line>``
+        anywhere in the connector, which may be drawn as an arrowhead even
+        mid-line; a ``<use>`` or ``<image>``, since what they draw isn't
+        read; or a box or round shape at either end of the stroke or on
+        either node. A ``<rect>``, ``<circle>`` or ``<ellipse>`` elsewhere,
+        such as a label's background in mid-line, is not an arrowhead.
+        """
+        for other in connector.iter():
+            if other is stroke or not isinstance(other.tag, str):
+                continue
+            if etree.QName(other).localname in ("use", "image"):
+                return True
+            if other not in self.painted_shapes:
+                continue
+            if etree.QName(other).localname not in BACKGROUND_SHAPES:
+                return True
+            box = node_bbox(other, root, self.painted_shapes)
+            if box is None or any(touches(end, box) for end in ends) or any(meets(box, node) for node in nodes):
+                return True
+        return False
 
     # --- the cascade -------------------------------------------------------
 
-    def cascade(self, element: etree._Element, parent: _State) -> tuple[bool, _State]:
-        """Return whether ``element`` is displayed, and its inherited state."""
+    def cascade(
+        self, element: etree._Element, parent: _State, ignore_display: bool = False
+    ) -> tuple[bool, _State]:
+        """Return whether ``element`` is displayed, and its inherited state.
+
+        ``ignore_display`` leaves out ``display``, which does not apply to a
+        ``<marker>``.
+        """
         values: dict[str, str] = {}
         if etree.QName(element).namespace == XHTML_NS:
             if element.get("hidden") is not None:
@@ -526,6 +929,8 @@ class _RenderedText:
             for prop, value, imp in inline:
                 if imp == important and prop in VISIBILITY_PROPERTIES:
                     _declare(values, prop, value)
+        if ignore_display:
+            values.pop("display", None)
         return self.apply(values, parent)
 
     def candidate_rules(self, element: etree._Element) -> list[_Rule]:
@@ -549,14 +954,15 @@ class _RenderedText:
         }
         for prop, value in values.items():
             if _COMPUTED_VALUE.search(value):
-                raise _Unrenderable(f"{prop}: {value} is computed at render time")
-        if values.get("display", "").lower() == "none":
-            return False, parent
-        if values.get("content-visibility", "").lower() == "hidden":
-            return False, parent
+                raise Unrenderable(f"{prop}: {value} is computed at render time")
+        # A hidden element still hands its state on: a <marker> under it is
+        # drawn where it is used, inheriting from it all the same.
         opacity = _fraction(values.get("opacity", "1"))
-        if opacity is not None and opacity <= 0:
-            return False, parent
+        displayed = (
+            values.get("display", "").lower() != "none"
+            and values.get("content-visibility", "").lower() != "hidden"
+            and not (opacity is not None and opacity <= 0)
+        )
 
         visible = parent.visible
         if "visibility" in values:
@@ -581,7 +987,7 @@ class _RenderedText:
             color=values.get("color", parent.color),
             text_fill=values.get("-webkit-text-fill-color", parent.text_fill),
         )
-        return True, state
+        return displayed, state
 
     @staticmethod
     def _paint(paint: str, state: _State) -> str:
@@ -600,6 +1006,22 @@ class _RenderedText:
         )
         return filled or stroked
 
+    @classmethod
+    def stroke_painted(cls, state: _State) -> bool:
+        """Whether an SVG shape's stroke in ``state`` paints anything."""
+        return (
+            state.visible
+            and not _is_transparent(cls._paint(state.stroke, state))
+            and state.stroke_opacity > 0
+            and not state.stroke_width_zero
+        )
+
+    @classmethod
+    def shape_painted(cls, state: _State) -> bool:
+        """Whether an SVG shape in ``state`` paints a fill or a stroke."""
+        filled = not _is_transparent(cls._paint(state.fill, state)) and state.fill_opacity > 0
+        return state.visible and (filled or cls.stroke_painted(state))
+
     @staticmethod
     def html_painted(state: _State) -> bool:
         """Whether HTML text in ``state`` paints anything."""
@@ -616,12 +1038,12 @@ class _RenderedText:
         """
         self.budget -= 1
         if self.budget < 0:
-            raise _Unrenderable("<use> expansion exceeds the size budget")
+            raise Unrenderable("<use> expansion exceeds the size budget")
 
     def enter(self, element: etree._Element) -> None:
         """Push ``element`` on the walk path."""
         if len(self.path) >= MAX_DEPTH:
-            raise _Unrenderable("nesting exceeds the depth budget")
+            raise Unrenderable("nesting exceeds the depth budget")
         self.path.add(id(element))
 
     def svg(self, element: etree._Element, state: _State) -> None:
@@ -634,6 +1056,12 @@ class _RenderedText:
             return
         self.enter(element)
         name = etree.QName(element).localname
+        recorded = self.use_depth == 0
+        first_label = len(self.labels) - 1
+        if recorded and name in CONNECTOR_SHAPES:
+            self.stroked[element] = self.stroke_painted(state)
+        if recorded and name in SHAPES and self.shape_painted(state):
+            self.painted_shapes.add(element)
         if name == "text":
             parts: list[str] = []
             self.text_runs(element, state, parts)
@@ -656,6 +1084,9 @@ class _RenderedText:
         else:
             for child in element:
                 self.svg(child, state)
+        # Only nodes (named by an id) and connectors are ever looked up.
+        if recorded and (element.get("id") is not None or element.get("data-source") is not None):
+            self.drawn_labels[element] = [label for label in self.labels[first_label:] if label]
         self.path.discard(id(element))
 
     def use(self, element: etree._Element, state: _State) -> None:
@@ -663,15 +1094,17 @@ class _RenderedText:
         target = self.ids.get(_href(element) or "")
         if target is None or id(target) in self.path:
             return
+        self.use_depth += 1
         if etree.QName(target).localname != "symbol":
             self.svg(target, state)
-            return
-        displayed, state = self.cascade(target, state)
-        if displayed:
-            self.enter(target)
-            for child in target:
-                self.svg(child, state)
-            self.path.discard(id(target))
+        else:
+            displayed, state = self.cascade(target, state)
+            if displayed:
+                self.enter(target)
+                for child in target:
+                    self.svg(child, state)
+                self.path.discard(id(target))
+        self.use_depth -= 1
 
     def text_runs(self, element: etree._Element, state: _State, parts: list[str]) -> None:
         """Collect the painted characters of a ``<text>`` or one of its runs."""
@@ -779,7 +1212,7 @@ class _RenderedText:
         """Emit the collected characters as one line, whitespace collapsed."""
         text = re.sub(r"\s+", " ", "".join(parts)).strip()
         if _BIDI_CONTROL.search(text):
-            raise _Unrenderable("a bidi control character reorders the drawn text")
+            raise Unrenderable("a bidi control character reorders the drawn text")
         if text:
             self.labels[-1].append(text)
         parts.clear()
@@ -794,38 +1227,38 @@ def _check_static(root: etree._Element) -> list[_Rule]:
     """Return the document's stylesheet rules, or fail closed.
 
     Raises:
-        _Unrenderable: Scripts, external stylesheets, visibility animations, or
+        Unrenderable: Scripts, external stylesheets, visibility animations, or
             stylesheet rules this extractor cannot evaluate.
     """
     # Both scans are needed: root.iter() does not reach the processing
     # instructions before the root element, where xml-stylesheet usually is.
     for node in root.itersiblings(preceding=True):
         if isinstance(node, etree._ProcessingInstruction) and node.target == "xml-stylesheet":
-            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+            raise Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
     rules: list[_Rule] = []
     for element in root.iter():
         if isinstance(element, etree._ProcessingInstruction) and element.target == "xml-stylesheet":
-            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+            raise Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
         if not isinstance(element.tag, str):
             continue
         name = etree.QName(element).localname
         if name == "script":
-            raise _Unrenderable("the SVG contains a script")
+            raise Unrenderable("the SVG contains a script")
         if name == "bdo" and etree.QName(element).namespace == XHTML_NS:
-            raise _Unrenderable("a <bdo> draws its text in reverse order")
+            raise Unrenderable("a <bdo> draws its text in reverse order")
         # unicode-bidi is the only one that is also a presentation attribute;
         # a content= attribute is RDFa or <meta>, not generated text.
         inline = [("unicode-bidi", element.get("unicode-bidi") or "")]
         inline += [(p, v) for p, v, _ in _declarations(element.get("style") or "")]
         for prop, value in inline:
             if _changes_text(prop, value):
-                raise _Unrenderable(f"<{name}> sets {prop}: {value}")
+                raise Unrenderable(f"<{name}> sets {prop}: {value}")
         if name == "link" and "stylesheet" in (element.get("rel") or "").lower():
-            raise _Unrenderable("the SVG links an external stylesheet")
+            raise Unrenderable("the SVG links an external stylesheet")
         if name in ("set", "animate", "animateColor"):
             target = (element.get("attributeName") or "").strip().lower()
             if target in ANIMATED_VISIBILITY:
-                raise _Unrenderable(f"the SVG animates {target!r}")
+                raise Unrenderable(f"the SVG animates {target!r}")
         if name == "style":
             rules.extend(_parse_stylesheet("".join(element.itertext()), len(rules)))
     return rules
@@ -853,6 +1286,58 @@ def _parse(data: Union[bytes, str]) -> etree._Element:
         remove_comments=True,
     )
     return etree.fromstring(data, parser)
+
+
+def parse_untrusted_xml(data: Union[bytes, str]) -> etree._Element:
+    """Parse untrusted XML as SVG is parsed: no external entities, no network.
+
+    Raises ``etree.XMLSyntaxError`` or ``ValueError`` if it is malformed.
+    """
+    return _parse(data)
+
+
+def html_label_lines(html: str) -> list[str]:
+    """The lines an HTML label draws, read as a ``<foreignObject>`` label is.
+
+    For labels kept as HTML outside an SVG, such as drawio's: the fragment is
+    walked with the same visibility rules, so hidden HTML is not read and
+    anything that cannot be read statically fails closed.
+
+    Raises:
+        Unrenderable: What the label draws cannot be determined statically.
+
+    Examples:
+        >>> html_label_lines("<b>PTEN</b><br>tumour <span style='display:none'>x</span>suppressor")
+        ['PTEN', 'tumour suppressor']
+    """
+    if not html.strip():
+        return []
+    parts = []
+    for fragment in lxml_html.fragments_fromstring(html):
+        if isinstance(fragment, str):
+            parts.append(xml_escape(fragment))
+            continue
+        for element in fragment.iter():
+            if not isinstance(element.tag, str):
+                continue
+            # HTML has no namespaces: a browser draws <o:p> (Word leaves them
+            # in pasted text) as an unknown inline element, so it becomes one
+            # here rather than an undeclared XML prefix.
+            if ":" in element.tag:
+                element.tag = "span"
+            for name in [n for n in element.attrib if ":" in n]:
+                del element.attrib[name]
+        parts.append(etree.tostring(fragment, method="xml", encoding="unicode", with_tail=True))
+    document = (
+        f'<svg xmlns="{SVG_NS}"><foreignObject><div xmlns="{XHTML_NS}">'
+        f'{"".join(parts)}</div></foreignObject></svg>'
+    )
+    try:  # external input boundary: the label is untrusted HTML
+        root = _parse(document)
+    except (etree.XMLSyntaxError, ValueError) as e:
+        raise Unrenderable(f"an HTML label does not convert to XHTML: {e}") from e
+    labels = _RenderedText(root, _check_static(root)).run(root)
+    return [line for label in labels for line in label]
 
 
 @ExtractorRegistry.register
@@ -891,7 +1376,7 @@ class SVGExtractor(Extractor):
             return None
         try:  # fail closed: these are the cases this module documents
             labels = _RenderedText(root, _check_static(root)).run(root)
-        except _Unrenderable as e:
+        except Unrenderable as e:
             logger.warning(f"Not extracting SVG text, as what it renders is uncertain: {e}")
             return None
         return SVG_LABEL_SEPARATOR.join("\n".join(label) for label in labels) or None

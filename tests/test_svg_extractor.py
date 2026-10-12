@@ -362,6 +362,12 @@ def test_use_inherits_properties_into_its_target():
     assert not quotable(body, "SECRET")
 
 
+def test_use_resolves_a_duplicated_id_to_the_first_element():
+    # As getElementById does: the second #a is never what the <use> draws.
+    body = '<defs><text id="a">claim shown</text><text id="a">SECRET</text></defs><use href="#a"/>'
+    assert extract(body) == "claim shown"
+
+
 def test_use_cycle_terminates():
     body = '<g id="a"><text>cyclic</text><use href="#b"/></g><g id="b"><use href="#a"/></g>'
     assert quotable(body, "cyclic")

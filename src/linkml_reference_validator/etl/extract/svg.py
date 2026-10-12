@@ -394,7 +394,11 @@ class _RenderedText:
 
     def __init__(self, root: etree._Element, rules: list[_Rule]):
         nodes = list(root.iter())
-        self.ids = {e.get("id"): e for e in nodes if isinstance(e.tag, str) and e.get("id")}
+        # The first element with an id is the one it names, as for getElementById.
+        self.ids: dict[str, etree._Element] = {}
+        for node in nodes:
+            if isinstance(node.tag, str) and node.get("id"):
+                self.ids.setdefault(node.get("id"), node)
         # Each rule is filed under one part every element it selects must have,
         # so an element is matched only against rules that could select it.
         self.rules: dict[tuple[str, str], list[_Rule]] = {}

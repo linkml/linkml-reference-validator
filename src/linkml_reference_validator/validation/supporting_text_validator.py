@@ -559,10 +559,16 @@ class SupportingTextValidator:
                     key=lambda suggestion: suggestion[2],
                 )
 
+                error_message = f"Text part not found as substring: '{part}'"
+                if len(normalized_texts) > 1 and normalized_part in " ".join(normalized_texts):
+                    error_message = (
+                        f"Text part runs across separate figure labels: '{part}'. "
+                        "Quote each label on its own, joined with '...'"
+                    )
                 return SupportingTextMatch(
                     found=False,
                     similarity_score=similarity / 100.0,  # Convert to 0-1 scale
-                    error_message=f"Text part not found as substring: '{part}'",
+                    error_message=error_message,
                     suggested_fix=suggested_fix,
                     best_match=best_match,
                 )

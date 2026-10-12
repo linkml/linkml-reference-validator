@@ -4,6 +4,7 @@ import logging
 import re
 from typing import Optional
 
+from linkml_reference_validator.etl.extract.svg import SVG_LABEL_SEPARATOR
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.matching import split_supporting_text
 from linkml_reference_validator.models import (
@@ -358,7 +359,33 @@ class SupportingTextValidator:
             )
 
         query_parts = self._split_query(supporting_text)
-        return self._substring_match(query_parts, reference.content, supporting_text)
+        return self._substring_match(
+            query_parts, reference.content, supporting_text, self.searchable_texts(reference)
+        )
+
+    @classmethod
+    def searchable_texts(cls, reference: ReferenceContent) -> list[str]:
+        """The normalized texts each quote part must fall within one of.
+
+        A reference is one text, except an SVG figure: its labels are searched
+        one at a time, because labels adjacent in the extracted text may sit
+        anywhere in the figure and a quote running from one into the next says
+        what neither does. ``...`` still joins parts from different labels.
+
+        Examples:
+            >>> figure = ReferenceContent(
+            ...     reference_id="file:fig.svg", content="PTEN\\n\\nactivates AKT",
+            ...     content_type="local_svg")
+            >>> SupportingTextValidator.searchable_texts(figure)
+            ['pten', 'activates akt']
+            >>> notes = ReferenceContent(reference_id="file:notes.md", content="PTEN\\n\\nactivates AKT")
+            >>> SupportingTextValidator.searchable_texts(notes)
+            ['pten activates akt']
+        """
+        content = reference.content or ""
+        if reference.content_type == "local_svg":
+            return [cls.normalize_text(label) for label in content.split(SVG_LABEL_SEPARATOR)]
+        return [cls.normalize_text(content)]
 
     def _split_query(self, text: str) -> list[str]:
         """Split query into parts while stripping editorial brackets by default.
@@ -471,16 +498,21 @@ class SupportingTextValidator:
         query_parts: list[str],
         content: str,
         original_query: Optional[str] = None,
+        searchable: Optional[list[str]] = None,
     ) -> SupportingTextMatch:
         """Deterministic substring matching after normalization.
 
         All query parts must appear as substrings in the content (order independent).
+        With ``searchable`` (see :meth:`searchable_texts`), each part must appear
+        within one of those normalized texts instead.
         When validation fails, generates fuzzy matching suggestions to help users.
 
         Args:
             query_parts: List of query text parts
             content: Reference content to search
             original_query: Original query text for fuzzy suggestion generation
+            searchable: Normalized texts a part must fall within one of;
+                defaults to the whole normalized content
 
         Returns:
             SupportingTextMatch with optional suggestions when validation fails
@@ -510,13 +542,14 @@ class SupportingTextValidator:
                 error_message=NO_QUOTED_TEXT_MESSAGE,
             )
 
-        normalized_content = self.normalize_text(content)
+        if searchable is None:
+            searchable = [self.normalize_text(content)]
         matched_parts = []
 
         for part in query_parts:
             normalized_part = self.normalize_text(part)
 
-            if normalized_part not in normalized_content:
+            if not any(normalized_part in text for text in searchable):
                 # Generate fuzzy suggestion for the failed part
                 query_for_suggestion = original_query if original_query else part
                 suggested_fix, best_match, similarity = self.generate_suggested_fix(

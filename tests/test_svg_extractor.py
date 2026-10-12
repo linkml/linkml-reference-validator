@@ -23,7 +23,12 @@ from linkml_reference_validator.etl.reference_fetcher import (
     ReferenceFetcher,
 )
 from linkml_reference_validator.etl.sources.file import FileSource
-from linkml_reference_validator.models import FullTextLocation, ReferenceValidationConfig
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceContent,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
@@ -46,8 +51,13 @@ def quotable(body: str, quote: str) -> bool:
     text = extract(body)
     if text is None:
         return False
-    normalize = SupportingTextValidator.normalize_text
-    return normalize(quote) in normalize(text)
+    reference = ReferenceContent(reference_id="file:fig.svg", content=text, content_type="local_svg")
+    validator = SupportingTextValidator(ReferenceValidationConfig())
+    return validator.find_text_in_reference(quote, reference).found
+
+
+def _xhtml(inner: str) -> str:
+    return f'<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">{inner}</div></foreignObject>'
 
 
 # ---------------------------------------------------------------- registration
@@ -97,8 +107,35 @@ def test_jats_still_sniffs_as_xml():
 # ---------------------------------------------------------------- text structure
 
 
-def test_one_line_per_text_element():
-    assert extract("<text>PTEN</text><text>AKT</text>") == "PTEN\nAKT"
+def test_each_text_element_is_its_own_label():
+    # Labels are separated by a blank line; a label's own lines by a newline.
+    assert extract("<text>PTEN</text><text>AKT</text>") == "PTEN\n\nAKT"
+
+
+def test_a_quote_cannot_run_from_one_label_into_the_next():
+    # Adjacent in document order, but neither label says this.
+    body = '<text x="10" y="10">PTEN</text><text x="300" y="200">activates AKT</text>'
+    assert not quotable(body, "PTEN activates AKT")
+    assert quotable(body, "PTEN")
+    assert quotable(body, "activates AKT")
+
+
+def test_an_explicit_omission_may_join_labels():
+    body = "<text>PTEN</text><text>activates AKT</text>"
+    assert quotable(body, "PTEN ... activates AKT")
+
+
+def test_a_foreign_object_label_keeps_its_lines_together():
+    body = _xhtml("<p>loss of PTEN</p><p>activates AKT</p>") + "<text>mTOR</text>"
+    assert extract(body) == "loss of PTEN\nactivates AKT\n\nmTOR"
+    assert quotable(body, "loss of PTEN activates AKT")
+    assert not quotable(body, "activates AKT mTOR")
+
+
+def test_an_svg_nested_in_a_foreign_object_has_labels_of_its_own():
+    nested = '<svg xmlns="http://www.w3.org/2000/svg"><text>AKT</text></svg>'
+    body = _xhtml(f"<p>PTEN</p>{nested}<p>mTOR</p>")
+    assert extract(body) == "PTEN\n\nAKT\n\nmTOR"
 
 
 def test_multi_tspan_label_is_quotable_across_the_line_break():
@@ -501,10 +538,6 @@ def test_hidden_html_in_foreign_object_is_not_quotable(inner):
     assert not quotable(body, "SECRET")
 
 
-def _xhtml(inner: str) -> str:
-    return f'<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">{inner}</div></foreignObject>'
-
-
 def test_closed_details_shows_only_its_summary():
     body = _xhtml("<details><summary>PTEN</summary>SECRET <p>SECRET</p></details>")
     assert extract(body) == "PTEN"
@@ -625,6 +658,17 @@ def test_svg_at_a_full_text_location_is_not_full_text(config, content_type):
     assert (text, fmt, pdf_bytes, error) == (None, "svg", None, False)
 
 
+def test_repair_does_not_join_separate_labels():
+    # Character normalization alone would turn this into a quote spanning two labels.
+    reference = ReferenceContent(
+        reference_id="file:fig.svg", content="CO₂ levels\n\nrose", content_type="local_svg"
+    )
+    result = SupportingTextRepairer(ReferenceValidationConfig()).attempt_repair(
+        "CO2 levels rose", "file:fig.svg", reference
+    )
+    assert result.repaired_text != "CO₂ levels rose"
+
+
 # ---------------------------------------------------------------- cache stamp
 
 
@@ -640,6 +684,11 @@ def test_svg_file_entry_cached_as_raw_xml_is_stale():
     # Before #104 a file: SVG was cached as raw markup, desc and attributes included.
     assert ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/fig.svg", "local_file", None))
     assert ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/FIG.SVG", "local_file", None))
+
+
+def test_svg_entry_without_label_boundaries_is_stale():
+    # Version 1 joined labels with single newlines, so they could not be told apart.
+    assert ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/fig.svg", "local_svg", 1))
 
 
 def test_current_svg_file_entry_is_fresh():

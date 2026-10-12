@@ -117,8 +117,12 @@ linkml-reference-validator validate text \
   file:./figures/pathway.svg
 ```
 
-- Each `<text>` element becomes one line. A label split over several `<tspan>`
+- Each `<text>` element is one label. A label split over several `<tspan>`
   lines can be quoted across the break.
+- A quote must fall within one label. A figure with a `PTEN` label and a
+  separate `activates AKT` label does not support `"PTEN activates AKT"`,
+  however close together they sit: neither label says it. To cite both, quote
+  them as separate parts, `"PTEN ... activates AKT"`.
 - HTML labels inside `<foreignObject>`, which is how drawio's **Export as SVG**
   writes them, are read too.
 - Text the reader cannot see is never quotable. That covers `<desc>`, `<title>`,
@@ -136,10 +140,9 @@ linkml-reference-validator validate text \
   `unicode-bidi` override or `<bdo>` adds text to a label or draws it
   reversed.
 
-Known limits: a quote may run on from one label into the next in document
-order, so `"PTEN activates AKT"` matches a figure with a `PTEN` label followed
-by a separate `activates AKT` label, even if they sit in different corners.
-Quote one label at a time where that matters. Text clipped by `clip-path` or `mask`, placed outside the
+Known limits: a label drawn as several `<text>` elements, one per line, is
+read as several labels, so quote its lines with `...` between them. Text
+clipped by `clip-path` or `mask`, placed outside the
 `viewBox`, scaled to nothing, covered by another shape, or drawn in the
 background colour is still read. Text converted to outlines is not text and
 cannot be quoted. Native `.drawio` files and connector (edge) labels between

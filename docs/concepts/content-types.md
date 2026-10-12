@@ -11,7 +11,7 @@ When fetching references, the validator tracks what type of content was retrieve
 | `abstract_only` | PMID, DOI | Only the abstract was available |
 | `summary` | GEO, BioProject, BioSample, ClinicalTrials | Database summary/description field |
 | `local_file` | file: | Content read from local filesystem |
-| `local_svg` | file: (`.svg`) | Text an SVG figure renders, one line per label |
+| `local_svg` | file: (`.svg`) | Text an SVG figure renders, a blank line between labels; a quote must fall within one label |
 | `url` | url: | Content fetched from web URL |
 | `unavailable` | Any | No content could be retrieved |
 

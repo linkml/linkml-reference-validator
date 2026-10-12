@@ -142,7 +142,9 @@ URL_SOURCE_CACHE_VERSION = 2
 #: (#104). Before it, the file was cached as raw markup, so a quote could pass
 #: against a ``<desc>``, an attribute value or hidden text; such an entry carries
 #: a current ``extractor_version`` and would otherwise be served forever.
-SVG_EXTRACTION_CACHE_VERSION = 1
+#: Version 2: labels are separated by a blank line, so a quote is matched
+#: within one label; version 1 text cannot tell its labels apart.
+SVG_EXTRACTION_CACHE_VERSION = 2
 
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",

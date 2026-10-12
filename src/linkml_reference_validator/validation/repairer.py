@@ -357,15 +357,16 @@ class SupportingTextRepairer:
             )
 
         reference_content = reference.content
+        # Where the validator will look: an SVG figure label by label.
+        searchable = SupportingTextValidator.searchable_texts(reference)
 
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
         if normalized != supporting_text:
             # Check if normalized version validates
             normalized_lower = SupportingTextValidator.normalize_text(normalized)
-            content_lower = SupportingTextValidator.normalize_text(reference_content)
 
-            if normalized_lower in content_lower:
+            if any(normalized_lower in text for text in searchable):
                 # Calculate similarity for the normalization
                 similarity = calculate_text_similarity(normalized, supporting_text)
                 actions.append(RepairAction(
@@ -395,8 +396,7 @@ class SupportingTextRepairer:
             all_found = True
             for part in parts:
                 part_norm = SupportingTextValidator.normalize_text(part)
-                content_norm = SupportingTextValidator.normalize_text(reference_content)
-                if part_norm not in content_norm:
+                if not any(part_norm in text for text in searchable):
                     all_found = False
                     break
 

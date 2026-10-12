@@ -6,12 +6,14 @@ much as a parser: attribute values, ``<desc>``/``<title>``/``<metadata>``,
 comments, ``<defs>`` and ``<symbol>`` content not drawn by a ``<use>``, and text
 that is hidden, transparent or zero-size never reach the output.
 
-Output is one line per ``<text>`` element, its ``<tspan>`` runs joined. A run
-positioned with ``x``, ``y`` or ``dy`` is a visual line break and is joined with
-a space; other runs (a bold syllable, say) run on. HTML inside
-``<foreignObject>``, where drawio's SVG export puts its labels, gives one line
-per block, as :func:`~linkml_reference_validator.etl.extract.html.html_to_text`
-would.
+Output is one paragraph per label, with a blank line between labels, so that
+a quote can be held to one label: labels adjacent in document order may sit
+anywhere in the figure. A ``<text>`` element is one label and one line, its
+``<tspan>`` runs joined. A run positioned with ``x``, ``y`` or ``dy`` is a
+visual line break and is joined with a space; other runs (a bold syllable,
+say) run on. A ``<foreignObject>``, where drawio's SVG export puts its labels,
+is one label of one line per block, as
+:func:`~linkml_reference_validator.etl.extract.html.html_to_text` would read it.
 
 Visibility follows the CSS cascade as far as it matters here: presentation
 attributes, then ``<style>`` rules by specificity and order, then the ``style``
@@ -35,8 +37,8 @@ closed** and returns ``None``, rather than guess:
 - ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
 - an external entity, which is never loaded.
 
-Known limits: lines are joined for matching, so a quote may run from one
-label into the next in document order. Text clipped by ``clip-path`` or ``mask``, placed outside the
+Known limits: a label drawn as several ``<text>`` elements, one per line, is
+read as several labels. Text clipped by ``clip-path`` or ``mask``, placed outside the
 ``viewBox``, scaled to nothing by ``transform``, covered by another shape,
 drawn in the background colour or in a tiny but non-zero size is still
 emitted. ``<switch>`` is evaluated for an English-language reader. Text
@@ -69,6 +71,12 @@ from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_B
 logger = logging.getLogger(__name__)
 
 SVG_NS = "http://www.w3.org/2000/svg"
+
+#: Between two labels of the extracted text. A label's own lines are joined
+#: with a single newline, so a blank line never occurs inside one. Matching
+#: keeps each quote part within one label: see
+#: :meth:`~linkml_reference_validator.validation.supporting_text_validator.SupportingTextValidator.searchable_texts`.
+SVG_LABEL_SEPARATOR = "\n\n"
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 
@@ -444,14 +452,15 @@ class _RenderedText:
         self.rules: dict[tuple[str, str], list[_Rule]] = {}
         for rule in rules:
             self.rules.setdefault(rule.key, []).append(rule)
-        self.lines: list[str] = []
+        # Each label is a list of lines; the last one is being filled.
+        self.labels: list[list[str]] = [[]]
         self.budget = VISIT_BUDGET_PER_NODE * len(nodes) + 10_000
         self.path: set[int] = set()
 
-    def run(self, root: etree._Element) -> list[str]:
-        """Walk from the root element."""
+    def run(self, root: etree._Element) -> list[list[str]]:
+        """Walk from the root element, returning each label's lines."""
         self.svg(root, _State())
-        return self.lines
+        return [label for label in self.labels if label]
 
     # --- the cascade -------------------------------------------------------
 
@@ -583,6 +592,7 @@ class _RenderedText:
             parts: list[str] = []
             self.text_runs(element, state, parts)
             self.end_line(parts)
+            self.end_label()
         elif name == "use":
             self.use(element, state)
         elif name == "switch":
@@ -596,6 +606,7 @@ class _RenderedText:
             for child in element:
                 self.foreign(child, state, line)
             self.end_line(line)
+            self.end_label()
         else:
             for child in element:
                 self.svg(child, state)
@@ -641,7 +652,9 @@ class _RenderedText:
             return
         qname = etree.QName(element)
         if qname.namespace == SVG_NS and qname.localname == "svg":
+            # A nested SVG's labels are its own, not lines of this one.
             self.end_line(line)
+            self.end_label()
             self.svg(element, state)
         elif qname.namespace == XHTML_NS:
             self.html(element, state, line)
@@ -680,8 +693,13 @@ class _RenderedText:
         """Emit the collected characters as one line, whitespace collapsed."""
         text = re.sub(r"\s+", " ", "".join(parts)).strip()
         if text:
-            self.lines.append(text)
+            self.labels[-1].append(text)
         parts.clear()
+
+    def end_label(self) -> None:
+        """Close the label being built, so the next line starts a new one."""
+        if self.labels[-1]:
+            self.labels.append([])
 
 
 def _check_static(root: etree._Element) -> list[_Rule]:
@@ -768,7 +786,7 @@ class SVGExtractor(Extractor):
     def extract(
         self, data: Union[bytes, str], *, content_type: Optional[str] = None
     ) -> Optional[str]:
-        """Return the rendered text, one line per label, or None if there is none.
+        """Return the rendered labels, a blank line between them, or None if there are none.
 
         Also None when the SVG is malformed, or when what it renders cannot be
         determined statically (see the module docstring).
@@ -782,8 +800,8 @@ class SVGExtractor(Extractor):
             logger.warning(f"Not an SVG document: root element is <{etree.QName(root).localname}>")
             return None
         try:  # fail closed: these are the cases this module documents
-            lines = _RenderedText(root, _check_static(root)).run(root)
+            labels = _RenderedText(root, _check_static(root)).run(root)
         except _Unrenderable as e:
             logger.warning(f"Not extracting SVG text, as what it renders is uncertain: {e}")
             return None
-        return "\n".join(lines) or None
+        return SVG_LABEL_SEPARATOR.join("\n".join(label) for label in labels) or None

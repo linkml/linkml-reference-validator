@@ -404,6 +404,15 @@ def test_external_entities_are_not_resolved(tmp_path):
     assert text is None or "SECRET" not in text
 
 
+def test_internal_entities_expand_as_a_browser_renders_them():
+    # Dropping &not; would make the figure read "PTEN does activate AKT".
+    data = (
+        '<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY not "not"><!ENTITY gene "PTEN">]>'
+        f"{SVG_OPEN}<text>&gene; does &not; activate AKT</text></svg>"
+    ).encode()
+    assert SVGExtractor().extract(data) == "PTEN does not activate AKT"
+
+
 def test_billion_laughs_does_not_expand():
     entities = '<!ENTITY a "lol">' + "".join(
         f'<!ENTITY {chr(98 + i)} "{("&" + chr(97 + i) + ";") * 10}">' for i in range(9)

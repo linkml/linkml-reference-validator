@@ -28,7 +28,8 @@ closed** and returns ``None``, rather than guess:
   as ``@media``, or an ``@import``/``<?xml-stylesheet?>``/``<link>`` stylesheet;
 - any ``<script>``, or an animation of a property, ``class``, ``style`` or
   ``href``;
-- ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb).
+- ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
+- an external entity, which is never loaded.
 
 Known limits: text clipped by ``clip-path`` or ``mask``, placed outside the
 ``viewBox``, scaled to nothing by ``transform``, covered by another shape,
@@ -582,10 +583,13 @@ def _check_static(root: etree._Element) -> list[_Rule]:
 
 
 def _parse(data: Union[bytes, str]) -> etree._Element:
-    """Parse untrusted SVG without resolving entities or touching the network.
+    """Parse untrusted SVG without reading external entities or the network.
 
-    Entity references stay unexpanded, so neither an external entity (XXE) nor
-    an exponential internal one (billion laughs) is ever read into the text.
+    Internal entities are expanded, as a browser expands them: leaving
+    ``&not;`` out of a label would change what it says. An external entity
+    (XXE) is never loaded, so it is undefined and the parse fails, and
+    libxml2's amplification limit rejects an exponential internal one
+    (billion laughs). Either way the extractor returns None.
     """
     encoding = None
     if isinstance(data, str):
@@ -593,7 +597,7 @@ def _parse(data: Union[bytes, str]) -> etree._Element:
         data, encoding = data.encode("utf-8"), "utf-8"
     parser = etree.XMLParser(
         encoding=encoding,
-        resolve_entities=False,
+        resolve_entities="internal",
         no_network=True,
         load_dtd=False,
         huge_tree=False,

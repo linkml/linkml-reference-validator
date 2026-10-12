@@ -57,6 +57,8 @@ def normalize_whitespace(text: str) -> str:
 #: The highest score a match that drops any word of the quote may have. A
 #: suggestion needs more than this (see ``generate_suggested_fix``), and so
 #: does a repair, so such a match is reported but never offered as the fix.
+#: Deliberately strict: a typo in a short word ("fo" for "of") is not fixed
+#: either, because short words such as "in"/"on" or "no"/"now" change claims.
 DROPPED_WORD_SCORE_CAP = 70.0
 
 
@@ -78,9 +80,33 @@ def keeps_every_word(query: str, match: str) -> bool:
     """
     match_words = set(re.findall(r"\w+", match.lower()))
     return all(
-        word in match_words or any(fuzz.ratio(word, other) >= 80 for other in match_words)
+        word in match_words or any(_near_spelling(word, other) for other in match_words)
         for word in re.findall(r"\w+", query.lower())
     )
+
+
+#: Prefixes that negate a word: "unaffected" is not a misspelling of "affected".
+NEGATING_PREFIXES = ("un", "in", "im", "ir", "il", "non", "dis", "a")
+
+
+def _near_spelling(word: str, other: str) -> bool:
+    """Whether ``other`` is a misspelling of ``word``, rather than another word.
+
+    Words of three letters or fewer must match exactly: "not" is not "note",
+    and "in" is not "on", though either pair scores as near. A word that is
+    the other plus a negating prefix is its opposite, not a misspelling.
+
+    Examples:
+        >>> _near_spelling("signaling", "signalling"), _near_spelling("tumor", "tumour")
+        (True, True)
+        >>> _near_spelling("not", "note"), _near_spelling("unaffected", "affected")
+        (False, False)
+    """
+    if len(word) <= 3 or len(other) <= 3:
+        return False
+    if any(word == prefix + other or other == prefix + word for prefix in NEGATING_PREFIXES):
+        return False
+    return fuzz.ratio(word, other) >= 80
 
 
 def score_against_whole_query(query: str, match: str, similarity: float) -> float:

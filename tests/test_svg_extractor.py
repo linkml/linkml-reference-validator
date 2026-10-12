@@ -28,6 +28,7 @@ from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,
 )
+from linkml_reference_validator.validation.fuzzy_text_utils import keeps_every_word
 from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
@@ -901,6 +902,33 @@ def test_fuzzy_repair_never_drops_a_stopword_that_carries_the_meaning(reference)
     assert not result.is_repaired
     match = SupportingTextValidator(config).find_text_in_reference(NEGATED, reference)
     assert "try:" not in (match.suggested_fix or "")
+
+
+@pytest.mark.parametrize(
+    "said,quoted",
+    [("affected", "unaffected"), ("active", "inactive"), ("sensitive", "insensitive"), ("typical", "atypical")],
+)
+def test_fuzzy_repair_never_strips_a_negating_prefix(said, quoted):
+    reference = ReferenceContent(
+        reference_id="PMID:1",
+        content=f"AKT phosphorylation was {said} after rapamycin treatment in tumour cells.",
+    )
+    quote = f"AKT phosphorylation was {quoted} after rapamycin treatment in tumour cells"
+    result = SupportingTextRepairer(ReferenceValidationConfig()).attempt_repair(quote, "PMID:1", reference)
+    assert not result.is_repaired
+
+
+@pytest.mark.parametrize(
+    "query,match",
+    [("AKT was not detected", "AKT was detected, see note"), ("no AKT now", "AKT now")],
+)
+def test_a_short_word_is_kept_only_by_itself(query, match):
+    # "not" is not kept by "note", nor "no" by "now".
+    assert not keeps_every_word(query, match)
+
+
+def test_near_spellings_of_longer_words_are_still_kept():
+    assert keeps_every_word("PTEN signaling in tumor cells", "PTEN signalling in tumour cells")
 
 
 def test_a_fragment_does_not_hide_the_real_correction_after_it():

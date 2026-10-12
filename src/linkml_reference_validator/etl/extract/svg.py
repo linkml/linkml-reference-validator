@@ -1,0 +1,643 @@
+"""SVG content extractor: the text a figure renders, and nothing else (#104).
+
+A ``file:`` reference may point at a diagram. A quote is then matched against
+what a reader of the figure can see, so this extractor is an integrity check as
+much as a parser: attribute values, ``<desc>``/``<title>``/``<metadata>``,
+comments, ``<defs>`` and ``<symbol>`` content not drawn by a ``<use>``, and text
+that is hidden, transparent or zero-size never reach the output.
+
+Output is one line per ``<text>`` element, its ``<tspan>`` runs joined. A run
+positioned with ``x``, ``y`` or ``dy`` is a visual line break and is joined with
+a space; other runs (a bold syllable, say) run on. HTML inside
+``<foreignObject>``, where drawio's SVG export puts its labels, gives one line
+per block, as :func:`~linkml_reference_validator.etl.extract.html.html_to_text`
+would.
+
+Visibility follows the CSS cascade as far as it matters here: presentation
+attributes, then ``<style>`` rules by specificity and order, then the ``style``
+attribute, then ``!important``. ``display``, ``opacity`` and
+``content-visibility`` hide a whole subtree; ``visibility``, ``fill``,
+``fill-opacity``, ``stroke``, ``stroke-opacity``, ``stroke-width``,
+``font-size`` and ``color`` are inherited and a child may restore them.
+
+Where the rendered text cannot be determined statically the extractor **fails
+closed** and returns ``None``, rather than guess:
+
+- a stylesheet rule that sets one of those properties through a selector other
+  than a type, class or id selector (or a list of them), inside an at-rule such
+  as ``@media``, or an ``@import``/``<?xml-stylesheet?>``/``<link>`` stylesheet;
+- any ``<script>``, or an animation of a property, ``class``, ``style`` or
+  ``href``;
+- ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb).
+
+Known limits: text clipped by ``clip-path`` or ``mask``, placed outside the
+``viewBox``, scaled to nothing by ``transform``, covered by another shape,
+drawn in the background colour or in a tiny but non-zero size is still
+emitted. ``<switch>`` is evaluated for an English-language reader. Text
+converted to outlines is not text and is not emitted.
+
+Changing what this yields for the same input may make already-cached text
+wrong; see :mod:`linkml_reference_validator.etl.extract`.
+
+Examples:
+    >>> svg = b'''<svg xmlns="http://www.w3.org/2000/svg">
+    ...   <desc>not drawn</desc>
+    ...   <text x="0" y="10"><tspan x="0">loss of PTEN</tspan><tspan x="0" dy="12">activates AKT</tspan></text>
+    ...   <text display="none">hidden</text>
+    ... </svg>'''
+    >>> SVGExtractor().extract(svg)
+    'loss of PTEN activates AKT'
+"""
+
+import logging
+import re
+from dataclasses import dataclass
+from typing import Optional, Union
+
+from lxml import etree  # type: ignore[import-untyped]
+
+from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
+
+logger = logging.getLogger(__name__)
+
+SVG_NS = "http://www.w3.org/2000/svg"
+XHTML_NS = "http://www.w3.org/1999/xhtml"
+XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
+
+#: SVG elements whose content is never painted where it stands. ``<defs>`` and
+#: ``<symbol>`` content is drawn only through ``<use>``, which reads it from the
+#: element itself; ``<tref>`` is unsupported by browsers.
+NON_RENDERED_SVG = frozenset({
+    "defs", "symbol", "desc", "title", "metadata", "clipPath", "mask", "marker",
+    "pattern", "linearGradient", "radialGradient", "filter", "style", "script",
+    "font", "font-face", "glyph", "missing-glyph", "cursor", "view", "tref",
+    "set", "animate", "animateColor", "animateMotion", "animateTransform",
+})
+
+#: HTML elements in a ``<foreignObject>`` that never display their text.
+NON_RENDERED_HTML = frozenset(NON_CONTENT_TAGS) | {"head", "title"}
+
+#: The properties that decide whether text is visible.
+VISIBILITY_PROPERTIES = frozenset({
+    "display", "visibility", "opacity", "content-visibility", "fill",
+    "fill-opacity", "stroke", "stroke-opacity", "stroke-width", "font-size",
+    "font", "color",
+})
+
+#: Animation targets that can change what is visible.
+ANIMATED_VISIBILITY = VISIBILITY_PROPERTIES | {"class", "style", "href", "xlink:href"}
+
+#: At-rules that cannot change visibility, whatever they contain.
+HARMLESS_AT_RULES = frozenset({"font-face", "charset", "namespace", "page"})
+
+#: Expanding ``<use>`` may visit at most this many nodes per element of the
+#: document, so a ``<use>`` bomb fails closed instead of running for hours.
+NODE_BUDGET_PER_ELEMENT = 10
+#: Nesting deeper than this, through elements and ``<use>``, fails closed. It
+#: keeps the recursive walk well inside Python's recursion limit.
+MAX_DEPTH = 256
+
+_SIMPLE_SELECTOR = re.compile(r"(\*|[A-Za-z_][\w-]*)?((?:[.#][A-Za-z_-][\w-]*)*)")
+_NUMBER = re.compile(r"\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([a-zA-Z%]*)\s*$")
+_RELATIVE_FONT_UNITS = frozenset({"em", "%", "ex", "ch", "cap", "ic", "lh"})
+_FONT_SIZE_TOKEN = re.compile(
+    r"(?:^|\s)((?:\d+\.?\d*|\.\d+)(?:px|pt|pc|em|rem|ex|ch|%|vw|vh|vmin|vmax|mm|cm|in|q)"
+    r"|0*\.?0+)(?:/\S+)?(?=\s|$)",
+    re.IGNORECASE,
+)
+_COLOR_FUNCTION = re.compile(r"^(?:rgba?|hsla?)\((.*)\)$")
+
+
+class _Unrenderable(Exception):
+    """The text this SVG renders cannot be determined statically."""
+
+
+@dataclass(frozen=True)
+class _Rule:
+    """One simple selector of a stylesheet rule, with its declarations."""
+
+    tag: Optional[str]
+    classes: tuple[str, ...]
+    ids: tuple[str, ...]
+    order: int
+    declarations: tuple[tuple[str, str, bool], ...]
+
+    @property
+    def specificity(self) -> tuple[int, int, int]:
+        """CSS specificity: (ids, classes, types)."""
+        return (len(self.ids), len(self.classes), 1 if self.tag else 0)
+
+    def matches(self, element: etree._Element) -> bool:
+        """Whether this selector selects ``element``."""
+        if self.tag and etree.QName(element).localname != self.tag:
+            return False
+        if self.ids and any(element.get("id") != i for i in self.ids):
+            return False
+        element_classes = set((element.get("class") or "").split())
+        return all(c in element_classes for c in self.classes)
+
+
+@dataclass(frozen=True)
+class _State:
+    """The inherited properties that decide whether text is painted."""
+
+    visible: bool = True
+    fill: str = "black"
+    fill_opacity: float = 1.0
+    stroke: str = "none"
+    stroke_opacity: float = 1.0
+    stroke_width_zero: bool = False
+    font_size_zero: bool = False
+    color: str = "black"
+
+
+def _declarations(text: str) -> list[tuple[str, str, bool]]:
+    """Parse ``prop: value [!important]`` declarations.
+
+    Examples:
+        >>> _declarations("fill: none; Opacity:0 !important;")
+        [('fill', 'none', False), ('opacity', '0', True)]
+    """
+    parsed = []
+    for declaration in text.split(";"):
+        prop, sep, value = declaration.partition(":")
+        if not sep:
+            continue
+        value, important = re.subn(r"\s*!\s*important\s*$", "", value, flags=re.I)
+        parsed.append((prop.strip().lower(), value.strip(), bool(important)))
+    return parsed
+
+
+def _declares_visibility(body: str) -> bool:
+    """Whether CSS text sets any of the ``VISIBILITY_PROPERTIES``."""
+    return any(
+        re.search(rf"(?<![\w-]){re.escape(prop)}\s*:", body, re.I)
+        for prop in VISIBILITY_PROPERTIES
+    )
+
+
+def _blocks(css: str) -> list[tuple[str, Optional[str]]]:
+    """Split a stylesheet into top-level ``(prelude, body)`` pairs.
+
+    A statement ending in ``;`` (``@import``) has a body of ``None``.
+
+    Examples:
+        >>> _blocks("@import 'x'; a{b:c} @media print{ .x{y:z} }")
+        [("@import 'x'", None), ('a', 'b:c'), ('@media print', ' .x{y:z} ')]
+    """
+    blocks: list[tuple[str, Optional[str]]] = []
+    start = 0
+    i = 0
+    while i < len(css):
+        char = css[i]
+        if char == ";":
+            if css[start:i].strip():
+                blocks.append((css[start:i].strip(), None))
+            start = i + 1
+        elif char == "{":
+            depth = 1
+            j = i + 1
+            while j < len(css) and depth:
+                depth += {"{": 1, "}": -1}.get(css[j], 0)
+                j += 1
+            blocks.append((css[start:i].strip(), css[i + 1 : j - 1]))
+            start = i = j
+            continue
+        i += 1
+    return blocks
+
+
+def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
+    """Rules of a stylesheet that set visibility properties.
+
+    Raises:
+        _Unrenderable: A rule sets a visibility property in a way this
+            extractor does not evaluate.
+
+    Examples:
+        >>> [r.classes for r in _parse_stylesheet(".a, text.b {fill:none} .c {font-weight:bold}", 0)]
+        [('a',), ('b',)]
+        >>> _parse_stylesheet("g > text {display:none}", 0)
+        Traceback (most recent call last):
+        ...
+        linkml_reference_validator.etl.extract.svg._Unrenderable: stylesheet selector 'g > text' sets visibility
+    """
+    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    rules: list[_Rule] = []
+    for prelude, body in _blocks(css):
+        if prelude.startswith("@"):
+            name = re.match(r"@([\w-]*)", prelude).group(1).lower()  # type: ignore[union-attr]
+            if name == "import":
+                raise _Unrenderable("stylesheet imports another stylesheet")
+            if name not in HARMLESS_AT_RULES and body and _declares_visibility(body):
+                raise _Unrenderable(f"@{name} rule sets visibility")
+            continue
+        if body is None:
+            continue
+        declarations = tuple(
+            d for d in _declarations(body) if d[0] in VISIBILITY_PROPERTIES
+        )
+        if not declarations:
+            continue
+        for selector in prelude.split(","):
+            selector = selector.strip()
+            match = _SIMPLE_SELECTOR.fullmatch(selector)
+            if not selector or not match:
+                raise _Unrenderable(f"stylesheet selector {selector!r} sets visibility")
+            tag = match.group(1) if match.group(1) != "*" else None
+            parts = re.findall(r"[.#][\w-]+", match.group(2))
+            rules.append(
+                _Rule(
+                    tag=tag,
+                    classes=tuple(p[1:] for p in parts if p[0] == "."),
+                    ids=tuple(p[1:] for p in parts if p[0] == "#"),
+                    order=first_order + len(rules),
+                    declarations=declarations,
+                )
+            )
+    return rules
+
+
+def _fraction(value: str) -> Optional[float]:
+    """An opacity value as a fraction, or None if it is not a number.
+
+    Examples:
+        >>> _fraction("0.5"), _fraction("40%"), _fraction("bogus")
+        (0.5, 0.4, None)
+    """
+    match = _NUMBER.match(value)
+    if not match or match.group(2) not in ("", "%"):
+        return None
+    number = float(match.group(1))
+    return number / 100 if match.group(2) == "%" else number
+
+
+def _is_transparent(paint: str) -> bool:
+    """Whether a paint or colour value paints nothing.
+
+    Examples:
+        >>> [_is_transparent(p) for p in ["none", "#0000", "rgba(1,2,3,0)", "hsl(0 0% 0% / 0%)"]]
+        [True, True, True, True]
+        >>> [_is_transparent(p) for p in ["red", "#FFF", "rgb(0, 0, 0)", "rgba(0,0,0,0.5)"]]
+        [False, False, False, False]
+    """
+    paint = paint.strip().lower()
+    if paint in ("none", "transparent"):
+        return True
+    if re.fullmatch(r"#[0-9a-f]{3}0|#[0-9a-f]{6}00", paint):
+        return True
+    function = _COLOR_FUNCTION.match(paint)
+    if not function:
+        return False
+    components = re.split(r"[\s,/]+", function.group(1).strip())
+    return len(components) == 4 and _fraction(components[3]) == 0
+
+
+def _font_size_zero(value: str, parent_zero: bool) -> bool:
+    """Whether a ``font-size`` value computes to zero.
+
+    Examples:
+        >>> _font_size_zero("0px", False), _font_size_zero("2em", True), _font_size_zero("12px", True)
+        (True, True, False)
+    """
+    lowered = value.strip().lower()
+    if lowered in ("smaller", "larger"):
+        return parent_zero
+    match = _NUMBER.match(lowered)
+    if not match:
+        return parent_zero if "calc" in lowered or "var" in lowered else False
+    if float(match.group(1)) == 0:
+        return True
+    return parent_zero if match.group(2) in _RELATIVE_FONT_UNITS else False
+
+
+def _href(element: etree._Element) -> Optional[str]:
+    """A ``<use>`` element's same-document target id, if it has one."""
+    href = element.get("href") or element.get(XLINK_HREF) or ""
+    return href[1:] if href.startswith("#") else None
+
+
+def _english_reader(element: etree._Element) -> bool:
+    """Whether a ``<switch>`` child's conditions hold for an English-language reader."""
+    if (element.get("requiredExtensions") or "").strip():
+        return False
+    languages = element.get("systemLanguage")
+    if languages is None:
+        return True
+    return any(lang.strip().lower().split("-")[0] == "en" for lang in languages.split(","))
+
+
+class _RenderedText:
+    """One walk of a parsed SVG, collecting its rendered lines."""
+
+    def __init__(self, root: etree._Element, rules: list[_Rule]):
+        elements = [e for e in root.iter() if isinstance(e.tag, str)]
+        self.ids = {e.get("id"): e for e in elements if e.get("id")}
+        self.rules = rules
+        self.lines: list[str] = []
+        self.budget = NODE_BUDGET_PER_ELEMENT * len(elements) + 10_000
+        self.path: set[int] = set()
+
+    def run(self, root: etree._Element) -> list[str]:
+        """Walk from the root element."""
+        self.svg(root, _State())
+        return self.lines
+
+    # --- the cascade -------------------------------------------------------
+
+    def cascade(self, element: etree._Element, parent: _State) -> tuple[bool, _State]:
+        """Return whether ``element`` is displayed, and its inherited state."""
+        values: dict[str, str] = {}
+        if etree.QName(element).namespace == XHTML_NS:
+            if element.get("hidden") is not None:
+                values["display"] = "none"
+        else:
+            for prop in VISIBILITY_PROPERTIES:
+                if element.get(prop) is not None:
+                    values[prop] = element.get(prop)  # type: ignore[assignment]
+        matched = sorted(
+            (r for r in self.rules if r.matches(element)),
+            key=lambda r: (r.specificity, r.order),
+        )
+        inline = _declarations(element.get("style") or "")
+        for important in (False, True):
+            for rule in matched:
+                values.update((p, v) for p, v, imp in rule.declarations if imp == important)
+            values.update(
+                (p, v) for p, v, imp in inline if imp == important and p in VISIBILITY_PROPERTIES
+            )
+        return self.apply(values, parent)
+
+    @staticmethod
+    def apply(values: dict[str, str], parent: _State) -> tuple[bool, _State]:
+        """Apply computed property values on top of the inherited state."""
+        values = {p: v.strip() for p, v in values.items() if v.strip().lower() not in ("inherit", "unset")}
+        if values.get("display", "").lower() == "none":
+            return False, parent
+        if values.get("content-visibility", "").lower() == "hidden":
+            return False, parent
+        opacity = _fraction(values.get("opacity", "1"))
+        if opacity is not None and opacity <= 0:
+            return False, parent
+
+        if "font" in values:
+            size = _FONT_SIZE_TOKEN.search(values["font"])
+            if size:
+                values.setdefault("font-size", size.group(1))
+        visible = parent.visible
+        if "visibility" in values:
+            visible = values["visibility"].lower() not in ("hidden", "collapse")
+        fill_opacity = _fraction(values.get("fill-opacity", ""))
+        stroke_opacity = _fraction(values.get("stroke-opacity", ""))
+        stroke_width_zero = parent.stroke_width_zero
+        if "stroke-width" in values:
+            width = _NUMBER.match(values["stroke-width"])
+            stroke_width_zero = width is not None and float(width.group(1)) == 0
+        font_size_zero = parent.font_size_zero
+        if "font-size" in values:
+            font_size_zero = _font_size_zero(values["font-size"], parent.font_size_zero)
+        state = _State(
+            visible=visible,
+            fill=values.get("fill", parent.fill),
+            fill_opacity=parent.fill_opacity if fill_opacity is None else fill_opacity,
+            stroke=values.get("stroke", parent.stroke),
+            stroke_opacity=parent.stroke_opacity if stroke_opacity is None else stroke_opacity,
+            stroke_width_zero=stroke_width_zero,
+            font_size_zero=font_size_zero,
+            color=values.get("color", parent.color),
+        )
+        return True, state
+
+    @staticmethod
+    def _paint(paint: str, state: _State) -> str:
+        """Resolve ``currentColor``."""
+        return state.color if paint.strip().lower() == "currentcolor" else paint
+
+    def svg_painted(self, state: _State) -> bool:
+        """Whether SVG text in ``state`` paints anything."""
+        if not state.visible or state.font_size_zero:
+            return False
+        filled = not _is_transparent(self._paint(state.fill, state)) and state.fill_opacity > 0
+        stroked = (
+            not _is_transparent(self._paint(state.stroke, state))
+            and state.stroke_opacity > 0
+            and not state.stroke_width_zero
+        )
+        return filled or stroked
+
+    @staticmethod
+    def html_painted(state: _State) -> bool:
+        """Whether HTML text in ``state`` paints anything."""
+        return state.visible and not state.font_size_zero and not _is_transparent(state.color)
+
+    # --- the walk ----------------------------------------------------------
+
+    def enter(self, element: etree._Element) -> None:
+        """Spend budget on ``element`` and push it on the walk path."""
+        self.budget -= 1
+        if self.budget < 0:
+            raise _Unrenderable("<use> expansion exceeds the size budget")
+        if len(self.path) >= MAX_DEPTH:
+            raise _Unrenderable("nesting exceeds the depth budget")
+        self.path.add(id(element))
+
+    def svg(self, element: etree._Element, state: _State) -> None:
+        """Walk an SVG element outside ``<text>``."""
+        if not isinstance(element.tag, str):
+            return
+        qname = etree.QName(element)
+        if qname.namespace not in (SVG_NS, None) or qname.localname in NON_RENDERED_SVG:
+            return
+        displayed, state = self.cascade(element, state)
+        if not displayed:
+            return
+        self.enter(element)
+        name = qname.localname
+        if name == "text":
+            parts: list[str] = []
+            self.text_runs(element, state, parts)
+            self.end_line(parts)
+        elif name == "use":
+            self.use(element, state)
+        elif name == "switch":
+            for child in element:
+                if isinstance(child.tag, str) and _english_reader(child):
+                    self.svg(child, state)
+                    break
+        elif name == "foreignObject":
+            line: list[str] = []
+            for child in element:
+                self.foreign(child, state, line)
+            self.end_line(line)
+        else:
+            for child in element:
+                self.svg(child, state)
+        self.path.discard(id(element))
+
+    def use(self, element: etree._Element, state: _State) -> None:
+        """Draw what a ``<use>`` references, unless that would cycle."""
+        target = self.ids.get(_href(element) or "")
+        if target is None or id(target) in self.path:
+            return
+        if etree.QName(target).localname != "symbol":
+            self.svg(target, state)
+            return
+        displayed, state = self.cascade(target, state)
+        if displayed:
+            self.enter(target)
+            for child in target:
+                self.svg(child, state)
+            self.path.discard(id(target))
+
+    def text_runs(self, element: etree._Element, state: _State, parts: list[str]) -> None:
+        """Collect the painted characters of a ``<text>`` or one of its runs."""
+        painted = self.svg_painted(state)
+        if element.text and painted:
+            parts.append(element.text)
+        for child in element:
+            if isinstance(child.tag, str):
+                qname = etree.QName(child)
+                if qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG:
+                    displayed, child_state = self.cascade(child, state)
+                    if displayed:
+                        if any(child.get(a) is not None for a in ("x", "y", "dy")):
+                            parts.append(" ")
+                        self.enter(child)
+                        self.text_runs(child, child_state, parts)
+                        self.path.discard(id(child))
+            if child.tail and painted:
+                parts.append(child.tail)
+
+    def foreign(self, element: etree._Element, state: _State, line: list[str]) -> None:
+        """Walk an element inside ``<foreignObject>``."""
+        if not isinstance(element.tag, str):
+            return
+        qname = etree.QName(element)
+        if qname.namespace == SVG_NS and qname.localname == "svg":
+            self.end_line(line)
+            self.svg(element, state)
+        elif qname.namespace == XHTML_NS:
+            self.html(element, state, line)
+
+    def html(self, element: etree._Element, state: _State, line: list[str]) -> None:
+        """Walk an HTML element, starting a new line at each block."""
+        name = etree.QName(element).localname.lower()
+        if name in NON_RENDERED_HTML:
+            return
+        displayed, state = self.cascade(element, state)
+        if not displayed:
+            return
+        self.enter(element)
+        if name == "br" or name in TEXT_BREAK_TAGS:
+            self.end_line(line)
+        painted = self.html_painted(state)
+        if element.text and painted:
+            line.append(element.text)
+        for child in element:
+            self.foreign(child, state, line)
+            if child.tail and painted:
+                line.append(child.tail)
+        if name in TEXT_BREAK_TAGS:
+            self.end_line(line)
+        self.path.discard(id(element))
+
+    def end_line(self, parts: list[str]) -> None:
+        """Emit the collected characters as one line, whitespace collapsed."""
+        text = re.sub(r"\s+", " ", "".join(parts)).strip()
+        if text:
+            self.lines.append(text)
+        parts.clear()
+
+
+def _check_static(root: etree._Element) -> list[_Rule]:
+    """Return the document's stylesheet rules, or fail closed.
+
+    Raises:
+        _Unrenderable: Scripts, external stylesheets, visibility animations, or
+            stylesheet rules this extractor cannot evaluate.
+    """
+    for node in root.itersiblings(preceding=True):
+        if isinstance(node, etree._ProcessingInstruction) and node.target == "xml-stylesheet":
+            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+    rules: list[_Rule] = []
+    for element in root.iter():
+        if isinstance(element, etree._ProcessingInstruction) and element.target == "xml-stylesheet":
+            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+        if not isinstance(element.tag, str):
+            continue
+        name = etree.QName(element).localname
+        if name == "script":
+            raise _Unrenderable("the SVG contains a script")
+        if name == "link" and "stylesheet" in (element.get("rel") or "").lower():
+            raise _Unrenderable("the SVG links an external stylesheet")
+        if name in ("set", "animate", "animateColor"):
+            target = (element.get("attributeName") or "").strip().lower()
+            if target in ANIMATED_VISIBILITY:
+                raise _Unrenderable(f"the SVG animates {target!r}")
+        if name == "style":
+            rules.extend(_parse_stylesheet("".join(element.itertext()), len(rules)))
+    return rules
+
+
+def _parse(data: Union[bytes, str]) -> etree._Element:
+    """Parse untrusted SVG without resolving entities or touching the network.
+
+    Entity references stay unexpanded, so neither an external entity (XXE) nor
+    an exponential internal one (billion laughs) is ever read into the text.
+    """
+    encoding = None
+    if isinstance(data, str):
+        # The text is already decoded; its declaration no longer describes it.
+        data, encoding = data.encode("utf-8"), "utf-8"
+    parser = etree.XMLParser(
+        encoding=encoding,
+        resolve_entities=False,
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        remove_comments=True,
+    )
+    return etree.fromstring(data, parser)
+
+
+@ExtractorRegistry.register
+class SVGExtractor(Extractor):
+    """Extract the text an SVG figure renders.
+
+    Examples:
+        >>> SVGExtractor.formats()
+        ['svg']
+        >>> SVGExtractor().extract(b'<svg xmlns="http://www.w3.org/2000/svg"><text>A</text></svg>')
+        'A'
+        >>> SVGExtractor().extract(b'<svg xmlns="http://www.w3.org/2000/svg"><desc>A</desc></svg>') is None
+        True
+    """
+
+    @classmethod
+    def formats(cls) -> list[str]:
+        """Return ['svg']."""
+        return ["svg"]
+
+    def extract(
+        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+    ) -> Optional[str]:
+        """Return the rendered text, one line per label, or None if there is none.
+
+        Also None when the SVG is malformed, or when what it renders cannot be
+        determined statically (see the module docstring).
+        """
+        try:  # external input boundary: the file is untrusted and may be malformed
+            root = _parse(data)
+        except (etree.XMLSyntaxError, ValueError) as e:
+            logger.warning(f"Could not parse SVG: {e}")
+            return None
+        if etree.QName(root).localname != "svg":
+            logger.warning(f"Not an SVG document: root element is <{etree.QName(root).localname}>")
+            return None
+        try:  # fail closed: these are the cases this module documents
+            lines = _RenderedText(root, _check_static(root)).run(root)
+        except _Unrenderable as e:
+            logger.warning(f"Not extracting SVG text, as what it renders is uncertain: {e}")
+            return None
+        return "\n".join(lines) or None

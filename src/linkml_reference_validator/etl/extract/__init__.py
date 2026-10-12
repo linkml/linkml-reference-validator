@@ -1,4 +1,4 @@
-"""Content extractors (PDF, HTML, XML).
+"""Content extractors (PDF, HTML, XML, SVG).
 
 Changing what these produce for the same input does not rewrite the text they
 already wrote to the reference cache, which is served in preference to a fetch.
@@ -20,6 +20,7 @@ from linkml_reference_validator.etl.extract.xml import (
     XMLExtractor,
 )
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.extract.svg import SVGExtractor
 
 __all__ = [
     "MIN_FULLTEXT_CHARS",
@@ -28,4 +29,5 @@ __all__ = [
     "HTMLExtractor",
     "XMLExtractor",
     "PDFExtractor",
+    "SVGExtractor",
 ]

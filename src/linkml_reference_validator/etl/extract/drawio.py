@@ -12,6 +12,8 @@ one paragraph per drawn label, lines joined by newlines, a blank line between
 labels, then edge lines, ``"<source> <edge label> <target>"``. Here an edge's
 ``source`` and ``target`` are what drawio draws it between, so they need no
 geometric check; the edge's stroke and both cells' labels must still be drawn.
+The arrows give the direction: an edge drawn pointing back at its source reads
+target first, and one pointing both ways or neither gives no edge line.
 
 Only drawn text counts. Not read: cells that are ``visible="0"``, in a hidden
 layer or group, or inside a ``collapsed`` group; labels switched off
@@ -125,6 +127,26 @@ def _stroke_shown(style: dict[str, str]) -> bool:
     return _number(style.get("opacity"), 100) > 0 and _number(style.get("strokeWidth"), 1) > 0
 
 
+def _arrow_direction(style: dict[str, str]) -> Optional[bool]:
+    """True if an edge is drawn pointing at its target, False if at its source.
+
+    None when it points both ways or neither: the drawing then gives no
+    direction to read the relation in. drawio draws an arrow at the target
+    unless ``endArrow`` says otherwise, and none at the source.
+
+    Examples:
+        >>> _arrow_direction({}), _arrow_direction({"endArrow": "none", "startArrow": "block"})
+        (True, False)
+        >>> _arrow_direction({"endArrow": "none"}) is None
+        True
+    """
+    at_target = style.get("endArrow", "classic").strip().lower() not in ("none", "")
+    at_source = style.get("startArrow", "none").strip().lower() not in ("none", "")
+    if at_target == at_source:
+        return None
+    return at_target
+
+
 def _inflate(payload: str) -> str:
     """Decode a compressed ``<diagram>`` payload to its XML.
 
@@ -236,13 +258,17 @@ def _page_labels(model: etree._Element) -> list[list[str]]:
     for edge in drawn:
         if edge.attrs.get("edge") != "1" or not _stroke_shown(edge.style):
             continue
+        forward = _arrow_direction(edge.style)
+        if forward is None:
+            continue
         source = shown.get(edge.attrs.get("source", ""))
         target = shown.get(edge.attrs.get("target", ""))
         edge_words = edge.lines + [
             line for child in drawn if child.parent == edge.id and child is not edge for line in child.lines
         ]
         if source and target and source.lines and target.lines and edge_words:
-            labels.append([" ".join(source.lines + edge_words + target.lines)])
+            first, last = (source, target) if forward else (target, source)
+            labels.append([" ".join(first.lines + edge_words + last.lines)])
     return labels
 
 

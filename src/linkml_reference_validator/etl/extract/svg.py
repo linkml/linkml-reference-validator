@@ -505,9 +505,29 @@ def _geometry_is_static(root: etree._Element) -> bool:
             return False
         if name in ("animate", "set") and element.get("attributeName", "").strip() in GEOMETRY_ATTRIBUTES:
             return False
-        if name == "style" and declares_geometry("".join(element.itertext())):
-            return False
+        if name == "style":
+            css = "".join(element.itertext())
+            if declares_geometry(css) or re.search(r"(?<![\w-])marker(-start|-end|-mid)?\s*:", css, re.I):
+                return False
     return True
+
+
+def _marks_start(shape: etree._Element) -> bool:
+    """Whether a connector shape draws a marker (an arrowhead) at its start.
+
+    Examples:
+        >>> _marks_start(etree.fromstring('<path marker-start="url(#a)"/>'))
+        True
+        >>> _marks_start(etree.fromstring('<path style="marker-end: url(#a)"/>'))
+        False
+    """
+    values = {p: v for p, v in (
+        ("marker-start", shape.get("marker-start")), ("marker", shape.get("marker"))
+    ) if v is not None}
+    for prop, value, _ in _declarations(shape.get("style") or ""):
+        if prop in ("marker-start", "marker"):
+            values[prop] = value
+    return any(v.strip().lower() not in ("none", "") for v in values.values())
 
 
 #: Shapes that can draw a connector between two nodes.
@@ -606,6 +626,8 @@ class _RenderedText:
             # Any stroked shape of the connector may join the nodes: an
             # arrowhead drawn before the line must not hide the line.
             for stroke in strokes:
+                if _marks_start(stroke):
+                    continue  # an arrowhead at the source: the drawing reads the other way
                 ends = connector_endpoints(stroke, root)
                 if ends and touches(ends[0], source_box) and touches(ends[1], target_box):
                     lines.append(

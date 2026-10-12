@@ -159,8 +159,12 @@ The attributes are not drawn, so they are only believed when the drawing
 agrees: the connector's stroked path must start on the source node's shapes
 and end on the target's (transforms applied, with a little slack for an
 arrowhead), and the connector, its label and both nodes and their labels must
-all be visible. A node is the shapes inside the element its id names; its text
-does not count towards its box. A node drawn only through `<use>`, inside a
+all be visible. An arrowhead at the source end (`marker-start`) contradicts the
+direction, so it gives no edge line. A node is the shapes it draws inside the
+element its id names; its text, and shapes that are hidden or paint nothing,
+do not count towards its box. Geometry the extractor cannot place from
+attributes gives no edge line either: CSS `transform` or other CSS geometry,
+`clip-path`, `mask` or `filter`, or an animation that moves shapes. A node drawn only through `<use>`, inside a
 nested `<svg>`, or sized in `%` or `em` gives no edge line.
 
 Known limits: a label drawn as several `<text>` elements, one per line, is
@@ -179,7 +183,9 @@ per drawn cell, quotes held to one label, and an edge line
 `"<source> <edge label> <target>"` for each drawn edge between two labelled
 cells. In drawio an edge's source and target are what it is drawn between, so
 no geometry check is needed; its line and both cells' labels must still be
-visible. Every page of the file is read.
+visible. The arrows give the direction: an edge drawn pointing back at its
+source reads target first, and one with arrows at both ends or neither gives
+no edge line. Every page of the file is read.
 
 Not read: cells marked invisible, in a hidden layer, or inside a collapsed
 group; labels switched off (`noLabel`) or drawn with zero `opacity`,

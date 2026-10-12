@@ -215,6 +215,28 @@ def test_geometry_set_or_moved_by_css_or_animation_confirms_nothing(body):
     assert not quotable(body, "PTEN inhibits AKT")
 
 
+@pytest.mark.parametrize(
+    "path_attrs",
+    [
+        'marker-start="url(#arrow)"',
+        'marker-start="url(#arrow)" marker-end="url(#arrow)"',
+        'style="marker-start: url(#arrow)"',
+        'style="marker: url(#arrow)"',
+    ],
+)
+def test_an_arrowhead_at_the_source_contradicts_the_direction(path_attrs):
+    assert not quotable(PTEN + AKT + connector(path_attrs=path_attrs), "PTEN inhibits AKT")
+
+
+def test_an_arrowhead_at_the_target_agrees():
+    assert quotable(PTEN + AKT + connector(path_attrs='marker-end="url(#arrow)"'), "PTEN inhibits AKT")
+
+
+def test_markers_set_by_a_stylesheet_confirm_nothing():
+    body = "<style>path { marker-start: url(#arrow) }</style>" + PTEN + AKT + connector()
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
 def test_labels_are_still_read_when_edges_cannot_be_confirmed():
     body = "<style>#akt { transform: translate(5000px, 0) }</style>" + PTEN + AKT + connector()
     assert extract(body) == "PTEN\n\nAKT\n\ninhibits"

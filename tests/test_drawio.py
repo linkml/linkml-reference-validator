@@ -194,6 +194,25 @@ def test_no_edge_line_without_a_drawn_edge_between_labelled_cells(cells):
     assert not quotable(cells, "PTEN inhibits AKT")
 
 
+@pytest.mark.parametrize(
+    "style,expected",
+    [
+        ("", "PTEN inhibits AKT"),  # drawio's default: an arrow at the target
+        ("endArrow=block;", "PTEN inhibits AKT"),
+        ("endArrow=none;startArrow=block;", "AKT inhibits PTEN"),  # drawn pointing back
+        ("startArrow=classic;endArrow=classic;", None),  # both ways: no direction
+        ("endArrow=none;", None),  # no arrow: no direction
+        ("endArrow=none;startArrow=none;", None),
+    ],
+)
+def test_the_arrows_decide_an_edge_lines_direction(style, expected):
+    edge = EDGE.replace('style="endArrow=block;"', f'style="{style}"')
+    text = extract(PTEN + AKT + edge) or ""
+    lines = text.split("\n\n")
+    edge_lines = [line for line in lines if "inhibits " in line]
+    assert edge_lines == ([expected] if expected else [])
+
+
 # ---------------------------------------------------------------- fail closed
 
 

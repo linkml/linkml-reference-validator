@@ -35,7 +35,8 @@ closed** and returns ``None``, rather than guess:
 - ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
 - an external entity, which is never loaded.
 
-Known limits: text clipped by ``clip-path`` or ``mask``, placed outside the
+Known limits: lines are joined for matching, so a quote may run from one
+label into the next in document order. Text clipped by ``clip-path`` or ``mask``, placed outside the
 ``viewBox``, scaled to nothing by ``transform``, covered by another shape,
 drawn in the background colour or in a tiny but non-zero size is still
 emitted. ``<switch>`` is evaluated for an English-language reader. Text

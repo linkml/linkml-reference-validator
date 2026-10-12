@@ -136,7 +136,10 @@ linkml-reference-validator validate text \
   `unicode-bidi` override or `<bdo>` adds text to a label or draws it
   reversed.
 
-Known limits: text clipped by `clip-path` or `mask`, placed outside the
+Known limits: a quote may run on from one label into the next in document
+order, so `"PTEN activates AKT"` matches a figure with a `PTEN` label followed
+by a separate `activates AKT` label, even if they sit in different corners.
+Quote one label at a time where that matters. Text clipped by `clip-path` or `mask`, placed outside the
 `viewBox`, scaled to nothing, covered by another shape, or drawn in the
 background colour is still read. Text converted to outlines is not text and
 cannot be quoted. Native `.drawio` files and connector (edge) labels between

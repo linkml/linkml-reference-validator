@@ -95,9 +95,9 @@ ANIMATED_VISIBILITY = VISIBILITY_PROPERTIES | {"class", "style", "href", "xlink:
 #: At-rules that cannot change visibility, whatever they contain.
 HARMLESS_AT_RULES = frozenset({"font-face", "charset", "namespace", "page"})
 
-#: Expanding ``<use>`` may visit at most this many nodes per element of the
+#: Expanding ``<use>`` may visit at most this many nodes per node of the
 #: document, so a ``<use>`` bomb fails closed instead of running for hours.
-NODE_BUDGET_PER_ELEMENT = 10
+VISIT_BUDGET_PER_NODE = 10
 #: Nesting deeper than this, through elements and ``<use>``, fails closed. It
 #: keeps the recursive walk well inside Python's recursion limit.
 MAX_DEPTH = 256
@@ -365,11 +365,11 @@ class _RenderedText:
     """One walk of a parsed SVG, collecting its rendered lines."""
 
     def __init__(self, root: etree._Element, rules: list[_Rule]):
-        elements = [e for e in root.iter() if isinstance(e.tag, str)]
-        self.ids = {e.get("id"): e for e in elements if e.get("id")}
+        nodes = list(root.iter())
+        self.ids = {e.get("id"): e for e in nodes if isinstance(e.tag, str) and e.get("id")}
         self.rules = rules
         self.lines: list[str] = []
-        self.budget = NODE_BUDGET_PER_ELEMENT * len(elements) + 10_000
+        self.budget = VISIT_BUDGET_PER_NODE * len(nodes) + 10_000
         self.path: set[int] = set()
 
     def run(self, root: etree._Element) -> list[str]:
@@ -467,17 +467,25 @@ class _RenderedText:
 
     # --- the walk ----------------------------------------------------------
 
-    def enter(self, element: etree._Element) -> None:
-        """Spend budget on ``element`` and push it on the walk path."""
+    def spend(self) -> None:
+        """Charge one visited node, rendered or not, against the budget.
+
+        Every node is charged, including those skipped as hidden or not
+        rendered: a ``<use>`` bomb can repeat them as easily as anything else.
+        """
         self.budget -= 1
         if self.budget < 0:
             raise _Unrenderable("<use> expansion exceeds the size budget")
+
+    def enter(self, element: etree._Element) -> None:
+        """Push ``element`` on the walk path."""
         if len(self.path) >= MAX_DEPTH:
             raise _Unrenderable("nesting exceeds the depth budget")
         self.path.add(id(element))
 
     def svg(self, element: etree._Element, state: _State) -> None:
         """Walk an SVG element outside ``<text>``."""
+        self.spend()
         if not isinstance(element.tag, str):
             return
         qname = etree.QName(element)
@@ -530,6 +538,7 @@ class _RenderedText:
         if element.text and painted:
             parts.append(element.text)
         for child in element:
+            self.spend()
             if isinstance(child.tag, str):
                 qname = etree.QName(child)
                 if qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG:
@@ -545,6 +554,7 @@ class _RenderedText:
 
     def foreign(self, element: etree._Element, state: _State, line: list[str]) -> None:
         """Walk an element inside ``<foreignObject>``."""
+        self.spend()
         if not isinstance(element.tag, str):
             return
         qname = etree.QName(element)

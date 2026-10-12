@@ -364,6 +364,17 @@ def test_use_expansion_bomb_fails_closed():
     assert extract(body) is None
 
 
+def test_use_bomb_of_skipped_children_fails_closed():
+    # Children that are not rendered still cost a visit on every expansion:
+    # 1,000 <desc> expanded 1,024 times is a million visits from a 7 KB file.
+    # Scaled up, the same shape runs for hours.
+    levels = ['<defs><g id="l0"><text>boom</text>' + "<desc/>" * 1000 + "</g>"]
+    for i in range(1, 11):
+        levels.append(f'<g id="l{i}"><use href="#l{i - 1}"/><use href="#l{i - 1}"/></g>')
+    body = "".join(levels) + '</defs><use href="#l10"/>'
+    assert extract(body) is None
+
+
 def test_switch_renders_only_the_first_matching_child():
     body = (
         '<switch><text systemLanguage="fr">SECRET french</text>'

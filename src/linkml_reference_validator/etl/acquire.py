@@ -1,6 +1,7 @@
 """Download bytes from a URL with a size cap, and resolve the content format."""
 
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -19,6 +20,7 @@ _CONTENT_TYPE_FORMATS = {
     "application/xml": "xml",
     "text/xml": "xml",
     "text/plain": "text",
+    "image/svg+xml": "svg",
 }
 
 _SUFFIX_FORMATS = {
@@ -27,7 +29,15 @@ _SUFFIX_FORMATS = {
     ".htm": "html",
     ".xml": "xml",
     ".txt": "text",
+    ".svg": "svg",
 }
+
+#: How much of a payload :func:`sniff_format` reads to find an XML root element.
+SNIFF_WINDOW = 64 * 1024
+
+#: The first element of an XML document, past its declaration, comments,
+#: processing instructions and doctype.
+_ROOT_ELEMENT = re.compile(rb"<([A-Za-z_][\w.:-]*)")
 
 
 def sniff_format(data: bytes) -> Optional[str]:
@@ -46,6 +56,14 @@ def sniff_format(data: bytes) -> Optional[str]:
         'html'
         >>> sniff_format(b"<?xml version='1.0'?><article/>")
         'xml'
+        >>> sniff_format(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
+        'svg'
+        >>> sniff_format(b"<?xml version='1.0'?><!-- by Inkscape --><svg/>")
+        'svg'
+        >>> sniff_format(b"<!-- Created with Inkscape -->\\n<svg/>")
+        'svg'
+        >>> sniff_format(b'\\xef\\xbb\\xbf<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x"><svg/>')
+        'svg'
         >>> sniff_format(b"just some text") is None
         True
         >>> sniff_format(b"") is None
@@ -58,9 +76,62 @@ def sniff_format(data: bytes) -> Optional[str]:
     head = data[:512].lstrip().lower()
     if head.startswith(b"<!doctype html") or head.startswith(b"<html"):
         return "html"
+    # A byte order mark is not markup; Illustrator writes one, and a bare
+    # <!DOCTYPE svg ...> with no XML declaration.
+    prolog = head.removeprefix(b"\xef\xbb\xbf")
+    prolog_starts = (b"<svg", b"<?xml", b"<!--", b"<!doctype svg")
+    if prolog.startswith(prolog_starts) and _root_element(data) in (b"svg", b"svg:svg"):
+        return "svg"
     if head.startswith(b"<?xml"):
         return "xml"
     return None
+
+
+def _root_element(data: bytes) -> Optional[bytes]:
+    """Name the root element of an XML payload from its first 64 KB, lowercased.
+
+    The window is wide because exporters put licence comments and doctypes
+    with internal subsets ahead of the root. A comment, declaration or
+    doctype the window cuts off is still not markup, so nothing after its
+    start is read as the root; the root is then unknown.
+
+    Examples:
+        >>> _root_element(b'<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY a "b">]><svg/>')
+        b'svg'
+        >>> _root_element(b"<!-- <svg> in a comment --><article/>")
+        b'article'
+        >>> _root_element(b"<!-- cut off by the window <svg>") is None
+        True
+    """
+    head = data[:SNIFF_WINDOW]
+    position = 0
+    # One forward scan, so a window of unterminated "<!--" stays linear.
+    while (start := head.find(b"<", position)) != -1:
+        if head.startswith(b"<!--", start):
+            end, closing = head.find(b"-->", start + 4), 3
+        elif head.startswith(b"<?", start):
+            end, closing = head.find(b"?>", start + 2), 2
+        elif head[start : start + 9].upper() == b"<!DOCTYPE":
+            end, closing = _doctype_end(head, start + 9), 1
+        else:
+            match = _ROOT_ELEMENT.match(head, start)
+            return match.group(1).lower() if match else None
+        if end == -1:
+            return None
+        position = end + closing
+    return None
+
+
+def _doctype_end(head: bytes, position: int) -> int:
+    """Index of the ``>`` closing a doctype, past any internal subset; -1 if absent."""
+    close = head.find(b">", position)
+    subset = head.find(b"[", position)
+    if subset != -1 and (close == -1 or subset < close):
+        subset_end = head.find(b"]", subset)
+        if subset_end == -1:
+            return -1
+        close = head.find(b">", subset_end)
+    return close
 
 
 def resolve_format(

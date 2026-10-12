@@ -137,6 +137,15 @@ ABSENT_CONTENT_CACHE_VERSION = 1
 #: matches (#102).
 URL_SOURCE_CACHE_VERSION = 2
 
+#: Version what FileSource writes for an SVG figure, scoped to ``file:`` entries
+#: whose path ends in ``.svg``. Version 1: an SVG is read as the text it renders
+#: (#104). Before it, the file was cached as raw markup, so a quote could pass
+#: against a ``<desc>``, an attribute value or hidden text; such an entry carries
+#: a current ``extractor_version`` and would otherwise be served forever.
+#: Version 2: labels are separated by a blank line, so a quote is matched
+#: within one label; version 1 text cannot tell its labels apart.
+SVG_EXTRACTION_CACHE_VERSION = 2
+
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",
     "html": "full_text_html",
@@ -411,6 +420,11 @@ class ReferenceFetcher:
         if content and normalized_reference_id.startswith("url:"):
             content.metadata = dict(
                 content.metadata or {}, url_source_version=URL_SOURCE_CACHE_VERSION
+            )
+
+        if content and self._is_svg_file_reference(normalized_reference_id):
+            content.metadata = dict(
+                content.metadata or {}, svg_extraction_version=SVG_EXTRACTION_CACHE_VERSION
             )
 
         if content and self.config.fetch_full_text and self.needs_full_text(content):
@@ -963,6 +977,11 @@ class ReferenceFetcher:
         fmt = sniff_format(data) or resolve_format(content_type, location.url, location.format_hint)
         if fmt is None:
             return None, None, None, False
+        if fmt == "svg":
+            # A figure, graphical abstract or logo, never the article: SVG is
+            # read only for a file: reference that names the figure itself.
+            logger.info(f"Not using {location.url} as full text: it is an SVG image")
+            return None, fmt, None, False
 
         extractor: Optional[Extractor]
         if fmt == "pdf":
@@ -1365,6 +1384,7 @@ class ReferenceFetcher:
         html_version = metadata.get("html_full_text_version")
         xml_version = metadata.get("xml_extraction_version")
         url_version = metadata.get("url_source_version")
+        svg_version = metadata.get("svg_extraction_version")
         extra_fields = metadata.get("extra_fields_captured")
         captured = None
         if isinstance(extra_fields, list):
@@ -1392,6 +1412,7 @@ class ReferenceFetcher:
                 and type(xml_version) is int else None
             ),
             url_source_version=url_version if type(url_version) is int else None,
+            svg_extraction_version=svg_version if type(svg_version) is int else None,
             # Only freshly tested or current unavailable entries reach a save.
             # Stale fallbacks and preserved entries must never be re-saved:
             # doing so would certify their absence of content as re-tested.
@@ -1589,6 +1610,19 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
+        if self._is_svg_file_reference(reference_id) and self._is_stale_cache_entry(
+            content_text
+        ):
+            # Raw SVG markup is never evidence, not even as a fallback: its
+            # <desc>, attributes and hidden text are what #104 stopped quotes
+            # matching. The file itself is the source, so there is nothing
+            # worth preserving either; a fresh read replaces the entry.
+            logger.warning(
+                "Ignoring cache entry for %s: it holds raw SVG markup from "
+                "before the figure was read as rendered text",
+                reference_id,
+            )
+            return None
         reference = self._load_markdown_format(content_text, reference_id)
         if (
             allow_stale
@@ -1704,6 +1738,19 @@ class ReferenceFetcher:
             return None
         return parts[1], parts[2]
 
+    @staticmethod
+    def _is_svg_file_reference(reference_id: str) -> bool:
+        """Whether a reference is a ``file:`` SVG, which FileSource reads through the SVG extractor.
+
+        Examples:
+            >>> ReferenceFetcher._is_svg_file_reference("file:/figs/Fig1.SVG")
+            True
+            >>> ReferenceFetcher._is_svg_file_reference("url:https://x/fig1.svg")
+            False
+        """
+        # The same test FileSource routes on, so the stamp cannot drift from it.
+        return reference_id.startswith("file:") and resolve_format(None, reference_id, None) == "svg"
+
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:
         """Report whether extraction or format-specific full-text processing needs refreshing.
@@ -1757,6 +1804,13 @@ class ReferenceFetcher:
         ):
             url_version = metadata.get("url_source_version")
             if type(url_version) is not int or url_version < URL_SOURCE_CACHE_VERSION:
+                return True
+
+        if isinstance(metadata, dict) and cls._is_svg_file_reference(
+            str(metadata.get("reference_id", ""))
+        ):
+            svg_version = metadata.get("svg_extraction_version")
+            if type(svg_version) is not int or svg_version < SVG_EXTRACTION_CACHE_VERSION:
                 return True
 
         # Scoped to `unavailable`, which leaves one gap: with
@@ -1822,6 +1876,8 @@ class ReferenceFetcher:
             metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
         if "url_source_version" in frontmatter:
             metadata["url_source_version"] = frontmatter["url_source_version"]
+        if "svg_extraction_version" in frontmatter:
+            metadata["svg_extraction_version"] = frontmatter["svg_extraction_version"]
         if "extra_fields_captured" in frontmatter:
             metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
 

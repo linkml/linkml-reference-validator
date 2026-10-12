@@ -1,4 +1,4 @@
-"""Content extractors (PDF, HTML, XML).
+"""Content extractors (PDF, HTML, XML, SVG).
 
 Changing what these produce for the same input does not rewrite the text they
 already wrote to the reference cache, which is served in preference to a fetch.
@@ -7,7 +7,8 @@ bump ``EXTRACTOR_CACHE_VERSION`` in
 :mod:`linkml_reference_validator.etl.reference_fetcher` so existing entries are
 re-fetched instead of keeping the old output forever. For changes confined to
 XML table extraction, bump ``XML_EXTRACTION_CACHE_VERSION`` instead; HTML
-acceptance has its own ``HTML_FULL_TEXT_CACHE_VERSION``. These format-specific
+acceptance has its own ``HTML_FULL_TEXT_CACHE_VERSION``, and SVG extraction
+``SVG_EXTRACTION_CACHE_VERSION``. These format-specific
 stamps avoid refreshing unchanged formats.
 """
 
@@ -20,6 +21,7 @@ from linkml_reference_validator.etl.extract.xml import (
     XMLExtractor,
 )
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.extract.svg import SVGExtractor
 
 __all__ = [
     "MIN_FULLTEXT_CHARS",
@@ -28,4 +30,5 @@ __all__ = [
     "HTMLExtractor",
     "XMLExtractor",
     "PDFExtractor",
+    "SVGExtractor",
 ]

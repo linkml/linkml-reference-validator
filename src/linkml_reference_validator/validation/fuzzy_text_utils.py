@@ -54,6 +54,103 @@ def normalize_whitespace(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 
+#: The highest score a match that drops any word of the quote may have. A
+#: suggestion needs more than this (see ``generate_suggested_fix``), and so
+#: does a repair, so such a match is reported but never offered as the fix.
+#: Deliberately strict: a typo in a short word ("fo" for "of") is not fixed
+#: either, because short words such as "in"/"on" or "no"/"now" change claims.
+DROPPED_WORD_SCORE_CAP = 70.0
+
+
+def keeps_every_word(query: str, match: str) -> bool:
+    """Whether every word of the query survives in the match.
+
+    A word counts as kept when the match has it, or a near spelling of it
+    (see :func:`_near_spelling`, which excludes short words and words that
+    differ by a negating prefix), so a typo fix keeps its words while a
+    fragment does not. Stopwords count
+    too: "no", "not", "only" or "after" can each reverse a claim, and are
+    short enough that dropping one barely changes the length.
+
+    Examples:
+        >>> keeps_every_word("PTEN activates AKT signaling", "PTEN activates AKT signalling")
+        True
+        >>> keeps_every_word("PTEN activates AKT in mice", "PTEN activates AKT")
+        False
+        >>> keeps_every_word("No change in AKT", "change in AKT")
+        False
+    """
+    match_words = set(re.findall(r"\w+", match.lower()))
+    return all(
+        word in match_words or any(_near_spelling(word, other) for other in match_words)
+        for word in re.findall(r"\w+", query.lower())
+    )
+
+
+#: Prefixes that negate or reverse a word: "unaffected" is not a misspelling
+#: of "affected", nor "dephosphorylation" of "phosphorylation". The list errs
+#: on the side of more ("a" also splits "amass" from "mass"): a false entry
+#: only stops a near spelling counting as kept, which can only lower a score.
+MEANING_CHANGING_PREFIXES = (
+    "un", "in", "im", "ir", "il", "non", "dis", "a", "de", "dys", "mis", "anti",
+)
+
+
+def _near_spelling(word: str, other: str) -> bool:
+    """Whether ``other`` is a misspelling of ``word``, rather than another word.
+
+    Words of three letters or fewer must match exactly: "not" is not "note",
+    and "in" is not "on", though either pair scores as near. A word that is
+    the other plus a prefix in ``MEANING_CHANGING_PREFIXES`` is its opposite,
+    or another word, not a misspelling.
+
+    Examples:
+        >>> _near_spelling("signaling", "signalling"), _near_spelling("tumor", "tumour")
+        (True, True)
+        >>> _near_spelling("not", "note"), _near_spelling("unaffected", "affected")
+        (False, False)
+    """
+    if len(word) <= 3 or len(other) <= 3:
+        return False
+    if any(
+        word == prefix + other or other == prefix + word for prefix in MEANING_CHANGING_PREFIXES
+    ):
+        return False
+    return fuzz.ratio(word, other) >= 80
+
+
+def score_against_whole_query(query: str, match: str, similarity: float) -> float:
+    """Score a fuzzy match as a correction of the whole query.
+
+    ``partial_ratio`` scores the shorter string inside the longer one, so a
+    sentence or figure label that is only part of a quote scores 100. Offered
+    as a correction, it would drop the rest of the claim and still validate.
+    So a match is scaled by the share of the query's length it covers, and
+    capped at ``DROPPED_WORD_SCORE_CAP`` if it drops a word: length alone lets
+    a long quote lose a short qualifier such as "in mice". A typo fix, about
+    as long as the quote and keeping its words, keeps its score.
+
+    Examples:
+        >>> score_against_whole_query("loss of PTEN activates AKT", "loss of PTEN", 100.0)
+        46.15...
+        >>> score_against_whole_query("JAK1 kinaze binds STAT", "JAK1 kinase binds STAT", 90.9)
+        90.9
+        >>> score_against_whole_query("JAK1", "The JAK1 protein", 100.0)
+        100.0
+        >>> long_claim = "PTEN loss activates AKT and mTORC1 signalling " * 5
+        >>> score_against_whole_query(long_claim + "in mice", long_claim, 100.0)
+        70.0
+    """
+    query_length = len(normalize_whitespace(query))
+    if not query_length:
+        return similarity
+    coverage = min(1.0, len(normalize_whitespace(match)) / query_length)
+    score = similarity * coverage
+    if not keeps_every_word(query, match):
+        score = min(score, DROPPED_WORD_SCORE_CAP)
+    return score
+
+
 def get_significant_words(text: str) -> set[str]:
     """Extract significant words (excluding stopwords) from text.
 
@@ -242,8 +339,12 @@ def find_fuzzy_match_in_text(
     for sentence in sentences:
         sentence_norm = normalize_whitespace(sentence)
         # Use partial_ratio which finds best matching substring
-        # This is optimized in RapidFuzz and much faster than sliding window
-        score = fuzz.partial_ratio(query_norm, sentence_norm)
+        # This is optimized in RapidFuzz and much faster than sliding window.
+        # Scored against the whole query before ranking, so a sentence that is
+        # only part of the quote neither wins nor ends the search early.
+        score = score_against_whole_query(
+            query_norm, sentence_norm, fuzz.partial_ratio(query_norm, sentence_norm)
+        )
 
         # Calculate word overlap to prevent false positives
         word_overlap = calculate_word_overlap(query, sentence)

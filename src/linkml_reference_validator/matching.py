@@ -3,6 +3,12 @@
 import re
 from collections.abc import Sequence
 
+#: Between two labels of an SVG figure's extracted text. A label's own lines
+#: are joined with a single newline, so a blank line never occurs inside one,
+#: and matching holds each quote part to one label. Kept here, beside the
+#: matching it serves, so the validator need not import the SVG extractor.
+SVG_LABEL_SEPARATOR = "\n\n"
+
 
 def split_supporting_text(
     text: str,

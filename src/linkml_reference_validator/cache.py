@@ -58,6 +58,7 @@ class CacheFrontmatter(BaseModel):
     html_full_text_version: int | None = None
     xml_extraction_version: int | None = None
     url_source_version: int | None = None
+    svg_extraction_version: int | None = None
     absent_content_version: int | None = None
     title: str | None = None
     authors: list[str] | None = None

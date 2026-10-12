@@ -105,6 +105,51 @@ linkml-reference-validator validate text \
   url:https://example.com/pangram-examples.html
 ```
 
+## Diagrams as References (SVG)
+
+A `file:` reference can point at an `.svg` figure, such as a pathway diagram.
+The quote is then matched against the text the figure **renders**, not its
+markup:
+
+```bash
+linkml-reference-validator validate text \
+  "loss of PTEN activates AKT" \
+  file:./figures/pathway.svg
+```
+
+- Each `<text>` element is one label. A label split over several `<tspan>`
+  lines can be quoted across the break.
+- A quote must fall within one label. A figure with a `PTEN` label and a
+  separate `activates AKT` label does not support `"PTEN activates AKT"`,
+  however close together they sit: neither label says it. To cite both, quote
+  them as separate parts, `"PTEN ... activates AKT"`.
+- HTML labels inside `<foreignObject>`, which is how drawio's **Export as SVG**
+  writes them, are read too.
+- Text the reader cannot see is never quotable. That covers `<desc>`, `<title>`,
+  `<metadata>`, comments, attribute values (`id`, `fill`, `class`, ...),
+  `<defs>`/`<symbol>` content that no `<use>` draws, and text hidden by
+  `display:none`, `visibility:hidden`, zero `opacity`, `fill="none"` or a zero
+  `font-size`, whether set on the element, inherited from a group, or set by a
+  `<style>` rule.
+- If the extractor cannot tell what the figure renders, the reference is
+  `unavailable` rather than read as raw markup. That happens when a `<style>`
+  rule hides or shows text through a selector other than a type, class or id
+  selector (`g > text`, `:first-child`, `@media`), when visibility depends on
+  `var()` or `calc()`, when a stylesheet is imported or linked, when the SVG
+  contains a `<script>` or animates visibility, or when something changes the
+  characters drawn: CSS `content`, a string `list-style-type` or `quotes`,
+  `-webkit-text-security`, a `unicode-bidi` override, `<bdo>`, or a bidi
+  control character in the text.
+
+Known limits: a label drawn as several `<text>` elements, one per line, is
+read as several labels, so quote its lines with `...` between them. Text
+clipped by `clip-path` or `mask`, placed outside the
+`viewBox`, scaled to nothing, covered by another shape, drawn in the
+background colour, or cut short by CSS `text-overflow` or `-webkit-line-clamp`
+is still read. Text converted to outlines is not text and
+cannot be quoted. Native `.drawio` files and connector (edge) labels between
+nodes are not yet supported.
+
 ## Using in Data Files
 
 Both file and URL references work in LinkML data files:
@@ -145,6 +190,8 @@ Both file and URL references work in LinkML data files:
 
 ## Limitations
 
+- **Local files are read as text**, apart from `.svg` figures (see above).
+  An `.html` file is matched against its raw markup.
 - **Local PDF files**: Not yet supported as `file:` references. PDFs fetched by `url:` are supported.
 - **Authentication**: URLs requiring login are not supported
 - **Dynamic content**: JavaScript-rendered pages may not work

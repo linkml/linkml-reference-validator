@@ -38,7 +38,8 @@ def main() -> None:
         validator = SupportingTextValidator(ReferenceValidationConfig())
         start = perf_counter()
         for quote in quotes:
-            assert validator.find_text_in_reference(quote, reference).found
+            if not validator.find_text_in_reference(quote, reference).found:
+                raise SystemExit(f"Excerpt unexpectedly failed validation: {quote!r}")
         elapsed.append(perf_counter() - start)
     print(json.dumps({"characters": len(content), "quotes": len(quotes),
                       "rounds_seconds": elapsed, "median_seconds": median(elapsed)}))

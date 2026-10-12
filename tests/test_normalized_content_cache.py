@@ -9,6 +9,7 @@ from linkml_reference_validator.validation.supporting_text_validator import Supp
 
 def normalization_calls(profile: cProfile.Profile) -> int:
     """Count actual normalizer executions, independently of cache internals."""
+    # Match the actual static function; revisit this if it gains a decorator.
     code = SupportingTextValidator.normalize_text.__code__
     return sum(entry.callcount for entry in profile.getstats() if entry.code is code)
 

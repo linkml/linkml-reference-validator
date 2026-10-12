@@ -1,8 +1,8 @@
 """Validation of supporting text against reference content."""
 
-from functools import lru_cache
 import logging
 import re
+from functools import lru_cache
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
@@ -93,6 +93,7 @@ class SupportingTextValidator:
         # query. Key by text rather than reference ID so refreshed content is
         # never matched against an earlier version. Each validator owns its
         # cache; finishing a batch releases it instead of retaining texts globally.
+        # normalize_text is static, so the wrapper does not retain self in a cycle.
         self._normalize_reference_text = lru_cache(maxsize=128)(self.normalize_text)
         self._literal_bracket_regexes = [
             re.compile(pattern) for pattern in config.literal_bracket_patterns

@@ -1,5 +1,6 @@
 """Validation of supporting text against reference content."""
 
+from functools import lru_cache
 import logging
 import re
 from typing import Optional
@@ -88,6 +89,11 @@ class SupportingTextValidator:
         """
         self.config = config
         self.fetcher = ReferenceFetcher(config)
+        # Keep only recent publication/figure-label normalizations, not each
+        # query. Key by text rather than reference ID so refreshed content is
+        # never matched against an earlier version. Each validator owns its
+        # cache; finishing a batch releases it instead of retaining texts globally.
+        self._normalize_reference_text = lru_cache(maxsize=128)(self.normalize_text)
         self._literal_bracket_regexes = [
             re.compile(pattern) for pattern in config.literal_bracket_patterns
         ]
@@ -543,7 +549,7 @@ class SupportingTextValidator:
             )
 
         texts = searchable if searchable is not None else [content]
-        normalized_texts = [self.normalize_text(text) for text in texts]
+        normalized_texts = [self._normalize_reference_text(text) for text in texts]
         matched_parts = []
 
         for part in query_parts:

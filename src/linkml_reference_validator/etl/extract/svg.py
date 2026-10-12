@@ -20,7 +20,8 @@ attributes, then ``<style>`` rules by specificity and order, then the ``style``
 attribute, then ``!important``. ``display``, ``opacity`` and
 ``content-visibility`` hide a whole subtree; ``visibility``, ``fill``,
 ``fill-opacity``, ``stroke``, ``stroke-opacity``, ``stroke-width``,
-``font-size`` and ``color`` are inherited and a child may restore them.
+``font-size``, ``color`` and ``-webkit-text-fill-color`` are inherited and a
+child may restore them.
 
 Where the rendered text cannot be determined statically the extractor **fails
 closed** and returns ``None``, rather than guess:
@@ -103,7 +104,7 @@ NON_RENDERED_HTML = frozenset(NON_CONTENT_TAGS) | {
 VISIBILITY_PROPERTIES = frozenset({
     "display", "visibility", "opacity", "content-visibility", "fill",
     "fill-opacity", "stroke", "stroke-opacity", "stroke-width", "font-size",
-    "font", "color",
+    "font", "color", "-webkit-text-fill-color",
 })
 
 #: Properties that can add characters to a label or reorder them; see
@@ -209,6 +210,8 @@ class _State:
     stroke_width_zero: bool = False
     font_size_zero: bool = False
     color: str = "black"
+    #: Paints HTML text in place of ``color`` unless it is ``currentcolor``.
+    text_fill: str = "currentcolor"
 
 
 def _declarations(text: str) -> list[tuple[str, str, bool]]:
@@ -564,6 +567,7 @@ class _RenderedText:
             stroke_width_zero=stroke_width_zero,
             font_size_zero=font_size_zero,
             color=values.get("color", parent.color),
+            text_fill=values.get("-webkit-text-fill-color", parent.text_fill),
         )
         return True, state
 
@@ -587,7 +591,8 @@ class _RenderedText:
     @staticmethod
     def html_painted(state: _State) -> bool:
         """Whether HTML text in ``state`` paints anything."""
-        return state.visible and not state.font_size_zero and not _is_transparent(state.color)
+        paint = state.color if state.text_fill.strip().lower() == "currentcolor" else state.text_fill
+        return state.visible and not state.font_size_zero and not _is_transparent(paint)
 
     # --- the walk ----------------------------------------------------------
 

@@ -619,6 +619,23 @@ def test_an_open_dialog_is_read():
     assert extract(_xhtml("<dialog open=''>shown</dialog>")) == "shown"
 
 
+@pytest.mark.parametrize(
+    "style",
+    ["-webkit-text-fill-color:transparent", "-webkit-text-fill-color: rgba(0,0,0,0)"],
+)
+def test_transparent_text_fill_hides_html_text(style):
+    body = _xhtml(f'<span style="{style}">SECRET</span><p>shown</p>')
+    assert not quotable(body, "SECRET")
+
+
+def test_a_child_can_restore_text_fill():
+    body = _xhtml(
+        '<div style="-webkit-text-fill-color:transparent">'
+        '<span style="-webkit-text-fill-color:black">claim shown</span></div>'
+    )
+    assert quotable(body, "claim shown")
+
+
 def test_html_style_element_in_foreign_object_is_evaluated():
     body = (
         '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">'

@@ -385,6 +385,14 @@ def test_switch_renders_only_the_first_matching_child():
     assert not quotable(body, "SECRET fallback")
 
 
+@pytest.mark.parametrize(
+    "skipped",
+    ["<title>t</title>", "<desc>d</desc>", '<x:meta xmlns:x="urn:x">m</x:meta>', "<!-- c -->"],
+)
+def test_switch_passes_over_children_that_are_not_rendered(skipped):
+    assert extract(f"<switch>{skipped}<text>shown</text><text>SECRET</text></switch>") == "shown"
+
+
 # ---------------------------------------------------------------- foreignObject
 
 

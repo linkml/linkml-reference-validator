@@ -351,6 +351,14 @@ def _href(element: etree._Element) -> Optional[str]:
     return href[1:] if href.startswith("#") else None
 
 
+def _is_drawable(node: etree._Element) -> bool:
+    """Whether a node is an SVG element that can be drawn where it stands."""
+    if not isinstance(node.tag, str):
+        return False
+    qname = etree.QName(node)
+    return qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG
+
+
 def _english_reader(element: etree._Element) -> bool:
     """Whether a ``<switch>`` child's conditions hold for an English-language reader."""
     if (element.get("requiredExtensions") or "").strip():
@@ -486,16 +494,13 @@ class _RenderedText:
     def svg(self, element: etree._Element, state: _State) -> None:
         """Walk an SVG element outside ``<text>``."""
         self.spend()
-        if not isinstance(element.tag, str):
-            return
-        qname = etree.QName(element)
-        if qname.namespace not in (SVG_NS, None) or qname.localname in NON_RENDERED_SVG:
+        if not _is_drawable(element):
             return
         displayed, state = self.cascade(element, state)
         if not displayed:
             return
         self.enter(element)
-        name = qname.localname
+        name = etree.QName(element).localname
         if name == "text":
             parts: list[str] = []
             self.text_runs(element, state, parts)
@@ -504,7 +509,8 @@ class _RenderedText:
             self.use(element, state)
         elif name == "switch":
             for child in element:
-                if isinstance(child.tag, str) and _english_reader(child):
+                # Like a browser, pass over children that are never drawn.
+                if _is_drawable(child) and _english_reader(child):
                     self.svg(child, state)
                     break
         elif name == "foreignObject":
@@ -539,16 +545,14 @@ class _RenderedText:
             parts.append(element.text)
         for child in element:
             self.spend()
-            if isinstance(child.tag, str):
-                qname = etree.QName(child)
-                if qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG:
-                    displayed, child_state = self.cascade(child, state)
-                    if displayed:
-                        if any(child.get(a) is not None for a in ("x", "y", "dy")):
-                            parts.append(" ")
-                        self.enter(child)
-                        self.text_runs(child, child_state, parts)
-                        self.path.discard(id(child))
+            if _is_drawable(child):
+                displayed, child_state = self.cascade(child, state)
+                if displayed:
+                    if any(child.get(a) is not None for a in ("x", "y", "dy")):
+                        parts.append(" ")
+                    self.enter(child)
+                    self.text_runs(child, child_state, parts)
+                    self.path.discard(id(child))
             if child.tail and painted:
                 parts.append(child.tail)
 

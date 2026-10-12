@@ -10,6 +10,8 @@ closed and returns no text rather than guessing.
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 
 from linkml_reference_validator.etl.acquire import resolve_format, sniff_format
@@ -21,7 +23,7 @@ from linkml_reference_validator.etl.reference_fetcher import (
     ReferenceFetcher,
 )
 from linkml_reference_validator.etl.sources.file import FileSource
-from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml_reference_validator.models import FullTextLocation, ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
@@ -597,6 +599,22 @@ def test_validator_matches_rendered_svg_text_end_to_end(tmp_path, config):
 
     assert validator.validate("loss of PTEN activates AKT", f"file:{figure}").is_valid
     assert not validator.validate("AKT activates PTEN", f"file:{figure}").is_valid
+
+
+@pytest.mark.parametrize(
+    "content_type", ["image/svg+xml", "application/xml", "text/html", None]
+)
+def test_svg_at_a_full_text_location_is_not_full_text(config, content_type):
+    # A provider URL that serves a figure or a logo is not the article.
+    long_label = "PTEN activates AKT " * 200
+    data = b'<?xml version="1.0"?>' + svg(f"<text>{long_label}</text>")
+    fetcher = ReferenceFetcher(config)
+    location = FullTextLocation(url="https://oa.example/fig1", provider="test")
+
+    with patch.object(fetcher._acquirer, "fetch_bytes", return_value=(data, content_type)):
+        text, fmt, pdf_bytes, error = fetcher._materialize(location)
+
+    assert (text, fmt, pdf_bytes, error) == (None, "svg", None, False)
 
 
 # ---------------------------------------------------------------- cache stamp

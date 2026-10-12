@@ -975,6 +975,11 @@ class ReferenceFetcher:
         fmt = sniff_format(data) or resolve_format(content_type, location.url, location.format_hint)
         if fmt is None:
             return None, None, None, False
+        if fmt == "svg":
+            # A figure, graphical abstract or logo, never the article: SVG is
+            # read only for a file: reference that names the figure itself.
+            logger.info(f"Not using {location.url} as full text: it is an SVG image")
+            return None, fmt, None, False
 
         extractor: Optional[Extractor]
         if fmt == "pdf":

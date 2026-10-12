@@ -121,6 +121,21 @@ Suggested fix (85%): "Haemophilus influenzae type b" → "H. influenzae type b"
 
 Use with caution - verify the suggestion preserves the intended meaning.
 
+A correction that would change what the quote claims is reported, but never
+offered or applied as the fix:
+
+- **It drops a word of the quote,** such as "no" or "in mice".
+- **It swaps a word for one that differs only in a prefix,** such as
+  "unaffected" for "affected", "hyperphosphorylated" for
+  "hypophosphorylated", or "intracellular" for "extracellular". This holds
+  even when the quote also has a typo ("unaffectd").
+- **It adds a negation** the quote doesn't have, such as "not", "never",
+  "without" or "failed to".
+
+Words of three letters or fewer must match exactly, so "in" is never
+corrected to "on". These checks err towards caution: a real typo next to such
+a word may go unfixed, so fix it by hand.
+
 ### 4. Removal Recommendation (Very Low Confidence)
 
 Flags text that appears fabricated or hallucinated:

@@ -1,6 +1,7 @@
 """Download bytes from a URL with a size cap, and resolve the content format."""
 
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Optional
@@ -19,6 +20,7 @@ _CONTENT_TYPE_FORMATS = {
     "application/xml": "xml",
     "text/xml": "xml",
     "text/plain": "text",
+    "image/svg+xml": "svg",
 }
 
 _SUFFIX_FORMATS = {
@@ -27,7 +29,12 @@ _SUFFIX_FORMATS = {
     ".htm": "html",
     ".xml": "xml",
     ".txt": "text",
+    ".svg": "svg",
 }
+
+#: The first element of an XML document, past its declaration, comments,
+#: processing instructions and doctype.
+_ROOT_ELEMENT = re.compile(rb"<([A-Za-z_][\w.:-]*)")
 
 
 def sniff_format(data: bytes) -> Optional[str]:
@@ -46,6 +53,12 @@ def sniff_format(data: bytes) -> Optional[str]:
         'html'
         >>> sniff_format(b"<?xml version='1.0'?><article/>")
         'xml'
+        >>> sniff_format(b'<svg xmlns="http://www.w3.org/2000/svg"/>')
+        'svg'
+        >>> sniff_format(b"<?xml version='1.0'?><!-- by Inkscape --><svg/>")
+        'svg'
+        >>> sniff_format(b"<!-- Created with Inkscape -->\\n<svg/>")
+        'svg'
         >>> sniff_format(b"just some text") is None
         True
         >>> sniff_format(b"") is None
@@ -58,9 +71,26 @@ def sniff_format(data: bytes) -> Optional[str]:
     head = data[:512].lstrip().lower()
     if head.startswith(b"<!doctype html") or head.startswith(b"<html"):
         return "html"
+    if head.startswith((b"<svg", b"<?xml", b"<!--")) and _root_element(data) in (b"svg", b"svg:svg"):
+        return "svg"
     if head.startswith(b"<?xml"):
         return "xml"
     return None
+
+
+def _root_element(data: bytes) -> Optional[bytes]:
+    """Name the root element of an XML payload from its first 4 KB, lowercased.
+
+    Examples:
+        >>> _root_element(b'<?xml version="1.0"?><!DOCTYPE svg [<!ENTITY a "b">]><svg/>')
+        b'svg'
+        >>> _root_element(b"<!-- <svg> in a comment --><article/>")
+        b'article'
+    """
+    head = re.sub(rb"<!--.*?-->|<\?.*?\?>", b"", data[:4096], flags=re.S)
+    head = re.sub(rb"<!DOCTYPE(?:[^\[>]|\[.*?\])*>", b"", head, flags=re.S | re.I)
+    match = _ROOT_ELEMENT.search(head)
+    return match.group(1).lower() if match else None
 
 
 def resolve_format(

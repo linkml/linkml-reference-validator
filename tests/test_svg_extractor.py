@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from linkml_reference_validator.etl.acquire import resolve_format, sniff_format
 from linkml_reference_validator.etl.extract import ExtractorRegistry
 from linkml_reference_validator.etl.extract.svg import SVGExtractor
 from linkml_reference_validator.validation.supporting_text_validator import (
@@ -46,6 +47,27 @@ def quotable(body: str, quote: str) -> bool:
 def test_registered_for_svg_format():
     assert isinstance(ExtractorRegistry.get("svg"), SVGExtractor)
 
+
+def test_format_maps_know_svg():
+    assert resolve_format("image/svg+xml", None, None) == "svg"
+    assert resolve_format(None, "https://x/fig1.SVG", None) == "svg"
+
+
+@pytest.mark.parametrize(
+    "head",
+    [
+        b'<svg xmlns="http://www.w3.org/2000/svg"><text>x</text></svg>',
+        b'<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>',
+        b'<?xml version="1.0"?><!-- Generator: Illustrator -->\n'
+        b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x.dtd">\n<svg/>',
+    ],
+)
+def test_sniffs_svg_including_behind_an_xml_declaration(head):
+    assert sniff_format(head) == "svg"
+
+
+def test_jats_still_sniffs_as_xml():
+    assert sniff_format(b"<?xml version='1.0'?><article/>") == "xml"
 
 
 # ---------------------------------------------------------------- text structure

@@ -2992,6 +2992,17 @@ re-fetched once on the next validation fetch. If the page cannot be reached,
 the old entry is still served and is not rewritten, so a later run retries.
 Other sources are unaffected. With <code>trust_cached_entries</code> set, old entries are
 served as they are and are not refreshed.</p>
+<p><code>file:</code> references to <code>.svg</code> figures carry their own stamp,
+<code>svg_extraction_version</code>. Version 1 reads a figure as the text it renders
+(issue #104); before it, the file was cached as raw markup, so a quote could
+match a <code>&lt;desc&gt;</code>, an attribute value or hidden text. Such an entry is re-read
+once on the next validation fetch. <strong>A quote that only matched the markup will
+then fail</strong>, which is the point: cite text the figure actually shows. Unlike
+other stale entries, an old SVG entry is never served in place of a fresh
+read: not when the file has moved, not when the new read finds no rendered
+text, and not with <code>trust_cached_entries</code>. The file is the source, and its raw
+markup is not evidence. Version 2 separates a figure's labels, so a quote is
+matched within one label; version 1 entries are re-read once for it.</p>
 <p><strong>A quote that verified against a <code>url:</code> page can fail after that refresh.</strong>
 Sanitizing removes <code>&lt;noscript&gt;</code> and <code>&lt;template&gt;</code> elements with their text.
 Some publisher pages put a fallback copy of the abstract inside <code>&lt;noscript&gt;</code>,

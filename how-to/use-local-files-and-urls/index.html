@@ -913,6 +913,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagrams-as-references-svg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagrams as References (SVG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-in-data-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1608,6 +1619,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagrams-as-references-svg" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagrams as References (SVG)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-in-data-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1773,6 +1795,47 @@ linkml-reference-validator validate text \
   &quot;A quick brown fox&quot; \
   url:https://example.com/pangram-examples.html
 </code></pre>
+<h2 id="diagrams-as-references-svg">Diagrams as References (SVG)</h2>
+<p>A <code>file:</code> reference can point at an <code>.svg</code> figure, such as a pathway diagram.
+The quote is then matched against the text the figure <strong>renders</strong>, not its
+markup:</p>
+<pre><code class="language-bash">linkml-reference-validator validate text \
+  &quot;loss of PTEN activates AKT&quot; \
+  file:./figures/pathway.svg
+</code></pre>
+<ul>
+<li>Each <code>&lt;text&gt;</code> element is one label. A label split over several <code>&lt;tspan&gt;</code>
+  lines can be quoted across the break.</li>
+<li>A quote must fall within one label. A figure with a <code>PTEN</code> label and a
+  separate <code>activates AKT</code> label does not support <code>"PTEN activates AKT"</code>,
+  however close together they sit: neither label says it. To cite both, quote
+  them as separate parts, <code>"PTEN ... activates AKT"</code>.</li>
+<li>HTML labels inside <code>&lt;foreignObject&gt;</code>, which is how drawio's <strong>Export as SVG</strong>
+  writes them, are read too.</li>
+<li>Text the reader cannot see is never quotable. That covers <code>&lt;desc&gt;</code>, <code>&lt;title&gt;</code>,
+  <code>&lt;metadata&gt;</code>, comments, attribute values (<code>id</code>, <code>fill</code>, <code>class</code>, ...),
+  <code>&lt;defs&gt;</code>/<code>&lt;symbol&gt;</code> content that no <code>&lt;use&gt;</code> draws, and text hidden by
+  <code>display:none</code>, <code>visibility:hidden</code>, zero <code>opacity</code>, <code>fill="none"</code> or a zero
+  <code>font-size</code>, whether set on the element, inherited from a group, or set by a
+  <code>&lt;style&gt;</code> rule.</li>
+<li>If the extractor cannot tell what the figure renders, the reference is
+  <code>unavailable</code> rather than read as raw markup. That happens when a <code>&lt;style&gt;</code>
+  rule hides or shows text through a selector other than a type, class or id
+  selector (<code>g &gt; text</code>, <code>:first-child</code>, <code>@media</code>), when visibility depends on
+  <code>var()</code> or <code>calc()</code>, when a stylesheet is imported or linked, when the SVG
+  contains a <code>&lt;script&gt;</code> or animates visibility, or when something changes the
+  characters drawn: CSS <code>content</code>, a string <code>list-style-type</code> or <code>quotes</code>,
+  <code>-webkit-text-security</code>, a <code>unicode-bidi</code> override, <code>&lt;bdo&gt;</code>, or a bidi
+  control character in the text.</li>
+</ul>
+<p>Known limits: a label drawn as several <code>&lt;text&gt;</code> elements, one per line, is
+read as several labels, so quote its lines with <code>...</code> between them. Text
+clipped by <code>clip-path</code> or <code>mask</code>, placed outside the
+<code>viewBox</code>, scaled to nothing, covered by another shape, drawn in the
+background colour, or cut short by CSS <code>text-overflow</code> or <code>-webkit-line-clamp</code>
+is still read. Text converted to outlines is not text and
+cannot be quoted. Native <code>.drawio</code> files and connector (edge) labels between
+nodes are not yet supported.</p>
 <h2 id="using-in-data-files">Using in Data Files</h2>
 <p>Both file and URL references work in LinkML data files:</p>
 <pre><code class="language-yaml"># data.yaml
@@ -1831,6 +1894,8 @@ linkml-reference-validator validate text \
 </ul>
 <h2 id="limitations">Limitations</h2>
 <ul>
+<li><strong>Local files are read as text</strong>, apart from <code>.svg</code> figures (see above).
+  An <code>.html</code> file is matched against its raw markup.</li>
 <li><strong>Local PDF files</strong>: Not yet supported as <code>file:</code> references. PDFs fetched by <code>url:</code> are supported.</li>
 <li><strong>Authentication</strong>: URLs requiring login are not supported</li>
 <li><strong>Dynamic content</strong>: JavaScript-rendered pages may not work</li>

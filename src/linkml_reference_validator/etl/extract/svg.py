@@ -82,7 +82,9 @@ from lxml import html as lxml_html  # type: ignore[import-untyped]
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
 from linkml_reference_validator.etl.extract.svg_geometry import (
+    SHAPES,
     connector_endpoints,
+    declares_geometry,
     node_bbox,
     touches,
 )
@@ -477,6 +479,37 @@ def _is_drawable(node: etree._Element) -> bool:
     return qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG
 
 
+#: Animations that move, resize or reshape what they animate.
+MOVING_ANIMATIONS = frozenset({"animateTransform", "animateMotion"})
+
+#: Attributes whose animation moves, resizes or reshapes a shape.
+GEOMETRY_ATTRIBUTES = frozenset({
+    "x", "y", "cx", "cy", "r", "rx", "ry", "width", "height", "d", "points",
+    "x1", "y1", "x2", "y2", "transform", "clip-path", "mask", "filter", "style", "class",
+})
+
+
+def _geometry_is_static(root: etree._Element) -> bool:
+    """Whether every shape is placed by its attributes alone, for good.
+
+    False when a stylesheet sets a geometry property (see
+    ``GEOMETRY_PROPERTIES``) or an animation moves or reshapes anything: the
+    extractor cannot then say where shapes are drawn, so it confirms no edges.
+    Labels are unaffected.
+    """
+    for element in root.iter():
+        if not isinstance(element.tag, str):
+            continue
+        name = etree.QName(element).localname
+        if name in MOVING_ANIMATIONS:
+            return False
+        if name in ("animate", "set") and element.get("attributeName", "").strip() in GEOMETRY_ATTRIBUTES:
+            return False
+        if name == "style" and declares_geometry("".join(element.itertext())):
+            return False
+    return True
+
+
 #: Shapes that can draw a connector between two nodes.
 CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
 
@@ -528,6 +561,7 @@ class _RenderedText:
         self.use_depth = 0
         self.drawn_labels: dict[etree._Element, list[list[str]]] = {}
         self.stroked: dict[etree._Element, bool] = {}
+        self.painted_shapes: set[etree._Element] = set()
 
     def run(self, root: etree._Element) -> list[list[str]]:
         """Walk from the root element, returning each label's lines."""
@@ -547,6 +581,8 @@ class _RenderedText:
         are rendered, and the stroked path starts on the source node's box and
         ends on the target's.
         """
+        if not _geometry_is_static(root):
+            return []
         lines = []
         for element in root.iter():
             if not isinstance(element.tag, str):
@@ -561,14 +597,21 @@ class _RenderedText:
                 if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
                 and self.stroked.get(e)
             ]
-            ends = connector_endpoints(strokes[0], root) if strokes else None
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
-            source_box, target_box = node_bbox(source, root), node_bbox(target, root)
-            if not (ends and source_labels and target_labels and source_box and target_box):
+            source_box = node_bbox(source, root, self.painted_shapes)
+            target_box = node_bbox(target, root, self.painted_shapes)
+            if not (source_labels and target_labels and source_box and target_box):
                 continue
-            if touches(ends[0], source_box) and touches(ends[1], target_box):
-                lines.append(" ".join(_words(x) for x in (source_labels, edge_labels, target_labels)))
+            # Any stroked shape of the connector may join the nodes: an
+            # arrowhead drawn before the line must not hide the line.
+            for stroke in strokes:
+                ends = connector_endpoints(stroke, root)
+                if ends and touches(ends[0], source_box) and touches(ends[1], target_box):
+                    lines.append(
+                        " ".join(_words(x) for x in (source_labels, edge_labels, target_labels))
+                    )
+                    break
         return lines
 
     # --- the cascade -------------------------------------------------------
@@ -680,6 +723,12 @@ class _RenderedText:
             and not state.stroke_width_zero
         )
 
+    @classmethod
+    def shape_painted(cls, state: _State) -> bool:
+        """Whether an SVG shape in ``state`` paints a fill or a stroke."""
+        filled = not _is_transparent(cls._paint(state.fill, state)) and state.fill_opacity > 0
+        return state.visible and (filled or cls.stroke_painted(state))
+
     @staticmethod
     def html_painted(state: _State) -> bool:
         """Whether HTML text in ``state`` paints anything."""
@@ -718,6 +767,8 @@ class _RenderedText:
         first_label = len(self.labels) - 1
         if recorded and name in CONNECTOR_SHAPES:
             self.stroked[element] = self.stroke_painted(state)
+        if recorded and name in SHAPES and self.shape_painted(state):
+            self.painted_shapes.add(element)
         if name == "text":
             parts: list[str] = []
             self.text_runs(element, state, parts)

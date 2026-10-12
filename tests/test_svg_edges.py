@@ -152,6 +152,84 @@ def test_nothing_hidden_takes_part_in_an_edge(body):
     assert not quotable(body, "PTEN inhibits AKT")
 
 
+# The visible AKT box sits at x=2000, far from where the connector ends.
+FAR_AKT = '<g id="akt"><rect x="2000" y="0" width="60" height="30"/><text x="2010" y="20">AKT</text>{extra}</g>'
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        '<rect x="0" y="0" width="3000" height="3000" display="none"/>',
+        '<rect x="0" y="0" width="3000" height="3000" fill="none"/>',
+        '<rect x="0" y="0" width="3000" height="3000" opacity="0"/>',
+        '<rect x="0" y="0" width="3000" height="3000" visibility="hidden"/>',
+        '<g display="none"><rect x="0" y="0" width="3000" height="3000"/></g>',
+    ],
+    ids=["display-none", "no-paint", "opacity-0", "hidden", "hidden-group"],
+)
+def test_shapes_that_are_not_drawn_do_not_stretch_a_node(extra):
+    body = PTEN + FAR_AKT.format(extra=extra) + connector()
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
+def test_a_stroked_but_unfilled_shape_still_draws_a_node():
+    body = PTEN + AKT.replace("<rect", '<rect fill="none" stroke="black"') + connector()
+    assert quotable(body, "PTEN inhibits AKT")
+
+
+@pytest.mark.parametrize(
+    "where",
+    ["connector", "node"],
+)
+@pytest.mark.parametrize("effect", ["clip-path", "mask", "filter"])
+def test_clipped_masked_or_filtered_geometry_confirms_nothing(where, effect):
+    defs = '<defs><clipPath id="fx"><rect width="0" height="0"/></clipPath></defs>'
+    attr = f'{effect}="url(#fx)"'
+    if where == "connector":
+        body = defs + PTEN + AKT + connector(path_attrs=attr)
+    else:
+        body = defs + PTEN + AKT.replace("<rect", f"<rect {attr}") + connector()
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        PTEN + AKT.replace('id="akt"', 'id="akt" style="transform: translate(5000px, 5000px)"') + connector(),
+        PTEN + AKT.replace("<rect", '<rect style="x: 5000px"') + connector(),
+        PTEN + AKT + connector(path_attrs="style=\"d: path('M0 0 L1 1')\""),
+        "<style>#akt { transform: translate(5000px, 0) }</style>" + PTEN + AKT + connector(),
+        "<style>rect { x: 5000px }</style>" + PTEN + AKT + connector(),
+        PTEN + AKT.replace("</g>", '<animateTransform attributeName="transform" type="translate" to="5000 0"/></g>') + connector(),
+        PTEN + AKT.replace("</g>", '<animateMotion path="M0 0 L5000 0"/></g>') + connector(),
+        PTEN + AKT.replace("<rect", '<rect><animate attributeName="x" to="5000"/></rect><rect') + connector(),
+    ],
+    ids=[
+        "css-transform", "css-x", "css-d", "stylesheet-transform", "stylesheet-x",
+        "animateTransform", "animateMotion", "animate-x",
+    ],
+)
+def test_geometry_set_or_moved_by_css_or_animation_confirms_nothing(body):
+    # The extractor places shapes by their attributes; anything else may put
+    # them elsewhere, so it gives no edge rather than a wrong one.
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
+def test_labels_are_still_read_when_edges_cannot_be_confirmed():
+    body = "<style>#akt { transform: translate(5000px, 0) }</style>" + PTEN + AKT + connector()
+    assert extract(body) == "PTEN\n\nAKT\n\ninhibits"
+
+
+def test_any_stroked_shape_of_the_connector_may_confirm_it():
+    # An arrowhead drawn before the line must not hide the line.
+    body = (
+        PTEN + AKT + '<g data-source="pten" data-target="akt">'
+        '<path d="M195 10 L200 15 L195 20" stroke="black" fill="none"/>'
+        '<path d="M60 15 L200 15" stroke="black"/><text>inhibits</text></g>'
+    )
+    assert quotable(body, "PTEN inhibits AKT")
+
+
 def test_a_missing_node_yields_none():
     assert not quotable(PTEN + connector(), "PTEN inhibits AKT")
 

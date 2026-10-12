@@ -19,7 +19,7 @@ Examples:
 import math
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import Container, Optional
 
 from lxml import etree  # type: ignore[import-untyped]
 
@@ -29,6 +29,20 @@ Box = tuple[float, float, float, float]
 #: Shapes whose geometry makes up a node's box. Text is left out: its extent
 #: depends on font metrics, and a label may sit outside the box it names.
 SHAPES = frozenset({"rect", "circle", "ellipse", "line", "polyline", "polygon", "path"})
+
+#: CSS properties that place, size or reshape an element, or clip, mask or
+#: filter what it draws. This module reads geometry from attributes only, so an
+#: element or ancestor that sets one of these in its ``style`` cannot be placed.
+#: :func:`declares_geometry` checks stylesheets for the same properties.
+GEOMETRY_PROPERTIES = frozenset({
+    "transform", "translate", "rotate", "scale", "transform-origin", "transform-box",
+    "offset", "offset-path", "offset-distance", "offset-rotate", "offset-anchor",
+    "x", "y", "cx", "cy", "r", "rx", "ry", "width", "height", "d",
+    "clip-path", "mask", "filter",
+})
+
+#: Attributes that clip, mask or filter what an element draws.
+OBSCURING_ATTRIBUTES = ("clip-path", "mask", "filter")
 
 #: Elements that set up a coordinate system of their own (a viewport or a
 #: reference), which this module does not model.
@@ -253,15 +267,38 @@ def _local_points(element: etree._Element) -> Optional[list[Point]]:
     return None
 
 
+def declares_geometry(css: str) -> bool:
+    """Whether CSS text sets any of the ``GEOMETRY_PROPERTIES``.
+
+    Examples:
+        >>> declares_geometry("rect { x: 5px }"), declares_geometry("rect { fill: red }")
+        (True, False)
+        >>> declares_geometry("p { max-width: 5px; font-weight: bold }")
+        False
+    """
+    return any(
+        re.search(rf"(?:^|[;{{\s]){re.escape(prop)}\s*:", css, re.IGNORECASE)
+        for prop in GEOMETRY_PROPERTIES
+    )
+
+
 def current_transform(element: etree._Element, root: etree._Element) -> Optional[Matrix]:
     """The transform from ``element``'s coordinates to the root's, or None.
 
-    None when an ancestor (or the element) sets up a viewport or reference of
-    its own, such as a nested ``<svg>``, or carries a malformed transform.
+    None when the element or an ancestor sets up a viewport or reference of
+    its own, such as a nested ``<svg>``; carries a malformed transform; is
+    clipped, masked or filtered; or places itself with CSS instead of
+    attributes (see ``GEOMETRY_PROPERTIES``).
     """
     chain = []
     node: Optional[etree._Element] = element
-    while node is not None and node is not root:
+    while node is not None:
+        if any(node.get(a) is not None for a in OBSCURING_ATTRIBUTES):
+            return None
+        if declares_geometry(node.get("style") or ""):
+            return None
+        if node is root:
+            break
         if etree.QName(node).localname in NEW_VIEWPORTS:
             return None
         chain.append(node)
@@ -277,16 +314,23 @@ def current_transform(element: etree._Element, root: etree._Element) -> Optional
     return matrix
 
 
-def node_bbox(node: etree._Element, root: etree._Element) -> Optional[Box]:
+def node_bbox(
+    node: etree._Element,
+    root: etree._Element,
+    drawn: Optional[Container[etree._Element]] = None,
+) -> Optional[Box]:
     """The box ``node``'s shapes occupy in root coordinates, or None.
 
     The union of every shape in ``node`` (or ``node`` itself), each mapped
-    through its transforms. Text is not part of it. None when there is no
-    shape, or any shape cannot be placed exactly.
+    through its transforms; with ``drawn``, only the shapes in it, so a shape
+    that is hidden or paints nothing cannot stretch the box. Text is not part
+    of it. None when there is no such shape, or any cannot be placed exactly.
     """
     points: list[Point] = []
     for element in node.iter():
         if not isinstance(element.tag, str) or etree.QName(element).localname not in SHAPES:
+            continue
+        if drawn is not None and element not in drawn:
             continue
         if any(etree.QName(a).localname == "text" for a in element.iterancestors()):
             continue

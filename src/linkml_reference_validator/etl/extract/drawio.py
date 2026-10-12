@@ -44,7 +44,7 @@ import logging
 import re
 import zlib
 from dataclasses import dataclass, field
-from typing import Optional, Union
+from typing import Iterator, Optional, Union
 from urllib.parse import unquote
 
 from lxml import etree  # type: ignore[import-untyped]
@@ -59,7 +59,8 @@ from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR
 
 logger = logging.getLogger(__name__)
 
-#: The most a compressed page may inflate to; a deflate bomb fails closed.
+#: The most a file's compressed pages may inflate to, together; past it, a
+#: deflate bomb fails closed.
 MAX_DIAGRAM_BYTES = 16 * 1024 * 1024
 
 #: Elements that wrap a cell to give it an id, a label and other attributes.
@@ -147,38 +148,47 @@ def _arrow_direction(style: dict[str, str]) -> Optional[bool]:
     return at_target
 
 
-def _inflate(payload: str) -> str:
-    """Decode a compressed ``<diagram>`` payload to its XML.
+def _inflate(payload: str, limit: int) -> bytes:
+    """Decode a compressed ``<diagram>`` payload to at most ``limit`` bytes.
 
     Raises:
-        Unrenderable: Not base64, not raw deflate, or larger than the limit.
+        Unrenderable: Not base64, not raw deflate, or larger than ``limit``.
     """
+    if limit <= 0:  # zlib reads a max_length of 0 as "no limit"
+        raise Unrenderable("the diagram's pages inflate past the size limit")
     try:  # external input boundary: the payload is untrusted
         raw = base64.b64decode(re.sub(r"\s+", "", payload), validate=True)
         inflater = zlib.decompressobj(-15)
-        data = inflater.decompress(raw, MAX_DIAGRAM_BYTES)
+        data = inflater.decompress(raw, limit)
     except (binascii.Error, zlib.error) as e:
         raise Unrenderable(f"a diagram page is not base64 deflate: {e}") from e
     if inflater.unconsumed_tail:
-        raise Unrenderable("a diagram page inflates past the size limit")
-    return unquote(data.decode("utf-8", errors="replace"))
+        raise Unrenderable("the diagram's pages inflate past the size limit")
+    return data
 
 
-def _models(root: etree._Element) -> list[etree._Element]:
-    """The ``<mxGraphModel>`` of every page."""
+def _models(root: etree._Element) -> Iterator[etree._Element]:
+    """The ``<mxGraphModel>`` of every page, one at a time.
+
+    Compressed pages share one ``MAX_DIAGRAM_BYTES`` budget, so many pages
+    each under it cannot add up to a deflate bomb, and each is inflated only
+    when it is reached, so they are never all held at once.
+    """
     name = etree.QName(root).localname
     if name == "mxGraphModel":
-        return [root]
+        yield root
+        return
     if name != "mxfile":
         raise Unrenderable(f"not a drawio document: root element is <{name}>")
-    models = []
+    budget = MAX_DIAGRAM_BYTES
     for diagram in root.iter("diagram"):
         inline = diagram.find("mxGraphModel")
         if inline is not None:
-            models.append(inline)
+            yield inline
         elif (diagram.text or "").strip():
-            models.append(_parse_page(_inflate(diagram.text)))
-    return models
+            data = _inflate(diagram.text, budget)
+            budget -= len(data)
+            yield _parse_page(unquote(data.decode("utf-8", errors="replace")))
 
 
 def _parse_page(xml: str) -> etree._Element:

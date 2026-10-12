@@ -248,6 +248,17 @@ def test_a_decompression_bomb_fails_closed():
     assert DrawioExtractor().extract(data) is None
 
 
+def test_the_inflate_limit_covers_all_pages_together(monkeypatch):
+    from linkml_reference_validator.etl.extract import drawio as drawio_module
+
+    page = PTEN + "<mxCell id='pad' value='' vertex='1' parent='1' style='" + "x" * 400 + "'/>"
+    single = len(quote(model(page)).encode())
+    monkeypatch.setattr(drawio_module, "MAX_DIAGRAM_BYTES", int(single * 1.5))
+    assert extract(page, compressed=True) == "PTEN"
+    # Each page is under the limit; the two together are not.
+    assert extract(page, page, compressed=True) is None
+
+
 # ---------------------------------------------------------------- file: and cache
 
 

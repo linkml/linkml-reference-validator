@@ -505,3 +505,39 @@ def test_fresh_svg_fetch_is_stamped_and_reloads(tmp_path, config):
     written = next((tmp_path / "cache").glob("*.md")).read_text()
     assert f"svg_extraction_version: {SVG_EXTRACTION_CACHE_VERSION}" in written
     assert not ReferenceFetcher._is_stale_cache_entry(written)
+
+
+def _write_raw_markup_entry(fetcher: ReferenceFetcher, figure) -> None:
+    """Cache ``figure`` the way FileSource did before #104: raw markup, no SVG stamp."""
+    reference_id = f"file:{figure}"
+    path = fetcher.get_cache_path(reference_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        _entry(reference_id, "local_file", None).replace(
+            "body", "<svg><desc>AKT activates PTEN</desc></svg>"
+        )
+    )
+
+
+def test_raw_markup_entry_is_not_preserved_when_refresh_finds_no_text(tmp_path, config):
+    figure = tmp_path / "fig.svg"
+    figure.write_bytes(svg("<script>x()</script><text>shown</text>"))
+    fetcher = ReferenceFetcher(config)
+    _write_raw_markup_entry(fetcher, figure)
+
+    ref = fetcher.fetch(f"file:{figure}")
+
+    assert ref is not None and ref.content_type == "unavailable"
+    assert "AKT activates PTEN" not in fetcher.get_cache_path(f"file:{figure}").read_text()
+    validator = SupportingTextValidator(config)
+    assert not validator.validate("AKT activates PTEN", f"file:{figure}").is_valid
+
+
+def test_raw_markup_entry_is_not_served_when_the_file_is_gone(tmp_path, config):
+    figure = tmp_path / "moved.svg"
+    fetcher = ReferenceFetcher(config)
+    _write_raw_markup_entry(fetcher, figure)
+
+    assert fetcher.fetch(f"file:{figure}") is None
+    validator = SupportingTextValidator(config)
+    assert not validator.validate("AKT activates PTEN", f"file:{figure}").is_valid

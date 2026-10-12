@@ -920,7 +920,11 @@ served as they are and are not refreshed.
 (issue #104); before it, the file was cached as raw markup, so a quote could
 match a `<desc>`, an attribute value or hidden text. Such an entry is re-read
 once on the next validation fetch. **A quote that only matched the markup will
-then fail**, which is the point: cite text the figure actually shows.
+then fail**, which is the point: cite text the figure actually shows. Unlike
+other stale entries, an old SVG entry is never served in place of a fresh
+read: not when the file has moved, not when the new read finds no rendered
+text, and not with `trust_cached_entries`. The file is the source, and its raw
+markup is not evidence.
 
 **A quote that verified against a `url:` page can fail after that refresh.**
 Sanitizing removes `<noscript>` and `<template>` elements with their text.

@@ -1603,6 +1603,19 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
+        if self._is_svg_file_reference(reference_id) and self._is_stale_cache_entry(
+            content_text
+        ):
+            # Raw SVG markup is never evidence, not even as a fallback: its
+            # <desc>, attributes and hidden text are what #104 stopped quotes
+            # matching. The file itself is the source, so there is nothing
+            # worth preserving either; a fresh read replaces the entry.
+            logger.warning(
+                "Ignoring cache entry for %s: it holds raw SVG markup from "
+                "before the figure was read as rendered text",
+                reference_id,
+            )
+            return None
         reference = self._load_markdown_format(content_text, reference_id)
         if (
             allow_stale

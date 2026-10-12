@@ -47,7 +47,8 @@ All other known fields are optional and may be null:
 - Bibliography: `title`, `authors`, `journal`, `year`, `doi`, `keywords`, and
   `publication_types`.
 - Extraction stamps: `extractor_version`, `html_full_text_version`,
-  `xml_extraction_version`, `url_source_version`, and `absent_content_version`.
+  `xml_extraction_version`, `url_source_version`, `svg_extraction_version`, and
+  `absent_content_version`.
 - Publication status: `is_preprint` and `peer_review_status`.
 - Full-text metadata: `full_text_attempted`, `full_text_declined`,
   `full_text_provider`, `full_text_url`, `oa_status`, `license`, `local_pdf_path`,

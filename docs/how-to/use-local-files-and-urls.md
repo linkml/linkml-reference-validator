@@ -105,6 +105,41 @@ linkml-reference-validator validate text \
   url:https://example.com/pangram-examples.html
 ```
 
+## Diagrams as References (SVG)
+
+A `file:` reference can point at an `.svg` figure, such as a pathway diagram.
+The quote is then matched against the text the figure **renders**, not its
+markup:
+
+```bash
+linkml-reference-validator validate text \
+  "loss of PTEN activates AKT" \
+  file:./figures/pathway.svg
+```
+
+- Each `<text>` element becomes one line. A label split over several `<tspan>`
+  lines can be quoted across the break.
+- HTML labels inside `<foreignObject>`, which is how drawio's **Export as SVG**
+  writes them, are read too.
+- Text the reader cannot see is never quotable. That covers `<desc>`, `<title>`,
+  `<metadata>`, comments, attribute values (`id`, `fill`, `class`, ...),
+  `<defs>`/`<symbol>` content that no `<use>` draws, and text hidden by
+  `display:none`, `visibility:hidden`, zero `opacity`, `fill="none"` or a zero
+  `font-size`, whether set on the element, inherited from a group, or set by a
+  `<style>` rule.
+- If the extractor cannot tell what the figure renders, the reference is
+  `unavailable` rather than read as raw markup. That happens when a `<style>`
+  rule hides or shows text through a selector other than a type, class or id
+  selector (`g > text`, `:first-child`, `@media`), when a stylesheet is
+  imported or linked, or when the SVG contains a `<script>` or animates
+  visibility.
+
+Known limits: text clipped by `clip-path` or `mask`, placed outside the
+`viewBox`, scaled to nothing, covered by another shape, or drawn in the
+background colour is still read. Text converted to outlines is not text and
+cannot be quoted. Native `.drawio` files and connector (edge) labels between
+nodes are not yet supported.
+
 ## Using in Data Files
 
 Both file and URL references work in LinkML data files:
@@ -145,6 +180,8 @@ Both file and URL references work in LinkML data files:
 
 ## Limitations
 
+- **Local files are read as text**, apart from `.svg` figures (see above).
+  An `.html` file is matched against its raw markup.
 - **Local PDF files**: Not yet supported as `file:` references. PDFs fetched by `url:` are supported.
 - **Authentication**: URLs requiring login are not supported
 - **Dynamic content**: JavaScript-rendered pages may not work

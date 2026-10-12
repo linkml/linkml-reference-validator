@@ -134,6 +134,26 @@ class _Rule:
         """CSS specificity: (ids, classes, types)."""
         return (len(self.ids), len(self.classes), 1 if self.tag else 0)
 
+    @property
+    def key(self) -> tuple[str, str]:
+        """One part every element this selects must have, for indexing.
+
+        Examples:
+            >>> _Rule("text", ("a",), ("t",), 0, ()).key
+            ('id', 't')
+            >>> _Rule("text", ("a",), (), 0, ()).key
+            ('class', 'a')
+            >>> _Rule(None, (), (), 0, ()).key
+            ('*', '')
+        """
+        if self.ids:
+            return ("id", self.ids[0])
+        if self.classes:
+            return ("class", self.classes[0])
+        if self.tag:
+            return ("tag", self.tag)
+        return ("*", "")
+
     def matches(self, element: etree._Element) -> bool:
         """Whether this selector selects ``element``."""
         if self.tag and etree.QName(element).localname != self.tag:
@@ -375,7 +395,11 @@ class _RenderedText:
     def __init__(self, root: etree._Element, rules: list[_Rule]):
         nodes = list(root.iter())
         self.ids = {e.get("id"): e for e in nodes if isinstance(e.tag, str) and e.get("id")}
-        self.rules = rules
+        # Each rule is filed under one part every element it selects must have,
+        # so an element is matched only against rules that could select it.
+        self.rules: dict[tuple[str, str], list[_Rule]] = {}
+        for rule in rules:
+            self.rules.setdefault(rule.key, []).append(rule)
         self.lines: list[str] = []
         self.budget = VISIT_BUDGET_PER_NODE * len(nodes) + 10_000
         self.path: set[int] = set()
@@ -398,7 +422,7 @@ class _RenderedText:
                 if element.get(prop) is not None:
                     _declare(values, prop, element.get(prop))
         matched = sorted(
-            (r for r in self.rules if r.matches(element)),
+            {id(r): r for r in self.candidate_rules(element) if r.matches(element)}.values(),
             key=lambda r: (r.specificity, r.order),
         )
         inline = _declarations(element.get("style") or "")
@@ -411,6 +435,14 @@ class _RenderedText:
                 if imp == important and prop in VISIBILITY_PROPERTIES:
                     _declare(values, prop, value)
         return self.apply(values, parent)
+
+    def candidate_rules(self, element: etree._Element) -> list[_Rule]:
+        """The rules filed under the element's id, classes or tag, or under ``*``."""
+        keys = [("*", ""), ("tag", etree.QName(element).localname)]
+        if element.get("id"):
+            keys.append(("id", element.get("id")))
+        keys += [("class", c) for c in (element.get("class") or "").split()]
+        return [rule for key in keys for rule in self.rules.get(key, [])]
 
     @staticmethod
     def apply(values: dict[str, str], parent: _State) -> tuple[bool, _State]:

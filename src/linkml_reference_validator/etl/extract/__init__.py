@@ -7,7 +7,8 @@ bump ``EXTRACTOR_CACHE_VERSION`` in
 :mod:`linkml_reference_validator.etl.reference_fetcher` so existing entries are
 re-fetched instead of keeping the old output forever. For changes confined to
 XML table extraction, bump ``XML_EXTRACTION_CACHE_VERSION`` instead; HTML
-acceptance has its own ``HTML_FULL_TEXT_CACHE_VERSION``. These format-specific
+acceptance has its own ``HTML_FULL_TEXT_CACHE_VERSION``, and SVG extraction
+``SVG_EXTRACTION_CACHE_VERSION``. These format-specific
 stamps avoid refreshing unchanged formats.
 """
 

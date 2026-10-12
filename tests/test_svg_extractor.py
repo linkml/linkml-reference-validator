@@ -15,6 +15,11 @@ import pytest
 from linkml_reference_validator.etl.acquire import resolve_format, sniff_format
 from linkml_reference_validator.etl.extract import ExtractorRegistry
 from linkml_reference_validator.etl.extract.svg import SVGExtractor
+from linkml_reference_validator.etl.reference_fetcher import (
+    EXTRACTOR_CACHE_VERSION,
+    SVG_EXTRACTION_CACHE_VERSION,
+    ReferenceFetcher,
+)
 from linkml_reference_validator.etl.sources.file import FileSource
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
@@ -460,3 +465,43 @@ def test_validator_matches_rendered_svg_text_end_to_end(tmp_path, config):
 
     assert validator.validate("loss of PTEN activates AKT", f"file:{figure}").is_valid
     assert not validator.validate("AKT activates PTEN", f"file:{figure}").is_valid
+
+
+# ---------------------------------------------------------------- cache stamp
+
+
+def _entry(reference_id: str, content_type: str, svg_version: int | None) -> str:
+    lines = ["---", f"reference_id: {reference_id}", f"extractor_version: {EXTRACTOR_CACHE_VERSION}"]
+    if svg_version is not None:
+        lines.append(f"svg_extraction_version: {svg_version}")
+    lines += [f"content_type: {content_type}", "---", "", "## Content", "", "body"]
+    return "\n".join(lines)
+
+
+def test_svg_file_entry_cached_as_raw_xml_is_stale():
+    # Before #104 a file: SVG was cached as raw markup, desc and attributes included.
+    assert ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/fig.svg", "local_file", None))
+    assert ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/FIG.SVG", "local_file", None))
+
+
+def test_current_svg_file_entry_is_fresh():
+    entry = _entry("file:/x/fig.svg", "local_svg", SVG_EXTRACTION_CACHE_VERSION)
+    assert not ReferenceFetcher._is_stale_cache_entry(entry)
+
+
+def test_other_file_entries_need_no_svg_stamp():
+    assert not ReferenceFetcher._is_stale_cache_entry(_entry("file:/x/notes.md", "local_file", None))
+
+
+def test_fresh_svg_fetch_is_stamped_and_reloads(tmp_path, config):
+    figure = tmp_path / "fig.svg"
+    figure.write_bytes(svg("<text>stamped claim</text>"))
+    fetcher = ReferenceFetcher(config)
+
+    ref = fetcher.fetch(f"file:{figure}")
+
+    assert ref is not None
+    assert ref.metadata["svg_extraction_version"] == SVG_EXTRACTION_CACHE_VERSION
+    written = next((tmp_path / "cache").glob("*.md")).read_text()
+    assert f"svg_extraction_version: {SVG_EXTRACTION_CACHE_VERSION}" in written
+    assert not ReferenceFetcher._is_stale_cache_entry(written)

@@ -37,7 +37,8 @@ emitted. ``<switch>`` is evaluated for an English-language reader. Text
 converted to outlines is not text and is not emitted.
 
 Changing what this yields for the same input may make already-cached text
-wrong; see :mod:`linkml_reference_validator.etl.extract`.
+wrong; see :mod:`linkml_reference_validator.etl.extract` and bump
+``SVG_EXTRACTION_CACHE_VERSION``.
 
 Examples:
     >>> svg = b'''<svg xmlns="http://www.w3.org/2000/svg">

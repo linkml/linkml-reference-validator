@@ -30,17 +30,28 @@ PTEN = '<g id="pten"><rect x="0" y="0" width="60" height="30"/><text x="10" y="2
 AKT = '<g id="akt"><rect x="200" y="0" width="60" height="30"/><text x="210" y="20">AKT</text></g>'
 
 
-def connector(d: str = "M60 15 L200 15", label: str = "inhibits", attrs: str = "", path_attrs: str = "") -> str:
-    """A connector from #pten to #akt drawn along ``d``."""
+#: An arrowhead marker; every figure below defines it.
+ARROW_DEFS = '<defs><marker id="arrow"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>'
+END = 'marker-end="url(#arrow)"'
+
+
+def connector(
+    d: str = "M60 15 L200 15",
+    label: str = "inhibits",
+    attrs: str = "",
+    path_attrs: str = "",
+    marker: str = END,
+) -> str:
+    """A connector from #pten to #akt drawn along ``d``, an arrowhead at its end."""
     text = f'<text x="120" y="10">{label}</text>' if label else ""
     return (
         f'<g data-source="pten" data-target="akt" {attrs}>'
-        f'<path d="{d}" stroke="black" fill="none" {path_attrs}/>{text}</g>'
+        f'<path d="{d}" stroke="black" fill="none" {marker} {path_attrs}/>{text}</g>'
     )
 
 
 def extract(body: str) -> str | None:
-    return SVGExtractor().extract(f"{SVG_OPEN}{body}</svg>".encode())
+    return SVGExtractor().extract(f"{SVG_OPEN}{ARROW_DEFS}{body}</svg>".encode())
 
 
 def quotable(body: str, quote: str) -> bool:
@@ -82,7 +93,7 @@ def test_connector_paths_of_any_shape_count_by_their_endpoints(d):
 def test_a_line_element_can_be_the_connector():
     body = (
         PTEN + AKT + '<g data-source="pten" data-target="akt">'
-        '<line x1="60" y1="15" x2="200" y2="15" stroke="black"/><text>inhibits</text></g>'
+        f'<line x1="60" y1="15" x2="200" y2="15" stroke="black" {END}/><text>inhibits</text></g>'
     )
     assert quotable(body, "PTEN inhibits AKT")
 
@@ -102,7 +113,7 @@ def test_transforms_are_applied_to_nodes_and_connector():
         '<g id="pten" transform="scale(2)"><rect width="30" height="15"/><text>PTEN</text></g>'
         '<g id="akt" transform="translate(200 0)"><rect width="60" height="30"/><text>AKT</text></g>'
         "</g>"
-        '<g data-source="pten" data-target="akt"><path d="M160 65 L300 65" stroke="black"/>'
+        f'<g data-source="pten" data-target="akt"><path d="M160 65 L300 65" stroke="black" {END}/>'
         "<text>inhibits</text></g>"
     )
     assert quotable(body, "PTEN inhibits AKT")
@@ -225,11 +236,43 @@ def test_geometry_set_or_moved_by_css_or_animation_confirms_nothing(body):
     ],
 )
 def test_an_arrowhead_at_the_source_contradicts_the_direction(path_attrs):
-    assert not quotable(PTEN + AKT + connector(path_attrs=path_attrs), "PTEN inhibits AKT")
+    assert not quotable(PTEN + AKT + connector(path_attrs=path_attrs, marker=""), "PTEN inhibits AKT")
 
 
 def test_an_arrowhead_at_the_target_agrees():
-    assert quotable(PTEN + AKT + connector(path_attrs='marker-end="url(#arrow)"'), "PTEN inhibits AKT")
+    assert quotable(PTEN + AKT + connector(), "PTEN inhibits AKT")
+
+
+@pytest.mark.parametrize(
+    "attrs,marker",
+    [
+        ('marker-start="url(#arrow)"', END),  # inherited from the connector group
+        ('style="marker: url(#arrow)"', ""),
+    ],
+)
+def test_an_inherited_arrowhead_at_the_source_contradicts_the_direction(attrs, marker):
+    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "PTEN inhibits AKT")
+
+
+def test_an_inherited_arrowhead_at_the_target_agrees():
+    assert quotable(PTEN + AKT + connector(attrs=END, marker=""), "PTEN inhibits AKT")
+
+
+@pytest.mark.parametrize(
+    "attrs,marker",
+    [
+        ("", ""),  # a plain line: nothing drawn says which way it reads
+        ("", 'marker-end="url(#nowhere)"'),  # a broken reference draws no arrowhead
+        (END, 'marker-end="none"'),  # the shape turns off what it inherits
+        ("", 'style="marker-end: none" marker-end="url(#arrow)"'),
+    ],
+    ids=["no-marker", "unresolved", "inherited-then-none", "style-beats-attribute"],
+)
+def test_without_a_drawn_arrowhead_at_the_target_there_is_no_direction(attrs, marker):
+    # Swapping data-source and data-target would otherwise reverse the line
+    # for the same picture: undrawn attributes must not decide the direction.
+    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "PTEN inhibits AKT")
+    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "AKT inhibits PTEN")
 
 
 def test_markers_set_by_a_stylesheet_confirm_nothing():
@@ -247,7 +290,7 @@ def test_any_stroked_shape_of_the_connector_may_confirm_it():
     body = (
         PTEN + AKT + '<g data-source="pten" data-target="akt">'
         '<path d="M195 10 L200 15 L195 20" stroke="black" fill="none"/>'
-        '<path d="M60 15 L200 15" stroke="black"/><text>inhibits</text></g>'
+        f'<path d="M60 15 L200 15" stroke="black" {END}/><text>inhibits</text></g>'
     )
     assert quotable(body, "PTEN inhibits AKT")
 

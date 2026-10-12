@@ -148,10 +148,12 @@ linkml-reference-validator validate text \
 attributes name the two nodes' ids:
 
 ```xml
+<defs><marker id="arrow"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>
 <g id="pten"><rect x="0" y="0" width="60" height="30"/><text x="10" y="20">PTEN</text></g>
 <g id="akt"><rect x="200" y="0" width="60" height="30"/><text x="210" y="20">AKT</text></g>
 <g data-source="pten" data-target="akt">
-  <path d="M60 15 L200 15" stroke="black"/><text x="110" y="10">inhibits</text>
+  <path d="M60 15 L200 15" stroke="black" marker-end="url(#arrow)"/>
+  <text x="110" y="10">inhibits</text>
 </g>
 ```
 
@@ -159,8 +161,11 @@ The attributes are not drawn, so they are only believed when the drawing
 agrees: the connector's stroked path must start on the source node's shapes
 and end on the target's (transforms applied, with a little slack for an
 arrowhead), and the connector, its label and both nodes and their labels must
-all be visible. An arrowhead at the source end (`marker-start`) contradicts the
-direction, so it gives no edge line. A node is the shapes it draws inside the
+all be visible. The direction must be drawn too: the path needs an arrowhead at
+its end, a `marker-end` (set on it or inherited) naming a `<marker>` in the
+figure, and none at its start. A plain line, or an arrowhead drawn as a
+separate shape rather than a marker, gives no edge line, since nothing the
+extractor can read says which way it points. A node is the shapes it draws inside the
 element its id names; its text, and shapes that are hidden or paint nothing,
 do not count towards its box. Geometry the extractor cannot place from
 attributes gives no edge line either: CSS `transform` or other CSS geometry,

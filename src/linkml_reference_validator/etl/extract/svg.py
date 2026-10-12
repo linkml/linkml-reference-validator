@@ -19,9 +19,10 @@ After them come edge lines, one label each: ``"<source> <edge label>
 <target>"`` for a connector that names its nodes with ``data-source`` and
 ``data-target`` (their ids). Those attributes are not drawn, so an edge line
 is emitted only when the drawing agrees with them: the connector, its
-painted stroke and its label, and both nodes and their labels, are rendered,
-and the stroked path starts on the source node's box and ends on the
-target's (see :mod:`~linkml_reference_validator.etl.extract.svg_geometry`).
+painted stroke and its label, and both nodes and their labels, are rendered;
+the stroked path starts on the source node's box and ends on the target's
+(see :mod:`~linkml_reference_validator.etl.extract.svg_geometry`); and it
+draws its direction, a ``marker-end`` arrowhead and no ``marker-start``.
 
 Visibility follows the CSS cascade as far as it matters here: presentation
 attributes, then ``<style>`` rules by specificity and order, then the ``style``
@@ -512,22 +513,41 @@ def _geometry_is_static(root: etree._Element) -> bool:
     return True
 
 
-def _marks_start(shape: etree._Element) -> bool:
-    """Whether a connector shape draws a marker (an arrowhead) at its start.
+def _marker(shape: etree._Element, at: str) -> Optional[str]:
+    """The marker a shape draws at its ``start`` or ``end``, or None.
+
+    Markers are inherited, so the nearest of the shape and its ancestors
+    that sets ``marker-<at>`` or the ``marker`` shorthand decides; on one
+    element ``style`` beats the attribute, and ``none`` means no marker.
 
     Examples:
-        >>> _marks_start(etree.fromstring('<path marker-start="url(#a)"/>'))
+        >>> g = etree.fromstring('<g marker-start="url(#a)"><path/></g>')
+        >>> _marker(g[0], "start"), _marker(g[0], "end")
+        ('url(#a)', None)
+        >>> _marker(etree.fromstring('<path marker-end="url(#a)" style="marker-end:none"/>'), "end") is None
         True
-        >>> _marks_start(etree.fromstring('<path style="marker-end: url(#a)"/>'))
-        False
     """
-    values = {p: v for p, v in (
-        ("marker-start", shape.get("marker-start")), ("marker", shape.get("marker"))
-    ) if v is not None}
-    for prop, value, _ in _declarations(shape.get("style") or ""):
-        if prop in ("marker-start", "marker"):
-            values[prop] = value
-    return any(v.strip().lower() not in ("none", "") for v in values.values())
+    node: Optional[etree._Element] = shape
+    while node is not None:
+        style = {prop: value for prop, value, _ in _declarations(node.get("style") or "")}
+        for declared in (style, node.attrib):
+            for prop in (f"marker-{at}", "marker"):
+                if prop in declared:
+                    value = str(declared[prop]).strip()
+                    return None if value.lower() in ("none", "") else value
+        node = node.getparent()
+    return None
+
+
+def _draws_arrowhead(shape: etree._Element, at: str, ids: dict[str, etree._Element]) -> bool:
+    """Whether a shape's marker at ``at`` names a ``<marker>`` that exists.
+
+    A reference to nothing draws nothing, so it gives no direction.
+    """
+    value = _marker(shape, at)
+    match = re.fullmatch(r"url\(\s*['\"]?#([^'\")]+)['\"]?\s*\)", value or "")
+    target = ids.get(match.group(1)) if match else None
+    return target is not None and etree.QName(target).localname == "marker"
 
 
 #: Shapes that can draw a connector between two nodes.
@@ -632,8 +652,14 @@ class _RenderedText:
             # Any stroked shape of the connector may join the nodes: an
             # arrowhead drawn before the line must not hide the line.
             for stroke in strokes:
-                if _marks_start(stroke):
-                    continue  # an arrowhead at the source: the drawing reads the other way
+                # The drawing gives the direction: an arrowhead at the target
+                # and none at the source. Without one the undrawn attributes
+                # alone would decide it, and swapping them would reverse the
+                # line for the same picture.
+                if _marker(stroke, "start") is not None:
+                    continue
+                if not _draws_arrowhead(stroke, "end", self.ids):
+                    continue
                 ends = connector_endpoints(stroke, root)
                 if ends and touches(ends[0], source_box) and touches(ends[1], target_box):
                     lines.append(

@@ -144,7 +144,10 @@ URL_SOURCE_CACHE_VERSION = 2
 #: a current ``extractor_version`` and would otherwise be served forever.
 #: Version 2: labels are separated by a blank line, so a quote is matched
 #: within one label; version 1 text cannot tell its labels apart.
-SVG_EXTRACTION_CACHE_VERSION = 2
+#: Version 3: a connector the drawing confirms adds an edge line
+#: ("PTEN inhibits AKT"); version 2 text lacks them, so a quote of an edge
+#: would fail against it.
+SVG_EXTRACTION_CACHE_VERSION = 3
 
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",

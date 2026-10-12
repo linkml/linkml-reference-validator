@@ -167,6 +167,19 @@ def test_units_the_extractor_cannot_place_yield_none():
     assert not quotable(body, "PTEN inhibits AKT")
 
 
+def test_svg_entry_without_edge_lines_is_stale():
+    from linkml_reference_validator.etl.reference_fetcher import (
+        EXTRACTOR_CACHE_VERSION,
+        ReferenceFetcher,
+    )
+
+    entry = (
+        f"---\nreference_id: file:/x/fig.svg\nextractor_version: {EXTRACTOR_CACHE_VERSION}\n"
+        "svg_extraction_version: 2\ncontent_type: local_svg\n---\n\n## Content\n\nPTEN"
+    )
+    assert ReferenceFetcher._is_stale_cache_entry(entry)
+
+
 # ---------------------------------------------------------------- geometry
 
 

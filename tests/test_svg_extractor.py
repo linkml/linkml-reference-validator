@@ -73,6 +73,18 @@ def test_sniffs_svg_including_behind_an_xml_declaration(head):
     assert sniff_format(head) == "svg"
 
 
+def test_sniffs_svg_behind_a_long_licence_comment():
+    licence = "<!-- " + "Licensed under CC BY 4.0. " * 400 + "-->"
+    assert sniff_format(f'<?xml version="1.0"?>{licence}<svg/>'.encode()) == "svg"
+
+
+@pytest.mark.parametrize("before,after", [(1_000, 4_000), (60_000, 10_000)])
+def test_svg_in_a_comment_that_outruns_the_window_is_not_the_root(before, after):
+    # The comment is cut off by the sniffing window; its <svg> is still comment.
+    comment = b"<!-- " + b"x" * before + b" <svg> " + b"x" * after + b" -->"
+    assert sniff_format(b'<?xml version="1.0"?>' + comment + b"<article/>") == "xml"
+
+
 def test_jats_still_sniffs_as_xml():
     assert sniff_format(b"<?xml version='1.0'?><article/>") == "xml"
 

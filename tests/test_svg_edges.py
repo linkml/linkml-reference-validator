@@ -296,8 +296,9 @@ def test_without_an_arrowhead_the_attributes_name_the_direction():
         '<path d="M70 10 L60 15 L70 20" stroke="black" fill="none"/>',  # a stroked chevron
         '<use href="#tri" x="60" y="15"/>',  # a triangle at PTEN, drawn through <use>
         '<image href="data:," x="60" y="10" width="10" height="10"/>',  # an icon at PTEN
+        '<polygon points="125,15 135,10 135,20"/>',  # mid-line, pointing back at PTEN
     ],
-    ids=["at-source", "at-target", "chevron", "use", "image"],
+    ids=["at-source", "at-target", "chevron", "use", "image", "mid-line"],
 )
 def test_an_arrowhead_drawn_as_a_separate_shape_gives_no_direction(head):
     # The extractor can't tell which way a shape points, and reading the
@@ -305,6 +306,25 @@ def test_an_arrowhead_drawn_as_a_separate_shape_gives_no_direction(head):
     tri = '<defs><polygon id="tri" points="0,0 10,-5 10,5"/></defs>'
     body = tri + PTEN + AKT + connector(marker="").replace("<text", head + "<text")
     assert edges(body) == []
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        'marker-mid="url(#arrow)"',
+        f'marker-mid="url(#arrow)" {END}',  # a mid arrowhead may point against the end one
+        'style="marker: url(#arrow)"',
+    ],
+    ids=["mid", "mid-and-end", "shorthand"],
+)
+def test_arrowheads_at_inner_vertices_give_no_direction(marker):
+    bent = "M60 15 L130 40 L200 15"
+    assert edges(PTEN + AKT + connector(d=bent, marker=marker)) == []
+
+
+def test_a_mid_marker_on_a_straight_line_draws_nothing():
+    # marker-mid draws only at inner vertices, and a straight line has none.
+    assert edges(PTEN + AKT + connector(marker=f'marker-mid="url(#arrow)" {END}')) == FORWARD
 
 
 def test_a_shape_away_from_the_line_ends_and_nodes_is_not_an_arrowhead():

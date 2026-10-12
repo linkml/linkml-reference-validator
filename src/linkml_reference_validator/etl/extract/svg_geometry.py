@@ -352,6 +352,19 @@ def node_bbox(
     return (min(xs), min(ys), max(xs), max(ys))
 
 
+def has_inner_vertices(element: etree._Element) -> bool:
+    """Whether a connector shape has vertices between its ends, where ``marker-mid`` draws.
+
+    Examples:
+        >>> has_inner_vertices(etree.fromstring('<path d="M0 0 L5 5 L10 0"/>'))
+        True
+        >>> has_inner_vertices(etree.fromstring('<line x1="0" x2="10"/>'))
+        False
+    """
+    points = _local_points(element)
+    return points is not None and len(points) > 2
+
+
 def connector_endpoints(element: etree._Element, root: etree._Element) -> Optional[tuple[Point, Point]]:
     """Where a ``<path>``, ``<line>`` or ``<polyline>`` starts and ends, in root coordinates."""
     if etree.QName(element).localname not in ("path", "line", "polyline"):

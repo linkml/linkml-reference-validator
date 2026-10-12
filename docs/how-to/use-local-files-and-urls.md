@@ -175,10 +175,13 @@ Arrowheads drawn as markers give the direction:
   for the same picture.
 - **An arrowhead drawn as a separate shape** gives no edge line: which way
   such a shape points can't be read, and the attributes' order could
-  contradict it. This is any other painted shape in the connector at an end of
-  the line or on a node (a polygon or chevron), or any `<use>` or `<image>` in
-  the connector. A shape elsewhere, such as a label's background in mid-line,
-  is not taken for an arrowhead.
+  contradict it. This is any other `<polygon>`, `<polyline>`, `<path>` or
+  `<line>` in the connector, wherever it sits; any `<use>` or `<image>`; and a
+  `<rect>`, `<circle>` or `<ellipse>` at an end of the line or on a node. A
+  `<rect>`, `<circle>` or `<ellipse>` in mid-line, such as a label's
+  background, is not taken for an arrowhead.
+- **Arrowheads at a bent line's inner vertices** (`marker-mid`, or the
+  `marker` shorthand) give no edge line, since each may point either way.
 
 A marker counts as an arrowhead when it names a `<marker>` in the figure that
 draws something: a shape that paints, at a size above zero. When that can't be

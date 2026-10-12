@@ -89,6 +89,7 @@ from linkml_reference_validator.etl.extract.svg_geometry import (
     SHAPES,
     connector_endpoints,
     declares_geometry,
+    has_inner_vertices,
     meets,
     node_bbox,
     touches,
@@ -616,6 +617,10 @@ def _nested(source: etree._Element, target: etree._Element, connector: etree._El
 #: Shapes that can draw a connector between two nodes.
 CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
 
+#: Shapes an exporter draws behind a label, which in a connector are taken
+#: for an arrowhead only at the line's ends or on a node.
+BACKGROUND_SHAPES = frozenset({"rect", "circle", "ellipse"})
+
 #: Elements inside a ``<marker>`` that draw nothing themselves. Anything else
 #: that is not a shape (text, an image, a ``<use>``) may draw an arrowhead the
 #: marker check can't see, which leaves the direction uncertain.
@@ -836,6 +841,9 @@ class _RenderedText:
                 ends = connector_endpoints(stroke, root)
                 if at_start is None or at_end is None or not ends:
                     continue
+                # Arrowheads at inner vertices may point either way along the line.
+                if has_inner_vertices(stroke) and self.draws_arrowhead(stroke, "mid") is not False:
+                    continue
                 # With no marker, another shape of the connector may be an
                 # arrowhead drawn on its own, which may point either way.
                 if not (at_start or at_end) and self._may_be_arrowhead(
@@ -869,10 +877,12 @@ class _RenderedText:
     ) -> bool:
         """Whether a connector draws something besides ``stroke`` that may be an arrowhead.
 
-        That is a painted shape at either end of the stroke or on either node,
-        or a ``<use>`` or ``<image>`` anywhere in the connector, since what
-        they draw and where isn't read. A shape elsewhere, such as a
-        label's background in mid-line, is not an arrowhead.
+        That is a ``<polygon>``, ``<polyline>``, ``<path>`` or ``<line>``
+        anywhere in the connector, which may be drawn as an arrowhead even
+        mid-line; a ``<use>`` or ``<image>``, since what they draw isn't
+        read; or a box or round shape at either end of the stroke or on
+        either node. A ``<rect>``, ``<circle>`` or ``<ellipse>`` elsewhere,
+        such as a label's background in mid-line, is not an arrowhead.
         """
         for other in connector.iter():
             if other is stroke or not isinstance(other.tag, str):
@@ -881,6 +891,8 @@ class _RenderedText:
                 return True
             if other not in self.painted_shapes:
                 continue
+            if etree.QName(other).localname not in BACKGROUND_SHAPES:
+                return True
             box = node_bbox(other, root, self.painted_shapes)
             if box is None or any(touches(end, box) for end in ends) or any(meets(box, node) for node in nodes):
                 return True

@@ -6,7 +6,11 @@ from functools import lru_cache
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
-from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR, split_supporting_text
+from linkml_reference_validator.matching import (
+    FIGURE_CONTENT_TYPES,
+    SVG_LABEL_SEPARATOR,
+    split_supporting_text,
+)
 from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,
@@ -389,7 +393,7 @@ class SupportingTextValidator:
             ['PTEN\\n\\nactivates AKT']
         """
         content = reference.content or ""
-        if reference.content_type == "local_svg":
+        if reference.content_type in FIGURE_CONTENT_TYPES.values():
             return content.split(SVG_LABEL_SEPARATOR)
         return [content]
 

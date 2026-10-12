@@ -22,6 +22,7 @@ from linkml_reference_validator.etl.extract.xml import (
 )
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 from linkml_reference_validator.etl.extract.svg import SVGExtractor
+from linkml_reference_validator.etl.extract.drawio import DrawioExtractor
 
 __all__ = [
     "MIN_FULLTEXT_CHARS",
@@ -31,4 +32,5 @@ __all__ = [
     "XMLExtractor",
     "PDFExtractor",
     "SVGExtractor",
+    "DrawioExtractor",
 ]

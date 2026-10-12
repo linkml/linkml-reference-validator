@@ -16,7 +16,9 @@ from pathlib import Path
 from typing import Optional
 
 from linkml_reference_validator.etl.acquire import resolve_format
+from linkml_reference_validator.etl.extract.drawio import DrawioExtractor
 from linkml_reference_validator.etl.extract.svg import SVGExtractor
+from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 
@@ -86,8 +88,9 @@ class FileSource(ReferenceSource):
             logger.warning(f"Not a file: {file_path}")
             return None
 
-        if resolve_format(None, file_path.name, None) == "svg":
-            return self._fetch_svg(file_path)
+        figure_format = resolve_format(None, file_path.name, None)
+        if figure_format in FIGURE_CONTENT_TYPES:
+            return self._fetch_figure(file_path, figure_format)
 
         content = file_path.read_text(encoding="utf-8")
         title = self._extract_title(content, file_path)
@@ -99,8 +102,8 @@ class FileSource(ReferenceSource):
             content_type="local_file",
         )
 
-    def _fetch_svg(self, file_path: Path) -> ReferenceContent:
-        """Read an SVG figure as the text it renders, one line per label.
+    def _fetch_figure(self, file_path: Path, figure_format: str) -> ReferenceContent:
+        """Read an SVG or drawio figure as the labels it draws.
 
         Examples:
             >>> import tempfile
@@ -109,16 +112,17 @@ class FileSource(ReferenceSource):
             ...     _ = figure.write_text(
             ...         '<svg xmlns="http://www.w3.org/2000/svg">'
             ...         '<desc>Hidden</desc><text>PTEN</text></svg>')
-            ...     ref = FileSource()._fetch_svg(figure)
+            ...     ref = FileSource()._fetch_figure(figure, "svg")
             >>> (ref.content, ref.content_type, ref.title)
             ('PTEN', 'local_svg', 'fig.svg')
         """
-        text = SVGExtractor().extract(file_path.read_bytes(), content_type="image/svg+xml")
+        extractor = DrawioExtractor() if figure_format == "drawio" else SVGExtractor()
+        text = extractor.extract(file_path.read_bytes())
         return ReferenceContent(
             reference_id=f"file:{file_path}",
             title=file_path.name,
             content=text,
-            content_type="local_svg" if text else "unavailable",
+            content_type=FIGURE_CONTENT_TYPES[figure_format] if text else "unavailable",
         )
 
     def _resolve_path(self, identifier: str, config: ReferenceValidationConfig) -> Path:

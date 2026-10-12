@@ -41,6 +41,7 @@ from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
@@ -137,8 +138,9 @@ ABSENT_CONTENT_CACHE_VERSION = 1
 #: matches (#102).
 URL_SOURCE_CACHE_VERSION = 2
 
-#: Version what FileSource writes for an SVG figure, scoped to ``file:`` entries
-#: whose path ends in ``.svg``. Version 1: an SVG is read as the text it renders
+#: Version what FileSource writes for an SVG or drawio figure, scoped to
+#: ``file:`` entries whose path ends in ``.svg`` or ``.drawio`` (a drawio file
+#: cached before it was read as a figure is stale on the same terms). Version 1: an SVG is read as the text it renders
 #: (#104). Before it, the file was cached as raw markup, so a quote could pass
 #: against a ``<desc>``, an attribute value or hidden text; such an entry carries
 #: a current ``extractor_version`` and would otherwise be served forever.
@@ -980,10 +982,10 @@ class ReferenceFetcher:
         fmt = sniff_format(data) or resolve_format(content_type, location.url, location.format_hint)
         if fmt is None:
             return None, None, None, False
-        if fmt == "svg":
-            # A figure, graphical abstract or logo, never the article: SVG is
-            # read only for a file: reference that names the figure itself.
-            logger.info(f"Not using {location.url} as full text: it is an SVG image")
+        if fmt in FIGURE_CONTENT_TYPES:
+            # A figure, graphical abstract or logo, never the article: figures
+            # are read only for a file: reference that names the figure itself.
+            logger.info(f"Not using {location.url} as full text: it is a {fmt} figure")
             return None, fmt, None, False
 
         extractor: Optional[Extractor]
@@ -1743,16 +1745,21 @@ class ReferenceFetcher:
 
     @staticmethod
     def _is_svg_file_reference(reference_id: str) -> bool:
-        """Whether a reference is a ``file:`` SVG, which FileSource reads through the SVG extractor.
+        """Whether a reference is a ``file:`` SVG or drawio figure, read as the labels it draws.
 
         Examples:
             >>> ReferenceFetcher._is_svg_file_reference("file:/figs/Fig1.SVG")
+            True
+            >>> ReferenceFetcher._is_svg_file_reference("file:/figs/pathway.drawio")
             True
             >>> ReferenceFetcher._is_svg_file_reference("url:https://x/fig1.svg")
             False
         """
         # The same test FileSource routes on, so the stamp cannot drift from it.
-        return reference_id.startswith("file:") and resolve_format(None, reference_id, None) == "svg"
+        return (
+            reference_id.startswith("file:")
+            and resolve_format(None, reference_id, None) in FIGURE_CONTENT_TYPES
+        )
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:

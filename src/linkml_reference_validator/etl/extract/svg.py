@@ -89,6 +89,7 @@ from linkml_reference_validator.etl.extract.svg_geometry import (
     SHAPES,
     connector_endpoints,
     declares_geometry,
+    meets,
     node_bbox,
     touches,
 )
@@ -820,7 +821,6 @@ class _RenderedText:
                 if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
                 and self.stroked.get(e)
             ]
-            drawn = [e for e in element.iter() if e in self.painted_shapes]
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
             source_box, target_box = box(source), box(target)
@@ -838,7 +838,9 @@ class _RenderedText:
                     continue
                 # With no marker, another shape of the connector may be an
                 # arrowhead drawn on its own, which may point either way.
-                if not (at_start or at_end) and any(e is not stroke for e in drawn):
+                if not (at_start or at_end) and self._may_be_arrowhead(
+                    element, stroke, ends, (source_box, target_box), root
+                ):
                     continue
                 forward = touches(ends[0], source_box) and touches(ends[1], target_box)
                 backward = source is not target and touches(ends[0], target_box) and touches(ends[1], source_box)
@@ -856,6 +858,33 @@ class _RenderedText:
                 lines.extend(read)
                 break
         return lines
+
+    def _may_be_arrowhead(
+        self,
+        connector: etree._Element,
+        stroke: etree._Element,
+        ends: tuple[tuple[float, float], tuple[float, float]],
+        nodes: tuple[tuple[float, float, float, float], tuple[float, float, float, float]],
+        root: etree._Element,
+    ) -> bool:
+        """Whether a connector draws something besides ``stroke`` that may be an arrowhead.
+
+        That is a painted shape at either end of the stroke or on either node,
+        or a ``<use>`` or ``<image>`` anywhere in the connector, since what
+        they draw and where isn't read. A shape elsewhere, such as a
+        label's background in mid-line, is not an arrowhead.
+        """
+        for other in connector.iter():
+            if other is stroke or not isinstance(other.tag, str):
+                continue
+            if etree.QName(other).localname in ("use", "image"):
+                return True
+            if other not in self.painted_shapes:
+                continue
+            box = node_bbox(other, root, self.painted_shapes)
+            if box is None or any(touches(end, box) for end in ends) or any(meets(box, node) for node in nodes):
+                return True
+        return False
 
     # --- the cascade -------------------------------------------------------
 

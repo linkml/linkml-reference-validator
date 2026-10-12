@@ -294,14 +294,24 @@ def test_without_an_arrowhead_the_attributes_name_the_direction():
         '<polygon points="60,15 70,10 70,20"/>',  # a triangle at PTEN: the drawing points back
         '<polygon points="200,15 190,10 190,20"/>',  # at AKT: agrees, but can't be told apart
         '<path d="M70 10 L60 15 L70 20" stroke="black" fill="none"/>',  # a stroked chevron
+        '<use href="#tri" x="60" y="15"/>',  # a triangle at PTEN, drawn through <use>
+        '<image href="data:," x="60" y="10" width="10" height="10"/>',  # an icon at PTEN
     ],
-    ids=["at-source", "at-target", "chevron"],
+    ids=["at-source", "at-target", "chevron", "use", "image"],
 )
 def test_an_arrowhead_drawn_as_a_separate_shape_gives_no_direction(head):
     # The extractor can't tell which way a shape points, and reading the
     # attributes' order could contradict the drawn arrow.
-    body = PTEN + AKT + connector(marker="").replace("<text", head + "<text")
+    tri = '<defs><polygon id="tri" points="0,0 10,-5 10,5"/></defs>'
+    body = tri + PTEN + AKT + connector(marker="").replace("<text", head + "<text")
     assert edges(body) == []
+
+
+def test_a_shape_away_from_the_line_ends_and_nodes_is_not_an_arrowhead():
+    # A label background in mid-line, as many exporters draw one.
+    background = '<rect x="110" y="0" width="40" height="12" fill="white"/>'
+    body = PTEN + AKT + connector(marker="").replace("<text", background + "<text")
+    assert edges(body) == FORWARD
 
 
 def test_a_plain_stroke_beside_one_with_an_unsure_marker_gives_no_direction():

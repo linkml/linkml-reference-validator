@@ -378,3 +378,17 @@ def touches(point: Point, box: Box) -> bool:
     margin = EDGE_TOLERANCE * min(box[2] - box[0], box[3] - box[1])
     x, y = point
     return box[0] - margin <= x <= box[2] + margin and box[1] - margin <= y <= box[3] + margin
+
+
+def meets(box: Box, node: Box) -> bool:
+    """Whether ``box`` overlaps ``node``'s box, or comes just short of it.
+
+    Examples:
+        >>> meets((55, 10, 65, 20), (0, 0, 60, 30)), meets((110, 0, 150, 12), (0, 0, 60, 30))
+        (True, False)
+    """
+    margin = EDGE_TOLERANCE * min(node[2] - node[0], node[3] - node[1])
+    return (
+        box[0] <= node[2] + margin and node[0] - margin <= box[2]
+        and box[1] <= node[3] + margin and node[1] - margin <= box[3]
+    )

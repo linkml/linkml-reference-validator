@@ -41,6 +41,16 @@ GEOMETRY_PROPERTIES = frozenset({
     "clip-path", "mask", "filter",
 })
 
+#: Any of the ``GEOMETRY_PROPERTIES`` being set, as one pattern: it is checked
+#: on every ancestor of every shape. Longer names first, so ``transform-box``
+#: is not cut short at ``transform``.
+_GEOMETRY_DECLARATION = re.compile(
+    r"(?:^|[;{\s])(?:"
+    + "|".join(re.escape(p) for p in sorted(GEOMETRY_PROPERTIES, key=len, reverse=True))
+    + r")\s*:",
+    re.IGNORECASE,
+)
+
 #: Attributes that clip, mask or filter what an element draws.
 OBSCURING_ATTRIBUTES = ("clip-path", "mask", "filter")
 
@@ -276,10 +286,7 @@ def declares_geometry(css: str) -> bool:
         >>> declares_geometry("p { max-width: 5px; font-weight: bold }")
         False
     """
-    return any(
-        re.search(rf"(?:^|[;{{\s]){re.escape(prop)}\s*:", css, re.IGNORECASE)
-        for prop in GEOMETRY_PROPERTIES
-    )
+    return bool(_GEOMETRY_DECLARATION.search(css))
 
 
 def current_transform(element: etree._Element, root: etree._Element) -> Optional[Matrix]:

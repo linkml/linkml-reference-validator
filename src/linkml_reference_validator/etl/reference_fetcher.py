@@ -427,7 +427,7 @@ class ReferenceFetcher:
                 content.metadata or {}, url_source_version=URL_SOURCE_CACHE_VERSION
             )
 
-        if content and self._is_svg_file_reference(normalized_reference_id):
+        if content and self._is_figure_file_reference(normalized_reference_id):
             content.metadata = dict(
                 content.metadata or {}, svg_extraction_version=SVG_EXTRACTION_CACHE_VERSION
             )
@@ -1615,7 +1615,7 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
-        if self._is_svg_file_reference(reference_id) and self._is_stale_cache_entry(
+        if self._is_figure_file_reference(reference_id) and self._is_stale_cache_entry(
             content_text
         ):
             # Raw SVG markup is never evidence, not even as a fallback: its
@@ -1744,15 +1744,15 @@ class ReferenceFetcher:
         return parts[1], parts[2]
 
     @staticmethod
-    def _is_svg_file_reference(reference_id: str) -> bool:
+    def _is_figure_file_reference(reference_id: str) -> bool:
         """Whether a reference is a ``file:`` SVG or drawio figure, read as the labels it draws.
 
         Examples:
-            >>> ReferenceFetcher._is_svg_file_reference("file:/figs/Fig1.SVG")
+            >>> ReferenceFetcher._is_figure_file_reference("file:/figs/Fig1.SVG")
             True
-            >>> ReferenceFetcher._is_svg_file_reference("file:/figs/pathway.drawio")
+            >>> ReferenceFetcher._is_figure_file_reference("file:/figs/pathway.drawio")
             True
-            >>> ReferenceFetcher._is_svg_file_reference("url:https://x/fig1.svg")
+            >>> ReferenceFetcher._is_figure_file_reference("url:https://x/fig1.svg")
             False
         """
         # The same test FileSource routes on, so the stamp cannot drift from it.
@@ -1816,7 +1816,7 @@ class ReferenceFetcher:
             if type(url_version) is not int or url_version < URL_SOURCE_CACHE_VERSION:
                 return True
 
-        if isinstance(metadata, dict) and cls._is_svg_file_reference(
+        if isinstance(metadata, dict) and cls._is_figure_file_reference(
             str(metadata.get("reference_id", ""))
         ):
             svg_version = metadata.get("svg_extraction_version")

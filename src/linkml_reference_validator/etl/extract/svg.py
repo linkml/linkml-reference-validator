@@ -91,8 +91,13 @@ NON_RENDERED_SVG = frozenset({
     "set", "animate", "animateColor", "animateMotion", "animateTransform",
 })
 
-#: HTML elements in a ``<foreignObject>`` that never display their text.
-NON_RENDERED_HTML = frozenset(NON_CONTENT_TAGS) | {"head", "title"}
+#: HTML elements in a ``<foreignObject>`` that never display their text: a
+#: browser's default styles hide them, or draw the element rather than its
+#: fallback content.
+NON_RENDERED_HTML = frozenset(NON_CONTENT_TAGS) | {
+    "head", "title", "datalist", "rp", "canvas", "video", "audio", "object",
+    "iframe",
+}
 
 #: The properties that decide whether text is visible.
 VISIBILITY_PROPERTIES = frozenset({
@@ -694,6 +699,20 @@ class _RenderedText:
         self.enter(element)
         if name == "br" or name in TEXT_BREAK_TAGS:
             self.end_line(line)
+        if name == "dialog" and element.get("open") is None:
+            self.path.discard(id(element))
+            return
+        if name == "select":
+            # A closed <select> draws only its chosen option: the first one
+            # marked selected, or else the first.
+            options = [o for o in element.iter() if _is_html(o, "option")]
+            chosen = next((o for o in options if o.get("selected") is not None), None)
+            if chosen is None and options:
+                chosen = options[0]
+            if chosen is not None:
+                self.foreign(chosen, state, line)
+            self.path.discard(id(element))
+            return
         if name == "details" and element.get("open") is None:
             # A closed <details> shows its first <summary> and nothing else.
             summary = next((c for c in element if _is_html(c, "summary")), None)

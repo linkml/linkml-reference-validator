@@ -591,6 +591,34 @@ def test_open_details_shows_everything():
     assert extract(body) == "PTEN\ntumour suppressor"
 
 
+@pytest.mark.parametrize(
+    "inner",
+    [
+        "<select><option>SECRET</option><option selected=''>shown</option></select>",
+        "<datalist><option>SECRET</option></datalist><p>shown</p>",
+        "<dialog>SECRET</dialog><p>shown</p>",
+        "<ruby>shown<rp>SECRET</rp><rt>x</rt><rp>SECRET</rp></ruby>",
+        "<canvas>SECRET</canvas><p>shown</p>",
+        "<video>SECRET</video><p>shown</p>",
+        "<audio>SECRET</audio><p>shown</p>",
+        "<object>SECRET</object><p>shown</p>",
+        "<iframe>SECRET</iframe><p>shown</p>",
+    ],
+)
+def test_html_a_browser_does_not_draw_by_default_is_not_quotable(inner):
+    text = extract(_xhtml(inner))
+    assert text is not None and "shown" in text
+    assert "SECRET" not in text
+
+
+def test_a_select_without_a_selected_option_shows_its_first():
+    assert extract(_xhtml("<select><option>shown</option><option>SECRET</option></select>")) == "shown"
+
+
+def test_an_open_dialog_is_read():
+    assert extract(_xhtml("<dialog open=''>shown</dialog>")) == "shown"
+
+
 def test_html_style_element_in_foreign_object_is_evaluated():
     body = (
         '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">'

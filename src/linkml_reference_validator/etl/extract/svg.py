@@ -15,6 +15,14 @@ say) run on. A ``<foreignObject>``, where drawio's SVG export puts its labels,
 is one label of one line per block, as
 :func:`~linkml_reference_validator.etl.extract.html.html_to_text` would read it.
 
+After them come edge lines, one label each: ``"<source> <edge label>
+<target>"`` for a connector that names its nodes with ``data-source`` and
+``data-target`` (their ids). Those attributes are not drawn, so an edge line
+is emitted only when the drawing agrees with them: the connector, its
+painted stroke and its label, and both nodes and their labels, are rendered,
+and the stroked path starts on the source node's box and ends on the
+target's (see :mod:`~linkml_reference_validator.etl.extract.svg_geometry`).
+
 Visibility follows the CSS cascade as far as it matters here: presentation
 attributes, then ``<style>`` rules by specificity and order, then the ``style``
 attribute, then ``!important``. ``display``, ``opacity`` and
@@ -70,6 +78,11 @@ from lxml import etree  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
+from linkml_reference_validator.etl.extract.svg_geometry import (
+    connector_endpoints,
+    node_bbox,
+    touches,
+)
 from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR
 
 logger = logging.getLogger(__name__)
@@ -461,6 +474,15 @@ def _is_drawable(node: etree._Element) -> bool:
     return qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG
 
 
+#: Shapes that can draw a connector between two nodes.
+CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
+
+
+def _words(labels: list[list[str]]) -> str:
+    """Labels' lines run together with spaces, as one phrase."""
+    return " ".join(line for label in labels for line in label)
+
+
 def _is_html(node: etree._Element, name: str) -> bool:
     """Whether a node is the XHTML element ``name``."""
     return isinstance(node.tag, str) and node.tag == f"{{{XHTML_NS}}}{name}"
@@ -495,11 +517,56 @@ class _RenderedText:
         self.labels: list[list[str]] = [[]]
         self.budget = VISIT_BUDGET_PER_NODE * len(nodes) + 10_000
         self.path: set[int] = set()
+        # For edge lines: the labels each drawn element holds, and whether each
+        # drawn connector shape's stroke is painted. Recorded only outside
+        # <use>, whose copies are drawn somewhere the geometry does not follow.
+        # Keyed by the element itself, not id(): lxml frees an element's
+        # Python proxy when nothing holds it, so its id() is not stable.
+        self.use_depth = 0
+        self.drawn_labels: dict[etree._Element, list[list[str]]] = {}
+        self.stroked: dict[etree._Element, bool] = {}
 
     def run(self, root: etree._Element) -> list[list[str]]:
         """Walk from the root element, returning each label's lines."""
         self.svg(root, _State())
-        return [label for label in self.labels if label]
+        labels = [label for label in self.labels if label]
+        return labels + [[line] for line in self.edge_lines(root)]
+
+    # --- edge lines ----------------------------------------------------------
+
+    def edge_lines(self, root: etree._Element) -> list[str]:
+        """``"<source> <edge label> <target>"`` for each connector the drawing confirms.
+
+        A connector is an element with ``data-source`` and ``data-target``
+        naming two node ids; its own labels are the edge label. The attributes
+        are not drawn, so they count only when the drawing agrees with them:
+        the connector, its stroke, its label and both nodes and their labels
+        are rendered, and the stroked path starts on the source node's box and
+        ends on the target's.
+        """
+        lines = []
+        for element in root.iter():
+            if not isinstance(element.tag, str):
+                continue
+            source = self.ids.get(element.get("data-source") or "")
+            target = self.ids.get(element.get("data-target") or "")
+            edge_labels = self.drawn_labels.get(element)
+            if source is None or target is None or not edge_labels:
+                continue
+            strokes = [
+                e for e in element.iter()
+                if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
+                and self.stroked.get(e)
+            ]
+            ends = connector_endpoints(strokes[0], root) if strokes else None
+            source_labels = self.drawn_labels.get(source)
+            target_labels = self.drawn_labels.get(target)
+            source_box, target_box = node_bbox(source, root), node_bbox(target, root)
+            if not (ends and source_labels and target_labels and source_box and target_box):
+                continue
+            if touches(ends[0], source_box) and touches(ends[1], target_box):
+                lines.append(" ".join(_words(x) for x in (source_labels, edge_labels, target_labels)))
+        return lines
 
     # --- the cascade -------------------------------------------------------
 
@@ -600,6 +667,16 @@ class _RenderedText:
         )
         return filled or stroked
 
+    @classmethod
+    def stroke_painted(cls, state: _State) -> bool:
+        """Whether an SVG shape's stroke in ``state`` paints anything."""
+        return (
+            state.visible
+            and not _is_transparent(cls._paint(state.stroke, state))
+            and state.stroke_opacity > 0
+            and not state.stroke_width_zero
+        )
+
     @staticmethod
     def html_painted(state: _State) -> bool:
         """Whether HTML text in ``state`` paints anything."""
@@ -634,6 +711,10 @@ class _RenderedText:
             return
         self.enter(element)
         name = etree.QName(element).localname
+        recorded = self.use_depth == 0
+        first_label = len(self.labels) - 1
+        if recorded and name in CONNECTOR_SHAPES:
+            self.stroked[element] = self.stroke_painted(state)
         if name == "text":
             parts: list[str] = []
             self.text_runs(element, state, parts)
@@ -656,6 +737,8 @@ class _RenderedText:
         else:
             for child in element:
                 self.svg(child, state)
+        if recorded:
+            self.drawn_labels[element] = [label for label in self.labels[first_label:] if label]
         self.path.discard(id(element))
 
     def use(self, element: etree._Element, state: _State) -> None:
@@ -663,15 +746,17 @@ class _RenderedText:
         target = self.ids.get(_href(element) or "")
         if target is None or id(target) in self.path:
             return
+        self.use_depth += 1
         if etree.QName(target).localname != "symbol":
             self.svg(target, state)
-            return
-        displayed, state = self.cascade(target, state)
-        if displayed:
-            self.enter(target)
-            for child in target:
-                self.svg(child, state)
-            self.path.discard(id(target))
+        else:
+            displayed, state = self.cascade(target, state)
+            if displayed:
+                self.enter(target)
+                for child in target:
+                    self.svg(child, state)
+                self.path.discard(id(target))
+        self.use_depth -= 1
 
     def text_runs(self, element: etree._Element, state: _State, parts: list[str]) -> None:
         """Collect the painted characters of a ``<text>`` or one of its runs."""

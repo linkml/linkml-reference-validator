@@ -169,8 +169,25 @@ clipped by `clip-path` or `mask`, placed outside the
 `viewBox`, scaled to nothing, covered by another shape, drawn in the
 background colour, or cut short by CSS `text-overflow` or `-webkit-line-clamp`
 is still read. Text converted to outlines is not text and
-cannot be quoted. Native `.drawio` files and connector (edge) labels between
-nodes are not yet supported.
+cannot be quoted.
+
+## Diagrams as References (drawio)
+
+A `file:` reference can also point at a native drawio diagram, `.drawio` or
+`.drawio.xml`, compressed or not. It is read the same way as an SVG: one label
+per drawn cell, quotes held to one label, and an edge line
+`"<source> <edge label> <target>"` for each drawn edge between two labelled
+cells. In drawio an edge's source and target are what it is drawn between, so
+no geometry check is needed; its line and both cells' labels must still be
+visible. Every page of the file is read.
+
+Not read: cells marked invisible, in a hidden layer, or inside a collapsed
+group; labels switched off (`noLabel`) or drawn with zero `opacity`,
+`textOpacity` or `fontSize`, or with no `fontColor`; layer and page names,
+tooltips, styles and other attributes. HTML labels follow the same visibility
+rules as SVG `<foreignObject>` labels. A label computed from placeholders
+(`placeholders="1"`), or HTML that cannot be read statically, makes the
+reference `unavailable`.
 
 ## Using in Data Files
 

@@ -915,7 +915,7 @@ the old entry is still served and is not rewritten, so a later run retries.
 Other sources are unaffected. With `trust_cached_entries` set, old entries are
 served as they are and are not refreshed.
 
-`file:` references to `.svg` figures carry their own stamp,
+`file:` references to `.svg` and `.drawio` figures carry their own stamp,
 `svg_extraction_version`. Version 1 reads a figure as the text it renders
 (issue #104); before it, the file was cached as raw markup, so a quote could
 match a `<desc>`, an attribute value or hidden text. Such an entry is re-read

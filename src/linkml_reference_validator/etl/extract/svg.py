@@ -704,14 +704,7 @@ class _RenderedText:
             self.path.discard(id(element))
             return
         if name == "select":
-            # A closed <select> draws only its chosen option: the first one
-            # marked selected, or else the first.
-            options = [o for o in element.iter() if _is_html(o, "option")]
-            chosen = next((o for o in options if o.get("selected") is not None), None)
-            if chosen is None and options:
-                chosen = options[0]
-            if chosen is not None:
-                self.foreign(chosen, state, line)
+            self.select(element, state, line)
             self.path.discard(id(element))
             return
         if name == "details" and element.get("open") is None:
@@ -732,6 +725,39 @@ class _RenderedText:
         if name in TEXT_BREAK_TAGS:
             self.end_line(line)
         self.path.discard(id(element))
+
+    def select(self, element: etree._Element, state: _State, line: list[str]) -> None:
+        """Read the one option a closed ``<select>`` draws.
+
+        Each option marked ``selected`` deselects the one before, so the last
+        one is drawn; with none, the first that is not ``disabled``. An
+        option's ``label`` attribute is drawn in place of its text. A
+        ``<select multiple>`` or with ``size`` draws a list of options and is
+        read the same way, so it is under-read, never over-read.
+        """
+        options = [o for o in element.iter() if _is_html(o, "option")]
+        selected = [o for o in options if o.get("selected") is not None]
+        chosen = selected[-1] if selected else next(
+            (o for o in options if o.get("disabled") is None), None
+        )
+        if chosen is None:
+            return
+        # Cascade through any <optgroup> between the <select> and the option.
+        groups = []
+        parent = chosen.getparent()
+        while parent is not None and parent is not element:
+            groups.append(parent)
+            parent = parent.getparent()
+        for group in reversed(groups):
+            displayed, state = self.cascade(group, state)
+            if not displayed:
+                return
+        if chosen.get("label") is None:
+            self.foreign(chosen, state, line)
+            return
+        displayed, state = self.cascade(chosen, state)
+        if displayed and self.html_painted(state):
+            line.append(chosen.get("label"))
 
     def end_line(self, parts: list[str]) -> None:
         """Emit the collected characters as one line, whitespace collapsed."""

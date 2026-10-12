@@ -615,6 +615,29 @@ def test_a_select_without_a_selected_option_shows_its_first():
     assert extract(_xhtml("<select><option>shown</option><option>SECRET</option></select>")) == "shown"
 
 
+@pytest.mark.parametrize(
+    "select,shown",
+    [
+        # Each selected option deselects the one before: the last one shows.
+        ("<option selected=''>SECRET</option><option selected=''>inhibits</option>", "inhibits"),
+        # With none selected, the first option that is not disabled shows.
+        ("<option disabled=''>SECRET</option><option>inhibits</option>", "inhibits"),
+        # An option's label attribute is drawn in place of its text.
+        ("<option label='inhibits'>SECRET</option>", "inhibits"),
+        ("<optgroup label='g'><option>SECRET</option><option selected=''>inhibits</option></optgroup>", "inhibits"),
+    ],
+)
+def test_a_select_shows_the_option_a_browser_shows(select, shown):
+    assert extract(_xhtml(f"<select>{select}</select>")) == shown
+
+
+def test_a_hidden_optgroup_hides_its_chosen_option():
+    body = _xhtml(
+        "<select><optgroup style='visibility:hidden'><option selected=''>SECRET</option></optgroup></select><p>shown</p>"
+    )
+    assert extract(body) == "shown"
+
+
 def test_an_open_dialog_is_read():
     assert extract(_xhtml("<dialog open=''>shown</dialog>")) == "shown"
 

@@ -1,6 +1,6 @@
 """Local file reference source.
 
-Reads content from local files (markdown, text, HTML).
+Reads content from local files (markdown, text, HTML, SVG).
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.file import FileSource
@@ -15,6 +15,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from linkml_reference_validator.etl.acquire import resolve_format
+from linkml_reference_validator.etl.extract import ExtractorRegistry
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 
@@ -25,8 +27,13 @@ logger = logging.getLogger(__name__)
 class FileSource(ReferenceSource):
     """Fetch reference content from local files.
 
-    Supports markdown (.md), plain text (.txt), and HTML (.html) files.
-    Content is read as-is without parsing (HTML entities preserved).
+    Supports markdown (.md), plain text (.txt), HTML (.html) and SVG (.svg)
+    files. Content is read as-is without parsing (HTML entities preserved),
+    except for SVG: a figure is matched against the text it renders, read by
+    :class:`~linkml_reference_validator.etl.extract.svg.SVGExtractor`, so a
+    quote cannot pass against markup, attributes or hidden text. An SVG with
+    no rendered text, or whose rendered text cannot be determined, is
+    ``unavailable``.
 
     Path resolution:
     - Absolute paths work directly
@@ -79,6 +86,9 @@ class FileSource(ReferenceSource):
             logger.warning(f"Not a file: {file_path}")
             return None
 
+        if resolve_format(None, file_path.name, None) == "svg":
+            return self._fetch_svg(file_path)
+
         content = file_path.read_text(encoding="utf-8")
         title = self._extract_title(content, file_path)
 
@@ -87,6 +97,30 @@ class FileSource(ReferenceSource):
             title=title,
             content=content,
             content_type="local_file",
+        )
+
+    def _fetch_svg(self, file_path: Path) -> ReferenceContent:
+        """Read an SVG figure as the text it renders, one line per label.
+
+        Examples:
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     figure = Path(d) / "fig.svg"
+            ...     _ = figure.write_text(
+            ...         '<svg xmlns="http://www.w3.org/2000/svg">'
+            ...         '<desc>Hidden</desc><text>PTEN</text></svg>')
+            ...     ref = FileSource()._fetch_svg(figure)
+            >>> (ref.content, ref.content_type, ref.title)
+            ('PTEN', 'local_svg', 'fig.svg')
+        """
+        extractor = ExtractorRegistry.get("svg")
+        assert extractor is not None, "SVGExtractor is registered on import"
+        text = extractor.extract(file_path.read_bytes(), content_type="image/svg+xml")
+        return ReferenceContent(
+            reference_id=f"file:{file_path}",
+            title=file_path.name,
+            content=text,
+            content_type="local_svg" if text else "unavailable",
         )
 
     def _resolve_path(self, identifier: str, config: ReferenceValidationConfig) -> Path:

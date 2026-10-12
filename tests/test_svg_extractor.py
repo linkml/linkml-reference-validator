@@ -15,6 +15,8 @@ import pytest
 from linkml_reference_validator.etl.acquire import resolve_format, sniff_format
 from linkml_reference_validator.etl.extract import ExtractorRegistry
 from linkml_reference_validator.etl.extract.svg import SVGExtractor
+from linkml_reference_validator.etl.sources.file import FileSource
+from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
 )
@@ -404,3 +406,57 @@ def test_billion_laughs_does_not_expand():
     data = f'<?xml version="1.0"?><!DOCTYPE svg [{entities}]>{SVG_OPEN}<text>&j;</text></svg>'
     text = SVGExtractor().extract(data.encode())
     assert text is None or len(text) < 1000
+
+
+# ---------------------------------------------------------------- file: routing
+
+
+@pytest.fixture
+def config(tmp_path):
+    return ReferenceValidationConfig(cache_dir=tmp_path / "cache", rate_limit_delay=0.0)
+
+
+def test_file_source_reads_svg_through_extractor(tmp_path, config):
+    figure = tmp_path / "fig1.svg"
+    figure.write_bytes(svg('<desc>SECRET</desc><text fill="red" id="n1">PTEN inhibits AKT</text>'))
+
+    ref = FileSource().fetch(str(figure), config)
+
+    assert ref is not None
+    assert ref.content == "PTEN inhibits AKT"
+    assert ref.content_type == "local_svg"
+    assert ref.title == "fig1.svg"
+
+
+def test_file_source_svg_with_no_rendered_text_is_unavailable(tmp_path, config):
+    figure = tmp_path / "blank.svg"
+    figure.write_bytes(svg("<desc>SECRET</desc>"))
+
+    ref = FileSource().fetch(str(figure), config)
+
+    assert ref is not None
+    assert ref.content is None
+    assert ref.content_type == "unavailable"
+
+
+def test_file_source_leaves_other_formats_as_raw_text(tmp_path, config):
+    page = tmp_path / "notes.html"
+    page.write_text("<p>Text &amp; more</p>")
+    ref = FileSource().fetch(str(page), config)
+    assert ref is not None
+    assert ref.content == "<p>Text &amp; more</p>"
+    assert ref.content_type == "local_file"
+
+
+def test_validator_matches_rendered_svg_text_end_to_end(tmp_path, config):
+    figure = tmp_path / "pathway.svg"
+    figure.write_bytes(
+        svg(
+            '<desc>AKT activates PTEN</desc>'
+            '<text><tspan x="0" y="10">loss of PTEN</tspan><tspan x="0" dy="12">activates AKT</tspan></text>'
+        )
+    )
+    validator = SupportingTextValidator(config)
+
+    assert validator.validate("loss of PTEN activates AKT", f"file:{figure}").is_valid
+    assert not validator.validate("AKT activates PTEN", f"file:{figure}").is_valid

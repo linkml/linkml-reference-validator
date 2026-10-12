@@ -334,6 +334,43 @@ def test_scripts_and_visibility_animations_fail_closed(body):
     assert extract(body) is None
 
 
+XHTML_LABEL = (
+    '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">'
+    '<span class="n">inhibits</span> mTOR</div></foreignObject>'
+)
+
+
+@pytest.mark.parametrize(
+    "style",
+    [
+        '.n::before{content:"never "}',
+        ".n:after { content: ' not' }",
+        '@media screen { .n::before { content: "never " } }',
+    ],
+)
+def test_generated_content_fails_closed(style):
+    # Rendered "never inhibits mTOR"; read without it, the label inverts.
+    assert extract(f"<style>{style}</style>{XHTML_LABEL}") is None
+
+
+def test_content_that_generates_nothing_is_accepted():
+    assert extract("<style>.n::before{content:none}</style>" + XHTML_LABEL) == "inhibits mTOR"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        '<text direction="rtl" unicode-bidi="bidi-override">PTEN</text>',
+        '<text style="direction:rtl; unicode-bidi:bidi-override">PTEN</text>',
+        "<style>.r{unicode-bidi:isolate-override;direction:rtl}</style><text class='r'>PTEN</text>",
+        '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml"><bdo dir="rtl">PTEN</bdo></div></foreignObject>',
+    ],
+)
+def test_bidi_overrides_that_reorder_characters_fail_closed(body):
+    # Rendered "NETP": the characters are drawn in reverse.
+    assert extract(body) is None
+
+
 def test_animation_of_unrelated_attribute_is_accepted():
     body = '<text>shown<animate attributeName="x" from="0" to="10" dur="1s"/></text>'
     assert extract(body) == "shown"

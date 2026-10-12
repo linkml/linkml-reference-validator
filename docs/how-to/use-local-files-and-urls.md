@@ -131,8 +131,10 @@ linkml-reference-validator validate text \
   `unavailable` rather than read as raw markup. That happens when a `<style>`
   rule hides or shows text through a selector other than a type, class or id
   selector (`g > text`, `:first-child`, `@media`), when visibility depends on
-  `var()` or `calc()`, when a stylesheet is imported or linked, or when the
-  SVG contains a `<script>` or animates visibility.
+  `var()` or `calc()`, when a stylesheet is imported or linked, when the SVG
+  contains a `<script>` or animates visibility, or when CSS `content`, a
+  `unicode-bidi` override or `<bdo>` adds text to a label or draws it
+  reversed.
 
 Known limits: text clipped by `clip-path` or `mask`, placed outside the
 `viewBox`, scaled to nothing, covered by another shape, or drawn in the

@@ -28,6 +28,8 @@ closed** and returns ``None``, rather than guess:
   as ``@media``, or an ``@import``/``<?xml-stylesheet?>``/``<link>`` stylesheet;
 - one of those properties set with ``var()``, ``calc()`` or another value
   computed at render time;
+- generated ``content``, or a bidi override or ``<bdo>``, which add text to a
+  label or draw it reversed;
 - any ``<script>``, or an animation of a property, ``class``, ``style`` or
   ``href``;
 - ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
@@ -88,6 +90,10 @@ VISIBILITY_PROPERTIES = frozenset({
     "fill-opacity", "stroke", "stroke-opacity", "stroke-width", "font-size",
     "font", "color",
 })
+
+#: Properties that can add characters to a label or reorder them; see
+#: :func:`_changes_text`.
+TEXT_CHANGING_PROPERTIES = frozenset({"content", "unicode-bidi"})
 
 #: Animation targets that can change what is visible.
 ANIMATED_VISIBILITY = VISIBILITY_PROPERTIES | {"class", "style", "href", "xlink:href"}
@@ -196,11 +202,32 @@ def _declarations(text: str) -> list[tuple[str, str, bool]]:
 
 
 def _declares_visibility(body: str) -> bool:
-    """Whether CSS text sets any of the ``VISIBILITY_PROPERTIES``."""
+    """Whether CSS text sets any of the ``VISIBILITY_PROPERTIES``, or changes text."""
     return any(
         re.search(rf"(?<![\w-]){re.escape(prop)}\s*:", body, re.I)
-        for prop in VISIBILITY_PROPERTIES
+        for prop in VISIBILITY_PROPERTIES | TEXT_CHANGING_PROPERTIES
     )
+
+
+def _changes_text(prop: str, value: str) -> bool:
+    """Whether a declaration adds characters or draws them in another order.
+
+    ``content`` puts text into a ``::before`` or ``::after``, and a bidi
+    override draws a run's characters reversed. Either way the label a reader
+    sees is not the label in the markup, so the extractor fails closed.
+
+    Examples:
+        >>> _changes_text("content", '"never "'), _changes_text("content", "none")
+        (True, False)
+        >>> _changes_text("unicode-bidi", "bidi-override"), _changes_text("unicode-bidi", "isolate")
+        (True, False)
+    """
+    value = value.strip().lower()
+    if prop == "content":
+        return value not in ("none", "normal", "")
+    if prop == "unicode-bidi":
+        return "override" in value
+    return False
 
 
 def _blocks(css: str) -> list[tuple[str, Optional[str]]]:
@@ -261,9 +288,11 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
             continue
         if body is None:
             continue
-        declarations = tuple(
-            d for d in _declarations(body) if d[0] in VISIBILITY_PROPERTIES
-        )
+        all_declarations = _declarations(body)
+        for prop, value, _ in all_declarations:
+            if _changes_text(prop, value):
+                raise _Unrenderable(f"stylesheet rule {prelude!r} sets {prop}: {value}")
+        declarations = tuple(d for d in all_declarations if d[0] in VISIBILITY_PROPERTIES)
         if not declarations:
             continue
         for selector in prelude.split(","):
@@ -653,6 +682,13 @@ def _check_static(root: etree._Element) -> list[_Rule]:
         name = etree.QName(element).localname
         if name == "script":
             raise _Unrenderable("the SVG contains a script")
+        if name == "bdo" and etree.QName(element).namespace == XHTML_NS:
+            raise _Unrenderable("a <bdo> draws its text in reverse order")
+        inline = [(p, element.get(p) or "") for p in TEXT_CHANGING_PROPERTIES]
+        inline += [(p, v) for p, v, _ in _declarations(element.get("style") or "")]
+        for prop, value in inline:
+            if _changes_text(prop, value):
+                raise _Unrenderable(f"<{name}> sets {prop}: {value}")
         if name == "link" and "stylesheet" in (element.get("rel") or "").lower():
             raise _Unrenderable("the SVG links an external stylesheet")
         if name in ("set", "animate", "animateColor"):

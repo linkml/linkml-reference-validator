@@ -518,9 +518,7 @@ def _geometry_is_static(root: etree._Element) -> bool:
 def _marker(shape: etree._Element, at: str) -> Optional[str]:
     """The marker a shape draws at its ``start`` or ``end``, or None.
 
-    Markers are inherited, so the nearest of the shape and its ancestors
-    that sets ``marker-<at>`` or the ``marker`` shorthand decides; on one
-    element ``style`` beats the attribute, and ``none`` means no marker.
+    Markers are inherited (see :func:`_inherited`); ``none`` means none.
 
     Examples:
         >>> g = etree.fromstring('<g marker-start="url(#a)"><path/></g>')
@@ -529,26 +527,35 @@ def _marker(shape: etree._Element, at: str) -> Optional[str]:
         >>> _marker(etree.fromstring('<path marker-end="url(#a)" style="marker-end:none"/>'), "end") is None
         True
     """
-    node: Optional[etree._Element] = shape
-    while node is not None:
-        style = {prop: value for prop, value, _ in _declarations(node.get("style") or "")}
-        for declared in (style, node.attrib):
-            for prop in (f"marker-{at}", "marker"):
-                if prop in declared:
-                    value = str(declared[prop]).strip()
-                    return None if value.lower() in ("none", "") else value
-        node = node.getparent()
-    return None
+    value = _inherited(shape, f"marker-{at}", "marker")
+    return None if value is None or value.lower() in ("none", "") else value
 
 
-def _inherited(shape: etree._Element, prop: str) -> Optional[str]:
-    """The nearest value of an inherited property on a shape or its ancestors."""
+def _inherited(shape: etree._Element, *props: str) -> Optional[str]:
+    """The value of an inherited property on a shape or its nearest ancestor.
+
+    ``props`` are the names that set it, most specific first (for a marker,
+    ``marker-end`` and then its shorthand ``marker``). On one element the
+    last such declaration in ``style`` wins, then the attribute; ``inherit``
+    or ``unset`` passes the question to the parent.
+
+    Examples:
+        >>> g = etree.fromstring('<g a="1"><path a="inherit" style="b:2; a:3"/></g>')
+        >>> _inherited(g[0], "a"), _inherited(g[0], "a", "b")
+        ('3', '3')
+        >>> _inherited(etree.fromstring('<g a="1"><path a="inherit"/></g>')[0], "a")
+        '1'
+    """
     node: Optional[etree._Element] = shape
     while node is not None:
-        style = {p: value for p, value, _ in _declarations(node.get("style") or "")}
-        for declared in (style, node.attrib):
-            if prop in declared:
-                return str(declared[prop]).strip()
+        value = None
+        for prop, declared, _ in _declarations(node.get("style") or ""):
+            if prop in props:
+                value = declared
+        if value is None:
+            value = next((str(node.get(p)) for p in props if node.get(p) is not None), None)
+        if value is not None and value.strip().lower() not in ("inherit", "unset"):
+            return value.strip()
         node = node.getparent()
     return None
 
@@ -577,23 +584,13 @@ def _dashes_draw(shape: etree._Element) -> bool:
     return any(length > 0 for length in lengths[0::2])
 
 
-def _draws_arrowhead(shape: etree._Element, at: str, ids: dict[str, etree._Element]) -> bool:
-    """Whether a shape's marker at ``at`` names a ``<marker>`` that exists.
-
-    A reference to nothing draws nothing, so it gives no direction.
-    """
-    value = _marker(shape, at)
-    match = re.fullmatch(r"url\(\s*['\"]?#([^'\")]+)['\"]?\s*\)", value or "")
-    target = ids.get(match.group(1)) if match else None
-    return target is not None and etree.QName(target).localname == "marker"
-
-
 def _nested(source: etree._Element, target: etree._Element, connector: etree._Element) -> bool:
     """Whether one node holds the other, or either holds the connector.
 
     A node's labels and box are everything inside it, so a compartment
     holding its target would lend it the target's label and box, and a node
-    holding the connector would take in the edge label. A self-loop (one
+    holding the connector would take in the edge label - as a connector
+    holding a node would take in the node's. A self-loop (one
     node as both source and target) is not nested.
 
     Examples:
@@ -607,7 +604,9 @@ def _nested(source: etree._Element, target: etree._Element, connector: etree._El
 
     if holds(source, target) or holds(target, source):
         return True
-    return holds(source, connector) or holds(target, connector) or connector in (source, target)
+    if connector in (source, target) or any(holds(connector, node) for node in (source, target)):
+        return True  # the edge label would take in the node's labels
+    return holds(source, connector) or holds(target, connector)
 
 
 #: Shapes that can draw a connector between two nodes.
@@ -662,6 +661,7 @@ class _RenderedText:
         self.drawn_labels: dict[etree._Element, list[list[str]]] = {}
         self.stroked: dict[etree._Element, bool] = {}
         self.painted_shapes: set[etree._Element] = set()
+        self.marker_drawn: dict[etree._Element, bool] = {}
 
     def run(self, root: etree._Element) -> list[list[str]]:
         """Walk from the root element, returning each label's lines."""
@@ -670,6 +670,46 @@ class _RenderedText:
         return labels + [[line] for line in self.edge_lines(root)]
 
     # --- edge lines ----------------------------------------------------------
+
+    def draws_arrowhead(self, shape: etree._Element, at: str) -> bool:
+        """Whether a shape's marker at ``at`` draws something there.
+
+        The marker must name a ``<marker>`` in the figure that is not sized
+        to nothing and holds a shape that paints; anything less draws no
+        arrowhead, and so gives no direction.
+        """
+        match = re.fullmatch(
+            r"url\(\s*['\"]?#([^'\")]+)['\"]?\s*\)", _marker(shape, at) or ""
+        )
+        marker = self.ids.get(match.group(1)) if match else None
+        if marker is None or etree.QName(marker).localname != "marker":
+            return False
+        if marker not in self.marker_drawn:
+            self.marker_drawn[marker] = self._marker_paints(marker)
+        return self.marker_drawn[marker]
+
+    def _marker_paints(self, marker: etree._Element) -> bool:
+        """Whether a ``<marker>`` holds a shape that paints, with the cascade applied."""
+        for size in ("markerWidth", "markerHeight"):
+            value = _NUMBER.match(marker.get(size) or "3")
+            if value is None or float(value.group(1)) <= 0:
+                return False
+        # Its content inherits from the marker's own ancestors, root first.
+        state = _State()
+        for element in [*reversed(list(marker.iterancestors())), marker]:
+            _, state = self.cascade(element, state)
+        stack = [(child, state) for child in marker]
+        while stack:
+            element, parent_state = stack.pop()
+            if not isinstance(element.tag, str):
+                continue
+            displayed, element_state = self.cascade(element, parent_state)
+            if not displayed:
+                continue
+            if etree.QName(element).localname in SHAPES and self.shape_painted(element_state):
+                return True
+            stack.extend((child, element_state) for child in element)
+        return False
 
     def edge_lines(self, root: etree._Element) -> list[str]:
         """``"<source> <edge label> <target>"`` for each connector the drawing confirms.
@@ -699,13 +739,13 @@ class _RenderedText:
             edge_labels = self.drawn_labels.get(element)
             if source is None or target is None or not edge_labels:
                 continue
+            if _nested(source, target, element):
+                continue
             strokes = [
                 e for e in element.iter()
                 if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
                 and self.stroked.get(e)
             ]
-            if _nested(source, target, element):
-                continue
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
             source_box, target_box = box(source), box(target)
@@ -720,7 +760,7 @@ class _RenderedText:
                 # line for the same picture.
                 if _marker(stroke, "start") is not None:
                     continue
-                if not _draws_arrowhead(stroke, "end", self.ids) or not _dashes_draw(stroke):
+                if not self.draws_arrowhead(stroke, "end") or not _dashes_draw(stroke):
                     continue
                 ends = connector_endpoints(stroke, root)
                 if ends and touches(ends[0], source_box) and touches(ends[1], target_box):

@@ -313,6 +313,44 @@ def test_a_node_containing_the_connector_yields_none():
     assert not [label for label in labels if "PTEN" in label and "AKT" in label]
 
 
+def test_a_connector_containing_its_nodes_yields_none():
+    # The edge label would take in both node labels: "PTEN PTEN AKT inhibits AKT".
+    body = (
+        '<g data-source="pten" data-target="akt">' + PTEN + AKT
+        + f'<path d="M60 15 L200 15" stroke="black" {END}/><text>inhibits</text></g>'
+    )
+    labels = (extract(body) or "").split("\n\n")
+    assert not [label for label in labels if "PTEN" in label and "AKT" in label]
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        '<marker id="ghost"/>',
+        '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" fill="none"/></marker>',
+        '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" opacity="0"/></marker>',
+        '<marker id="ghost" markerWidth="0"><path d="M0 0 L10 5 L0 10 z"/></marker>',
+        '<marker id="ghost"><g display="none"><path d="M0 0 L10 5 L0 10 z"/></g></marker>',
+    ],
+    ids=["empty", "unpainted", "transparent", "zero-size", "hidden-group"],
+)
+def test_an_arrowhead_marker_that_draws_nothing_gives_no_direction(marker):
+    body = f"<defs>{marker}</defs>" + PTEN + AKT + connector(marker='marker-end="url(#ghost)"')
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
+def test_a_later_shorthand_in_one_style_wins():
+    path_style = 'style="marker-end: url(#arrow); marker: none"'
+    assert not quotable(PTEN + AKT + connector(marker="", path_attrs=path_style), "PTEN inhibits AKT")
+
+
+def test_inherit_keeps_walking_up_for_dashes_and_markers():
+    dashes = connector(attrs='stroke-dasharray="0 1000"', path_attrs='stroke-dasharray="inherit"')
+    assert not quotable(PTEN + AKT + dashes, "PTEN inhibits AKT")
+    starts = connector(attrs='marker-start="url(#arrow)"', path_attrs='marker-start="inherit"')
+    assert not quotable(PTEN + AKT + starts, "PTEN inhibits AKT")
+
+
 def test_a_drawn_self_loop_is_an_edge():
     loop = (
         '<g data-source="pten" data-target="pten">'

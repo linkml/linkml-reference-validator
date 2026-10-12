@@ -163,9 +163,12 @@ and end on the target's (transforms applied, with a little slack for an
 arrowhead), and the connector, its label and both nodes and their labels must
 all be visible. The direction must be drawn too: the path needs an arrowhead at
 its end, a `marker-end` (set on it or inherited) naming a `<marker>` in the
-figure, and none at its start. A plain line, or an arrowhead drawn as a
-separate shape rather than a marker, gives no edge line, since nothing the
-extractor can read says which way it points. A node is the shapes it draws inside the
+figure that draws something (a shape that paints, at a size above zero), and
+none at its start. A plain line, an empty or invisible marker, or an arrowhead
+drawn as a separate shape rather than a marker, gives no edge line, since
+nothing the extractor can read says which way it points. The marker's
+`orient` is not read: a marker drawn at a fixed angle is taken to point along
+the path. A node is the shapes it draws inside the
 element its id names; its text, and shapes that are hidden or paint nothing,
 do not count towards its box. Geometry the extractor cannot place from
 attributes gives no edge line either: CSS `transform` or other CSS geometry,
@@ -193,11 +196,11 @@ source reads target first, and one with arrows at both ends or neither gives
 no edge line. Only markers that point count as arrows: arrowheads (`classic`,
 `block`, `open`, `async` and their thin or double forms) and the inhibition
 T-bar `baseDash`. An oval, diamond, dash or ER symbol at an end gives no
-direction.
+direction. Every page of the file is read.
 
 A `.drawio.svg` file (drawio's editable SVG export) is read as an SVG: its
 labels are quotable, but it carries no `data-source`/`data-target`, so it
-gives no edge lines. Point at the `.drawio` source to quote its edges. Every page of the file is read.
+gives no edge lines. Point at the `.drawio` source to quote its edges.
 
 Not read: cells marked invisible, in a hidden layer, or inside a collapsed
 group; labels switched off (`noLabel`) or drawn with zero `opacity`,

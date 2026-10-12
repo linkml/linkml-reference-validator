@@ -169,9 +169,13 @@ Arrowheads drawn as markers give the direction:
   node to it. This holds even when it's the reverse of `data-source` →
   `data-target`: the drawing wins, as in drawio.
 - **Arrowheads at both ends** make the line quotable both ways.
-- **No arrowhead** (a plain line, a marker that draws nothing, or an arrowhead
-  drawn as a separate shape) reads in the attributes' order, `data-source`
-  first, since nothing drawn says otherwise.
+- **No arrowhead** (a plain line, or a marker that draws nothing) reads in the
+  attributes' order, `data-source` first. This is a known limitation: nothing
+  drawn gives that order, so swapping the two attributes reverses the line
+  for the same picture.
+- **An arrowhead drawn as a separate shape** (a polygon or chevron in the
+  connector instead of a marker) gives no edge line: which way such a shape
+  points can't be read, and the attributes' order could contradict it.
 
 A marker counts as an arrowhead when it names a `<marker>` in the figure that
 draws something: a shape that paints, at a size above zero. When that can't be

@@ -288,6 +288,32 @@ def test_without_an_arrowhead_the_attributes_name_the_direction():
     assert edges(PTEN + AKT + swapped) == BACKWARD
 
 
+@pytest.mark.parametrize(
+    "head",
+    [
+        '<polygon points="60,15 70,10 70,20"/>',  # a triangle at PTEN: the drawing points back
+        '<polygon points="200,15 190,10 190,20"/>',  # at AKT: agrees, but can't be told apart
+        '<path d="M70 10 L60 15 L70 20" stroke="black" fill="none"/>',  # a stroked chevron
+    ],
+    ids=["at-source", "at-target", "chevron"],
+)
+def test_an_arrowhead_drawn_as_a_separate_shape_gives_no_direction(head):
+    # The extractor can't tell which way a shape points, and reading the
+    # attributes' order could contradict the drawn arrow.
+    body = PTEN + AKT + connector(marker="").replace("<text", head + "<text")
+    assert edges(body) == []
+
+
+def test_a_plain_stroke_beside_one_with_an_unsure_marker_gives_no_direction():
+    unsure = '<defs><marker id="unsure"><use href="#arrow"/></marker></defs>'
+    body = unsure + PTEN + AKT + (
+        '<g data-source="pten" data-target="akt">'
+        '<path d="M60 15 L200 15" stroke="black" marker-start="url(#unsure)"/>'
+        '<path d="M60 15 L200 15" stroke="black"/><text>inhibits</text></g>'
+    )
+    assert edges(body) == []
+
+
 def test_an_arrowhead_on_overlapping_nodes_gives_no_direction():
     # Both ends touch both boxes, so the drawing can't say which node it points at.
     overlapping = AKT.replace('x="200"', 'x="0"').replace('x="210"', 'x="10"')

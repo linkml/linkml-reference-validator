@@ -301,12 +301,13 @@ def _page_labels(model: etree._Element) -> list[list[str]]:
         ]
         if not (source and target and source.lines and target.lines and edge_words):
             continue
-        # dict.fromkeys drops the second reading of a self-loop, which is the same line.
-        for line in dict.fromkeys(
-            " ".join(first.lines + edge_words + last.lines)
-            for first, last in ((source, target) if source_first else (target, source) for source_first in readings)
-        ):
-            labels.append([line])
+        read: list[str] = []
+        for source_first in readings:
+            first, last = (source, target) if source_first else (target, source)
+            line = " ".join(first.lines + edge_words + last.lines)
+            if line not in read:  # a self-loop reads the same both ways
+                read.append(line)
+        labels.extend([line] for line in read)
     return labels
 
 

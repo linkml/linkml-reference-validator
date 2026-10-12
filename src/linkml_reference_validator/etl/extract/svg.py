@@ -781,6 +781,7 @@ class _RenderedText:
             fill="none" if state.fill.strip().lower() == "context-fill" else state.fill,
             stroke="none" if state.stroke.strip().lower() == "context-fill" else state.stroke,
         )
+        # The fill alone, then the stroke, which also needs dashes that draw.
         filled = self.shape_painted(replace(state, stroke="none"))
         return filled or (self.stroke_painted(state) and _dashes_draw(shape))
 
@@ -819,6 +820,7 @@ class _RenderedText:
                 if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
                 and self.stroked.get(e)
             ]
+            drawn = [e for e in element.iter() if e in self.painted_shapes]
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
             source_box, target_box = box(source), box(target)
@@ -834,6 +836,10 @@ class _RenderedText:
                 ends = connector_endpoints(stroke, root)
                 if at_start is None or at_end is None or not ends:
                     continue
+                # With no marker, another shape of the connector may be an
+                # arrowhead drawn on its own, which may point either way.
+                if not (at_start or at_end) and any(e is not stroke for e in drawn):
+                    continue
                 forward = touches(ends[0], source_box) and touches(ends[1], target_box)
                 backward = source is not target and touches(ends[0], target_box) and touches(ends[1], source_box)
                 if not (forward or backward):
@@ -841,12 +847,13 @@ class _RenderedText:
                 readings = _readings(forward, backward, at_start, at_end)
                 if not readings:
                     continue
-                ends_labels = [(source_labels, target_labels), (target_labels, source_labels)]
-                # dict.fromkeys drops the second reading of a self-loop, which is the same line.
-                lines.extend(dict.fromkeys(
-                    " ".join(_words(x) for x in (first, edge_labels, last))
-                    for first, last in (ends_labels[0] if source_first else ends_labels[1] for source_first in readings)
-                ))
+                read: list[str] = []
+                for source_first in readings:
+                    first, last = (source_labels, target_labels) if source_first else (target_labels, source_labels)
+                    line = " ".join(_words(x) for x in (first, edge_labels, last))
+                    if line not in read:  # a self-loop reads the same both ways
+                        read.append(line)
+                lines.extend(read)
                 break
         return lines
 

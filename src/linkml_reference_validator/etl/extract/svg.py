@@ -26,6 +26,8 @@ closed** and returns ``None``, rather than guess:
 - a stylesheet rule that sets one of those properties through a selector other
   than a type, class or id selector (or a list of them), inside an at-rule such
   as ``@media``, or an ``@import``/``<?xml-stylesheet?>``/``<link>`` stylesheet;
+- one of those properties set with ``var()``, ``calc()`` or another value
+  computed at render time;
 - any ``<script>``, or an animation of a property, ``class``, ``style`` or
   ``href``;
 - ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
@@ -108,6 +110,8 @@ _FONT_SIZE_TOKEN = re.compile(
     r"|0*\.?0+)(?:/\S+)?(?=\s|$)",
     re.IGNORECASE,
 )
+#: CSS functions whose result this extractor does not compute.
+_COMPUTED_VALUE = re.compile(r"\b(?:var|calc|env|attr|min|max|clamp)\(", re.IGNORECASE)
 _COLOR_FUNCTION = re.compile(r"^(?:rgba?|hsla?)\((.*)\)$")
 
 
@@ -308,7 +312,7 @@ def _font_size_zero(value: str, parent_zero: bool) -> bool:
         return parent_zero
     match = _NUMBER.match(lowered)
     if not match:
-        return parent_zero if "calc" in lowered or "var" in lowered else False
+        return False
     if float(match.group(1)) == 0:
         return True
     return parent_zero if match.group(2) in _RELATIVE_FONT_UNITS else False
@@ -375,6 +379,9 @@ class _RenderedText:
     def apply(values: dict[str, str], parent: _State) -> tuple[bool, _State]:
         """Apply computed property values on top of the inherited state."""
         values = {p: v.strip() for p, v in values.items() if v.strip().lower() not in ("inherit", "unset")}
+        for prop, value in values.items():
+            if _COMPUTED_VALUE.search(value):
+                raise _Unrenderable(f"{prop}: {value} is computed at render time")
         if values.get("display", "").lower() == "none":
             return False, parent
         if values.get("content-visibility", "").lower() == "hidden":

@@ -276,6 +276,25 @@ def test_stylesheet_the_extractor_cannot_evaluate_fails_closed(style):
 @pytest.mark.parametrize(
     "body",
     [
+        '<style>.h{--c:none}</style><text class="h" style="fill:var(--c)">SECRET</text>',
+        '<text style="opacity:var(--o, 1)">SECRET</text>',
+        '<text style="display:var(--d)">SECRET</text>',
+        '<text style="font-size:calc(1px - 1px)">SECRET</text>',
+        '<text fill="env(x)">SECRET</text>',
+    ],
+)
+def test_computed_visibility_values_fail_closed(body):
+    # Whether these paint depends on values the extractor does not compute.
+    assert extract(body + "<text>shown</text>") is None
+
+
+def test_computed_values_of_other_properties_are_accepted():
+    assert extract('<text style="--c:red; letter-spacing:calc(1px + 1px)">shown</text>') == "shown"
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
         "<script>document.querySelector('text').textContent='x'</script><text>shown</text>",
         '<text>shown<set attributeName="visibility" to="hidden" begin="1s"/></text>',
         '<text opacity="0">x<animate attributeName="opacity" from="0" to="1" dur="1s"/></text>',

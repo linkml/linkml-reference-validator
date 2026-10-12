@@ -924,6 +924,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagrams-as-references-drawio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagrams as References (drawio)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-in-data-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1630,6 +1641,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#diagrams-as-references-drawio" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Diagrams as References (drawio)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#using-in-data-files" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1828,14 +1850,86 @@ markup:</p>
   <code>-webkit-text-security</code>, a <code>unicode-bidi</code> override, <code>&lt;bdo&gt;</code>, or a bidi
   control character in the text.</li>
 </ul>
+<p><strong>Edges.</strong> A connector between two labelled nodes also gives an edge line,
+<code>"&lt;source&gt; &lt;edge label&gt; &lt;target&gt;"</code>, so a relational quote such as
+<code>"PTEN inhibits AKT"</code> can be checked. The connector is an element (usually a
+<code>&lt;g&gt;</code> holding the line and its label) whose <code>data-source</code> and <code>data-target</code>
+attributes name the two nodes' ids:</p>
+<pre><code class="language-xml">&lt;defs&gt;&lt;marker id=&quot;arrow&quot;&gt;&lt;path d=&quot;M0 0 L10 5 L0 10 z&quot;/&gt;&lt;/marker&gt;&lt;/defs&gt;
+&lt;g id=&quot;pten&quot;&gt;&lt;rect x=&quot;0&quot; y=&quot;0&quot; width=&quot;60&quot; height=&quot;30&quot;/&gt;&lt;text x=&quot;10&quot; y=&quot;20&quot;&gt;PTEN&lt;/text&gt;&lt;/g&gt;
+&lt;g id=&quot;akt&quot;&gt;&lt;rect x=&quot;200&quot; y=&quot;0&quot; width=&quot;60&quot; height=&quot;30&quot;/&gt;&lt;text x=&quot;210&quot; y=&quot;20&quot;&gt;AKT&lt;/text&gt;&lt;/g&gt;
+&lt;g data-source=&quot;pten&quot; data-target=&quot;akt&quot;&gt;
+  &lt;path d=&quot;M60 15 L200 15&quot; stroke=&quot;black&quot; marker-end=&quot;url(#arrow)&quot;/&gt;
+  &lt;text x=&quot;110&quot; y=&quot;10&quot;&gt;inhibits&lt;/text&gt;
+&lt;/g&gt;
+</code></pre>
+<p>The attributes are not drawn, so they are only believed when the drawing
+agrees: the connector's stroked path must join the two nodes' shapes, one end
+on each (transforms applied, with a little slack for an arrowhead), and the
+connector, its label and both nodes and their labels must all be visible.</p>
+<p>Arrowheads drawn as markers give the direction:</p>
+<ul>
+<li><strong>One arrowhead</strong> (a <code>marker-start</code> or <code>marker-end</code>, set on the path or
+  inherited) points at the node at that end, and the line reads from the other
+  node to it. This holds even when it's the reverse of <code>data-source</code> →
+  <code>data-target</code>: the drawing wins, as in drawio.</li>
+<li><strong>Arrowheads at both ends</strong> make the line quotable both ways.</li>
+<li><strong>No arrowhead</strong> (a plain line, or a marker that draws nothing) reads in the
+  attributes' order, <code>data-source</code> first. This is a known limitation: nothing
+  drawn gives that order, so swapping the two attributes reverses the line
+  for the same picture.</li>
+<li><strong>An arrowhead drawn as a separate shape</strong> gives no edge line: which way
+  such a shape points can't be read, and the attributes' order could
+  contradict it. This is any other <code>&lt;polygon&gt;</code>, <code>&lt;polyline&gt;</code>, <code>&lt;path&gt;</code> or
+  <code>&lt;line&gt;</code> in the connector, wherever it sits; any <code>&lt;use&gt;</code> or <code>&lt;image&gt;</code>; and a
+  <code>&lt;rect&gt;</code>, <code>&lt;circle&gt;</code> or <code>&lt;ellipse&gt;</code> at an end of the line or on a node. A
+  <code>&lt;rect&gt;</code>, <code>&lt;circle&gt;</code> or <code>&lt;ellipse&gt;</code> in mid-line, such as a label's
+  background, is not taken for an arrowhead.</li>
+<li><strong>Arrowheads at a bent line's inner vertices</strong> (<code>marker-mid</code>, or the
+  <code>marker</code> shorthand) give no edge line, since each may point either way.</li>
+</ul>
+<p>A marker counts as an arrowhead when it names a <code>&lt;marker&gt;</code> in the figure that
+draws something: a shape that paints, at a size above zero. When that can't be
+told from the markup (a <code>var()</code> value, or a <code>&lt;use&gt;</code>, text or image inside the
+marker), the connector gives no edge line, since neither direction is safe. The
+marker's <code>orient</code> is not read: a marker drawn at a fixed angle is taken to
+point along the path. A node is the shapes it draws inside the
+element its id names; its text, and shapes that are hidden or paint nothing,
+do not count towards its box. Geometry the extractor cannot place from
+attributes gives no edge line either: CSS <code>transform</code> or other CSS geometry,
+<code>clip-path</code>, <code>mask</code> or <code>filter</code>, or an animation that moves shapes. A node drawn only through <code>&lt;use&gt;</code>, inside a
+nested <code>&lt;svg&gt;</code>, or sized in <code>%</code> or <code>em</code> gives no edge line.</p>
 <p>Known limits: a label drawn as several <code>&lt;text&gt;</code> elements, one per line, is
 read as several labels, so quote its lines with <code>...</code> between them. Text
 clipped by <code>clip-path</code> or <code>mask</code>, placed outside the
 <code>viewBox</code>, scaled to nothing, covered by another shape, drawn in the
 background colour, or cut short by CSS <code>text-overflow</code> or <code>-webkit-line-clamp</code>
 is still read. Text converted to outlines is not text and
-cannot be quoted. Native <code>.drawio</code> files and connector (edge) labels between
-nodes are not yet supported.</p>
+cannot be quoted.</p>
+<h2 id="diagrams-as-references-drawio">Diagrams as References (drawio)</h2>
+<p>A <code>file:</code> reference can also point at a native drawio diagram, <code>.drawio</code> or
+<code>.drawio.xml</code>, compressed or not. It is read the same way as an SVG: one label
+per drawn cell, quotes held to one label, and an edge line
+<code>"&lt;source&gt; &lt;edge label&gt; &lt;target&gt;"</code> for each drawn edge between two labelled
+cells. In drawio an edge's source and target are what it is drawn between, so
+no geometry check is needed; its line and both cells' labels must still be
+visible. The arrows give the direction, as for SVG: an edge drawn pointing
+back at its source reads target first, one with arrows at both ends reads both
+ways, and one with no arrow reads source first. Only markers that point count
+as arrows: arrowheads (<code>classic</code>, <code>block</code>, <code>open</code>, <code>async</code> and their thin or
+double forms) and the inhibition T-bar <code>baseDash</code>. An oval, diamond, dash or
+ER symbol at an end is not an arrow. A marker drawio doesn't list as either
+gives no edge line. Every page of the file is read.</p>
+<p>A <code>.drawio.svg</code> file (drawio's editable SVG export) is read as an SVG: its
+labels are quotable, but it carries no <code>data-source</code>/<code>data-target</code>, so it
+gives no edge lines. Point at the <code>.drawio</code> source to quote its edges.</p>
+<p>Not read: cells marked invisible, in a hidden layer, or inside a collapsed
+group; labels switched off (<code>noLabel</code>) or drawn with zero <code>opacity</code>,
+<code>textOpacity</code> or <code>fontSize</code>, or with no <code>fontColor</code>; layer and page names,
+tooltips, styles and other attributes. HTML labels follow the same visibility
+rules as SVG <code>&lt;foreignObject&gt;</code> labels. A label computed from placeholders
+(<code>placeholders="1"</code>), or HTML that cannot be read statically, makes the
+reference <code>unavailable</code>.</p>
 <h2 id="using-in-data-files">Using in Data Files</h2>
 <p>Both file and URL references work in LinkML data files:</p>
 <pre><code class="language-yaml"># data.yaml

@@ -138,6 +138,19 @@ def test_user_object_labels_and_ids():
     assert not quotable(node, "SECRET")
 
 
+@pytest.mark.parametrize(
+    "html",
+    [
+        "&lt;p&gt;PTEN&lt;o:p&gt;&lt;/o:p&gt;&lt;/p&gt;",  # Word's leftovers in pasted text
+        "&lt;div foo:bar=&quot;1&quot;&gt;PTEN&lt;/div&gt;",
+        "&lt;svg:text&gt;PTEN&lt;/svg:text&gt;",
+    ],
+)
+def test_prefixed_html_from_pasted_text_is_read(html):
+    cell = f'<mxCell id="n" value="{html}" style="html=1;" vertex="1" parent="1"/>'
+    assert extract(cell) == "PTEN"
+
+
 # ---------------------------------------------------------------- not drawn
 
 

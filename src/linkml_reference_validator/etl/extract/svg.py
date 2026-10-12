@@ -971,13 +971,26 @@ def html_label_lines(html: str) -> list[str]:
     for fragment in lxml_html.fragments_fromstring(html):
         if isinstance(fragment, str):
             parts.append(xml_escape(fragment))
-        else:
-            parts.append(etree.tostring(fragment, method="xml", encoding="unicode", with_tail=True))
+            continue
+        for element in fragment.iter():
+            if not isinstance(element.tag, str):
+                continue
+            # HTML has no namespaces: a browser draws <o:p> (Word leaves them
+            # in pasted text) as an unknown inline element, so it becomes one
+            # here rather than an undeclared XML prefix.
+            if ":" in element.tag:
+                element.tag = "span"
+            for name in [n for n in element.attrib if ":" in n]:
+                del element.attrib[name]
+        parts.append(etree.tostring(fragment, method="xml", encoding="unicode", with_tail=True))
     document = (
         f'<svg xmlns="{SVG_NS}"><foreignObject><div xmlns="{XHTML_NS}">'
         f'{"".join(parts)}</div></foreignObject></svg>'
     )
-    root = _parse(document)
+    try:  # external input boundary: the label is untrusted HTML
+        root = _parse(document)
+    except (etree.XMLSyntaxError, ValueError) as e:
+        raise Unrenderable(f"an HTML label does not convert to XHTML: {e}") from e
     labels = _RenderedText(root, _check_static(root)).run(root)
     return [line for label in labels for line in label]
 

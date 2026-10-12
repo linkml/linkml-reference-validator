@@ -318,6 +318,33 @@ def _font_size_zero(value: str, parent_zero: bool) -> bool:
     return parent_zero if match.group(2) in _RELATIVE_FONT_UNITS else False
 
 
+def _declare(values: dict[str, str], prop: str, value: str) -> None:
+    """Set a property in cascade order, expanding the ``font`` shorthand.
+
+    The shorthand sets ``font-size`` where it stands, so it overrides an
+    earlier ``font-size`` and is overridden by a later one.
+
+    Examples:
+        >>> values = {"font-size": "12px"}
+        >>> _declare(values, "font", "italic 0/0 a")
+        >>> values
+        {'font-size': '0'}
+        >>> _declare(values, "font", "caption")
+        >>> values
+        {'font-size': 'medium'}
+    """
+    if prop != "font":
+        values[prop] = value
+        return
+    size = _FONT_SIZE_TOKEN.search(value)
+    if size:
+        values["font-size"] = size.group(1)
+    elif _COMPUTED_VALUE.search(value) or value.strip().lower() in ("inherit", "unset"):
+        values["font-size"] = value
+    else:  # a system font, such as ``caption``
+        values["font-size"] = "medium"
+
+
 def _href(element: etree._Element) -> Optional[str]:
     """A ``<use>`` element's same-document target id, if it has one."""
     href = element.get("href") or element.get(XLINK_HREF) or ""
@@ -361,7 +388,7 @@ class _RenderedText:
         else:
             for prop in VISIBILITY_PROPERTIES:
                 if element.get(prop) is not None:
-                    values[prop] = element.get(prop)  # type: ignore[assignment]
+                    _declare(values, prop, element.get(prop))
         matched = sorted(
             (r for r in self.rules if r.matches(element)),
             key=lambda r: (r.specificity, r.order),
@@ -369,10 +396,12 @@ class _RenderedText:
         inline = _declarations(element.get("style") or "")
         for important in (False, True):
             for rule in matched:
-                values.update((p, v) for p, v, imp in rule.declarations if imp == important)
-            values.update(
-                (p, v) for p, v, imp in inline if imp == important and p in VISIBILITY_PROPERTIES
-            )
+                for prop, value, imp in rule.declarations:
+                    if imp == important:
+                        _declare(values, prop, value)
+            for prop, value, imp in inline:
+                if imp == important and prop in VISIBILITY_PROPERTIES:
+                    _declare(values, prop, value)
         return self.apply(values, parent)
 
     @staticmethod
@@ -390,10 +419,6 @@ class _RenderedText:
         if opacity is not None and opacity <= 0:
             return False, parent
 
-        if "font" in values:
-            size = _FONT_SIZE_TOKEN.search(values["font"])
-            if size:
-                values.setdefault("font-size", size.group(1))
         visible = parent.visible
         if "visibility" in values:
             visible = values["visibility"].lower() not in ("hidden", "collapse")

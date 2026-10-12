@@ -227,6 +227,22 @@ def test_children_can_restore_inherited_properties(body):
     assert quotable(body, "claim shown")
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        '<text font-size="12" style="font: 0px sans-serif">SECRET</text>',
+        '<text style="font-size:12px; font: 0/0 a">SECRET</text>',
+        '<style>.h{font: 0px serif}</style><text class="h" font-size="12">SECRET</text>',
+    ],
+)
+def test_font_shorthand_applies_at_its_place_in_the_cascade(body):
+    assert not quotable(body + "<text>shown</text>", "SECRET")
+
+
+def test_later_font_size_overrides_font_shorthand():
+    assert quotable('<text style="font: 0px serif; font-size: 12px">claim shown</text>', "claim shown")
+
+
 def test_inline_style_beats_presentation_attribute():
     assert not quotable('<text display="inline" style="display:none">SECRET</text>', "SECRET")
     assert quotable('<text display="none" style="display:inline">shown</text>', "shown")

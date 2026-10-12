@@ -116,6 +116,9 @@ _FONT_SIZE_TOKEN = re.compile(
     r"|0*\.?0+)(?:/\S+)?(?=\s|$)",
     re.IGNORECASE,
 )
+#: A CSS comment, or a quoted string (group 1) that may contain "/*".
+_CSS_COMMENT = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|/\*.*?\*/""", re.S)
+
 #: CSS functions whose result this extractor does not compute.
 _COMPUTED_VALUE = re.compile(r"\b(?:var|calc|env|attr|min|max|clamp)\(", re.IGNORECASE)
 _COLOR_FUNCTION = re.compile(r"^(?:rgba?|hsla?)\((.*)\)$")
@@ -276,7 +279,9 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
         ...
         linkml_reference_validator.etl.extract.svg._Unrenderable: stylesheet selector 'g > text' sets visibility
     """
-    css = re.sub(r"/\*.*?\*/", "", css, flags=re.S)
+    # Skip quoted strings, so a "/*" inside a value cannot swallow the rules
+    # after it - a display:none among them - as though they were a comment.
+    css = _CSS_COMMENT.sub(lambda m: m.group(1) or "", css)
     rules: list[_Rule] = []
     for prelude, body in _blocks(css):
         if prelude.startswith("@"):

@@ -281,6 +281,11 @@ def test_stylesheet_rules_hide_text(style, body):
     assert not quotable(f"<style>{style}</style>{body}<text>shown</text>", "SECRET claim")
 
 
+def test_comment_marker_inside_a_string_does_not_swallow_rules():
+    style = """<style>.a{font-family:"x/*"} .h{display:none} .b{font-family:"*/"}</style>"""
+    assert not quotable(style + '<text class="h">SECRET</text><text>shown</text>', "SECRET")
+
+
 def test_stylesheet_specificity_is_respected():
     style = "<style>#t{display:inline} .h{display:none}</style>"
     assert quotable(style + '<text id="t" class="h">claim shown</text>', "claim shown")

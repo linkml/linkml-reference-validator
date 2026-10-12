@@ -331,11 +331,34 @@ def test_a_connector_containing_its_nodes_yields_none():
         '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" opacity="0"/></marker>',
         '<marker id="ghost" markerWidth="0"><path d="M0 0 L10 5 L0 10 z"/></marker>',
         '<marker id="ghost"><g display="none"><path d="M0 0 L10 5 L0 10 z"/></g></marker>',
+        '<marker id="ghost" opacity="0"><path d="M0 0 L10 5 L0 10 z"/></marker>',
+        '<marker id="ghost" viewBox="0 0 0 10"><path d="M0 0 L10 5 L0 10 z"/></marker>',
+        '<marker id="ghost" viewBox="0 0 10px 10"><path d="M0 0 L10 5 L0 10 z"/></marker>',
+        '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" fill="context-fill"/></marker>',
+        '<g display="none" fill="none"><marker id="ghost"><path d="M0 0 L10 5 L0 10 z"/></marker></g>',
     ],
-    ids=["empty", "unpainted", "transparent", "zero-size", "hidden-group"],
+    ids=[
+        "empty", "unpainted", "transparent", "zero-size", "hidden-group",
+        "transparent-marker", "zero-viewbox", "bad-viewbox", "context-fill", "unpainted-hidden-ancestor",
+    ],
 )
 def test_an_arrowhead_marker_that_draws_nothing_gives_no_direction(marker):
     body = f"<defs>{marker}</defs>" + PTEN + AKT + connector(marker='marker-end="url(#ghost)"')
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
+def test_a_marker_under_a_hidden_ancestor_still_draws():
+    # Markers are drawn where they are used, whatever their ancestors' display.
+    marker = '<defs><g display="none"><marker id="kept"><path d="M0 0 L10 5 L0 10 z"/></marker></g></defs>'
+    assert quotable(marker + PTEN + AKT + connector(marker='marker-end="url(#kept)"'), "PTEN inhibits AKT")
+
+
+def test_a_computed_value_in_a_marker_loses_only_the_edge_line():
+    marker = '<defs><marker id="themed"><path d="M0 0 L10 5 L0 10 z" fill="var(--edge)"/></marker></defs>'
+    body = marker + PTEN + AKT + connector(marker='marker-end="url(#themed)"')
+    text = extract(body)
+    assert text is not None
+    assert {"PTEN", "AKT", "inhibits"} <= set(text.split("\n\n"))
     assert not quotable(body, "PTEN inhibits AKT")
 
 

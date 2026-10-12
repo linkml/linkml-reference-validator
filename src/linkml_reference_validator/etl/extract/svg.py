@@ -72,7 +72,7 @@ Examples:
 
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Optional, Union
 
 from xml.sax.saxutils import escape as xml_escape
@@ -685,19 +685,36 @@ class _RenderedText:
         if marker is None or etree.QName(marker).localname != "marker":
             return False
         if marker not in self.marker_drawn:
-            self.marker_drawn[marker] = self._marker_paints(marker)
+            try:
+                self.marker_drawn[marker] = self._marker_paints(marker)
+            except Unrenderable:
+                # Only this arrowhead is uncertain, so only its edge is lost.
+                self.marker_drawn[marker] = False
         return self.marker_drawn[marker]
 
     def _marker_paints(self, marker: etree._Element) -> bool:
-        """Whether a ``<marker>`` holds a shape that paints, with the cascade applied."""
+        """Whether a ``<marker>`` holds a shape that paints, with the cascade applied.
+
+        ``context-fill`` counts as unpainted: it takes the connector's fill,
+        which is not checked.
+        """
         for size in ("markerWidth", "markerHeight"):
             value = _NUMBER.match(marker.get(size) or "3")
             if value is None or float(value.group(1)) <= 0:
                 return False
-        # Its content inherits from the marker's own ancestors, root first.
+        view_box = [_NUMBER.match(v) for v in re.split(r"[\s,]+", (marker.get("viewBox") or "0 0 1 1").strip())]
+        if len(view_box) != 4 or any(v is None or v.group(2) for v in view_box):
+            return False
+        if min(float(v.group(1)) for v in view_box[2:] if v is not None) <= 0:
+            return False
+        # Its content inherits from the marker's own ancestors, root first;
+        # their display and opacity do not apply where the marker is drawn.
         state = _State()
-        for element in [*reversed(list(marker.iterancestors())), marker]:
+        for element in reversed(list(marker.iterancestors())):
             _, state = self.cascade(element, state)
+        displayed, state = self.cascade(marker, state)
+        if not displayed:
+            return False
         stack = [(child, state) for child in marker]
         while stack:
             element, parent_state = stack.pop()
@@ -706,6 +723,8 @@ class _RenderedText:
             displayed, element_state = self.cascade(element, parent_state)
             if not displayed:
                 continue
+            if element_state.fill.strip().lower() == "context-fill":
+                element_state = replace(element_state, fill="none")
             if etree.QName(element).localname in SHAPES and self.shape_painted(element_state):
                 return True
             stack.extend((child, element_state) for child in element)
@@ -819,13 +838,14 @@ class _RenderedText:
         for prop, value in values.items():
             if _COMPUTED_VALUE.search(value):
                 raise Unrenderable(f"{prop}: {value} is computed at render time")
-        if values.get("display", "").lower() == "none":
-            return False, parent
-        if values.get("content-visibility", "").lower() == "hidden":
-            return False, parent
+        # A hidden element still hands its state on: a <marker> under it is
+        # drawn where it is used, inheriting from it all the same.
         opacity = _fraction(values.get("opacity", "1"))
-        if opacity is not None and opacity <= 0:
-            return False, parent
+        displayed = (
+            values.get("display", "").lower() != "none"
+            and values.get("content-visibility", "").lower() != "hidden"
+            and not (opacity is not None and opacity <= 0)
+        )
 
         visible = parent.visible
         if "visibility" in values:
@@ -850,7 +870,7 @@ class _RenderedText:
             color=values.get("color", parent.color),
             text_fill=values.get("-webkit-text-fill-color", parent.text_fill),
         )
-        return True, state
+        return displayed, state
 
     @staticmethod
     def _paint(paint: str, state: _State) -> str:

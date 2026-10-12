@@ -491,6 +491,20 @@ def test_hidden_html_in_foreign_object_is_not_quotable(inner):
     assert not quotable(body, "SECRET")
 
 
+def _xhtml(inner: str) -> str:
+    return f'<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">{inner}</div></foreignObject>'
+
+
+def test_closed_details_shows_only_its_summary():
+    body = _xhtml("<details><summary>PTEN</summary>SECRET <p>SECRET</p></details>")
+    assert extract(body) == "PTEN"
+
+
+def test_open_details_shows_everything():
+    body = _xhtml('<details open=""><summary>PTEN</summary><p>tumour suppressor</p></details>')
+    assert extract(body) == "PTEN\ntumour suppressor"
+
+
 def test_html_style_element_in_foreign_object_is_evaluated():
     body = (
         '<foreignObject><div xmlns="http://www.w3.org/1999/xhtml">'

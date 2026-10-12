@@ -408,6 +408,11 @@ def _is_drawable(node: etree._Element) -> bool:
     return qname.namespace in (SVG_NS, None) and qname.localname not in NON_RENDERED_SVG
 
 
+def _is_html(node: etree._Element, name: str) -> bool:
+    """Whether a node is the XHTML element ``name``."""
+    return isinstance(node.tag, str) and node.tag == f"{{{XHTML_NS}}}{name}"
+
+
 def _english_reader(element: etree._Element) -> bool:
     """Whether a ``<switch>`` child's conditions hold for an English-language reader."""
     if (element.get("requiredExtensions") or "").strip():
@@ -644,6 +649,14 @@ class _RenderedText:
         self.enter(element)
         if name == "br" or name in TEXT_BREAK_TAGS:
             self.end_line(line)
+        if name == "details" and element.get("open") is None:
+            # A closed <details> shows its first <summary> and nothing else.
+            summary = next((c for c in element if _is_html(c, "summary")), None)
+            if summary is not None:
+                self.foreign(summary, state, line)
+            self.end_line(line)
+            self.path.discard(id(element))
+            return
         painted = self.html_painted(state)
         if element.text and painted:
             line.append(element.text)

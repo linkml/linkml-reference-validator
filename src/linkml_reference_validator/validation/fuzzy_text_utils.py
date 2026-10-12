@@ -65,8 +65,10 @@ DROPPED_WORD_SCORE_CAP = 70.0
 def keeps_every_word(query: str, match: str) -> bool:
     """Whether every word of the query survives in the match.
 
-    A word counts as kept when the match has it, or a near spelling of it,
-    so a typo fix keeps its words while a fragment does not. Stopwords count
+    A word counts as kept when the match has it, or a near spelling of it
+    (see :func:`_near_spelling`, which excludes short words and words that
+    differ by a negating prefix), so a typo fix keeps its words while a
+    fragment does not. Stopwords count
     too: "no", "not", "only" or "after" can each reverse a claim, and are
     short enough that dropping one barely changes the length.
 
@@ -85,8 +87,13 @@ def keeps_every_word(query: str, match: str) -> bool:
     )
 
 
-#: Prefixes that negate a word: "unaffected" is not a misspelling of "affected".
-NEGATING_PREFIXES = ("un", "in", "im", "ir", "il", "non", "dis", "a")
+#: Prefixes that negate or reverse a word: "unaffected" is not a misspelling
+#: of "affected", nor "dephosphorylation" of "phosphorylation". The list errs
+#: on the side of more ("a" also splits "amass" from "mass"): a false entry
+#: only stops a near spelling counting as kept, which can only lower a score.
+MEANING_CHANGING_PREFIXES = (
+    "un", "in", "im", "ir", "il", "non", "dis", "a", "de", "dys", "mis", "anti",
+)
 
 
 def _near_spelling(word: str, other: str) -> bool:
@@ -94,7 +101,8 @@ def _near_spelling(word: str, other: str) -> bool:
 
     Words of three letters or fewer must match exactly: "not" is not "note",
     and "in" is not "on", though either pair scores as near. A word that is
-    the other plus a negating prefix is its opposite, not a misspelling.
+    the other plus a prefix in ``MEANING_CHANGING_PREFIXES`` is its opposite,
+    or another word, not a misspelling.
 
     Examples:
         >>> _near_spelling("signaling", "signalling"), _near_spelling("tumor", "tumour")
@@ -104,7 +112,9 @@ def _near_spelling(word: str, other: str) -> bool:
     """
     if len(word) <= 3 or len(other) <= 3:
         return False
-    if any(word == prefix + other or other == prefix + word for prefix in NEGATING_PREFIXES):
+    if any(
+        word == prefix + other or other == prefix + word for prefix in MEANING_CHANGING_PREFIXES
+    ):
         return False
     return fuzz.ratio(word, other) >= 80
 

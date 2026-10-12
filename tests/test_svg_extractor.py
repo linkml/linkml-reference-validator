@@ -906,7 +906,17 @@ def test_fuzzy_repair_never_drops_a_stopword_that_carries_the_meaning(reference)
 
 @pytest.mark.parametrize(
     "said,quoted",
-    [("affected", "unaffected"), ("active", "inactive"), ("sensitive", "insensitive"), ("typical", "atypical")],
+    [
+        ("affected", "unaffected"),
+        ("active", "inactive"),
+        ("sensitive", "insensitive"),
+        ("typical", "atypical"),
+        ("phosphorylated", "dephosphorylated"),
+        ("activated", "deactivated"),
+        ("regulated", "dysregulated"),
+        ("regulated", "misregulated"),
+        ("apoptotic", "antiapoptotic"),
+    ],
 )
 def test_fuzzy_repair_never_strips_a_negating_prefix(said, quoted):
     reference = ReferenceContent(

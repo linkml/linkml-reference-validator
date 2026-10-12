@@ -241,6 +241,13 @@ def test_unreadable_files_yield_none(data):
     assert DrawioExtractor().extract(data) is None
 
 
+def test_a_truncated_page_fails_closed():
+    deflater = zlib.compressobj(9, zlib.DEFLATED, -15)
+    raw = deflater.compress(quote(model(PTEN)).encode()) + deflater.flush()
+    data = b"<mxfile><diagram>" + base64.b64encode(raw[: len(raw) // 2]) + b"</diagram></mxfile>"
+    assert DrawioExtractor().extract(data) is None
+
+
 def test_a_decompression_bomb_fails_closed():
     deflater = zlib.compressobj(9, zlib.DEFLATED, -15)
     raw = deflater.compress(b"A" * (64 * 1024 * 1024)) + deflater.flush()

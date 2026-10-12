@@ -508,7 +508,9 @@ def _geometry_is_static(root: etree._Element) -> bool:
             return False
         if name == "style":
             css = "".join(element.itertext())
-            if declares_geometry(css) or re.search(r"(?<![\w-])marker(-start|-end|-mid)?\s*:", css, re.I):
+            if declares_geometry(css) or re.search(
+                r"(?<![\w-])(marker(-start|-end|-mid)?|stroke-dasharray)\s*:", css, re.I
+            ):
                 return False
     return True
 
@@ -537,6 +539,42 @@ def _marker(shape: etree._Element, at: str) -> Optional[str]:
                     return None if value.lower() in ("none", "") else value
         node = node.getparent()
     return None
+
+
+def _inherited(shape: etree._Element, prop: str) -> Optional[str]:
+    """The nearest value of an inherited property on a shape or its ancestors."""
+    node: Optional[etree._Element] = shape
+    while node is not None:
+        style = {p: value for p, value, _ in _declarations(node.get("style") or "")}
+        for declared in (style, node.attrib):
+            if prop in declared:
+                return str(declared[prop]).strip()
+        node = node.getparent()
+    return None
+
+
+def _dashes_draw(shape: etree._Element) -> bool:
+    """Whether a shape's dash pattern draws any of its stroke.
+
+    A pattern whose dashes are all zero long, such as ``0 1000``, draws
+    nothing. The pattern repeats twice over when it has an odd length, so
+    the dashes are its even entries of the doubled list.
+
+    Examples:
+        >>> _dashes_draw(etree.fromstring('<path stroke-dasharray="0 9"/>'))
+        False
+        >>> _dashes_draw(etree.fromstring('<path stroke-dasharray="4 2"/>'))
+        True
+    """
+    value = _inherited(shape, "stroke-dasharray")
+    if value is None or value.lower() in ("none", ""):
+        return True
+    lengths = [float(n) for n in re.findall(r"[+-]?(?:\d+\.?\d*|\.\d+)", value)]
+    if not lengths:
+        return True
+    if len(lengths) % 2:
+        lengths = lengths * 2
+    return any(length > 0 for length in lengths[0::2])
 
 
 def _draws_arrowhead(shape: etree._Element, at: str, ids: dict[str, etree._Element]) -> bool:
@@ -682,7 +720,7 @@ class _RenderedText:
                 # line for the same picture.
                 if _marker(stroke, "start") is not None:
                     continue
-                if not _draws_arrowhead(stroke, "end", self.ids):
+                if not _draws_arrowhead(stroke, "end", self.ids) or not _dashes_draw(stroke):
                     continue
                 ends = connector_endpoints(stroke, root)
                 if ends and touches(ends[0], source_box) and touches(ends[1], target_box):

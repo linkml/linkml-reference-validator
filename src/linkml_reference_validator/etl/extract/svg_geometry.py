@@ -49,7 +49,6 @@ OBSCURING_ATTRIBUTES = ("clip-path", "mask", "filter")
 NEW_VIEWPORTS = frozenset({"svg", "symbol", "pattern", "marker", "clipPath", "mask", "use"})
 
 _NUMBER = r"[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?"
-_TOKEN = re.compile(rf"([MmLlHhVvCcSsQqTtAaZz])|({_NUMBER})|([\s,]+)|(.)")
 _TRANSFORM = re.compile(r"\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)\s*,?")
 _LENGTH = re.compile(rf"\s*({_NUMBER})\s*(px)?\s*$")
 
@@ -145,49 +144,50 @@ def _length(element: etree._Element, name: str, default: Optional[float] = None)
     return float(match.group(1)) if match else None
 
 
+_SEPARATOR = re.compile(r"[\s,]*")
+_NUMBER_AT = re.compile(_NUMBER)
+_FLAG_AT = re.compile(r"[01]")
+_COMMAND_AT = re.compile(r"[MmLlHhVvCcSsQqTtAaZz]")
+
+
 def path_vertices(d: str) -> Optional[list[Point]]:
     """The points a path's segments start and end at, or None if it is malformed.
 
-    Control points are left out: a curve does not pass through them.
+    Control points are left out: a curve does not pass through them. An
+    arc's two flags are single characters, so ``a5 5 0 0010 10`` is flags
+    ``0`` and ``0`` and the end point ``(10, 10)``.
 
     Examples:
         >>> path_vertices("M0 0 h10 v5")
         [(0.0, 0.0), (10.0, 0.0), (10.0, 5.0)]
     """
-    tokens: list[object] = []
-    for command, number, space, other in _TOKEN.findall(d):
-        if other:
-            return None
-        if command:
-            tokens.append(command)
-        elif number:
-            tokens.append(float(number))
-    if not tokens or not isinstance(tokens[0], str) or tokens[0] not in "Mm":
-        return None
-
     vertices: list[Point] = []
     x = y = start_x = start_y = 0.0
-    index = 0
     command = ""
-    while index < len(tokens):
-        token = tokens[index]
-        if isinstance(token, str):
-            command = token
-            index += 1
-            if command in "Zz":
-                x, y = start_x, start_y
-                vertices.append((x, y))
-                continue
-        elif command in ("", "Z", "z"):
+    position = _SEPARATOR.match(d, 0).end()  # type: ignore[union-attr]
+    while position < len(d):
+        letter = _COMMAND_AT.match(d, position)
+        if letter:
+            command = letter.group()
+            position = _SEPARATOR.match(d, letter.end()).end()  # type: ignore[union-attr]
+        elif not command or command in "Zz":
             return None  # numbers with no command to take them
-        arity = _ARITY[command.upper()]
-        args = tokens[index : index + arity]
-        if len(args) < arity or not all(isinstance(a, float) for a in args):
-            return None
-        index += arity
-        values = [a for a in args if isinstance(a, float)]
-        relative = command.islower()
+        if not vertices and command not in "Mm":
+            return None  # a path must begin with a move
         upper = command.upper()
+        if upper == "Z":
+            x, y = start_x, start_y
+            vertices.append((x, y))
+            continue
+        values = []
+        for index in range(_ARITY[upper]):
+            pattern = _FLAG_AT if upper == "A" and index in (3, 4) else _NUMBER_AT
+            match = pattern.match(d, position)
+            if not match:
+                return None
+            values.append(float(match.group()))
+            position = _SEPARATOR.match(d, match.end()).end()  # type: ignore[union-attr]
+        relative = command.islower()
         if upper == "H":
             x = values[0] + (x if relative else 0.0)
         elif upper == "V":

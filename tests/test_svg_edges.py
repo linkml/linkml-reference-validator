@@ -321,6 +321,27 @@ def test_a_drawn_self_loop_is_an_edge():
     assert quotable(PTEN + loop, "PTEN activates PTEN")
 
 
+@pytest.mark.parametrize(
+    "dashes",
+    ['stroke-dasharray="0 1000"', 'stroke-dasharray="0,5,0,5"', 'style="stroke-dasharray: 0 10"'],
+)
+def test_a_stroke_of_zero_length_dashes_draws_nothing(dashes):
+    assert not quotable(PTEN + AKT + connector(path_attrs=dashes), "PTEN inhibits AKT")
+
+
+def test_an_inherited_zero_dash_stroke_draws_nothing():
+    assert not quotable(PTEN + AKT + connector(attrs='stroke-dasharray="0 9"'), "PTEN inhibits AKT")
+
+
+def test_a_dashed_stroke_still_draws():
+    assert quotable(PTEN + AKT + connector(path_attrs='stroke-dasharray="4 2"'), "PTEN inhibits AKT")
+
+
+def test_a_stylesheet_dash_pattern_confirms_nothing():
+    body = "<style>path { stroke-dasharray: 0 99 }</style>" + PTEN + AKT + connector()
+    assert not quotable(body, "PTEN inhibits AKT")
+
+
 def test_a_missing_node_yields_none():
     assert not quotable(PTEN + connector(), "PTEN inhibits AKT")
 
@@ -377,6 +398,18 @@ def test_unparseable_transforms_are_none(value):
     ],
 )
 def test_path_endpoints(d, expected):
+    assert path_endpoints(d) == expected
+
+
+@pytest.mark.parametrize(
+    "d,expected",
+    [
+        ("M0 0 a5 5 0 0010 10", ((0, 0), (10, 10))),  # flags run into the end point
+        ("M0 0 A5 5 0 1 1 20 0", ((0, 0), (20, 0))),
+        ("M0 0 a5,5,30,1,0,-3,4", ((0, 0), (-3, 4))),
+    ],
+)
+def test_arc_flags_are_single_characters(d, expected):
     assert path_endpoints(d) == expected
 
 

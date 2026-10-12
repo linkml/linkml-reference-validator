@@ -165,6 +165,8 @@ def _inflate(payload: str, limit: int) -> bytes:
         raise Unrenderable(f"a diagram page is not base64 deflate: {e}") from e
     if inflater.unconsumed_tail:
         raise Unrenderable("the diagram's pages inflate past the size limit")
+    if not inflater.eof:
+        raise Unrenderable("a diagram page is a truncated deflate stream")
     return data
 
 

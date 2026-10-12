@@ -74,7 +74,10 @@ import re
 from dataclasses import dataclass
 from typing import Optional, Union
 
+from xml.sax.saxutils import escape as xml_escape
+
 from lxml import etree  # type: ignore[import-untyped]
+from lxml import html as lxml_html  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
@@ -169,7 +172,7 @@ _COMPUTED_VALUE = re.compile(r"\b(?:var|calc|env|attr|min|max|clamp)\(", re.IGNO
 _COLOR_FUNCTION = re.compile(r"^(?:rgba?|hsla?)\((.*)\)$")
 
 
-class _Unrenderable(Exception):
+class Unrenderable(Exception):
     """The text this SVG renders cannot be determined statically."""
 
 
@@ -325,7 +328,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
     """Rules of a stylesheet that set visibility properties.
 
     Raises:
-        _Unrenderable: A rule sets a visibility property in a way this
+        Unrenderable: A rule sets a visibility property in a way this
             extractor does not evaluate.
 
     Examples:
@@ -334,7 +337,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
         >>> _parse_stylesheet("g > text {display:none}", 0)
         Traceback (most recent call last):
         ...
-        linkml_reference_validator.etl.extract.svg._Unrenderable: stylesheet selector 'g > text' sets visibility
+        linkml_reference_validator.etl.extract.svg.Unrenderable: stylesheet selector 'g > text' sets visibility
     """
     # Skip quoted strings, so a "/*" inside a value cannot swallow the rules
     # after it - a display:none among them - as though they were a comment.
@@ -344,16 +347,16 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
         if prelude.startswith("@"):
             name = re.match(r"@([\w-]*)", prelude).group(1).lower()  # type: ignore[union-attr]
             if name == "import":
-                raise _Unrenderable("stylesheet imports another stylesheet")
+                raise Unrenderable("stylesheet imports another stylesheet")
             if name not in HARMLESS_AT_RULES and body and _declares_visibility(body):
-                raise _Unrenderable(f"@{name} rule sets visibility")
+                raise Unrenderable(f"@{name} rule sets visibility")
             continue
         if body is None:
             continue
         all_declarations = _declarations(body)
         for prop, value, _ in all_declarations:
             if _changes_text(prop, value):
-                raise _Unrenderable(f"stylesheet rule {prelude!r} sets {prop}: {value}")
+                raise Unrenderable(f"stylesheet rule {prelude!r} sets {prop}: {value}")
         declarations = tuple(d for d in all_declarations if d[0] in VISIBILITY_PROPERTIES)
         if not declarations:
             continue
@@ -365,7 +368,7 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
                 continue
             match = _SIMPLE_SELECTOR.fullmatch(selector)
             if not selector or not match:
-                raise _Unrenderable(f"stylesheet selector {selector!r} sets visibility")
+                raise Unrenderable(f"stylesheet selector {selector!r} sets visibility")
             tag = match.group(1) if match.group(1) != "*" else None
             parts = re.findall(r"[.#][\w-]+", match.group(2))
             rules.append(
@@ -616,7 +619,7 @@ class _RenderedText:
         }
         for prop, value in values.items():
             if _COMPUTED_VALUE.search(value):
-                raise _Unrenderable(f"{prop}: {value} is computed at render time")
+                raise Unrenderable(f"{prop}: {value} is computed at render time")
         if values.get("display", "").lower() == "none":
             return False, parent
         if values.get("content-visibility", "").lower() == "hidden":
@@ -693,12 +696,12 @@ class _RenderedText:
         """
         self.budget -= 1
         if self.budget < 0:
-            raise _Unrenderable("<use> expansion exceeds the size budget")
+            raise Unrenderable("<use> expansion exceeds the size budget")
 
     def enter(self, element: etree._Element) -> None:
         """Push ``element`` on the walk path."""
         if len(self.path) >= MAX_DEPTH:
-            raise _Unrenderable("nesting exceeds the depth budget")
+            raise Unrenderable("nesting exceeds the depth budget")
         self.path.add(id(element))
 
     def svg(self, element: etree._Element, state: _State) -> None:
@@ -864,7 +867,7 @@ class _RenderedText:
         """Emit the collected characters as one line, whitespace collapsed."""
         text = re.sub(r"\s+", " ", "".join(parts)).strip()
         if _BIDI_CONTROL.search(text):
-            raise _Unrenderable("a bidi control character reorders the drawn text")
+            raise Unrenderable("a bidi control character reorders the drawn text")
         if text:
             self.labels[-1].append(text)
         parts.clear()
@@ -879,38 +882,38 @@ def _check_static(root: etree._Element) -> list[_Rule]:
     """Return the document's stylesheet rules, or fail closed.
 
     Raises:
-        _Unrenderable: Scripts, external stylesheets, visibility animations, or
+        Unrenderable: Scripts, external stylesheets, visibility animations, or
             stylesheet rules this extractor cannot evaluate.
     """
     # Both scans are needed: root.iter() does not reach the processing
     # instructions before the root element, where xml-stylesheet usually is.
     for node in root.itersiblings(preceding=True):
         if isinstance(node, etree._ProcessingInstruction) and node.target == "xml-stylesheet":
-            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+            raise Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
     rules: list[_Rule] = []
     for element in root.iter():
         if isinstance(element, etree._ProcessingInstruction) and element.target == "xml-stylesheet":
-            raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
+            raise Unrenderable("<?xml-stylesheet?> applies an external stylesheet")
         if not isinstance(element.tag, str):
             continue
         name = etree.QName(element).localname
         if name == "script":
-            raise _Unrenderable("the SVG contains a script")
+            raise Unrenderable("the SVG contains a script")
         if name == "bdo" and etree.QName(element).namespace == XHTML_NS:
-            raise _Unrenderable("a <bdo> draws its text in reverse order")
+            raise Unrenderable("a <bdo> draws its text in reverse order")
         # unicode-bidi is the only one that is also a presentation attribute;
         # a content= attribute is RDFa or <meta>, not generated text.
         inline = [("unicode-bidi", element.get("unicode-bidi") or "")]
         inline += [(p, v) for p, v, _ in _declarations(element.get("style") or "")]
         for prop, value in inline:
             if _changes_text(prop, value):
-                raise _Unrenderable(f"<{name}> sets {prop}: {value}")
+                raise Unrenderable(f"<{name}> sets {prop}: {value}")
         if name == "link" and "stylesheet" in (element.get("rel") or "").lower():
-            raise _Unrenderable("the SVG links an external stylesheet")
+            raise Unrenderable("the SVG links an external stylesheet")
         if name in ("set", "animate", "animateColor"):
             target = (element.get("attributeName") or "").strip().lower()
             if target in ANIMATED_VISIBILITY:
-                raise _Unrenderable(f"the SVG animates {target!r}")
+                raise Unrenderable(f"the SVG animates {target!r}")
         if name == "style":
             rules.extend(_parse_stylesheet("".join(element.itertext()), len(rules)))
     return rules
@@ -938,6 +941,45 @@ def _parse(data: Union[bytes, str]) -> etree._Element:
         remove_comments=True,
     )
     return etree.fromstring(data, parser)
+
+
+def parse_untrusted_xml(data: Union[bytes, str]) -> etree._Element:
+    """Parse untrusted XML as SVG is parsed: no external entities, no network.
+
+    Raises ``etree.XMLSyntaxError`` or ``ValueError`` if it is malformed.
+    """
+    return _parse(data)
+
+
+def html_label_lines(html: str) -> list[str]:
+    """The lines an HTML label draws, read as a ``<foreignObject>`` label is.
+
+    For labels kept as HTML outside an SVG, such as drawio's: the fragment is
+    walked with the same visibility rules, so hidden HTML is not read and
+    anything that cannot be read statically fails closed.
+
+    Raises:
+        Unrenderable: What the label draws cannot be determined statically.
+
+    Examples:
+        >>> html_label_lines("<b>PTEN</b><br>tumour <span style='display:none'>x</span>suppressor")
+        ['PTEN', 'tumour suppressor']
+    """
+    if not html.strip():
+        return []
+    parts = []
+    for fragment in lxml_html.fragments_fromstring(html):
+        if isinstance(fragment, str):
+            parts.append(xml_escape(fragment))
+        else:
+            parts.append(etree.tostring(fragment, method="xml", encoding="unicode", with_tail=True))
+    document = (
+        f'<svg xmlns="{SVG_NS}"><foreignObject><div xmlns="{XHTML_NS}">'
+        f'{"".join(parts)}</div></foreignObject></svg>'
+    )
+    root = _parse(document)
+    labels = _RenderedText(root, _check_static(root)).run(root)
+    return [line for label in labels for line in label]
 
 
 @ExtractorRegistry.register
@@ -976,7 +1018,7 @@ class SVGExtractor(Extractor):
             return None
         try:  # fail closed: these are the cases this module documents
             labels = _RenderedText(root, _check_static(root)).run(root)
-        except _Unrenderable as e:
+        except Unrenderable as e:
             logger.warning(f"Not extracting SVG text, as what it renders is uncertain: {e}")
             return None
         return SVG_LABEL_SEPARATOR.join("\n".join(label) for label in labels) or None

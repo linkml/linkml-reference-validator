@@ -46,6 +46,7 @@ import zlib
 from dataclasses import dataclass, field
 from typing import Iterator, Optional, Union
 from urllib.parse import unquote
+from xml.sax.saxutils import escape as xml_escape
 
 from lxml import etree  # type: ignore[import-untyped]
 
@@ -249,10 +250,7 @@ def _label_lines(cell: _Cell) -> list[str]:
         return []
     if cell.style.get("html") == "1":
         return html_label_lines(cell.label)
-    escaped = (
-        cell.label.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    )
-    return html_label_lines(escaped.replace("\n", "<br>"))
+    return html_label_lines(xml_escape(cell.label).replace("\n", "<br>"))
 
 
 def _page_labels(model: etree._Element) -> list[list[str]]:
@@ -265,6 +263,9 @@ def _page_labels(model: etree._Element) -> list[list[str]]:
     labels = [cell.lines for cell in drawn if cell.lines]
 
     shown = {cell.id: cell for cell in drawn}
+    children: dict[str, list[_Cell]] = {}
+    for cell in drawn:
+        children.setdefault(cell.parent, []).append(cell)
     for edge in drawn:
         if edge.attrs.get("edge") != "1" or not _stroke_shown(edge.style):
             continue
@@ -274,7 +275,7 @@ def _page_labels(model: etree._Element) -> list[list[str]]:
         source = shown.get(edge.attrs.get("source", ""))
         target = shown.get(edge.attrs.get("target", ""))
         edge_words = edge.lines + [
-            line for child in drawn if child.parent == edge.id and child is not edge for line in child.lines
+            line for child in children.get(edge.id, []) if child is not edge for line in child.lines
         ]
         if source and target and source.lines and target.lines and edge_words:
             first, last = (source, target) if forward else (target, source)

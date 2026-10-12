@@ -16,8 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from linkml_reference_validator.etl.acquire import resolve_format
-from linkml_reference_validator.etl.extract.drawio import DrawioExtractor
-from linkml_reference_validator.etl.extract.svg import SVGExtractor
+from linkml_reference_validator.etl.extract import ExtractorRegistry
 from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
@@ -116,7 +115,10 @@ class FileSource(ReferenceSource):
             >>> (ref.content, ref.content_type, ref.title)
             ('PTEN', 'local_svg', 'fig.svg')
         """
-        extractor = DrawioExtractor() if figure_format == "drawio" else SVGExtractor()
+        # The registry maps each figure format to its extractor.
+        extractor = ExtractorRegistry.get(figure_format)
+        if extractor is None:
+            raise LookupError(f"no extractor is registered for {figure_format}")
         text = extractor.extract(file_path.read_bytes())
         return ReferenceContent(
             reference_id=f"file:{file_path}",

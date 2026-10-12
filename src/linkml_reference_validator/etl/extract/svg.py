@@ -603,6 +603,13 @@ class _RenderedText:
         """
         if not _geometry_is_static(root):
             return []
+        boxes: dict[etree._Element, Optional[tuple[float, float, float, float]]] = {}
+
+        def box(node: etree._Element) -> Optional[tuple[float, float, float, float]]:
+            if node not in boxes:
+                boxes[node] = node_bbox(node, root, self.painted_shapes)
+            return boxes[node]
+
         lines = []
         for element in root.iter():
             if not isinstance(element.tag, str):
@@ -619,8 +626,7 @@ class _RenderedText:
             ]
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
-            source_box = node_bbox(source, root, self.painted_shapes)
-            target_box = node_bbox(target, root, self.painted_shapes)
+            source_box, target_box = box(source), box(target)
             if not (source_labels and target_labels and source_box and target_box):
                 continue
             # Any stroked shape of the connector may join the nodes: an
@@ -813,7 +819,8 @@ class _RenderedText:
         else:
             for child in element:
                 self.svg(child, state)
-        if recorded:
+        # Only nodes (named by an id) and connectors are ever looked up.
+        if recorded and (element.get("id") is not None or element.get("data-source") is not None):
             self.drawn_labels[element] = [label for label in self.labels[first_label:] if label]
         self.path.discard(id(element))
 

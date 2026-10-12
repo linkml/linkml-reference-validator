@@ -880,6 +880,29 @@ def test_fuzzy_repair_never_drops_a_short_qualifier_from_a_long_quote():
     assert "try:" not in (match.suggested_fix or "")
 
 
+NEGATED = "No significant change in AKT phosphorylation was detected after rapamycin treatment"
+UNNEGATED = "significant change in AKT phosphorylation was detected after rapamycin treatment"
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        ReferenceContent(
+            reference_id="file:fig.svg", content=f"{UNNEGATED}\n\nmTOR", content_type="local_svg"
+        ),
+        ReferenceContent(reference_id="PMID:1", content=f"{UNNEGATED.capitalize()}. Other text."),
+    ],
+    ids=["svg-labels", "prose"],
+)
+def test_fuzzy_repair_never_drops_a_stopword_that_carries_the_meaning(reference):
+    # "No" is a stopword, and only 3 characters: dropping it inverts the claim.
+    config = ReferenceValidationConfig()
+    result = SupportingTextRepairer(config).attempt_repair(NEGATED, reference.reference_id, reference)
+    assert not result.is_repaired
+    match = SupportingTextValidator(config).find_text_in_reference(NEGATED, reference)
+    assert "try:" not in (match.suggested_fix or "")
+
+
 def test_a_fragment_does_not_hide_the_real_correction_after_it():
     reference = ReferenceContent(
         reference_id="PMID:1",

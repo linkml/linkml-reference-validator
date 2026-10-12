@@ -54,28 +54,32 @@ def normalize_whitespace(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 
-#: The highest score a match that drops a word of the quote may have. A
+#: The highest score a match that drops any word of the quote may have. A
 #: suggestion needs more than this (see ``generate_suggested_fix``), and so
 #: does a repair, so such a match is reported but never offered as the fix.
 DROPPED_WORD_SCORE_CAP = 70.0
 
 
 def keeps_every_word(query: str, match: str) -> bool:
-    """Whether every significant word of the query survives in the match.
+    """Whether every word of the query survives in the match.
 
     A word counts as kept when the match has it, or a near spelling of it,
-    so a typo fix keeps its words while a fragment does not.
+    so a typo fix keeps its words while a fragment does not. Stopwords count
+    too: "no", "not", "only" or "after" can each reverse a claim, and are
+    short enough that dropping one barely changes the length.
 
     Examples:
         >>> keeps_every_word("PTEN activates AKT signaling", "PTEN activates AKT signalling")
         True
         >>> keeps_every_word("PTEN activates AKT in mice", "PTEN activates AKT")
         False
+        >>> keeps_every_word("No change in AKT", "change in AKT")
+        False
     """
-    match_words = get_significant_words(match)
+    match_words = set(re.findall(r"\w+", match.lower()))
     return all(
         word in match_words or any(fuzz.ratio(word, other) >= 80 for other in match_words)
-        for word in get_significant_words(query)
+        for word in re.findall(r"\w+", query.lower())
     )
 
 

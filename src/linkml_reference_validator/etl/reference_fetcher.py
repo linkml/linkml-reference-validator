@@ -132,8 +132,10 @@ ABSENT_CONTENT_CACHE_VERSION = 1
 #: URL (#93). Neither fix rewrites an entry already written, and both kinds of
 #: entry carry a current ``extractor_version``, so without this they would be
 #: served as they are forever. Stamped from ``reference.metadata``, like the
-#: HTML stamp, and only on a fresh URLSource fetch.
-URL_SOURCE_CACHE_VERSION = 1
+#: HTML stamp, and only on a fresh URLSource fetch. Version 2: HTML is cached as
+#: readable text rather than markup, so a quote through a link or bold text
+#: matches (#102).
+URL_SOURCE_CACHE_VERSION = 2
 
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",

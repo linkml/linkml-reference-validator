@@ -1733,7 +1733,7 @@ class ReferenceFetcher:
 
     @staticmethod
     def _is_svg_file_reference(reference_id: str) -> bool:
-        """Whether a reference is a ``file:`` SVG, read through the SVG extractor.
+        """Whether a reference is a ``file:`` SVG, which FileSource reads through the SVG extractor.
 
         Examples:
             >>> ReferenceFetcher._is_svg_file_reference("file:/figs/Fig1.SVG")
@@ -1741,7 +1741,8 @@ class ReferenceFetcher:
             >>> ReferenceFetcher._is_svg_file_reference("url:https://x/fig1.svg")
             False
         """
-        return reference_id.startswith("file:") and reference_id.lower().endswith(".svg")
+        # The same test FileSource routes on, so the stamp cannot drift from it.
+        return reference_id.startswith("file:") and resolve_format(None, reference_id, None) == "svg"
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:

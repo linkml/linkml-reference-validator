@@ -295,6 +295,32 @@ def test_any_stroked_shape_of_the_connector_may_confirm_it():
     assert quotable(body, "PTEN inhibits AKT")
 
 
+def test_a_node_containing_the_other_yields_none():
+    # The compartment's labels and box would take in TP53's.
+    body = (
+        '<g id="pten"><rect x="0" y="0" width="300" height="100"/><text>Nucleus</text>'
+        '<g id="akt"><rect x="200" y="0" width="60" height="30"/><text>TP53</text></g></g>'
+        + connector()
+    )
+    assert not quotable(body, "TP53 inhibits TP53")
+    assert not quotable(body, "Nucleus TP53 inhibits TP53")
+
+
+def test_a_node_containing_the_connector_yields_none():
+    # PTEN's labels would take in the edge label: "PTEN inhibits inhibits AKT".
+    body = PTEN.replace("</g>", connector() + "</g>") + AKT
+    labels = (extract(body) or "").split("\n\n")
+    assert not [label for label in labels if "PTEN" in label and "AKT" in label]
+
+
+def test_a_drawn_self_loop_is_an_edge():
+    loop = (
+        '<g data-source="pten" data-target="pten">'
+        f'<path d="M30 0 C30 -40, 50 -40, 50 0" stroke="black" fill="none" {END}/><text>activates</text></g>'
+    )
+    assert quotable(PTEN + loop, "PTEN activates PTEN")
+
+
 def test_a_missing_node_yields_none():
     assert not quotable(PTEN + connector(), "PTEN inhibits AKT")
 

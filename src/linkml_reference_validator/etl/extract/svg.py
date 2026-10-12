@@ -550,6 +550,28 @@ def _draws_arrowhead(shape: etree._Element, at: str, ids: dict[str, etree._Eleme
     return target is not None and etree.QName(target).localname == "marker"
 
 
+def _nested(source: etree._Element, target: etree._Element, connector: etree._Element) -> bool:
+    """Whether one node holds the other, or either holds the connector.
+
+    A node's labels and box are everything inside it, so a compartment
+    holding its target would lend it the target's label and box, and a node
+    holding the connector would take in the edge label. A self-loop (one
+    node as both source and target) is not nested.
+
+    Examples:
+        >>> outer = etree.fromstring('<g><g/><path/></g>')
+        >>> inner, path = outer[0], outer[1]
+        >>> _nested(outer, inner, path), _nested(inner, inner, path)
+        (True, False)
+    """
+    def holds(outer: etree._Element, inner: etree._Element) -> bool:
+        return outer is not inner and any(a is outer for a in inner.iterancestors())
+
+    if holds(source, target) or holds(target, source):
+        return True
+    return holds(source, connector) or holds(target, connector) or connector in (source, target)
+
+
 #: Shapes that can draw a connector between two nodes.
 CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
 
@@ -644,6 +666,8 @@ class _RenderedText:
                 if isinstance(e.tag, str) and e.tag.split("}")[-1] in CONNECTOR_SHAPES
                 and self.stroked.get(e)
             ]
+            if _nested(source, target, element):
+                continue
             source_labels = self.drawn_labels.get(source)
             target_labels = self.drawn_labels.get(target)
             source_box, target_box = box(source), box(target)

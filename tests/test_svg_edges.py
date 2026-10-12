@@ -54,6 +54,11 @@ def extract(body: str) -> str | None:
     return SVGExtractor().extract(f"{SVG_OPEN}{ARROW_DEFS}{body}</svg>".encode())
 
 
+def edges(body: str) -> list[str]:
+    """The edge lines extracted from ``body``: every node and edge label here is one word."""
+    return [label for label in (extract(body) or "").split("\n\n") if " " in label]
+
+
 def quotable(body: str, quote: str) -> bool:
     text = extract(body)
     if text is None:
@@ -128,7 +133,6 @@ def test_transforms_are_applied_to_nodes_and_connector():
         "M60 100 L200 100",  # runs below both nodes
         "M60 15 L150 15",  # stops short of the target
         "M300 15 L200 15",  # starts beside the target, not at the source
-        "M200 15 L60 15",  # runs from target to source: the attributes name the other direction
     ],
 )
 def test_a_connector_that_does_not_join_the_named_nodes_yields_none(d):
@@ -226,53 +230,69 @@ def test_geometry_set_or_moved_by_css_or_animation_confirms_nothing(body):
     assert not quotable(body, "PTEN inhibits AKT")
 
 
+REVERSED = "M200 15 L60 15"  # drawn from AKT's box to PTEN's
+START = 'marker-start="url(#arrow)"'
+FORWARD, BACKWARD, BOTH = ["PTEN inhibits AKT"], ["AKT inhibits PTEN"], ["PTEN inhibits AKT", "AKT inhibits PTEN"]
+
+
 @pytest.mark.parametrize(
-    "path_attrs",
+    "d,marker,expected",
     [
-        'marker-start="url(#arrow)"',
-        'marker-start="url(#arrow)" marker-end="url(#arrow)"',
-        'style="marker-start: url(#arrow)"',
-        'style="marker: url(#arrow)"',
+        ("M60 15 L200 15", END, FORWARD),
+        ("M60 15 L200 15", START, BACKWARD),  # the arrowhead points at PTEN
+        ("M60 15 L200 15", f"{START} {END}", BOTH),
+        ("M60 15 L200 15", 'style="marker-start: url(#arrow)"', BACKWARD),
+        ("M60 15 L200 15", 'style="marker: url(#arrow)"', BOTH),  # the shorthand sets both ends
+        (REVERSED, END, BACKWARD),
+        (REVERSED, START, FORWARD),
     ],
+    ids=["end", "start", "both", "style-start", "style-shorthand", "reversed-end", "reversed-start"],
 )
-def test_an_arrowhead_at_the_source_contradicts_the_direction(path_attrs):
-    assert not quotable(PTEN + AKT + connector(path_attrs=path_attrs, marker=""), "PTEN inhibits AKT")
+def test_a_drawn_arrowhead_decides_the_direction(d, marker, expected):
+    # The drawing wins over data-source and data-target, as in drawio.
+    assert edges(PTEN + AKT + connector(d=d, marker=marker)) == expected
 
 
-def test_an_arrowhead_at_the_target_agrees():
-    assert quotable(PTEN + AKT + connector(), "PTEN inhibits AKT")
+@pytest.mark.parametrize(
+    "attrs,marker,expected",
+    [
+        (START, END, BOTH),  # marker-start inherited from the connector group
+        (START, "", BACKWARD),
+        ('style="marker: url(#arrow)"', "", BOTH),
+        (END, "", FORWARD),
+    ],
+    ids=["start-and-own-end", "start", "shorthand", "end"],
+)
+def test_inherited_arrowheads_decide_the_direction(attrs, marker, expected):
+    assert edges(PTEN + AKT + connector(attrs=attrs, marker=marker)) == expected
 
 
 @pytest.mark.parametrize(
     "attrs,marker",
     [
-        ('marker-start="url(#arrow)"', END),  # inherited from the connector group
-        ('style="marker: url(#arrow)"', ""),
-    ],
-)
-def test_an_inherited_arrowhead_at_the_source_contradicts_the_direction(attrs, marker):
-    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "PTEN inhibits AKT")
-
-
-def test_an_inherited_arrowhead_at_the_target_agrees():
-    assert quotable(PTEN + AKT + connector(attrs=END, marker=""), "PTEN inhibits AKT")
-
-
-@pytest.mark.parametrize(
-    "attrs,marker",
-    [
-        ("", ""),  # a plain line: nothing drawn says which way it reads
+        ("", ""),  # a plain line
         ("", 'marker-end="url(#nowhere)"'),  # a broken reference draws no arrowhead
         (END, 'marker-end="none"'),  # the shape turns off what it inherits
         ("", 'style="marker-end: none" marker-end="url(#arrow)"'),
     ],
     ids=["no-marker", "unresolved", "inherited-then-none", "style-beats-attribute"],
 )
-def test_without_a_drawn_arrowhead_at_the_target_there_is_no_direction(attrs, marker):
-    # Swapping data-source and data-target would otherwise reverse the line
-    # for the same picture: undrawn attributes must not decide the direction.
-    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "PTEN inhibits AKT")
-    assert not quotable(PTEN + AKT + connector(attrs=attrs, marker=marker), "AKT inhibits PTEN")
+def test_without_a_drawn_arrowhead_the_line_reads_source_to_target(attrs, marker):
+    assert edges(PTEN + AKT + connector(attrs=attrs, marker=marker)) == FORWARD
+    # Which way the path runs is not drawn either.
+    assert edges(PTEN + AKT + connector(d=REVERSED, attrs=attrs, marker=marker)) == FORWARD
+
+
+def test_without_an_arrowhead_the_attributes_name_the_direction():
+    swapped = connector(marker="").replace('data-source="pten" data-target="akt"', 'data-source="akt" data-target="pten"')
+    assert edges(PTEN + AKT + swapped) == BACKWARD
+
+
+def test_an_arrowhead_on_overlapping_nodes_gives_no_direction():
+    # Both ends touch both boxes, so the drawing can't say which node it points at.
+    overlapping = AKT.replace('x="200"', 'x="0"').replace('x="210"', 'x="10"')
+    assert edges(PTEN + overlapping + connector(d="M30 15 L40 15")) == []
+    assert edges(PTEN + overlapping + connector(d="M30 15 L40 15", marker="")) == FORWARD
 
 
 def test_markers_set_by_a_stylesheet_confirm_nothing():
@@ -333,45 +353,63 @@ def test_a_connector_containing_its_nodes_yields_none():
         '<marker id="ghost"><g display="none"><path d="M0 0 L10 5 L0 10 z"/></g></marker>',
         '<marker id="ghost" opacity="0"><path d="M0 0 L10 5 L0 10 z"/></marker>',
         '<marker id="ghost" viewBox="0 0 0 10"><path d="M0 0 L10 5 L0 10 z"/></marker>',
-        '<marker id="ghost" viewBox="0 0 10px 10"><path d="M0 0 L10 5 L0 10 z"/></marker>',
         '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" fill="context-fill"/></marker>',
+        '<marker id="ghost"><path d="M0 0 L10 5 L0 10 z" fill="none" stroke="context-fill"/></marker>',
         '<g display="none" fill="none"><marker id="ghost"><path d="M0 0 L10 5 L0 10 z"/></marker></g>',
     ],
     ids=[
         "empty", "unpainted", "transparent", "zero-size", "hidden-group",
-        "transparent-marker", "zero-viewbox", "bad-viewbox", "context-fill", "unpainted-hidden-ancestor",
+        "transparent-marker", "zero-viewbox", "context-fill", "context-fill-stroke",
+        "unpainted-hidden-ancestor",
     ],
 )
 def test_an_arrowhead_marker_that_draws_nothing_gives_no_direction(marker):
-    body = f"<defs>{marker}</defs>" + PTEN + AKT + connector(marker='marker-end="url(#ghost)"')
-    assert not quotable(body, "PTEN inhibits AKT")
+    # Drawn, it would point at PTEN; drawing nothing, the line is undirected.
+    body = f"<defs>{marker}</defs>" + PTEN + AKT + connector(marker='marker-start="url(#ghost)"')
+    assert edges(body) == FORWARD
 
 
 def test_a_marker_under_a_hidden_ancestor_still_draws():
     # Markers are drawn where they are used, whatever their ancestors' display.
     marker = '<defs><g display="none"><marker id="kept"><path d="M0 0 L10 5 L0 10 z"/></marker></g></defs>'
-    assert quotable(marker + PTEN + AKT + connector(marker='marker-end="url(#kept)"'), "PTEN inhibits AKT")
+    assert edges(marker + PTEN + AKT + connector(marker='marker-start="url(#kept)"')) == BACKWARD
 
 
-def test_a_computed_value_in_a_marker_loses_only_the_edge_line():
-    marker = '<defs><marker id="themed"><path d="M0 0 L10 5 L0 10 z" fill="var(--edge)"/></marker></defs>'
-    body = marker + PTEN + AKT + connector(marker='marker-end="url(#themed)"')
+def test_display_does_not_hide_a_marker():
+    marker = '<defs><marker id="kept" display="none"><path d="M0 0 L10 5 L0 10 z"/></marker></defs>'
+    assert edges(marker + PTEN + AKT + connector(marker='marker-start="url(#kept)"')) == BACKWARD
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        '<marker id="unsure"><path d="M0 0 L10 5 L0 10 z" fill="var(--edge)"/></marker>',
+        '<marker id="unsure" viewBox="0 0 10px 10"><path d="M0 0 L10 5 L0 10 z"/></marker>',
+        '<marker id="unsure"><use href="#head"/></marker><path id="head" d="M0 0 L10 5 L0 10 z"/>',
+        '<marker id="unsure"><text>&gt;</text></marker>',
+        '<marker id="unsure"><image href="data:," width="10" height="10"/></marker>',
+    ],
+    ids=["computed-value", "bad-viewbox", "use", "text", "image"],
+)
+def test_a_marker_that_may_draw_loses_only_the_edge_line(marker):
+    # Whether the arrowhead is drawn is unknown, so neither direction is safe.
+    body = f"<defs>{marker}</defs>" + PTEN + AKT + connector(marker='marker-start="url(#unsure)"')
     text = extract(body)
     assert text is not None
     assert {"PTEN", "AKT", "inhibits"} <= set(text.split("\n\n"))
-    assert not quotable(body, "PTEN inhibits AKT")
+    assert edges(body) == []
 
 
 def test_a_later_shorthand_in_one_style_wins():
-    path_style = 'style="marker-end: url(#arrow); marker: none"'
-    assert not quotable(PTEN + AKT + connector(marker="", path_attrs=path_style), "PTEN inhibits AKT")
+    path_style = 'style="marker-start: url(#arrow); marker: none"'
+    assert edges(PTEN + AKT + connector(marker="", path_attrs=path_style)) == FORWARD
 
 
 def test_inherit_keeps_walking_up_for_dashes_and_markers():
     dashes = connector(attrs='stroke-dasharray="0 1000"', path_attrs='stroke-dasharray="inherit"')
     assert not quotable(PTEN + AKT + dashes, "PTEN inhibits AKT")
-    starts = connector(attrs='marker-start="url(#arrow)"', path_attrs='marker-start="inherit"')
-    assert not quotable(PTEN + AKT + starts, "PTEN inhibits AKT")
+    starts = connector(attrs=START, marker="", path_attrs='marker-start="inherit"')
+    assert edges(PTEN + AKT + starts) == BACKWARD
 
 
 def test_a_drawn_self_loop_is_an_edge():
@@ -380,6 +418,14 @@ def test_a_drawn_self_loop_is_an_edge():
         f'<path d="M30 0 C30 -40, 50 -40, 50 0" stroke="black" fill="none" {END}/><text>activates</text></g>'
     )
     assert quotable(PTEN + loop, "PTEN activates PTEN")
+
+
+def test_a_self_loop_with_arrowheads_at_both_ends_is_one_line():
+    loop = (
+        '<g data-source="pten" data-target="pten">'
+        f'<path d="M30 0 C30 -40, 50 -40, 50 0" stroke="black" fill="none" {START} {END}/><text>activates</text></g>'
+    )
+    assert edges(PTEN + loop) == ["PTEN activates PTEN"]
 
 
 @pytest.mark.parametrize(

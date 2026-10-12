@@ -158,17 +158,27 @@ attributes name the two nodes' ids:
 ```
 
 The attributes are not drawn, so they are only believed when the drawing
-agrees: the connector's stroked path must start on the source node's shapes
-and end on the target's (transforms applied, with a little slack for an
-arrowhead), and the connector, its label and both nodes and their labels must
-all be visible. The direction must be drawn too: the path needs an arrowhead at
-its end, a `marker-end` (set on it or inherited) naming a `<marker>` in the
-figure that draws something (a shape that paints, at a size above zero), and
-none at its start. A plain line, an empty or invisible marker, or an arrowhead
-drawn as a separate shape rather than a marker, gives no edge line, since
-nothing the extractor can read says which way it points. The marker's
-`orient` is not read: a marker drawn at a fixed angle is taken to point along
-the path. A node is the shapes it draws inside the
+agrees: the connector's stroked path must join the two nodes' shapes, one end
+on each (transforms applied, with a little slack for an arrowhead), and the
+connector, its label and both nodes and their labels must all be visible.
+
+Arrowheads drawn as markers give the direction:
+
+- **One arrowhead** (a `marker-start` or `marker-end`, set on the path or
+  inherited) points at the node at that end, and the line reads from the other
+  node to it. This holds even when it's the reverse of `data-source` →
+  `data-target`: the drawing wins, as in drawio.
+- **Arrowheads at both ends** make the line quotable both ways.
+- **No arrowhead** (a plain line, a marker that draws nothing, or an arrowhead
+  drawn as a separate shape) reads in the attributes' order, `data-source`
+  first, since nothing drawn says otherwise.
+
+A marker counts as an arrowhead when it names a `<marker>` in the figure that
+draws something: a shape that paints, at a size above zero. When that can't be
+told from the markup (a `var()` value, or a `<use>`, text or image inside the
+marker), the connector gives no edge line, since neither direction is safe. The
+marker's `orient` is not read: a marker drawn at a fixed angle is taken to
+point along the path. A node is the shapes it draws inside the
 element its id names; its text, and shapes that are hidden or paint nothing,
 do not count towards its box. Geometry the extractor cannot place from
 attributes gives no edge line either: CSS `transform` or other CSS geometry,
@@ -191,12 +201,13 @@ per drawn cell, quotes held to one label, and an edge line
 `"<source> <edge label> <target>"` for each drawn edge between two labelled
 cells. In drawio an edge's source and target are what it is drawn between, so
 no geometry check is needed; its line and both cells' labels must still be
-visible. The arrows give the direction: an edge drawn pointing back at its
-source reads target first, and one with arrows at both ends or neither gives
-no edge line. Only markers that point count as arrows: arrowheads (`classic`,
-`block`, `open`, `async` and their thin or double forms) and the inhibition
-T-bar `baseDash`. An oval, diamond, dash or ER symbol at an end gives no
-direction. Every page of the file is read.
+visible. The arrows give the direction, as for SVG: an edge drawn pointing
+back at its source reads target first, one with arrows at both ends reads both
+ways, and one with no arrow reads source first. Only markers that point count
+as arrows: arrowheads (`classic`, `block`, `open`, `async` and their thin or
+double forms) and the inhibition T-bar `baseDash`. An oval, diamond, dash or
+ER symbol at an end is not an arrow. A marker drawio doesn't list as either
+gives no edge line. Every page of the file is read.
 
 A `.drawio.svg` file (drawio's editable SVG export) is read as an SVG: its
 labels are quotable, but it carries no `data-source`/`data-target`, so it

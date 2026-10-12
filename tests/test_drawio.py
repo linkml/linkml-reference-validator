@@ -198,21 +198,26 @@ def test_no_edge_line_without_a_drawn_edge_between_labelled_cells(cells):
     assert not quotable(cells, "PTEN inhibits AKT")
 
 
+FORWARD, BACKWARD, BOTH = ["PTEN inhibits AKT"], ["AKT inhibits PTEN"], ["PTEN inhibits AKT", "AKT inhibits PTEN"]
+
+
 @pytest.mark.parametrize(
     "style,expected",
     [
-        ("", "PTEN inhibits AKT"),  # drawio's default: an arrow at the target
-        ("endArrow=block;", "PTEN inhibits AKT"),
-        ("endArrow=none;startArrow=block;", "AKT inhibits PTEN"),  # drawn pointing back
-        ("startArrow=classic;endArrow=classic;", None),  # both ways: no direction
-        ("endArrow=none;", None),  # no arrow: no direction
-        ("endArrow=none;startArrow=none;", None),
-        ("endArrow=block;startArrow=oval;", "PTEN inhibits AKT"),  # an oval is no arrowhead
-        ("endArrow=classic;startArrow=diamondThin;", "PTEN inhibits AKT"),
-        ("endArrow=baseDash;", "PTEN inhibits AKT"),  # the inhibition T-bar points at the target
-        ("endArrow=oval;", None),
-        ("endArrow=none;startArrow=ERmany;", None),
-        ("endArrow=somethingNew;", None),  # an unknown marker gives no direction
+        ("", FORWARD),  # drawio's default: an arrow at the target
+        ("endArrow=block;", FORWARD),
+        ("endArrow=none;startArrow=block;", BACKWARD),  # drawn pointing back
+        ("startArrow=classic;endArrow=classic;", BOTH),
+        ("endArrow=none;", FORWARD),  # no arrow: source first
+        ("endArrow=none;startArrow=none;", FORWARD),
+        ("endArrow=block;startArrow=oval;", FORWARD),  # an oval is no arrowhead
+        ("endArrow=classic;startArrow=diamondThin;", FORWARD),
+        ("endArrow=baseDash;", FORWARD),  # the inhibition T-bar points at the target
+        ("endArrow=baseDash;startArrow=block;", BOTH),
+        ("endArrow=oval;", FORWARD),
+        ("endArrow=none;startArrow=ERmany;", FORWARD),
+        ("endArrow=somethingNew;", []),  # an unknown marker may or may not point
+        ("endArrow=none;startArrow=somethingNew;", []),
     ],
 )
 def test_the_arrows_decide_an_edge_lines_direction(style, expected):
@@ -220,7 +225,13 @@ def test_the_arrows_decide_an_edge_lines_direction(style, expected):
     text = extract(PTEN + AKT + edge) or ""
     lines = text.split("\n\n")
     edge_lines = [line for line in lines if "inhibits " in line]
-    assert edge_lines == ([expected] if expected else [])
+    assert edge_lines == expected
+
+
+def test_a_self_loop_with_arrows_at_both_ends_is_one_line():
+    loop = EDGE.replace('style="endArrow=block;"', 'style="startArrow=block;"').replace('target="akt"', 'target="pten"')
+    lines = (extract(PTEN + loop) or "").split("\n\n")
+    assert [line for line in lines if "inhibits " in line] == ["PTEN inhibits PTEN"]
 
 
 # ---------------------------------------------------------------- fail closed

@@ -19,10 +19,13 @@ After them come edge lines, one label each: ``"<source> <edge label>
 <target>"`` for a connector that names its nodes with ``data-source`` and
 ``data-target`` (their ids). Those attributes are not drawn, so an edge line
 is emitted only when the drawing agrees with them: the connector, its
-painted stroke and its label, and both nodes and their labels, are rendered;
-the stroked path starts on the source node's box and ends on the target's
-(see :mod:`~linkml_reference_validator.etl.extract.svg_geometry`); and it
-draws its direction, a ``marker-end`` arrowhead and no ``marker-start``.
+painted stroke and its label, and both nodes and their labels, are rendered,
+and the stroked path joins the two nodes' boxes (see
+:mod:`~linkml_reference_validator.etl.extract.svg_geometry`). Drawn
+arrowheads give the direction, as in drawio: one at either end reads from the
+other node to the one it points at, whatever the attributes say, and one at
+each end reads both ways. A line with no arrowhead reads in the attributes'
+order, ``data-source`` first, since nothing drawn says otherwise.
 
 Visibility follows the CSS cascade as far as it matters here: presentation
 attributes, then ``<style>`` rules by specificity and order, then the ``style``
@@ -612,6 +615,38 @@ def _nested(source: etree._Element, target: etree._Element, connector: etree._El
 #: Shapes that can draw a connector between two nodes.
 CONNECTOR_SHAPES = frozenset({"path", "line", "polyline"})
 
+#: Elements inside a ``<marker>`` that draw nothing themselves. Anything else
+#: that is not a shape (text, an image, a ``<use>``) may draw an arrowhead the
+#: marker check can't see, which leaves the direction uncertain.
+MARKER_CONTAINERS = frozenset({"g", "a", "switch"})
+
+
+def _readings(forward: bool, backward: bool, at_start: bool, at_end: bool) -> list[bool]:
+    """Which ways an edge reads: True for source first, False for target first.
+
+    ``forward`` and ``backward`` say whether the path runs from the source's
+    box to the target's, or the other way; ``at_start`` and ``at_end`` whether
+    an arrowhead is drawn there. An arrowhead at one end points at the node
+    there; at both ends the edge reads both ways; with none it reads source
+    first. An arrowhead on a path that touches both nodes at both ends points
+    at neither in particular, so it gives no reading.
+
+    Examples:
+        >>> _readings(True, False, False, True), _readings(True, False, True, False)
+        ([True], [False])
+        >>> _readings(False, True, False, True), _readings(True, False, True, True)
+        ([False], [True, False])
+        >>> _readings(False, True, False, False), _readings(True, True, False, True)
+        ([True], [])
+    """
+    if at_start and at_end:
+        return [True, False]
+    if not (at_start or at_end):
+        return [True]
+    if forward == backward:
+        return []
+    return [forward == at_end]
+
 
 def _words(labels: list[list[str]]) -> str:
     """Labels' lines run together with spaces, as one phrase."""
@@ -661,7 +696,7 @@ class _RenderedText:
         self.drawn_labels: dict[etree._Element, list[list[str]]] = {}
         self.stroked: dict[etree._Element, bool] = {}
         self.painted_shapes: set[etree._Element] = set()
-        self.marker_drawn: dict[etree._Element, bool] = {}
+        self.marker_drawn: dict[etree._Element, Optional[bool]] = {}
 
     def run(self, root: etree._Element) -> list[list[str]]:
         """Walk from the root element, returning each label's lines."""
@@ -671,12 +706,14 @@ class _RenderedText:
 
     # --- edge lines ----------------------------------------------------------
 
-    def draws_arrowhead(self, shape: etree._Element, at: str) -> bool:
+    def draws_arrowhead(self, shape: etree._Element, at: str) -> Optional[bool]:
         """Whether a shape's marker at ``at`` draws something there.
 
         The marker must name a ``<marker>`` in the figure that is not sized
         to nothing and holds a shape that paints; anything less draws no
-        arrowhead, and so gives no direction.
+        arrowhead. None when that can't be told from the markup, as for a
+        ``var()`` value or a ``<use>`` inside the marker: then neither an
+        arrowhead nor its absence is safe to read a direction from.
         """
         match = re.fullmatch(
             r"url\(\s*['\"]?#([^'\")]+)['\"]?\s*\)", _marker(shape, at) or ""
@@ -689,14 +726,16 @@ class _RenderedText:
                 self.marker_drawn[marker] = self._marker_paints(marker)
             except Unrenderable:
                 # Only this arrowhead is uncertain, so only its edge is lost.
-                self.marker_drawn[marker] = False
+                self.marker_drawn[marker] = None
         return self.marker_drawn[marker]
 
-    def _marker_paints(self, marker: etree._Element) -> bool:
+    def _marker_paints(self, marker: etree._Element) -> Optional[bool]:
         """Whether a ``<marker>`` holds a shape that paints, with the cascade applied.
 
+        ``display`` does not apply to a marker, though ``opacity`` does.
         ``context-fill`` counts as unpainted: it takes the connector's fill,
-        which is not checked.
+        which is not checked. None when the marker holds something else that
+        may draw, which this check doesn't model.
         """
         for size in ("markerWidth", "markerHeight"):
             value = _NUMBER.match(marker.get(size) or "3")
@@ -704,7 +743,7 @@ class _RenderedText:
                 return False
         view_box = [_NUMBER.match(v) for v in re.split(r"[\s,]+", (marker.get("viewBox") or "0 0 1 1").strip())]
         if len(view_box) != 4 or any(v is None or v.group(2) for v in view_box):
-            return False
+            return None
         if min(float(v.group(1)) for v in view_box[2:] if v is not None) <= 0:
             return False
         # Its content inherits from the marker's own ancestors, root first;
@@ -712,23 +751,38 @@ class _RenderedText:
         state = _State()
         for element in reversed(list(marker.iterancestors())):
             _, state = self.cascade(element, state)
-        displayed, state = self.cascade(marker, state)
+        displayed, state = self.cascade(marker, state, ignore_display=True)
         if not displayed:
             return False
+        uncertain = False
         stack = [(child, state) for child in marker]
         while stack:
             element, parent_state = stack.pop()
             if not isinstance(element.tag, str):
                 continue
+            name = etree.QName(element).localname
+            if name in NON_RENDERED_SVG:
+                continue
             displayed, element_state = self.cascade(element, parent_state)
             if not displayed:
                 continue
-            if element_state.fill.strip().lower() == "context-fill":
-                element_state = replace(element_state, fill="none")
-            if etree.QName(element).localname in SHAPES and self.shape_painted(element_state):
+            if name in MARKER_CONTAINERS:
+                stack.extend((child, element_state) for child in element)
+            elif name not in SHAPES:
+                uncertain = True
+            elif self._marker_shape_paints(element, element_state):
                 return True
-            stack.extend((child, element_state) for child in element)
-        return False
+        return None if uncertain else False
+
+    def _marker_shape_paints(self, shape: etree._Element, state: _State) -> bool:
+        """Whether a shape inside a marker paints, ``context-fill`` counting as none."""
+        state = replace(
+            state,
+            fill="none" if state.fill.strip().lower() == "context-fill" else state.fill,
+            stroke="none" if state.stroke.strip().lower() == "context-fill" else state.stroke,
+        )
+        filled = self.shape_painted(replace(state, stroke="none"))
+        return filled or (self.stroke_painted(state) and _dashes_draw(shape))
 
     def edge_lines(self, root: etree._Element) -> list[str]:
         """``"<source> <edge label> <target>"`` for each connector the drawing confirms.
@@ -737,8 +791,8 @@ class _RenderedText:
         naming two node ids; its own labels are the edge label. The attributes
         are not drawn, so they count only when the drawing agrees with them:
         the connector, its stroke, its label and both nodes and their labels
-        are rendered, and the stroked path starts on the source node's box and
-        ends on the target's.
+        are rendered, and the stroked path joins the two nodes' boxes. Drawn
+        arrowheads decide which way the line reads (see :func:`_readings`).
         """
         if not _geometry_is_static(root):
             return []
@@ -749,7 +803,7 @@ class _RenderedText:
                 boxes[node] = node_bbox(node, root, self.painted_shapes)
             return boxes[node]
 
-        lines = []
+        lines: list[str] = []
         for element in root.iter():
             if not isinstance(element.tag, str):
                 continue
@@ -773,26 +827,39 @@ class _RenderedText:
             # Any stroked shape of the connector may join the nodes: an
             # arrowhead drawn before the line must not hide the line.
             for stroke in strokes:
-                # The drawing gives the direction: an arrowhead at the target
-                # and none at the source. Without one the undrawn attributes
-                # alone would decide it, and swapping them would reverse the
-                # line for the same picture.
-                if _marker(stroke, "start") is not None:
+                if not _dashes_draw(stroke):
                     continue
-                if not self.draws_arrowhead(stroke, "end") or not _dashes_draw(stroke):
-                    continue
+                at_start = self.draws_arrowhead(stroke, "start")
+                at_end = self.draws_arrowhead(stroke, "end")
                 ends = connector_endpoints(stroke, root)
-                if ends and touches(ends[0], source_box) and touches(ends[1], target_box):
-                    lines.append(
-                        " ".join(_words(x) for x in (source_labels, edge_labels, target_labels))
-                    )
-                    break
+                if at_start is None or at_end is None or not ends:
+                    continue
+                forward = touches(ends[0], source_box) and touches(ends[1], target_box)
+                backward = source is not target and touches(ends[0], target_box) and touches(ends[1], source_box)
+                if not (forward or backward):
+                    continue
+                readings = _readings(forward, backward, at_start, at_end)
+                if not readings:
+                    continue
+                ends_labels = [(source_labels, target_labels), (target_labels, source_labels)]
+                # dict.fromkeys drops the second reading of a self-loop, which is the same line.
+                lines.extend(dict.fromkeys(
+                    " ".join(_words(x) for x in (first, edge_labels, last))
+                    for first, last in (ends_labels[0] if source_first else ends_labels[1] for source_first in readings)
+                ))
+                break
         return lines
 
     # --- the cascade -------------------------------------------------------
 
-    def cascade(self, element: etree._Element, parent: _State) -> tuple[bool, _State]:
-        """Return whether ``element`` is displayed, and its inherited state."""
+    def cascade(
+        self, element: etree._Element, parent: _State, ignore_display: bool = False
+    ) -> tuple[bool, _State]:
+        """Return whether ``element`` is displayed, and its inherited state.
+
+        ``ignore_display`` leaves out ``display``, which does not apply to a
+        ``<marker>``.
+        """
         values: dict[str, str] = {}
         if etree.QName(element).namespace == XHTML_NS:
             if element.get("hidden") is not None:
@@ -814,6 +881,8 @@ class _RenderedText:
             for prop, value, imp in inline:
                 if imp == important and prop in VISIBILITY_PROPERTIES:
                     _declare(values, prop, value)
+        if ignore_display:
+            values.pop("display", None)
         return self.apply(values, parent)
 
     def candidate_rules(self, element: etree._Element) -> list[_Rule]:

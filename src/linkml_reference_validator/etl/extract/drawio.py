@@ -130,33 +130,45 @@ def _stroke_shown(style: dict[str, str]) -> bool:
 
 
 #: drawio end markers that point at the cell they touch: arrowheads, and the
-#: T-bar that marks the target of an inhibition. Ovals, diamonds, dashes,
-#: crosses and the ER symbols do not point, and an unknown marker is taken
-#: as not pointing either, so it gives no direction.
+#: T-bar that marks the target of an inhibition.
 POINTING_MARKERS = frozenset({
     "classic", "classicThin", "block", "blockThin", "open", "openThin",
     "async", "openAsync", "doubleBlock", "baseDash",
 })
 
+#: drawio end markers that do not point: no marker, ovals, diamonds, dashes,
+#: crosses and the ER symbols. A marker in neither list may or may not point,
+#: so its edge gives no line.
+NON_POINTING_MARKERS = frozenset({
+    "none", "", "oval", "diamond", "diamondThin", "dash", "cross", "circle",
+    "circlePlus", "halfCircle", "box", "ERone", "ERmandOne", "ERmany",
+    "ERoneToMany", "ERzeroToOne", "ERzeroToMany",
+})
 
-def _arrow_direction(style: dict[str, str]) -> Optional[bool]:
-    """True if an edge is drawn pointing at its target, False if at its source.
 
-    None when it points both ways or neither: the drawing then gives no
-    direction to read the relation in. drawio draws an arrow at the target
-    unless ``endArrow`` says otherwise, and none at the source.
+def _arrow_readings(style: dict[str, str]) -> list[bool]:
+    """Which ways an edge reads: True for source first, False for target first.
+
+    An arrow at one end points at the cell there; arrows at both ends read
+    both ways; with none, the edge reads source first. drawio draws an arrow
+    at the target unless ``endArrow`` says otherwise, and none at the source.
+    An unknown marker might point either way, so the edge gives no reading.
 
     Examples:
-        >>> _arrow_direction({}), _arrow_direction({"endArrow": "none", "startArrow": "block"})
-        (True, False)
-        >>> _arrow_direction({"endArrow": "none"}) is None
-        True
+        >>> _arrow_readings({}), _arrow_readings({"endArrow": "none", "startArrow": "block"})
+        ([True], [False])
+        >>> _arrow_readings({"endArrow": "none"}), _arrow_readings({"startArrow": "open"})
+        ([True], [True, False])
+        >>> _arrow_readings({"endArrow": "somethingNew"})
+        []
     """
-    at_target = style.get("endArrow", "classic").strip() in POINTING_MARKERS
-    at_source = style.get("startArrow", "none").strip() in POINTING_MARKERS
-    if at_target == at_source:
-        return None
-    return at_target
+    at_target = style.get("endArrow", "classic").strip()
+    at_source = style.get("startArrow", "none").strip()
+    if not {at_target, at_source} <= POINTING_MARKERS | NON_POINTING_MARKERS:
+        return []
+    if at_source in POINTING_MARKERS:
+        return [True, False] if at_target in POINTING_MARKERS else [False]
+    return [True]
 
 
 def _inflate(payload: str, limit: int) -> bytes:
@@ -281,17 +293,20 @@ def _page_labels(model: etree._Element) -> list[list[str]]:
     for edge in drawn:
         if edge.attrs.get("edge") != "1" or not _stroke_shown(edge.style):
             continue
-        forward = _arrow_direction(edge.style)
-        if forward is None:
-            continue
+        readings = _arrow_readings(edge.style)
         source = shown.get(edge.attrs.get("source", ""))
         target = shown.get(edge.attrs.get("target", ""))
         edge_words = edge.lines + [
             line for child in children.get(edge.id, []) if child is not edge for line in child.lines
         ]
-        if source and target and source.lines and target.lines and edge_words:
-            first, last = (source, target) if forward else (target, source)
-            labels.append([" ".join(first.lines + edge_words + last.lines)])
+        if not (source and target and source.lines and target.lines and edge_words):
+            continue
+        # dict.fromkeys drops the second reading of a self-loop, which is the same line.
+        for line in dict.fromkeys(
+            " ".join(first.lines + edge_words + last.lines)
+            for first, last in ((source, target) if source_first else (target, source) for source_first in readings)
+        ):
+            labels.append([line])
     return labels
 
 

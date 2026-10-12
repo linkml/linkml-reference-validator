@@ -926,6 +926,8 @@ read: not when the file has moved, not when the new read finds no rendered
 text, and not with `trust_cached_entries`. The file is the source, and its raw
 markup is not evidence. Version 2 separates a figure's labels, so a quote is
 matched within one label; version 1 entries are re-read once for it.
+Version 3 adds edge lines for connectors the drawing confirms; older entries
+are re-read once to gain them.
 
 **A quote that verified against a `url:` page can fail after that refresh.**
 Sanitizing removes `<noscript>` and `<template>` elements with their text.

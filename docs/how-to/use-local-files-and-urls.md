@@ -141,6 +141,28 @@ linkml-reference-validator validate text \
   `-webkit-text-security`, a `unicode-bidi` override, `<bdo>`, or a bidi
   control character in the text.
 
+**Edges.** A connector between two labelled nodes also gives an edge line,
+`"<source> <edge label> <target>"`, so a relational quote such as
+`"PTEN inhibits AKT"` can be checked. The connector is an element (usually a
+`<g>` holding the line and its label) whose `data-source` and `data-target`
+attributes name the two nodes' ids:
+
+```xml
+<g id="pten"><rect x="0" y="0" width="60" height="30"/><text x="10" y="20">PTEN</text></g>
+<g id="akt"><rect x="200" y="0" width="60" height="30"/><text x="210" y="20">AKT</text></g>
+<g data-source="pten" data-target="akt">
+  <path d="M60 15 L200 15" stroke="black"/><text x="110" y="10">inhibits</text>
+</g>
+```
+
+The attributes are not drawn, so they are only believed when the drawing
+agrees: the connector's stroked path must start on the source node's shapes
+and end on the target's (transforms applied, with a little slack for an
+arrowhead), and the connector, its label and both nodes and their labels must
+all be visible. A node is the shapes inside the element its id names; its text
+does not count towards its box. A node drawn only through `<use>`, inside a
+nested `<svg>`, or sized in `%` or `em` gives no edge line.
+
 Known limits: a label drawn as several `<text>` elements, one per line, is
 read as several labels, so quote its lines with `...` between them. Text
 clipped by `clip-path` or `mask`, placed outside the

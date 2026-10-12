@@ -136,9 +136,10 @@ linkml-reference-validator validate text \
   rule hides or shows text through a selector other than a type, class or id
   selector (`g > text`, `:first-child`, `@media`), when visibility depends on
   `var()` or `calc()`, when a stylesheet is imported or linked, when the SVG
-  contains a `<script>` or animates visibility, or when CSS `content`, a
-  `unicode-bidi` override or `<bdo>` adds text to a label or draws it
-  reversed.
+  contains a `<script>` or animates visibility, or when something changes the
+  characters drawn: CSS `content`, a string `list-style-type` or `quotes`,
+  `-webkit-text-security`, a `unicode-bidi` override, `<bdo>`, or a bidi
+  control character in the text.
 
 Known limits: a label drawn as several `<text>` elements, one per line, is
 read as several labels, so quote its lines with `...` between them. Text

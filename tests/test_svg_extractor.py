@@ -418,6 +418,33 @@ def test_bidi_overrides_that_reorder_characters_fail_closed(body):
     assert extract(body) is None
 
 
+@pytest.mark.parametrize(
+    "style,inner",
+    [
+        ('li{list-style-type:"not "}', "<ul><li>inhibits mTOR</li></ul>"),
+        ("li{list-style: 'not ' inside}", "<ul><li>inhibits mTOR</li></ul>"),
+        ('q{quotes:"never " ""}', "<q>inhibits</q> mTOR"),
+        (".s{-webkit-text-security:disc}", '<span class="s">inhibits</span> mTOR'),
+    ],
+)
+def test_other_css_that_changes_drawn_characters_fails_closed(style, inner):
+    assert extract(f"<style>{style}</style>" + _xhtml(inner)) is None
+
+
+@pytest.mark.parametrize(
+    "style",
+    ["li{list-style-type:decimal}", "li{list-style:none}", "q{quotes:auto}", ".s{-webkit-text-security:none}"],
+)
+def test_keyword_values_of_those_properties_are_accepted(style):
+    assert extract(f"<style>{style}</style>" + _xhtml("<ul><li>inhibits mTOR</li></ul>")) == "inhibits mTOR"
+
+
+@pytest.mark.parametrize("control", ["\u202e", "\u202d", "\u202b", "\u2067", "\u2068"])
+def test_bidi_control_characters_fail_closed(control):
+    # U+202E draws "PTEN" as "NETP", as unicode-bidi: bidi-override would.
+    assert extract(f"<text>{control}PTEN</text>") is None
+
+
 def test_animation_of_unrelated_attribute_is_accepted():
     body = '<text>shown<animate attributeName="x" from="0" to="10" dur="1s"/></text>'
     assert extract(body) == "shown"

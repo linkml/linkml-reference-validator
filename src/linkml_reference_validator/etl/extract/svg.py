@@ -30,8 +30,9 @@ closed** and returns ``None``, rather than guess:
   as ``@media``, or an ``@import``/``<?xml-stylesheet?>``/``<link>`` stylesheet;
 - one of those properties set with ``var()``, ``calc()`` or another value
   computed at render time;
-- generated ``content``, or a bidi override or ``<bdo>``, which add text to a
-  label or draw it reversed;
+- generated ``content``, a string ``list-style-type`` or ``quotes``,
+  ``-webkit-text-security``, or a bidi override, ``<bdo>`` or bidi control
+  character, which add to, mask or reverse the characters drawn;
 - any ``<script>``, or an animation of a property, ``class``, ``style`` or
   ``href``;
 - ``<use>`` expansion past a size or depth budget (a ``<use>`` bomb);
@@ -102,7 +103,10 @@ VISIBILITY_PROPERTIES = frozenset({
 
 #: Properties that can add characters to a label or reorder them; see
 #: :func:`_changes_text`.
-TEXT_CHANGING_PROPERTIES = frozenset({"content", "unicode-bidi"})
+TEXT_CHANGING_PROPERTIES = frozenset({
+    "content", "unicode-bidi", "list-style-type", "list-style", "quotes",
+    "-webkit-text-security",
+})
 
 #: Animation targets that can change what is visible.
 ANIMATED_VISIBILITY = VISIBILITY_PROPERTIES | {"class", "style", "href", "xlink:href"}
@@ -127,6 +131,10 @@ _FONT_SIZE_TOKEN = re.compile(
 )
 #: A CSS comment, or a quoted string (group 1) that may contain "/*".
 _CSS_COMMENT = re.compile(r"""("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')|/\*.*?\*/""", re.S)
+
+#: Embeddings, overrides and isolates: they draw a run in another order, as
+#: ``unicode-bidi`` does. Marks (U+200E, U+200F) only resolve neutrals.
+_BIDI_CONTROL = re.compile("[\u202a-\u202e\u2066-\u2069]")
 
 #: CSS functions whose result this extractor does not compute.
 _COMPUTED_VALUE = re.compile(r"\b(?:var|calc|env|attr|min|max|clamp)\(", re.IGNORECASE)
@@ -222,16 +230,20 @@ def _declares_visibility(body: str) -> bool:
 
 
 def _changes_text(prop: str, value: str) -> bool:
-    """Whether a declaration adds characters or draws them in another order.
+    """Whether a declaration adds, replaces or reorders the characters drawn.
 
-    ``content`` puts text into a ``::before`` or ``::after``, and a bidi
-    override draws a run's characters reversed. Either way the label a reader
-    sees is not the label in the markup, so the extractor fails closed.
+    ``content`` puts text into a ``::before`` or ``::after``; a string
+    ``list-style-type`` makes it a list marker, and ``quotes`` puts it around
+    a ``<q>``. A bidi override draws a run's characters reversed, and
+    ``-webkit-text-security`` draws each as a dot. Either way the label a
+    reader sees is not the label in the markup, so the extractor fails closed.
 
     Examples:
         >>> _changes_text("content", '"never "'), _changes_text("content", "none")
         (True, False)
         >>> _changes_text("unicode-bidi", "bidi-override"), _changes_text("unicode-bidi", "isolate")
+        (True, False)
+        >>> _changes_text("list-style", "'not ' inside"), _changes_text("list-style-type", "decimal")
         (True, False)
     """
     value = value.strip().lower()
@@ -239,6 +251,12 @@ def _changes_text(prop: str, value: str) -> bool:
         return value not in ("none", "normal", "")
     if prop == "unicode-bidi":
         return "override" in value
+    if prop in ("list-style-type", "list-style"):
+        return '"' in value or "'" in value
+    if prop == "quotes":
+        return value not in ("none", "auto", "")
+    if prop == "-webkit-text-security":
+        return value not in ("none", "")
     return False
 
 
@@ -692,6 +710,8 @@ class _RenderedText:
     def end_line(self, parts: list[str]) -> None:
         """Emit the collected characters as one line, whitespace collapsed."""
         text = re.sub(r"\s+", " ", "".join(parts)).strip()
+        if _BIDI_CONTROL.search(text):
+            raise _Unrenderable("a bidi control character reorders the drawn text")
         if text:
             self.labels[-1].append(text)
         parts.clear()

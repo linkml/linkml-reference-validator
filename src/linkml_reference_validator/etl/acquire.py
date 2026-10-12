@@ -62,6 +62,8 @@ def sniff_format(data: bytes) -> Optional[str]:
         'svg'
         >>> sniff_format(b"<!-- Created with Inkscape -->\\n<svg/>")
         'svg'
+        >>> sniff_format(b'\\xef\\xbb\\xbf<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x"><svg/>')
+        'svg'
         >>> sniff_format(b"just some text") is None
         True
         >>> sniff_format(b"") is None
@@ -74,7 +76,11 @@ def sniff_format(data: bytes) -> Optional[str]:
     head = data[:512].lstrip().lower()
     if head.startswith(b"<!doctype html") or head.startswith(b"<html"):
         return "html"
-    if head.startswith((b"<svg", b"<?xml", b"<!--")) and _root_element(data) in (b"svg", b"svg:svg"):
+    # A byte order mark is not markup; Illustrator writes one, and a bare
+    # <!DOCTYPE svg ...> with no XML declaration.
+    prolog = head.removeprefix(b"\xef\xbb\xbf")
+    prolog_starts = (b"<svg", b"<?xml", b"<!--", b"<!doctype svg")
+    if prolog.startswith(prolog_starts) and _root_element(data) in (b"svg", b"svg:svg"):
         return "svg"
     if head.startswith(b"<?xml"):
         return "xml"

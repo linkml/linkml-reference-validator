@@ -485,6 +485,8 @@ class _RenderedText:
     @staticmethod
     def apply(values: dict[str, str], parent: _State) -> tuple[bool, _State]:
         """Apply computed property values on top of the inherited state."""
+        # "initial" and "revert" fall through as unrecognised values, which
+        # every property below reads as its initial value: visible, painted.
         values = {p: v.strip() for p, v in values.items() if v.strip().lower() not in ("inherit", "unset")}
         for prop, value in values.items():
             if _COMPUTED_VALUE.search(value):
@@ -683,6 +685,8 @@ def _check_static(root: etree._Element) -> list[_Rule]:
         _Unrenderable: Scripts, external stylesheets, visibility animations, or
             stylesheet rules this extractor cannot evaluate.
     """
+    # Both scans are needed: root.iter() does not reach the processing
+    # instructions before the root element, where xml-stylesheet usually is.
     for node in root.itersiblings(preceding=True):
         if isinstance(node, etree._ProcessingInstruction) and node.target == "xml-stylesheet":
             raise _Unrenderable("<?xml-stylesheet?> applies an external stylesheet")

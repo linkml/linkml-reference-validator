@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Optional
 
 from linkml_reference_validator.etl.acquire import resolve_format
-from linkml_reference_validator.etl.extract import ExtractorRegistry
+from linkml_reference_validator.etl.extract.svg import SVGExtractor
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 
@@ -113,9 +113,7 @@ class FileSource(ReferenceSource):
             >>> (ref.content, ref.content_type, ref.title)
             ('PTEN', 'local_svg', 'fig.svg')
         """
-        extractor = ExtractorRegistry.get("svg")
-        assert extractor is not None, "SVGExtractor is registered on import"
-        text = extractor.extract(file_path.read_bytes(), content_type="image/svg+xml")
+        text = SVGExtractor().extract(file_path.read_bytes(), content_type="image/svg+xml")
         return ReferenceContent(
             reference_id=f"file:{file_path}",
             title=file_path.name,

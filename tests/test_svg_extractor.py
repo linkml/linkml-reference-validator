@@ -69,6 +69,9 @@ def test_format_maps_know_svg():
         b'<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg"/>',
         b'<?xml version="1.0"?><!-- Generator: Illustrator -->\n'
         b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x.dtd">\n<svg/>',
+        b'<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "x.dtd">\n<svg/>',
+        b'\xef\xbb\xbf<?xml version="1.0"?><svg/>',
+        b"\xef\xbb\xbf<svg/>",
     ],
 )
 def test_sniffs_svg_including_behind_an_xml_declaration(head):

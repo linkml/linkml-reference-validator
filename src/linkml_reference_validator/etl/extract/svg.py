@@ -121,6 +121,8 @@ VISIT_BUDGET_PER_NODE = 10
 #: keeps the recursive walk well inside Python's recursion limit.
 MAX_DEPTH = 256
 
+#: A selector that ends in a ``::before`` or ``::after`` pseudo-element.
+_GENERATED_BOX = re.compile(r"::?(?:before|after)\s*$", re.IGNORECASE)
 _SIMPLE_SELECTOR = re.compile(r"(\*|[A-Za-z_][\w-]*)?((?:[.#][A-Za-z_-][\w-]*)*)")
 _NUMBER = re.compile(r"\s*([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)\s*([a-zA-Z%]*)\s*$")
 _RELATIVE_FONT_UNITS = frozenset({"em", "%", "ex", "ch", "cap", "ic", "lh"})
@@ -239,7 +241,7 @@ def _changes_text(prop: str, value: str) -> bool:
     reader sees is not the label in the markup, so the extractor fails closed.
 
     Examples:
-        >>> _changes_text("content", '"never "'), _changes_text("content", "none")
+        >>> _changes_text("content", '"never "'), _changes_text("content", '""')
         (True, False)
         >>> _changes_text("unicode-bidi", "bidi-override"), _changes_text("unicode-bidi", "isolate")
         (True, False)
@@ -248,7 +250,7 @@ def _changes_text(prop: str, value: str) -> bool:
     """
     value = value.strip().lower()
     if prop == "content":
-        return value not in ("none", "normal", "")
+        return value not in ("none", "normal", "", '""', "''")
     if prop == "unicode-bidi":
         return "override" in value
     if prop in ("list-style-type", "list-style"):
@@ -329,6 +331,10 @@ def _parse_stylesheet(css: str, first_order: int) -> list[_Rule]:
             continue
         for selector in prelude.split(","):
             selector = selector.strip()
+            if _GENERATED_BOX.search(selector):
+                # Styles only the ::before/::after box, whose text content has
+                # already been checked; the element's own text is untouched.
+                continue
             match = _SIMPLE_SELECTOR.fullmatch(selector)
             if not selector or not match:
                 raise _Unrenderable(f"stylesheet selector {selector!r} sets visibility")
@@ -745,7 +751,9 @@ def _check_static(root: etree._Element) -> list[_Rule]:
             raise _Unrenderable("the SVG contains a script")
         if name == "bdo" and etree.QName(element).namespace == XHTML_NS:
             raise _Unrenderable("a <bdo> draws its text in reverse order")
-        inline = [(p, element.get(p) or "") for p in TEXT_CHANGING_PROPERTIES]
+        # unicode-bidi is the only one that is also a presentation attribute;
+        # a content= attribute is RDFa or <meta>, not generated text.
+        inline = [("unicode-bidi", element.get("unicode-bidi") or "")]
         inline += [(p, v) for p, v, _ in _declarations(element.get("style") or "")]
         for prop, value in inline:
             if _changes_text(prop, value):

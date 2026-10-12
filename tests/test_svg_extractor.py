@@ -445,6 +445,22 @@ def test_bidi_control_characters_fail_closed(control):
     assert extract(f"<text>{control}PTEN</text>") is None
 
 
+def test_rdfa_content_attributes_in_metadata_are_not_generated_content():
+    body = '<metadata><rdf:Description xmlns:rdf="urn:rdf" property="dc:title" content="Figure 2"/></metadata>'
+    assert extract(body + "<text>shown</text>") == "shown"
+
+
+def test_empty_generated_content_is_accepted():
+    # The clearfix pattern adds no characters.
+    style = """<style>.cf::after{content:"";display:table} .b::before{content:''}</style>"""
+    assert extract(style + XHTML_LABEL) == "inhibits mTOR"
+
+
+def test_hiding_a_generated_box_does_not_hide_the_element():
+    style = "<style>.n::before{display:none} .n{display:none}</style>"
+    assert extract(style + XHTML_LABEL) == "mTOR"
+
+
 def test_animation_of_unrelated_attribute_is_accepted():
     body = '<text>shown<animate attributeName="x" from="0" to="10" dur="1s"/></text>'
     assert extract(body) == "shown"

@@ -358,7 +358,8 @@ class SupportingTextRepairer:
 
         reference_content = reference.content
         # Where the validator will look: an SVG figure label by label.
-        searchable = SupportingTextValidator.searchable_texts(reference)
+        texts = SupportingTextValidator.searchable_texts(reference)
+        searchable = [SupportingTextValidator.normalize_text(text) for text in texts]
 
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
@@ -421,7 +422,13 @@ class SupportingTextRepairer:
                 )
 
         # Strategy 3: Try fuzzy correction
-        fuzzy_action = self.try_fuzzy_correction(supporting_text, reference_content)
+        # One text at a time, so a correction never spans two SVG labels.
+        fuzzy_actions = [self.try_fuzzy_correction(supporting_text, text) for text in texts]
+        fuzzy_action = max(
+            (action for action in fuzzy_actions if action is not None),
+            key=lambda action: action.similarity_score,
+            default=None,
+        )
         if fuzzy_action:
             actions.append(fuzzy_action)
 

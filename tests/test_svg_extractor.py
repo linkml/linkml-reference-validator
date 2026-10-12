@@ -712,6 +712,40 @@ def test_repair_does_not_join_separate_labels():
     assert result.repaired_text != "CO₂ levels rose"
 
 
+TWO_LABELS = ReferenceContent(
+    reference_id="file:fig.svg", content="loss of PTEN\n\nactivates AKT", content_type="local_svg"
+)
+
+
+def test_suggestion_for_a_cross_label_quote_is_not_the_quote_itself():
+    match = SupportingTextValidator(ReferenceValidationConfig()).find_text_in_reference(
+        "loss of PTEN activates AKT", TWO_LABELS
+    )
+    assert not match.found
+    assert match.best_match != "loss of PTEN activates AKT"
+    assert "loss of PTEN activates AKT" not in (match.suggested_fix or "")
+
+
+def test_fuzzy_repair_does_not_return_a_cross_label_quote():
+    result = SupportingTextRepairer(ReferenceValidationConfig()).attempt_repair(
+        "loss of PTEN activates AKT", "file:fig.svg", TWO_LABELS
+    )
+    assert not (result.is_repaired and result.repaired_text == "loss of PTEN activates AKT")
+
+
+def test_fuzzy_repair_still_corrects_within_a_label():
+    # Fuzzy matching needs five words or more, for any reference.
+    figure = ReferenceContent(
+        reference_id="file:fig.svg",
+        content="loss of PTEN activates the AKT kinase\n\nmTOR",
+        content_type="local_svg",
+    )
+    result = SupportingTextRepairer(ReferenceValidationConfig()).attempt_repair(
+        "loss of PTEN activates the AKT kinaze", "file:fig.svg", figure
+    )
+    assert result.repaired_text == "loss of PTEN activates the AKT kinase"
+
+
 # ---------------------------------------------------------------- cache stamp
 
 

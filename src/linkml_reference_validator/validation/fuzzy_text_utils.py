@@ -16,6 +16,7 @@ NOT for validation. Validation uses strict substring matching.
 """
 
 import re
+from collections import Counter
 from typing import Optional
 
 from rapidfuzz import fuzz
@@ -54,8 +55,8 @@ def normalize_whitespace(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 
-#: The highest score a match that drops any word of the quote may have. A
-#: suggestion needs more than this (see ``generate_suggested_fix``), and so
+#: The highest score a match that drops any word of the quote, or adds a
+#: negation, may have. A suggestion needs more than this (see ``generate_suggested_fix``), and so
 #: does a repair, so such a match is reported but never offered as the fix.
 #: Deliberately strict: a typo in a short word ("fo" for "of") is not fixed
 #: either, because short words such as "in"/"on" or "no"/"now" change claims.
@@ -157,6 +158,34 @@ def _near_spelling(word: str, other: str) -> bool:
     return not _differs_by_prefix(word, other)
 
 
+#: Words that negate or reverse a claim. A correction that brings in one the
+#: quote doesn't have says the opposite of the quote, however close its
+#: spelling. As with the prefixes, a false entry can only lower a score.
+NEGATING_WORDS = frozenset({
+    "no", "not", "never", "none", "neither", "nor", "without", "cannot",
+    "nothing", "nobody", "nowhere", "unable", "lack", "lacks", "lacked",
+    "lacking", "absent", "absence", "fail", "fails", "failed", "failing",
+})
+
+
+def _negations(text: str) -> Counter[str]:
+    """How often each of ``NEGATING_WORDS`` occurs, with "n't" read as "not"."""
+    words = re.findall(r"\w+", re.sub(r"n['’]t\b", " not", text.lower()))
+    return Counter(word for word in words if word in NEGATING_WORDS)
+
+
+def adds_negation(query: str, match: str) -> bool:
+    """Whether ``match`` has a negating word more often than ``query`` does.
+
+    Examples:
+        >>> adds_negation("PTEN activates AKT", "PTEN doesn't activate AKT")
+        True
+        >>> adds_negation("AKT was not detected", "AKT was not detectd")
+        False
+    """
+    return bool(_negations(match) - _negations(query))
+
+
 def score_against_whole_query(query: str, match: str, similarity: float) -> float:
     """Score a fuzzy match as a correction of the whole query.
 
@@ -165,7 +194,10 @@ def score_against_whole_query(query: str, match: str, similarity: float) -> floa
     as a correction, it would drop the rest of the claim and still validate.
     So a match is scaled by the share of the query's length it covers, and
     capped at ``DROPPED_WORD_SCORE_CAP`` if it drops a word: length alone lets
-    a long quote lose a short qualifier such as "in mice". A typo fix, about as long as the quote and keeping its words,
+    a long quote lose a short qualifier such as "in mice". It is capped too if
+    it adds a negation (see :func:`adds_negation`): "PTEN does not activate
+    AKT" is no correction of "PTEN activates AKT", though it is still
+    reported. A typo fix, about as long as the quote and keeping its words,
     keeps its score.
 
     Examples:
@@ -184,7 +216,7 @@ def score_against_whole_query(query: str, match: str, similarity: float) -> floa
         return similarity
     coverage = min(1.0, len(normalize_whitespace(match)) / query_length)
     score = similarity * coverage
-    if not keeps_every_word(query, match):
+    if not keeps_every_word(query, match) or adds_negation(query, match):
         score = min(score, DROPPED_WORD_SCORE_CAP)
     return score
 

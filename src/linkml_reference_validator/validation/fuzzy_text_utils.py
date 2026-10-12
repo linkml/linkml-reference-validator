@@ -54,6 +54,31 @@ def normalize_whitespace(text: str) -> str:
     return re.sub(r'\s+', ' ', text).strip().lower()
 
 
+def score_against_whole_query(query: str, match: str, similarity: float) -> float:
+    """Scale a fuzzy score by how much of the query the match covers.
+
+    ``partial_ratio`` scores the shorter string inside the longer one, so a
+    sentence or figure label that is only the first half of a quote scores
+    100. Offered as a correction, it would drop the other half of the claim
+    and still validate. Scaling by length keeps a typo fix at its score, as
+    it is about as long as the quote, and pulls a fragment down to the share
+    of the quote it holds.
+
+    Examples:
+        >>> score_against_whole_query("loss of PTEN activates AKT", "loss of PTEN", 100.0)
+        46.15...
+        >>> score_against_whole_query("JAK1 kinaze", "JAK1 kinase", 90.9)
+        90.9
+        >>> score_against_whole_query("JAK1", "The JAK1 protein", 100.0)
+        100.0
+    """
+    query_length = len(normalize_whitespace(query))
+    if not query_length:
+        return similarity
+    coverage = min(1.0, len(normalize_whitespace(match)) / query_length)
+    return similarity * coverage
+
+
 def get_significant_words(text: str) -> set[str]:
     """Extract significant words (excluding stopwords) from text.
 

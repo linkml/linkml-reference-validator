@@ -611,11 +611,15 @@ class SupportingTextValidator:
         """
         from linkml_reference_validator.validation.fuzzy_text_utils import (
             find_fuzzy_match_in_text,
+            score_against_whole_query,
         )
 
         found, similarity, best_match = find_fuzzy_match_in_text(
             supporting_text, reference_content, threshold=70.0
         )
+        if best_match:
+            # A fragment of the quote is not a fix for it.
+            similarity = score_against_whole_query(supporting_text, best_match, similarity)
 
         if best_match and similarity > 70:
             if similarity > 90:

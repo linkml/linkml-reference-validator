@@ -794,6 +794,34 @@ def test_fuzzy_repair_does_not_return_a_cross_label_quote():
     assert not (result.is_repaired and result.repaired_text == "loss of PTEN activates AKT")
 
 
+CLAIM = "loss of PTEN in tumour cells activates AKT signalling"
+
+
+@pytest.mark.parametrize(
+    "reference",
+    [
+        ReferenceContent(
+            reference_id="file:fig.svg",
+            content="loss of PTEN in tumour cells\n\nactivates AKT signalling",
+            content_type="local_svg",
+        ),
+        # The same flaw in prose: a short sentence that is a prefix of the quote.
+        ReferenceContent(
+            reference_id="PMID:1",
+            content="Loss of PTEN in tumour cells. Something else entirely is described here.",
+        ),
+    ],
+    ids=["svg-labels", "prose"],
+)
+def test_fuzzy_repair_never_cuts_a_quote_down_to_part_of_it(reference):
+    # "loss of PTEN in tumour cells" alone validates, but drops half the claim.
+    config = ReferenceValidationConfig()
+    result = SupportingTextRepairer(config).attempt_repair(CLAIM, reference.reference_id, reference)
+    assert not result.is_repaired
+    match = SupportingTextValidator(config).find_text_in_reference(CLAIM, reference)
+    assert "try:" not in (match.suggested_fix or "")
+
+
 def test_fuzzy_repair_still_corrects_within_a_label():
     # Fuzzy matching needs five words or more, for any reference.
     figure = ReferenceContent(

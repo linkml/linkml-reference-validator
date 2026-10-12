@@ -34,6 +34,7 @@ from linkml_reference_validator.validation.fuzzy_text_utils import (
     calculate_text_similarity,
     find_fuzzy_match_in_text,
     normalize_whitespace,
+    score_against_whole_query,
 )
 from linkml_reference_validator.validation.supporting_text_validator import (
     SupportingTextValidator,
@@ -278,6 +279,8 @@ class SupportingTextRepairer:
 
         if not best_match:
             return None
+        # A fragment of the quote is not a correction of it.
+        similarity = score_against_whole_query(snippet, best_match, similarity)
 
         # Convert similarity from 0-100 to 0-1 scale
         similarity_normalized = similarity / 100.0

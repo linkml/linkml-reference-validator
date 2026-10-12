@@ -144,8 +144,9 @@ linkml-reference-validator validate text \
 Known limits: a label drawn as several `<text>` elements, one per line, is
 read as several labels, so quote its lines with `...` between them. Text
 clipped by `clip-path` or `mask`, placed outside the
-`viewBox`, scaled to nothing, covered by another shape, or drawn in the
-background colour is still read. Text converted to outlines is not text and
+`viewBox`, scaled to nothing, covered by another shape, drawn in the
+background colour, or cut short by CSS `text-overflow` or `-webkit-line-clamp`
+is still read. Text converted to outlines is not text and
 cannot be quoted. Native `.drawio` files and connector (edge) labels between
 nodes are not yet supported.
 

@@ -40,7 +40,8 @@ closed** and returns ``None``, rather than guess:
 - an external entity, which is never loaded.
 
 Known limits: a label drawn as several ``<text>`` elements, one per line, is
-read as several labels. Text clipped by ``clip-path`` or ``mask``, placed outside the
+read as several labels. HTML text truncated by ``text-overflow`` or
+``-webkit-line-clamp`` is read in full. Text clipped by ``clip-path`` or ``mask``, placed outside the
 ``viewBox``, scaled to nothing by ``transform``, covered by another shape,
 drawn in the background colour or in a tiny but non-zero size is still
 emitted. ``<switch>`` is evaluated for an English-language reader. Text
@@ -69,16 +70,11 @@ from lxml import etree  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
+from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR
 
 logger = logging.getLogger(__name__)
 
 SVG_NS = "http://www.w3.org/2000/svg"
-
-#: Between two labels of the extracted text. A label's own lines are joined
-#: with a single newline, so a blank line never occurs inside one. Matching
-#: keeps each quote part within one label: see
-#: :meth:`~linkml_reference_validator.validation.supporting_text_validator.SupportingTextValidator.searchable_texts`.
-SVG_LABEL_SEPARATOR = "\n\n"
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 XLINK_HREF = "{http://www.w3.org/1999/xlink}href"
 

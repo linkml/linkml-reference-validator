@@ -4,9 +4,8 @@ import logging
 import re
 from typing import Optional
 
-from linkml_reference_validator.etl.extract.svg import SVG_LABEL_SEPARATOR
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
-from linkml_reference_validator.matching import split_supporting_text
+from linkml_reference_validator.matching import SVG_LABEL_SEPARATOR, split_supporting_text
 from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,

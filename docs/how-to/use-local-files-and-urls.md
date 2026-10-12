@@ -190,7 +190,14 @@ cells. In drawio an edge's source and target are what it is drawn between, so
 no geometry check is needed; its line and both cells' labels must still be
 visible. The arrows give the direction: an edge drawn pointing back at its
 source reads target first, and one with arrows at both ends or neither gives
-no edge line. Every page of the file is read.
+no edge line. Only markers that point count as arrows: arrowheads (`classic`,
+`block`, `open`, `async` and their thin or double forms) and the inhibition
+T-bar `baseDash`. An oval, diamond, dash or ER symbol at an end gives no
+direction.
+
+A `.drawio.svg` file (drawio's editable SVG export) is read as an SVG: its
+labels are quotable, but it carries no `data-source`/`data-target`, so it
+gives no edge lines. Point at the `.drawio` source to quote its edges. Every page of the file is read.
 
 Not read: cells marked invisible, in a hidden layer, or inside a collapsed
 group; labels switched off (`noLabel`) or drawn with zero `opacity`,

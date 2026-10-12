@@ -80,6 +80,10 @@ def test_drawio_suffixes_resolve(name):
     assert resolve_format(None, name, None) == "drawio"
 
 
+def test_drawio_svg_exports_are_read_as_svg():
+    assert resolve_format(None, "fig.drawio.svg", None) == "svg"
+
+
 def test_plain_xml_suffix_is_still_xml():
     assert resolve_format(None, "article.xml", None) == "xml"
 
@@ -203,6 +207,12 @@ def test_no_edge_line_without_a_drawn_edge_between_labelled_cells(cells):
         ("startArrow=classic;endArrow=classic;", None),  # both ways: no direction
         ("endArrow=none;", None),  # no arrow: no direction
         ("endArrow=none;startArrow=none;", None),
+        ("endArrow=block;startArrow=oval;", "PTEN inhibits AKT"),  # an oval is no arrowhead
+        ("endArrow=classic;startArrow=diamondThin;", "PTEN inhibits AKT"),
+        ("endArrow=baseDash;", "PTEN inhibits AKT"),  # the inhibition T-bar points at the target
+        ("endArrow=oval;", None),
+        ("endArrow=none;startArrow=ERmany;", None),
+        ("endArrow=somethingNew;", None),  # an unknown marker gives no direction
     ],
 )
 def test_the_arrows_decide_an_edge_lines_direction(style, expected):

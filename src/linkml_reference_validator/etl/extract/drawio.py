@@ -129,6 +129,16 @@ def _stroke_shown(style: dict[str, str]) -> bool:
     return _number(style.get("opacity"), 100) > 0 and _number(style.get("strokeWidth"), 1) > 0
 
 
+#: drawio end markers that point at the cell they touch: arrowheads, and the
+#: T-bar that marks the target of an inhibition. Ovals, diamonds, dashes,
+#: crosses and the ER symbols do not point, and an unknown marker is taken
+#: as not pointing either, so it gives no direction.
+POINTING_MARKERS = frozenset({
+    "classic", "classicThin", "block", "blockThin", "open", "openThin",
+    "async", "openAsync", "doubleBlock", "baseDash",
+})
+
+
 def _arrow_direction(style: dict[str, str]) -> Optional[bool]:
     """True if an edge is drawn pointing at its target, False if at its source.
 
@@ -142,8 +152,8 @@ def _arrow_direction(style: dict[str, str]) -> Optional[bool]:
         >>> _arrow_direction({"endArrow": "none"}) is None
         True
     """
-    at_target = style.get("endArrow", "classic").strip().lower() not in ("none", "")
-    at_source = style.get("startArrow", "none").strip().lower() not in ("none", "")
+    at_target = style.get("endArrow", "classic").strip() in POINTING_MARKERS
+    at_source = style.get("startArrow", "none").strip() in POINTING_MARKERS
     if at_target == at_source:
         return None
     return at_target

@@ -103,6 +103,17 @@ VISIBILITY_PROPERTIES = frozenset({
     "font", "color", "-webkit-text-fill-color",
 })
 
+#: Each visibility property's initial value, which ``initial`` and ``revert``
+#: stand for. ``revert`` means the browser's default style, which for these
+#: properties on SVG text and inline HTML is the same.
+INITIAL_VALUES = {
+    "display": "inline", "visibility": "visible", "opacity": "1",
+    "content-visibility": "visible", "fill": "black", "fill-opacity": "1",
+    "stroke": "none", "stroke-opacity": "1", "stroke-width": "1",
+    "font-size": "medium", "color": "black",
+    "-webkit-text-fill-color": "currentcolor",
+}
+
 #: Properties that can add characters to a label or reorder them; see
 #: :func:`_changes_text`.
 TEXT_CHANGING_PROPERTIES = frozenset({
@@ -528,9 +539,14 @@ class _RenderedText:
     @staticmethod
     def apply(values: dict[str, str], parent: _State) -> tuple[bool, _State]:
         """Apply computed property values on top of the inherited state."""
-        # "initial" and "revert" fall through as unrecognised values, which
-        # every property below reads as its initial value: visible, painted.
+        # inherit and unset leave the parent's value (or, for the properties
+        # that are not inherited, the initial one). initial and revert become
+        # the property's own initial value: stroke's is none, not painted.
         values = {p: v.strip() for p, v in values.items() if v.strip().lower() not in ("inherit", "unset")}
+        values = {
+            p: INITIAL_VALUES.get(p, v) if v.lower() in ("initial", "revert", "revert-layer") else v
+            for p, v in values.items()
+        }
         for prop, value in values.items():
             if _COMPUTED_VALUE.search(value):
                 raise _Unrenderable(f"{prop}: {value} is computed at render time")

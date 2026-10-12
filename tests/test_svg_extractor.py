@@ -297,6 +297,23 @@ def test_later_font_size_overrides_font_shorthand():
     assert quotable('<text style="font: 0px serif; font-size: 12px">claim shown</text>', "claim shown")
 
 
+@pytest.mark.parametrize(
+    "body",
+    [
+        '<text style="fill:none; stroke:initial">SECRET</text>',
+        '<text fill="none" stroke="red" style="stroke:revert">SECRET</text>',
+        _xhtml('<div style="color:transparent"><span style="-webkit-text-fill-color:initial">SECRET</span></div>'),
+    ],
+)
+def test_initial_means_each_propertys_initial_value(body):
+    # stroke's initial value is none, -webkit-text-fill-color's is currentcolor.
+    assert not quotable(body + "<text>shown</text>", "SECRET")
+
+
+def test_initial_fill_is_painted():
+    assert quotable('<g fill="none"><text style="fill:initial">claim shown</text></g>', "claim shown")
+
+
 def test_inline_style_beats_presentation_attribute():
     assert not quotable('<text display="inline" style="display:none">SECRET</text>', "SECRET")
     assert quotable('<text display="none" style="display:inline">shown</text>', "shown")

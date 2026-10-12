@@ -862,6 +862,36 @@ def test_fuzzy_repair_never_cuts_a_quote_down_to_part_of_it(reference):
     assert "try:" not in (match.suggested_fix or "")
 
 
+LONG_CLAIM = (
+    "Loss of PTEN in tumour cells activates AKT signalling, which drives "
+    "proliferation and survival through mTORC1 and suppresses apoptosis by "
+    "inhibiting BAD and FOXO transcription factors across several lineages"
+)
+
+
+def test_fuzzy_repair_never_drops_a_short_qualifier_from_a_long_quote():
+    # 96% of the characters survive, but "in mice" is a claim of its own.
+    reference = ReferenceContent(reference_id="PMID:1", content=LONG_CLAIM + ".")
+    config = ReferenceValidationConfig()
+    quote = LONG_CLAIM + " in mice"
+    result = SupportingTextRepairer(config).attempt_repair(quote, "PMID:1", reference)
+    assert not result.is_repaired
+    match = SupportingTextValidator(config).find_text_in_reference(quote, reference)
+    assert "try:" not in (match.suggested_fix or "")
+
+
+def test_a_fragment_does_not_hide_the_real_correction_after_it():
+    reference = ReferenceContent(
+        reference_id="PMID:1",
+        content="Loss of PTEN in tumour cells. Loss of PTEN in tumour cells activates AKT signalling.",
+    )
+    result = SupportingTextRepairer(ReferenceValidationConfig()).attempt_repair(
+        "loss of PTEN in tumour cells activates AKT signaling", "PMID:1", reference
+    )
+    assert result.is_repaired
+    assert "activates AKT signalling" in (result.repaired_text or "")
+
+
 def test_fuzzy_repair_still_corrects_within_a_label():
     # Fuzzy matching needs five words or more, for any reference.
     figure = ReferenceContent(

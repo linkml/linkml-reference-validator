@@ -816,7 +816,7 @@ def test_a_cross_label_quote_is_diagnosed_as_such():
         "loss of PTEN activates AKT", TWO_LABELS
     )
     assert not match.found
-    assert "runs across" in (match.error_message or "")
+    assert "not within any one figure label" in (match.error_message or "")
     assert "..." in (match.error_message or "")
 
 
@@ -824,7 +824,7 @@ def test_a_quote_in_no_label_is_not_called_cross_label():
     match = SupportingTextValidator(ReferenceValidationConfig()).find_text_in_reference(
         "mTOR inhibits", TWO_LABELS
     )
-    assert "runs across" not in (match.error_message or "")
+    assert "not within any one figure label" not in (match.error_message or "")
 
 
 def test_fuzzy_repair_does_not_return_a_cross_label_quote():

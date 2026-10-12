@@ -501,7 +501,7 @@ class SupportingTextValidator:
     ) -> SupportingTextMatch:
         """Deterministic substring matching after normalization.
 
-        All query parts must appear as substrings in the content (order independent).
+        Each query part must appear as a substring of one searchable text (order independent).
         With ``searchable`` (see :meth:`searchable_texts`), each part must appear
         within one of those texts instead, and the fuzzy suggestion is the best
         drawn from any one of them.
@@ -561,8 +561,10 @@ class SupportingTextValidator:
                 error_message = f"Text part not found as substring: '{part}'"
                 if len(normalized_texts) > 1 and normalized_part in " ".join(normalized_texts):
                     error_message = (
-                        f"Text part runs across separate figure labels: '{part}'. "
-                        "Quote each label on its own, joined with '...'"
+                        f"Text part is not within any one figure label: '{part}'. "
+                        "It matches only labels joined in document order, so it "
+                        "may run across them: quote each label on its own, "
+                        "joined with '...'"
                     )
                 return SupportingTextMatch(
                     found=False,

@@ -56,10 +56,11 @@ def normalize_whitespace(text: str) -> str:
 
 
 #: The highest score a match that drops any word of the quote, or adds a
-#: negation, may have. A suggestion needs more than this (see ``generate_suggested_fix``), and so
-#: does a repair, so such a match is reported but never offered as the fix.
-#: Deliberately strict: a typo in a short word ("fo" for "of") is not fixed
-#: either, because short words such as "in"/"on" or "no"/"now" change claims.
+#: negation, may have. A suggestion needs more than this (see
+#: ``generate_suggested_fix``), and so does a repair, so such a match is
+#: reported but never offered as the fix. Deliberately strict: a typo in a
+#: short word ("fo" for "of") is not fixed either, because short words such
+#: as "in"/"on" or "no"/"now" change claims.
 DROPPED_WORD_SCORE_CAP = 70.0
 
 
@@ -68,10 +69,10 @@ def keeps_every_word(query: str, match: str) -> bool:
 
     A word counts as kept when the match has it, or a near spelling of it
     (see :func:`_near_spelling`, which excludes short words and words that
-    differ by a negating prefix), so a typo fix keeps its words while a
-    fragment does not. Stopwords count
-    too: "no", "not", "only" or "after" can each reverse a claim, and are
-    short enough that dropping one barely changes the length.
+    differ in a meaning-changing prefix), so a typo fix keeps its words
+    while a fragment does not. Stopwords count too: "no", "not", "only" or
+    "after" can each reverse a claim, and are short enough that dropping one
+    barely changes the length.
 
     Examples:
         >>> keeps_every_word("PTEN activates AKT signaling", "PTEN activates AKT signalling")
@@ -162,15 +163,21 @@ def _near_spelling(word: str, other: str) -> bool:
 #: quote doesn't have says the opposite of the quote, however close its
 #: spelling. As with the prefixes, a false entry can only lower a score.
 NEGATING_WORDS = frozenset({
-    "no", "not", "never", "none", "neither", "nor", "without", "cannot",
+    "no", "not", "never", "none", "neither", "nor", "without",
     "nothing", "nobody", "nowhere", "unable", "lack", "lacks", "lacked",
     "lacking", "absent", "absence", "fail", "fails", "failed", "failing",
 })
 
 
 def _negations(text: str) -> Counter[str]:
-    """How often each of ``NEGATING_WORDS`` occurs, with "n't" read as "not"."""
-    words = re.findall(r"\w+", re.sub(r"n['’]t\b", " not", text.lower()))
+    """How often each of ``NEGATING_WORDS`` occurs, with "n't" and "cannot" read as "not".
+
+    Examples:
+        >>> _negations("It cannot bind") == _negations("It can not bind") == _negations("It can't bind")
+        True
+    """
+    text = re.sub(r"\bcannot\b", "can not", text.lower())
+    words = re.findall(r"\w+", re.sub(r"n['’]t\b", " not", text))
     return Counter(word for word in words if word in NEGATING_WORDS)
 
 

@@ -133,8 +133,9 @@ offered or applied as the fix:
   "without" or "failed to".
 
 Words of three letters or fewer must match exactly, so "in" is never
-corrected to "on". These checks err towards caution: a real typo next to such
-a word may go unfixed, so fix it by hand.
+corrected to "on". These checks err towards caution, so some real typos go
+unfixed and need fixing by hand: a typo in a word's first few letters can look
+like a changed prefix ("ctivation" reads as "activation" without its "a").
 
 ### 4. Removal Recommendation (Very Low Confidence)
 

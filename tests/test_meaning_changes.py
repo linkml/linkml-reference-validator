@@ -44,6 +44,9 @@ CLAIM = "AKT was {} after rapamycin treatment in tumour cells"
         ("decreased", "increased"),
         ("antiapoptotic", "proapoptotic"),
         ("antagonised", "agonised"),
+        ("dimeric", "monomeric"),
+        ("exogenous", "endogenous"),
+        ("supermaximal", "submaximal"),
     ],
 )
 def test_a_word_with_the_opposite_prefix_is_not_a_typo(said, quoted):
@@ -93,6 +96,12 @@ def test_a_correction_that_adds_a_negation_is_not_offered(said):
         ("AKT was not detected", "AKT was not detectd", False),  # the quote has it already
         ("AKT was not detected, not even once", "AKT was not detected", False),  # dropped, not added
         ("no AKT", "no AKT, and no mTOR", True),  # a second one is added
+        ("PTEN acts on AKT", "PTEN acts without AKT", True),
+        ("PTEN binds AKT", "PTEN lacks AKT", True),
+        ("AKT is present", "AKT is absent", True),
+        ("PTEN cannot bind AKT", "PTEN can not bind AKT", False),  # one negation, spelt two ways
+        ("PTEN can not bind AKT", "PTEN cannot bind AKT", False),
+        ("PTEN cannot bind AKT", "PTEN can't bind AKT", False),
         ("PTEN activates AKT", "PTEN activates AKT signalling", False),
     ],
 )
@@ -116,6 +125,12 @@ def test_adds_negation(query, match, expected):
 )
 def test_a_typo_that_keeps_the_prefix_is_still_repaired(said, quoted):
     assert offered(CLAIM.format(quoted), CLAIM.format(said).capitalize() + ".")
+
+
+def test_a_typo_in_the_first_letters_may_go_unfixed():
+    # The cost of the prefix check: "ctivated" reads as "activated" without
+    # its "a", so it is not corrected. Fix such a typo by hand.
+    assert not offered(CLAIM.format("ctivated"), CLAIM.format("activated").capitalize() + ".")
 
 
 def test_near_spellings_still_count_as_kept():

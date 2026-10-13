@@ -271,7 +271,8 @@ Both file and URL references work in LinkML data files:
 
 ## Limitations
 
-- **Local files are read as text**, apart from `.svg` figures (see above).
+- **Local files are read as text**, apart from `.svg` and `.drawio` figures
+  (see above).
   An `.html` file is matched against its raw markup.
 - **Local PDF files**: Not yet supported as `file:` references. PDFs fetched by `url:` are supported.
 - **Authentication**: URLs requiring login are not supported

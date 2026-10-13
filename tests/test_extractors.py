@@ -140,7 +140,7 @@ def test_pdf_extractor_warns_with_count_of_unmapped_glyphs(caplog):
         PDFExtractor().extract(pdf_bytes)
     warnings = [r for r in caplog.records if r.levelname == "WARNING"]
     assert len(warnings) == 1
-    assert "2" in warnings[0].getMessage()
+    assert "2 unmapped glyph(s)" in warnings[0].getMessage()
 
 
 def test_pdf_extractor_clean_text_does_not_warn(caplog):

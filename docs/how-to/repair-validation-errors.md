@@ -28,6 +28,16 @@ Validation uses an explicit ligature table instead of broad Unicode NFKC
 normalization so this change does not equate scientific notation such as `H₂O`
 with `H2O`, `10⁶` with `106`, or the micro sign `µ` with Greek `μ`.
 
+### Unmapped PDF glyphs do not match
+
+Some PDFs draw a glyph without saying which character it is, so text extraction
+gets no character at all. This is common for `fi`/`fl` ligatures, and sometimes
+happens for digits or minus signs. PDF extraction writes U+FFFD (`�`) in its
+place and logs a warning with the count, so cached text reads `in�ammation`.
+Validation does not guess the missing character: a quote containing
+`inflammation` will not match that text. Check the cached file for `�` and
+quote around the damaged word or supply better full text.
+
 ## Quick Start
 
 ### Repair a Single Quote

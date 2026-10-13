@@ -1000,7 +1000,8 @@ class ReferenceFetcher:
             if fmt == "html":
                 text = HTMLExtractor().extract_full_text(data)
             elif fmt == "pdf":
-                # The PDF extractor names the URL when it warns about lost glyphs.
+                # Deliberately not extractor.extract(...): only the PDF extractor
+                # takes source=, which names the URL when it warns about lost glyphs.
                 text = self._pdf_extractor.extract(
                     data, content_type=content_type, source=location.url
                 )

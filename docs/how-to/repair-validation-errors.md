@@ -38,6 +38,11 @@ Validation does not guess the missing character: a quote containing
 `inflammation` will not match that text. Check the cached file for `�` and
 quote around the damaged word or supply better full text.
 
+Matching treats `�` like punctuation, so the damaged word splits in two: the
+cached text above reads as `in ammation`. A quote that starts or ends inside
+the damaged word still matches, so `ammation of the gut` matches
+`in�ammation of the gut`.
+
 ## Quick Start
 
 ### Repair a Single Quote

@@ -1,6 +1,6 @@
 """Local file reference source.
 
-Reads content from local files (markdown, text, HTML, SVG).
+Reads content from local files (markdown, text, HTML, SVG, drawio).
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.file import FileSource

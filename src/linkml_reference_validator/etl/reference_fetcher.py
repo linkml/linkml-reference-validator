@@ -997,11 +997,16 @@ class ReferenceFetcher:
             return None, fmt, None, False
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
-            text = (
-                HTMLExtractor().extract_full_text(data)
-                if fmt == "html"
-                else extractor.extract(data, content_type=content_type)
-            )
+            if fmt == "html":
+                text = HTMLExtractor().extract_full_text(data)
+            elif fmt == "pdf":
+                # Deliberately not extractor.extract(...): only the PDF extractor
+                # takes source=, which names the URL when it warns about lost glyphs.
+                text = self._pdf_extractor.extract(
+                    data, content_type=content_type, source=location.url
+                )
+            else:
+                text = extractor.extract(data, content_type=content_type)
         except Exception as exc:
             logger.warning(f"Extraction failed for {location.url}: {exc}")
             return None, fmt, None, True

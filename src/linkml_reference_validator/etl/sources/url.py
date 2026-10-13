@@ -98,7 +98,7 @@ class URLSource(ReferenceSource):
 
         if is_pdf:
             text = PDFExtractor(backend=config.pdf_backend).extract(
-                data, content_type="application/pdf"
+                data, content_type="application/pdf", source=url
             )
             return ReferenceContent(
                 reference_id=f"url:{url}",

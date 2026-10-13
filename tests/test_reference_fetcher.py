@@ -1727,3 +1727,49 @@ def test_the_memory_cache_holds_outcomes_not_bare_content(fetcher, mocker):
     assert isinstance(cached, FetchOutcome)
     assert cached.served_stale is True
     assert cached.content.content == "Stale body text."
+
+
+def test_enrich_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog, monkeypatch):
+    from linkml_reference_validator.models import FullTextLocation
+    from tests.test_extractors import _build_minimal_pdf
+
+    class _NulPdfProvider(FullTextProvider):
+        @classmethod
+        def name(cls):
+            return "fake_nul_pdf"
+
+        def locate(self, ids, config):
+            return FullTextLocation(
+                url="https://x/nul.pdf", format_hint="pdf", provider="fake_nul_pdf"
+            )
+
+    # Register into a copy so the fake provider does not outlive this test.
+    monkeypatch.setattr(
+        FullTextProviderRegistry, "_by_name", dict(FullTextProviderRegistry._by_name)
+    )
+    FullTextProviderRegistry.register(_NulPdfProvider)
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        rate_limit_delay=0.0,
+        full_text_providers=["fake_nul_pdf"],
+    )
+    fetcher = ReferenceFetcher(config)
+    content = ReferenceContent(
+        reference_id="DOI:10.1/nul",
+        doi="10.1/nul",
+        content="abstract",
+        content_type="abstract_only",
+    )
+    pdf_bytes = _build_minimal_pdf("in\x00ammation " * 100)
+
+    with (
+        patch.object(
+            fetcher._acquirer,
+            "fetch_bytes",
+            return_value=(pdf_bytes, "application/pdf"),
+        ),
+        caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"),
+    ):
+        fetcher._enrich_with_full_text(content)
+
+    assert any("https://x/nul.pdf" in r.getMessage() for r in caplog.records)

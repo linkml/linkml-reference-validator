@@ -115,3 +115,29 @@ def test_pdf_extractor_rejects_decoded_text():
 
     with pytest.raises(TypeError):
         PDFExtractor().extract("not really a pdf", content_type="application/pdf")
+
+
+def test_pdf_extractor_replaces_nul_with_replacement_character():
+    """pypdf emits NUL for glyphs with no Unicode mapping (often fi/fl ligatures).
+
+    A NUL makes the cached text look binary to grep, so it is swapped for
+    U+FFFD, which keeps the lost character visible and countable (issue #100).
+    """
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    pdf_bytes = _build_minimal_pdf("in\x00ammation")
+    text = PDFExtractor().extract(pdf_bytes)
+    assert text is not None
+    assert "\x00" not in text
+    assert "in�ammation" in text
+
+
+def test_pdf_extractor_all_nul_text_is_not_empty():
+    """A page of nothing but unmapped glyphs still had text; it was just lost.
+
+    Replacing before the emptiness check keeps that visible instead of
+    reporting the PDF as having no text at all.
+    """
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    assert PDFExtractor().extract(_build_minimal_pdf("\x00\x00\x00")) == "�" * 3

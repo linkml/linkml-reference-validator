@@ -160,3 +160,14 @@ def test_pdf_extractor_all_nul_text_is_not_empty():
     from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
     assert PDFExtractor().extract(_build_minimal_pdf("\x00\x00\x00")) == "�" * 3
+
+
+def test_pdf_extractor_warning_names_the_source(caplog):
+    """In a batch run the count alone does not say which reference to check."""
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+        PDFExtractor().extract(
+            _build_minimal_pdf("in\x00ammation"), source="https://x/y.pdf"
+        )
+    assert "https://x/y.pdf" in caplog.records[0].getMessage()

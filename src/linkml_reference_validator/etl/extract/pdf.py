@@ -138,8 +138,13 @@ class PDFExtractor(Extractor):
         return ["pdf"]
 
     def extract(
-        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+        self,
+        data: Union[bytes, str],
+        *,
+        content_type: Optional[str] = None,
+        source: Optional[str] = None,
     ) -> Optional[str]:
+        """Extract text from PDF bytes; ``source`` (e.g. a URL) names it in logs."""
         # The base accepts str for text formats, but a PDF is binary: decoded
         # text cannot be reparsed as one, so say so rather than failing deep
         # inside the backend.
@@ -148,8 +153,9 @@ class PDFExtractor(Extractor):
         # Replace here rather than in a backend so every backend gets it.
         text, unmapped = replace_unmapped_glyphs(self._backend.extract_text(data))
         if unmapped:
+            origin = f" from {source}" if source else ""
             logger.warning(
-                f"PDF text has {unmapped} unmapped glyph(s), replaced with U+FFFD"
+                f"PDF text{origin} has {unmapped} unmapped glyph(s), replaced with U+FFFD"
             )
         return text if text and text.strip() else None
 

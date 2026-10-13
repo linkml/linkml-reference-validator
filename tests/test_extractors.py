@@ -136,7 +136,9 @@ def test_pdf_extractor_warns_with_count_of_unmapped_glyphs(caplog):
     from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
     pdf_bytes = _build_minimal_pdf("in\x00ammation and \x00ow")
-    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+    with caplog.at_level(
+        "WARNING", logger="linkml_reference_validator.etl.extract.pdf"
+    ):
         PDFExtractor().extract(pdf_bytes)
     warnings = [r for r in caplog.records if r.levelname == "WARNING"]
     assert len(warnings) == 1
@@ -146,7 +148,9 @@ def test_pdf_extractor_warns_with_count_of_unmapped_glyphs(caplog):
 def test_pdf_extractor_clean_text_does_not_warn(caplog):
     from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
-    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+    with caplog.at_level(
+        "WARNING", logger="linkml_reference_validator.etl.extract.pdf"
+    ):
         PDFExtractor().extract(_build_minimal_pdf("inflammation"))
     assert not [r for r in caplog.records if r.levelname == "WARNING"]
 
@@ -166,7 +170,9 @@ def test_pdf_extractor_warning_names_the_source(caplog):
     """In a batch run the count alone does not say which reference to check."""
     from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 
-    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+    with caplog.at_level(
+        "WARNING", logger="linkml_reference_validator.etl.extract.pdf"
+    ):
         PDFExtractor().extract(
             _build_minimal_pdf("in\x00ammation"), source="https://x/y.pdf"
         )

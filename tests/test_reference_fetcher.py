@@ -1755,12 +1755,21 @@ def test_enrich_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog, monkeypat
     )
     fetcher = ReferenceFetcher(config)
     content = ReferenceContent(
-        reference_id="DOI:10.1/nul", doi="10.1/nul", content="abstract", content_type="abstract_only"
+        reference_id="DOI:10.1/nul",
+        doi="10.1/nul",
+        content="abstract",
+        content_type="abstract_only",
     )
     pdf_bytes = _build_minimal_pdf("in\x00ammation " * 100)
 
-    with patch.object(fetcher._acquirer, "fetch_bytes", return_value=(pdf_bytes, "application/pdf")), \
-         caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+    with (
+        patch.object(
+            fetcher._acquirer,
+            "fetch_bytes",
+            return_value=(pdf_bytes, "application/pdf"),
+        ),
+        caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"),
+    ):
         fetcher._enrich_with_full_text(content)
 
     assert any("https://x/nul.pdf" in r.getMessage() for r in caplog.records)

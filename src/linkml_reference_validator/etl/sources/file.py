@@ -1,6 +1,6 @@
 """Local file reference source.
 
-Reads content from local files (markdown, text, HTML, SVG).
+Reads content from local files (markdown, text, HTML, SVG, drawio).
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.file import FileSource
@@ -28,12 +28,14 @@ logger = logging.getLogger(__name__)
 class FileSource(ReferenceSource):
     """Fetch reference content from local files.
 
-    Supports markdown (.md), plain text (.txt), HTML (.html) and SVG (.svg)
-    files. Content is read as-is without parsing (HTML entities preserved),
-    except for SVG: a figure is matched against the text it renders, read by
-    :class:`~linkml_reference_validator.etl.extract.svg.SVGExtractor`, so a
-    quote cannot pass against markup, attributes or hidden text. An SVG with
-    no rendered text, or whose rendered text cannot be determined, is
+    Supports markdown (.md), plain text (.txt), HTML (.html), SVG (.svg) and
+    drawio (.drawio, .drawio.xml) files. Content is read as-is without parsing
+    (HTML entities preserved), except for figures: an SVG or drawio figure is
+    matched against the text it renders, read by
+    :class:`~linkml_reference_validator.etl.extract.svg.SVGExtractor` or
+    :class:`~linkml_reference_validator.etl.extract.drawio.DrawioExtractor`,
+    so a quote cannot pass against markup, attributes or hidden text. A figure
+    with no rendered text, or whose rendered text cannot be determined, is
     ``unavailable``.
 
     Path resolution:

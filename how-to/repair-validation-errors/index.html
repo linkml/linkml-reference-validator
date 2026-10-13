@@ -964,6 +964,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#unmapped-pdf-glyphs-do-not-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unmapped PDF glyphs do not match
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1774,6 +1785,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#unmapped-pdf-glyphs-do-not-match" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Unmapped PDF glyphs do not match
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -2232,6 +2254,18 @@ Equating these letters would accept spelling changes beyond typographic repair.
 Validation uses an explicit ligature table instead of broad Unicode NFKC
 normalization so this change does not equate scientific notation such as <code>H₂O</code>
 with <code>H2O</code>, <code>10⁶</code> with <code>106</code>, or the micro sign <code>µ</code> with Greek <code>μ</code>.</p>
+<h3 id="unmapped-pdf-glyphs-do-not-match">Unmapped PDF glyphs do not match</h3>
+<p>Some PDFs draw a glyph without saying which character it is, so text extraction
+gets no character at all. This is common for <code>fi</code>/<code>fl</code> ligatures, and sometimes
+happens for digits or minus signs. PDF extraction writes U+FFFD (<code>�</code>) in its
+place and logs a warning with the count, so cached text reads <code>in�ammation</code>.
+Validation does not guess the missing character: a quote containing
+<code>inflammation</code> will not match that text. Check the cached file for <code>�</code> and
+quote around the damaged word or supply better full text.</p>
+<p>Matching treats <code>�</code> like punctuation, so the damaged word splits in two: the
+cached text above reads as <code>in ammation</code>. A quote that starts or ends inside
+the damaged word still matches, so <code>ammation of the gut</code> matches
+<code>in�ammation of the gut</code>.</p>
 <h2 id="quick-start">Quick Start</h2>
 <h3 id="repair-a-single-quote">Repair a Single Quote</h3>
 <pre><code class="language-bash">linkml-reference-validator repair text &quot;CO2 levels were measured&quot; PMID:12345678

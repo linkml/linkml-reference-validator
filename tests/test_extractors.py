@@ -170,4 +170,6 @@ def test_pdf_extractor_warning_names_the_source(caplog):
         PDFExtractor().extract(
             _build_minimal_pdf("in\x00ammation"), source="https://x/y.pdf"
         )
-    assert "https://x/y.pdf" in caplog.records[0].getMessage()
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "https://x/y.pdf" in warnings[0].getMessage()

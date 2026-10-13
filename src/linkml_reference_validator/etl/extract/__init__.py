@@ -1,4 +1,4 @@
-"""Content extractors (PDF, HTML, XML, SVG).
+"""Content extractors (PDF, HTML, XML, SVG, drawio).
 
 Changing what these produce for the same input does not rewrite the text they
 already wrote to the reference cache, which is served in preference to a fetch.

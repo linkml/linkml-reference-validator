@@ -132,6 +132,25 @@ def test_pdf_extractor_replaces_nul_with_replacement_character():
     assert "in�ammation" in text
 
 
+def test_pdf_extractor_warns_with_count_of_unmapped_glyphs(caplog):
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    pdf_bytes = _build_minimal_pdf("in\x00ammation and \x00ow")
+    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+        PDFExtractor().extract(pdf_bytes)
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "2" in warnings[0].getMessage()
+
+
+def test_pdf_extractor_clean_text_does_not_warn(caplog):
+    from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+
+    with caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"):
+        PDFExtractor().extract(_build_minimal_pdf("inflammation"))
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
+
+
 def test_pdf_extractor_all_nul_text_is_not_empty():
     """A page of nothing but unmapped glyphs still had text; it was just lost.
 

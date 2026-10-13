@@ -146,7 +146,11 @@ class PDFExtractor(Extractor):
         if isinstance(data, str):
             raise TypeError("PDF extraction requires bytes, not decoded text")
         # Replace here rather than in a backend so every backend gets it.
-        text, _ = replace_unmapped_glyphs(self._backend.extract_text(data))
+        text, unmapped = replace_unmapped_glyphs(self._backend.extract_text(data))
+        if unmapped:
+            logger.warning(
+                f"PDF text has {unmapped} unmapped glyph(s), replaced with U+FFFD"
+            )
         return text if text and text.strip() else None
 
     def extract_title(self, data: bytes) -> Optional[str]:

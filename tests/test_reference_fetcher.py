@@ -1729,7 +1729,7 @@ def test_the_memory_cache_holds_outcomes_not_bare_content(fetcher, mocker):
     assert cached.content.content == "Stale body text."
 
 
-def test_enrich_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog):
+def test_enrich_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog, monkeypatch):
     from linkml_reference_validator.models import FullTextLocation
     from tests.test_extractors import _build_minimal_pdf
 
@@ -1743,6 +1743,10 @@ def test_enrich_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog):
                 url="https://x/nul.pdf", format_hint="pdf", provider="fake_nul_pdf"
             )
 
+    # Register into a copy so the fake provider does not outlive this test.
+    monkeypatch.setattr(
+        FullTextProviderRegistry, "_by_name", dict(FullTextProviderRegistry._by_name)
+    )
     FullTextProviderRegistry.register(_NulPdfProvider)
     config = ReferenceValidationConfig(
         cache_dir=tmp_path / "cache",

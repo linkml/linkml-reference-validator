@@ -21,11 +21,14 @@ The validator tries providers in order until one returns usable full text.
 The default order is:
 
 ```
-pmc → epmc_preprint → unpaywall → openalex
+pmc → bookshelf → epmc_preprint → unpaywall → openalex
 ```
 
 - **`pmc`** — PubMed Central open-access subset (XML/HTML full text for many
   biomedical articles).
+- **`bookshelf`** — NCBI Bookshelf chapters, such as GeneReviews, read from a
+  local copy of NCBI's archive (see [NCBI Bookshelf](#ncbi-bookshelf-genereviews)
+  below). Does nothing until `bookshelf_archive_dir` is set.
 - **`epmc_preprint`** — Europe PMC preprint body text via the `fulltextRepo`
   PDF route (see [Preprints](#preprints) below).
 - **`unpaywall`** — Unpaywall open-access lookup by DOI (often a publisher or
@@ -45,7 +48,8 @@ your config YAML or on the `ReferenceValidationConfig` object):
 | Key | Default | Description |
 |-----|---------|-------------|
 | `fetch_full_text` | `true` | Attempt to obtain full text via the provider chain when a metadata source does not already return full text. |
-| `full_text_providers` | `[pmc, epmc_preprint, unpaywall, openalex]` | Ordered list of provider names to try until one yields usable full text. |
+| `full_text_providers` | `[pmc, bookshelf, epmc_preprint, unpaywall, openalex]` | Ordered list of provider names to try until one yields usable full text. |
+| `bookshelf_archive_dir` | `null` | Directory of unpacked NCBI Bookshelf books, read by the `bookshelf` provider. |
 | `private_cache_dir` | `~/.cache/linkml-reference-validator/private` | Separate research cache for closed/user-library full text; never read by validation. |
 | `pdf_backend` | `pypdf` | Name of the PDF text-extraction backend. |
 | `download_pdfs` | `true` | If true, persist downloaded PDFs to the files cache directory. |
@@ -66,11 +70,59 @@ email: you@example.org
 fetch_full_text: true
 full_text_providers:
   - pmc
+  - bookshelf
   - epmc_preprint
   - unpaywall
   - openalex
 pdf_backend: pypdf
 download_pdfs: true
+```
+
+## NCBI Bookshelf (GeneReviews)
+
+A PMID can point to a chapter on NCBI Bookshelf rather than a journal article.
+Every [GeneReviews](https://www.ncbi.nlm.nih.gov/books/NBK1116/) entry is one
+of these. Such a chapter has no PMC copy, so without help the reference keeps
+only its PubMed summary, and a quote from the chapter body fails as
+abstract-only.
+
+Bookshelf's web pages can't be fetched by a script: NCBI answers with a
+reCAPTCHA page. Instead, the `bookshelf` provider reads chapters from NCBI's
+[litarch archive](https://ftp.ncbi.nlm.nih.gov/pub/litarch/), which you
+download once per book:
+
+```bash
+linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf
+```
+
+GeneReviews (`NBK1116`) is a 640 MB download. Only the chapter XML is kept,
+about 200 MB. Then point the config at the same directory:
+
+```yaml
+bookshelf_archive_dir: bookshelf
+```
+
+The PubMed record names the chapter, so no extra lookup is needed:
+`PMID:31536184` is `gene/glutaric-a1`, read from
+`bookshelf/gene_NBK1116/glutaric-a1.nxml`. The cached entry records
+`full_text_provider: bookshelf`, and `full_text_url` holds the chapter's
+Bookshelf page.
+
+A chapter is used only when its own `<license>` is `open-access`. GeneReviews
+allows copying for noncommercial research with credit and no modification. A
+cache holds a verbatim copy, and its `full_text_url` links back to the
+chapter, so the text goes into the public cache like PMC full text does.
+
+To refresh a book, run the download again: it replaces the book's folder. Do
+this to pick up new or revised chapters.
+
+**References cached before the archive was set up** keep their abstract. The
+chain recorded that it couldn't read the chapter (`full_text_declined`, or
+`full_text_attempted` on a cache from an older version), and it doesn't retry
+on its own. Re-fetch them:
+
+```bash
+linkml-reference-validator cache reference PMID:31536184 --force
 ```
 
 ## Private manuscripts in Zotero

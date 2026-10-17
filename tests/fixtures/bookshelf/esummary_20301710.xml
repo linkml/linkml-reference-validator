@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE eSummaryResult PUBLIC "-//NLM//DTD esummary v1 20041029//EN" "https://eutils.ncbi.nlm.nih.gov/eutils/dtd/20041029/esummary-v1.dtd">
+<eSummaryResult>
+<DocSum>
+	<Id>20301710</Id>
+	<Item Name="PubDate" Type="Date">1993</Item>
+	<Item Name="EPubDate" Type="Date"></Item>
+	<Item Name="Source" Type="String"></Item>
+	<Item Name="AuthorList" Type="List">
+		<Item Name="Editor" Type="String">Adam MP</Item>
+		<Item Name="Editor" Type="String">Bick S</Item>
+		<Item Name="Editor" Type="String">Mirzaa GM</Item>
+		<Item Name="Editor" Type="String">Wallace SE</Item>
+		<Item Name="Editor" Type="String">Amemiya A</Item>
+		<Item Name="Author" Type="String">Giusti F</Item>
+		<Item Name="Author" Type="String">Marini F</Item>
+		<Item Name="Author" Type="String">Brandi ML</Item>
+	</Item>
+	<Item Name="LastAuthor" Type="String">Brandi ML</Item>
+	<Item Name="Title" Type="String">Multiple Endocrine Neoplasia Type 1.</Item>
+	<Item Name="Volume" Type="String"></Item>
+	<Item Name="Issue" Type="String"></Item>
+	<Item Name="Pages" Type="String"></Item>
+	<Item Name="LangList" Type="List">
+		<Item Name="Lang" Type="String">English</Item>
+	</Item>
+	<Item Name="NlmUniqueID" Type="String"></Item>
+	<Item Name="ISSN" Type="String"></Item>
+	<Item Name="ESSN" Type="String"></Item>
+	<Item Name="PubTypeList" Type="List">
+		<Item Name="PubType" Type="String">Review</Item>
+	</Item>
+	<Item Name="RecordStatus" Type="String">PubMed</Item>
+	<Item Name="PubStatus" Type="String"></Item>
+	<Item Name="ArticleIds" Type="List">
+		<Item Name="bookaccession" Type="String">NBK1538</Item>
+		<Item Name="pubmed" Type="String">20301710</Item>
+	</Item>
+	<Item Name="History" Type="List"></Item>
+	<Item Name="References" Type="List"></Item>
+	<Item Name="HasAbstract" Type="Integer">1</Item>
+	<Item Name="PmcRefCount" Type="Integer">0</Item>
+	<Item Name="FullJournalName" Type="String"></Item>
+	<Item Name="ELocationID" Type="String"></Item>
+	<Item Name="SO" Type="String">1993;</Item>
+</DocSum>
+
+</eSummaryResult>

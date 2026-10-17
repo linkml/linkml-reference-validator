@@ -106,6 +106,29 @@ class CacheValidationResult:
         return not self.findings
 
 
+def cache_key(reference_id: str) -> str:
+    """Return the identity a normalized reference ID is cached under.
+
+    A ``url:`` reference drops its fragment: a client never sends the part
+    after ``#`` to the server, so ``report.pdf#page=54`` and
+    ``report.pdf#page=55`` fetch the same bytes and share one entry (#114).
+    The query string is kept, since it can change what the server returns.
+    Every other reference ID is its own key.
+
+    >>> cache_key("url:https://example.org/report.pdf#page=54")
+    'url:https://example.org/report.pdf'
+    >>> cache_key("url:https://example.org/report.pdf?v=2#page=54")
+    'url:https://example.org/report.pdf?v=2'
+    >>> cache_key("url:https://example.org/report.pdf")
+    'url:https://example.org/report.pdf'
+    >>> cache_key("file:./notes.md#intro")
+    'file:./notes.md#intro'
+    """
+    if reference_id.startswith("url:"):
+        return reference_id.partition("#")[0]
+    return reference_id
+
+
 def cache_filename(reference_id: str) -> str:
     """Return the writer's filename for an already normalized reference ID.
 
@@ -113,7 +136,26 @@ def cache_filename(reference_id: str) -> str:
 
     >>> cache_filename("url:https://example.org/a?b=c")
     'url_https___example.org_a_b_c.md'
+    >>> cache_filename("url:https://example.org/a.pdf#page=3")
+    'url_https___example.org_a.pdf.md'
     """
+    return _sanitized_filename(cache_key(reference_id))
+
+
+def legacy_cache_filename(reference_id: str) -> str:
+    """Return the filename used before ``url:`` fragments were dropped (#114).
+
+    Read-only: entries are never written here any more, but caches committed
+    before the change still hold them.
+
+    >>> legacy_cache_filename("url:https://example.org/a.pdf#page=3")
+    'url_https___example.org_a.pdf#page_3.md'
+    """
+    return _sanitized_filename(reference_id)
+
+
+def _sanitized_filename(reference_id: str) -> str:
+    """Sanitize a reference ID into a filename, keeping everything else verbatim."""
     return re.sub(r"[:/?=]", "_", reference_id) + ".md"
 
 
@@ -215,7 +257,9 @@ def _validate_cache_file(
 
     reference_id = result.frontmatter.reference_id
     expected = cache_filename(reference_id)
-    matches = path.name == expected
+    # A fragment-keyed name from before #114 is still read, so still valid.
+    accepted = {expected, legacy_cache_filename(reference_id)}
+    matches = path.name in accepted
     if reference_id.upper().startswith("DOI:"):
         matches = path.name.casefold() == expected.casefold()
     if not matches:

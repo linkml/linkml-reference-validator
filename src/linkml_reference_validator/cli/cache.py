@@ -221,7 +221,7 @@ def lookup_command(
 
     # Get the cache path for this reference
     normalized_id = fetcher.normalize_reference_id(reference_id)
-    cache_path = fetcher.get_cache_path(normalized_id)
+    cache_path = fetcher.find_cache_file(normalized_id)
 
     if no_cache:
         # Fetch fresh from source

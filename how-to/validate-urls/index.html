@@ -952,10 +952,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
+  <a href="#4-cite-pages-with-fragments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Mix Reference Types
+        4. Cite Pages With Fragments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-mix-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Mix Reference Types
       
     </span>
   </a>
@@ -1814,10 +1825,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#4-mix-reference-types" class="md-nav__link">
+  <a href="#4-cite-pages-with-fragments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        4. Mix Reference Types
+        4. Cite Pages With Fragments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-mix-reference-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Mix Reference Types
       
     </span>
   </a>
@@ -2102,7 +2124,19 @@ linkml-reference-validator cache lookup url:https://example.com/page --content
 <li>Use <code>linkml-reference-validator cache reference url:https://... --force</code> to update cached content when pages change</li>
 <li>Periodically review cached URLs to ensure they're still accessible</li>
 </ul>
-<h3 id="4-mix-reference-types">4. Mix Reference Types</h3>
+<h3 id="4-cite-pages-with-fragments">4. Cite Pages With Fragments</h3>
+<p>A fragment such as <code>#page=54</code> is never sent to the server, so it isn't part of
+the cache key. <code>url:https://example.com/report.pdf#page=54</code> and
+<code>...report.pdf#page=55</code> share one cache file, <code>url_https___example.com_report.pdf.md</code>,
+and the document is fetched and extracted once. Each reference still carries
+its own page-anchored URL, and quotes are matched against the whole document,
+not the cited page. Query strings (<code>?v=2</code>) do stay part of the key.</p>
+<p>Caches written before this change hold one file per fragment, such as
+<code>url_https___example.com_report.pdf#page_54.md</code>. These are still read, until
+the reference is next fetched (for example with <code>cache reference ... --force</code>);
+the fresh entry goes to the shared file, after which the per-fragment files can
+be deleted.</p>
+<h3 id="5-mix-reference-types">5. Mix Reference Types</h3>
 <p>URL references work alongside PMIDs and DOIs:</p>
 <pre><code class="language-yaml">findings:
   value: &quot;Multiple studies confirm this relationship&quot;

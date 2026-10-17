@@ -25,6 +25,8 @@ from linkml_reference_validator.cache import (
     CacheFrontmatter,
     CacheSupplementaryFile,
     cache_filename,
+    cache_key,
+    legacy_cache_filename,
 )
 
 from linkml_reference_validator.models import (
@@ -1158,8 +1160,40 @@ class ReferenceFetcher:
             >>> path = fetcher.get_cache_path("url:https://example.com/book/chapter1")
             >>> path.name
             'url_https___example.com_book_chapter1.md'
+
+            A ``url:`` fragment is not part of the key, so every page of one
+            PDF shares an entry:
+
+            >>> fetcher.get_cache_path("url:https://example.com/r.pdf#page=54").name
+            'url_https___example.com_r.pdf.md'
         """
         return self._cache_path(reference_id, self.config.get_cache_dir())
+
+    def find_cache_file(self, reference_id: str) -> Path:
+        """Return the public cache file to read for a reference.
+
+        That is :meth:`get_cache_path` unless only a ``url:`` entry written
+        before #114 exists, keyed by the full URL fragment included; then that
+        file. Writes always go to :meth:`get_cache_path`, so a legacy entry is
+        read until the reference is next fetched and never updated in place.
+
+        Args:
+            reference_id: Normalized reference identifier
+
+        Returns:
+            Path to the cache file, which may not exist
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> fetcher.find_cache_file("url:https://example.com/r.pdf#page=54").name
+            'url_https___example.com_r.pdf.md'
+        """
+        path = self.get_cache_path(reference_id)
+        if path.exists() or cache_key(reference_id) == reference_id:
+            return path
+        legacy = path.parent / legacy_cache_filename(reference_id)
+        return legacy if legacy.exists() else path
 
     def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
         """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
@@ -1193,7 +1227,8 @@ class ReferenceFetcher:
         replacement characters elsewhere cost nothing.
         """
         if not reference.reference_id.upper().startswith("DOI:"):
-            return reference.reference_id
+            # A url: entry is shared by every fragment, so it names none (#114).
+            return cache_key(reference.reference_id)
         try:
             with cache_path.open(encoding="utf-8", errors="replace") as handle:
                 for position, line in enumerate(handle):
@@ -1591,7 +1626,7 @@ class ReferenceFetcher:
         Returns:
             ReferenceContent if cached, None otherwise
         """
-        cache_path = self.get_cache_path(reference_id)
+        cache_path = self.find_cache_file(reference_id)
         is_legacy = False
 
         if not cache_path.exists():
@@ -1634,6 +1669,12 @@ class ReferenceFetcher:
             )
             return None
         reference = self._load_markdown_format(content_text, reference_id)
+        if reference is not None and reference.reference_id != reference_id and (
+            cache_key(reference.reference_id) == cache_key(reference_id)
+        ):
+            # One url: entry serves every fragment of its URL. Hand back the
+            # page-anchored URL this caller cited, not whichever was stored.
+            reference.reference_id = reference_id
         if (
             allow_stale
             and not allow_stale_html

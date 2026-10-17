@@ -227,7 +227,22 @@ Ensure the cached content contains the text you're referencing.
 - Use `linkml-reference-validator cache reference url:https://... --force` to update cached content when pages change
 - Periodically review cached URLs to ensure they're still accessible
 
-### 4. Mix Reference Types
+### 4. Cite Pages With Fragments
+
+A fragment such as `#page=54` is never sent to the server, so it isn't part of
+the cache key. `url:https://example.com/report.pdf#page=54` and
+`...report.pdf#page=55` share one cache file, `url_https___example.com_report.pdf.md`,
+and the document is fetched and extracted once. Each reference still carries
+its own page-anchored URL, and quotes are matched against the whole document,
+not the cited page. Query strings (`?v=2`) do stay part of the key.
+
+Caches written before this change hold one file per fragment, such as
+`url_https___example.com_report.pdf#page_54.md`. These are still read, until
+the reference is next fetched (for example with `cache reference ... --force`);
+the fresh entry goes to the shared file, after which the per-fragment files can
+be deleted.
+
+### 5. Mix Reference Types
 
 URL references work alongside PMIDs and DOIs:
 

@@ -102,7 +102,7 @@ def _format_as_markdown(reference: ReferenceContent, fetcher: ReferenceFetcher) 
     Returns:
         Markdown content with YAML frontmatter
     """
-    cache_path = fetcher.get_cache_path(reference.reference_id)
+    cache_path = fetcher.find_cache_file(reference.reference_id)
     if cache_path.exists():
         return cache_path.read_text(encoding="utf-8")
 

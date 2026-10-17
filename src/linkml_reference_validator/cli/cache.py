@@ -370,6 +370,9 @@ def bookshelf_download_command(
     fraction of that. Point ``bookshelf_archive_dir`` at the same directory,
     then re-fetch cited chapters with ``cache reference PMID:... --force``.
 
+    The archive is only read when a chapter is cached. Validation reads the
+    cached reference, so a committed cache needs no archive and no download.
+
     Examples:
 
         linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf

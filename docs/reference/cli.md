@@ -912,6 +912,10 @@ linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir booksh
 
 Running it again replaces the book's folder with the current release.
 
+The archive is only needed on the machine that caches chapters. Validation
+reads the cached reference (`PMID_*.md`), so a committed cache validates
+without the archive or any NCBI call.
+
 ---
 
 ## Reference ID Formats

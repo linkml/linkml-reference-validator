@@ -44,6 +44,9 @@ from linkml_reference_validator.models import (
     ReferenceIdentifiers,
     ReferenceValidationConfig,
 )
+from linkml_reference_validator.validation.supporting_text_validator import (
+    SupportingTextValidator,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "bookshelf"
 PUBMED_XML = (FIXTURES / "pubmed_20301710.xml").read_bytes()
@@ -227,6 +230,47 @@ def test_a_genereviews_pmid_gets_chapter_full_text(ncbi, config):
     assert CHAPTER_SENTENCE in cached
     # Only the two PubMed calls: the chapter came off disk.
     assert sorted(ncbi) == ["efetch.fcgi", "esummary.fcgi"]
+
+
+def test_validation_reads_the_cached_chapter_without_the_archive(
+    ncbi, config, archive
+):
+    """The archive is needed to cache a chapter once, never to validate it.
+
+    A curated project commits its cache: validation there, or in CI, must not
+    need the 640 MB download, nor NCBI at all.
+    """
+    ReferenceFetcher(config).fetch("PMID:20301710")
+    shutil.rmtree(archive)
+    ncbi.clear()
+    config.bookshelf_archive_dir = None
+
+    result = SupportingTextValidator(config).validate(CHAPTER_SENTENCE, "PMID:20301710")
+
+    assert result.is_valid, result.message
+    assert ncbi == []
+
+
+def test_a_stale_chapter_is_kept_when_the_archive_is_gone(ncbi, config, archive):
+    """A refresh that can only reach the abstract never demotes the cached chapter."""
+    ReferenceFetcher(config).fetch("PMID:20301710")
+    cache_file = config.get_cache_dir() / "PMID_20301710.md"
+    # As a future extractor-version bump would leave it.
+    cache_file.write_text(
+        cache_file.read_text(encoding="utf-8").replace(
+            "xml_extraction_version: 1", "xml_extraction_version: 0"
+        ),
+        encoding="utf-8",
+    )
+    before = cache_file.read_bytes()
+    shutil.rmtree(archive)
+    config.bookshelf_archive_dir = None
+
+    reference = ReferenceFetcher(config).fetch("PMID:20301710")
+
+    assert reference.content_type == "full_text_xml"
+    assert CHAPTER_SENTENCE in reference.content
+    assert cache_file.read_bytes() == before
 
 
 def test_without_an_archive_the_abstract_stays_retryable(ncbi, config):

@@ -1173,7 +1173,7 @@ class ReferenceFetcher:
         """Return the public cache file to read for a reference.
 
         That is :meth:`get_cache_path` unless only a ``url:`` entry written
-        before #114 exists, keyed by the full URL fragment included; then that
+        before #114 exists, keyed by the full URL, fragment included; then that
         file. Writes always go to :meth:`get_cache_path`, so a legacy entry is
         read until the reference is next fetched and never updated in place.
 

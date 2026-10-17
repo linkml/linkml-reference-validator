@@ -21,9 +21,11 @@ from pathlib import Path
 import pytest
 from pypdf import PdfWriter
 from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
+from typer.testing import CliRunner
 
 from linkml_reference_validator import validate_cache_file
 from linkml_reference_validator.cache import cache_filename, cache_key
+from linkml_reference_validator.cli import app
 from linkml_reference_validator.etl.reference_fetcher import (
     EXTRACTOR_CACHE_VERSION,
     URL_SOURCE_CACHE_VERSION,
@@ -218,3 +220,38 @@ def test_shared_entry_wins_over_a_legacy_one(pdf_server, config):
     assert hits == {"/proposal.pdf": 1}
     assert PDF_TEXT in ref.content
     assert ref.reference_id == f"url:{url}#page=54"
+
+
+def test_force_refresh_moves_a_legacy_entry_to_the_shared_file(pdf_server, config):
+    """The migration the docs recommend: re-fetch writes the shared file only."""
+    base, hits = pdf_server
+    url = f"{base}/proposal.pdf"
+    legacy = _legacy_entry(config.get_cache_dir(), f"url:{url}#page=54", "Legacy text.")
+    before = legacy.read_bytes()
+
+    ref = ReferenceFetcher(config).fetch(f"url:{url}#page=54", force_refresh=True)
+
+    assert hits == {"/proposal.pdf": 1}
+    assert ref.reference_id == f"url:{url}#page=54"
+    shared = config.get_cache_dir() / cache_filename(f"url:{url}")
+    assert f"reference_id: url:{url}\n" in shared.read_text(encoding="utf-8")
+    assert legacy.read_bytes() == before
+
+
+def test_a_fragment_in_the_shared_files_frontmatter_still_validates(tmp_path):
+    """A hand-edited shared file naming one page is the right file for that page."""
+    path = _legacy_entry(tmp_path, "url:https://example.org/a.pdf#page=54", "Text.")
+    shared = path.rename(tmp_path / cache_filename("url:https://example.org/a.pdf"))
+    assert validate_cache_file(shared).is_valid
+
+
+def test_cache_lookup_cli_finds_a_legacy_entry(config):
+    reference_id = "url:https://example.org/a.pdf#page=54"
+    legacy = _legacy_entry(config.get_cache_dir(), reference_id, "Legacy text.")
+
+    result = CliRunner().invoke(
+        app, ["cache", "lookup", reference_id, "--cache-dir", str(config.get_cache_dir())]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert legacy.name in result.stdout

@@ -1949,6 +1949,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cache-bookshelf-download" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache bookshelf-download
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-id-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3021,6 +3032,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#cache-bookshelf-download" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cache bookshelf-download
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#reference-id-formats" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -3715,6 +3737,7 @@ repair:
 <ul>
 <li><code>reference</code> - Cache a reference for offline use</li>
 <li><code>lookup</code> - Show the cache path for a reference (or print file contents)</li>
+<li><code>bookshelf-download</code> - Download an NCBI Bookshelf book for chapter full text</li>
 </ul>
 <hr />
 <h2 id="cache-reference">cache reference</h2>
@@ -3856,6 +3879,31 @@ linkml-reference-validator cache enrich --provider zotero --apply
 <p>The public source cache is never modified by this command, and validation never
 reads the private destination. Private-library content may be copyrighted; keep
 the research cache private.</p>
+<hr />
+<h2 id="cache-bookshelf-download">cache bookshelf-download</h2>
+<p>Download one NCBI Bookshelf book from NCBI's litarch archive and unpack its
+chapter XML, so the <code>bookshelf</code> full-text provider can read chapters such as
+GeneReviews entries. See
+<a href="../../how-to/fetch-full-text-and-pdfs/#ncbi-bookshelf-genereviews">Fetch full text</a>.</p>
+<pre><code class="language-bash">linkml-reference-validator cache bookshelf-download ACCESSION [OPTIONS]
+</code></pre>
+<p><strong>Arguments:</strong></p>
+<ul>
+<li><code>ACCESSION</code> - The book's NBK accession, e.g. <code>NBK1116</code> for GeneReviews</li>
+</ul>
+<p><strong>Options:</strong></p>
+<ul>
+<li><code>--archive-dir PATH</code> - Where to unpack the book (default: <code>bookshelf_archive_dir</code> from the config)</li>
+<li><code>--mirror URL</code> - Base URL of the litarch archive (default: <code>https://ftp.ncbi.nlm.nih.gov/pub/litarch</code>)</li>
+<li><code>--config PATH</code> - Validation configuration file</li>
+<li><code>--verbose, -v</code> - Enable detailed logging</li>
+</ul>
+<pre><code class="language-bash">linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf
+</code></pre>
+<p>Running it again replaces the book's folder with the current release.</p>
+<p>The archive is only needed on the machine that caches chapters. Validation
+reads the cached reference (<code>PMID_*.md</code>), so a committed cache validates
+without the archive or any NCBI call.</p>
 <hr />
 <h2 id="reference-id-formats">Reference ID Formats</h2>
 <h3 id="pubmed-pmid">PubMed (PMID)</h3>

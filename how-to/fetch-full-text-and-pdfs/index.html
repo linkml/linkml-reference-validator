@@ -863,6 +863,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ncbi-bookshelf-genereviews" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NCBI Bookshelf (GeneReviews)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NCBI Bookshelf (GeneReviews)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validate-against-the-cache-not-the-archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate against the cache, not the archive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#private-manuscripts-in-zotero" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1496,6 +1524,34 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ncbi-bookshelf-genereviews" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NCBI Bookshelf (GeneReviews)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="NCBI Bookshelf (GeneReviews)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#validate-against-the-cache-not-the-archive" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Validate against the cache, not the archive
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#private-manuscripts-in-zotero" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1646,11 +1702,14 @@ alongside the reference.</p>
 <h2 id="the-provider-chain">The provider chain</h2>
 <p>The validator tries providers in order until one returns usable full text.
 The default order is:</p>
-<pre><code>pmc → epmc_preprint → unpaywall → openalex
+<pre><code>pmc → bookshelf → epmc_preprint → unpaywall → openalex
 </code></pre>
 <ul>
 <li><strong><code>pmc</code></strong> — PubMed Central open-access subset (XML/HTML full text for many
   biomedical articles).</li>
+<li><strong><code>bookshelf</code></strong> — NCBI Bookshelf chapters, such as GeneReviews, read from a
+  local copy of NCBI's archive (see <a href="#ncbi-bookshelf-genereviews">NCBI Bookshelf</a>
+  below). Does nothing until <code>bookshelf_archive_dir</code> is set.</li>
 <li><strong><code>epmc_preprint</code></strong> — Europe PMC preprint body text via the <code>fulltextRepo</code>
   PDF route (see <a href="#preprints">Preprints</a> below).</li>
 <li><strong><code>unpaywall</code></strong> — Unpaywall open-access lookup by DOI (often a publisher or
@@ -1680,8 +1739,13 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 </tr>
 <tr>
 <td><code>full_text_providers</code></td>
-<td><code>[pmc, epmc_preprint, unpaywall, openalex]</code></td>
+<td><code>[pmc, bookshelf, epmc_preprint, unpaywall, openalex]</code></td>
 <td>Ordered list of provider names to try until one yields usable full text.</td>
+</tr>
+<tr>
+<td><code>bookshelf_archive_dir</code></td>
+<td><code>null</code></td>
+<td>Directory of unpacked NCBI Bookshelf books, read by the <code>bookshelf</code> provider.</td>
 </tr>
 <tr>
 <td><code>private_cache_dir</code></td>
@@ -1734,12 +1798,82 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 fetch_full_text: true
 full_text_providers:
   - pmc
+  - bookshelf
   - epmc_preprint
   - unpaywall
   - openalex
 pdf_backend: pypdf
 download_pdfs: true
 </code></pre>
+<h2 id="ncbi-bookshelf-genereviews">NCBI Bookshelf (GeneReviews)</h2>
+<p>A PMID can point to a chapter on NCBI Bookshelf rather than a journal article.
+Every <a href="https://www.ncbi.nlm.nih.gov/books/NBK1116/">GeneReviews</a> entry is one
+of these. Such a chapter has no PMC copy, so without help the reference keeps
+only its PubMed summary, and a quote from the chapter body fails as
+abstract-only.</p>
+<p>The archive described below is for <strong>caching</strong> a chapter, not for validating
+against it. Validate quotes against the cached document. Once a chapter has
+been fetched, its full text is in the reference cache (<code>PMID_31536184.md</code>),
+and every later validation reads that file. There's no archive and no network
+call. So the large download is a one-time step on the machine that builds the
+cache, not something every run or every collaborator needs. See
+<a href="#validate-against-the-cache-not-the-archive">Validate against the cache, not the archive</a>.</p>
+<p>Bookshelf's web pages can't be fetched by a script: NCBI answers with a
+reCAPTCHA page. Instead, the <code>bookshelf</code> provider reads chapters from NCBI's
+<a href="https://ftp.ncbi.nlm.nih.gov/pub/litarch/">litarch archive</a>, which you
+download once per book:</p>
+<pre><code class="language-bash">linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf
+</code></pre>
+<p>GeneReviews (<code>NBK1116</code>) is a 640 MB download. Only the chapter XML is kept,
+about 200 MB. Then point the config at the same directory:</p>
+<pre><code class="language-yaml">bookshelf_archive_dir: bookshelf
+</code></pre>
+<p>The PubMed record names the chapter, so no extra lookup is needed:
+<code>PMID:31536184</code> is <code>gene/glutaric-a1</code>, read from
+<code>bookshelf/gene_NBK1116/glutaric-a1.nxml</code>. The cached entry records
+<code>full_text_provider: bookshelf</code>, and <code>full_text_url</code> holds the chapter's
+Bookshelf page.</p>
+<p>A chapter is used only when its own <code>&lt;license&gt;</code> is <code>open-access</code>. GeneReviews
+allows copying for noncommercial research with credit and no modification. A
+cache holds a verbatim copy, and its <code>full_text_url</code> links back to the
+chapter, so the text goes into the public cache like PMC full text does.</p>
+<p>To refresh a book, run the download again: it replaces the book's folder. Do
+this to pick up new or revised chapters.</p>
+<p><strong>References cached before the archive was set up</strong> keep their abstract. The
+chain recorded that it couldn't read the chapter (<code>full_text_declined</code>, or
+<code>full_text_attempted</code> on a cache from an older version), and it doesn't retry
+on its own. Re-fetch them:</p>
+<pre><code class="language-bash">linkml-reference-validator cache reference PMID:31536184 --force
+</code></pre>
+<h3 id="validate-against-the-cache-not-the-archive">Validate against the cache, not the archive</h3>
+<p>The archive is only read when a chapter is <strong>fetched</strong>. That happens the first
+time a reference is seen, and on an explicit <code>--force</code>. Validation reads the
+cached document like any other cached reference. In practice:</p>
+<ol>
+<li>On one machine, download the book, set <code>bookshelf_archive_dir</code>, and cache
+   the chapters you cite (<code>cache reference PMID:...</code>, or a validation run).</li>
+<li>Commit the reference cache: the <code>PMID_*.md</code> files, which hold the chapter
+   text. Don't commit the archive.</li>
+<li>Everywhere else, including CI and collaborators, validate as usual. No
+   archive is needed, <code>bookshelf_archive_dir</code> can stay unset, and nothing is
+   downloaded from NCBI.</li>
+</ol>
+<p>What happens when the archive is missing:</p>
+<ul>
+<li><strong>A cached chapter is never lost to a refresh that can't reach it.</strong> If a
+  newer version of this tool marks the entry stale and re-fetches it, the
+  refresh gets only the abstract. The cached chapter is then kept and still
+  used, with a warning, and the entry stays stale until a run with the
+  archive refreshes it. For a committed cache you'd rather not re-fetch at
+  all, set <code>trust_cached_entries: true</code>.</li>
+<li><strong><code>--force</code> is the exception.</strong> It replaces the entry with whatever the
+  fetch returns, so forcing a Bookshelf reference without the archive swaps
+  the chapter for its abstract (it warns as it does). Only force these
+  references where the archive is available.</li>
+<li><strong>A reference that was never cached</strong> still needs the archive once.
+  Without it, the reference is cached with its abstract only.
+  <code>full_text_declined: bookshelf_archive_not_configured</code> records why.</li>
+</ul>
 <h2 id="private-manuscripts-in-zotero">Private manuscripts in Zotero</h2>
 <p>The opt-in <strong><code>zotero</code></strong> provider can find non-open manuscripts that are already
 in your personal Zotero library. It matches exact DOI, PMID, or PMCID identifiers;

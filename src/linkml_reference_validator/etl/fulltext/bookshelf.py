@@ -44,7 +44,7 @@ LITARCH_URL = "https://ftp.ncbi.nlm.nih.gov/pub/litarch"
 # Book and part names as litarch spells them ("gene", "men1", "glutaric-a1").
 # Anything else is refused before it becomes part of a path.
 _SLUG = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
-_LICENCE_TYPE = re.compile(r"<license\b[^>]*\blicense-type=\"([^\"]*)\"")
+_LICENCE_TYPE = re.compile(r"""<license\b[^>]*\blicense-type=(["'])(.*?)\1""")
 _ACCESSION = re.compile(r"^NBK\d+$")
 
 
@@ -89,8 +89,10 @@ class BookshelfFullTextProvider(FullTextProvider):
         book, part = names
 
         # Each miss below is a decline, not an absence: the chapter exists and
-        # is open, this machine just cannot read it yet. Recording absence would
-        # stop the chain from ever looking again once the archive is in place.
+        # is open, this machine just cannot read it yet. Neither outcome makes
+        # the chain look again on its own -- a cached reference needs --force
+        # once the archive is in place -- but only an absence would also record
+        # "this reference has no full text", which would be false.
         archive = config.bookshelf_archive_dir
         if archive is None:
             logger.info(
@@ -118,7 +120,7 @@ class BookshelfFullTextProvider(FullTextProvider):
 
         data = chapter.read_bytes()
         licence = _LICENCE_TYPE.search(data.decode("utf-8", errors="replace"))
-        licence_type = licence.group(1) if licence else "none"
+        licence_type = licence.group(2) if licence else "none"
         if licence_type != "open-access":
             return FullTextLocation(
                 provider="bookshelf", declined=f"bookshelf_licence:{licence_type}"
@@ -126,6 +128,12 @@ class BookshelfFullTextProvider(FullTextProvider):
 
         text = XMLExtractor().extract(data, content_type="application/xml")
         if not text or len(text) <= MIN_FULLTEXT_CHARS:
+            # A stub chapter, or a BITS layout the extractor misreads; either
+            # way the reference stays abstract-only, so say which file it was.
+            logger.info(
+                "Bookshelf chapter %s yielded %d characters of text; not using it",
+                chapter, len(text or ""),
+            )
             return None
         return FullTextLocation(
             text=text,
@@ -153,6 +161,9 @@ def download_book(
     and none of the text -- and only those that stay inside the book's folder.
     The book is unpacked beside its final place and swapped in at the end, so
     an interrupted download leaves the previous copy, if any, as it was.
+    The tarball is opened with compression detected from its bytes, so a
+    mirror that also sends ``Content-Encoding: gzip`` -- leaving urllib3 to
+    unwrap the file's own gzip -- still unpacks.
 
     Args:
         accession: The book's NBK accession, e.g. ``NBK1116`` for GeneReviews
@@ -197,9 +208,9 @@ def download_book(
     ) as response:
         response.raise_for_status()
         response.raw.decode_content = True
-        # "r|gz" reads the tarball as a stream: GeneReviews is 640 MB, and
+        # "r|*" reads the tarball as a stream: GeneReviews is 640 MB, and
         # nothing but the chapter XML is ever written to disk.
-        with tarfile.open(fileobj=response.raw, mode="r|gz") as tar:
+        with tarfile.open(fileobj=response.raw, mode="r|*") as tar:
             for member in tar:
                 path = PurePosixPath(member.name)
                 if (
@@ -220,7 +231,12 @@ def download_book(
     if not chapters:
         shutil.rmtree(staging, ignore_errors=True)
         raise ValueError(f"{remote} held no chapter XML")
-    shutil.rmtree(final, ignore_errors=True)
+    # Two renames, so there is never a moment with no copy of the book.
+    retired = archive_dir / f".{book_name}.old"
+    shutil.rmtree(retired, ignore_errors=True)
+    if final.exists():
+        final.rename(retired)
     staging.rename(final)
+    shutil.rmtree(retired, ignore_errors=True)
     logger.info("Unpacked %s chapters of %s into %s", chapters, accession, final)
     return final

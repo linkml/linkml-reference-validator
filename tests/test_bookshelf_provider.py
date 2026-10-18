@@ -273,7 +273,7 @@ def test_a_stale_chapter_is_kept_when_the_archive_is_gone(ncbi, config, archive)
     assert cache_file.read_bytes() == before
 
 
-def test_without_an_archive_the_abstract_stays_retryable(ncbi, config):
+def test_without_an_archive_the_chapter_is_declined_not_marked_absent(ncbi, config):
     config.bookshelf_archive_dir = None
     reference = ReferenceFetcher(config).fetch("PMID:20301710")
 
@@ -285,11 +285,12 @@ def test_without_an_archive_the_abstract_stays_retryable(ncbi, config):
 # --- downloading a book -----------------------------------------------------
 
 
-def _book_tarball() -> bytes:
-    """A litarch-shaped tarball: chapters, a figure, and one hostile member."""
+def _book_tarball(with_chapter: bool = True) -> bytes:
+    """A litarch-shaped tarball: chapters, a figure, and hostile members."""
     buf = io.BytesIO()
     with tarfile.open(fileobj=buf, mode="w:gz") as tar:
-        tar.add(CHAPTER, arcname="gene_NBK1116/men1.nxml")
+        if with_chapter:
+            tar.add(CHAPTER, arcname="gene_NBK1116/men1.nxml")
         for name, data in [
             ("gene_NBK1116/men1-Image001.jpg", b"\xff\xd8 not really a jpeg"),
             ("gene_NBK1116/../../escaped.nxml", b"<x/>"),
@@ -297,13 +298,30 @@ def _book_tarball() -> bytes:
             info = tarfile.TarInfo(name)
             info.size = len(data)
             tar.addfile(info, io.BytesIO(data))
+        # Links that would read outside the archive if they were followed.
+        for name, kind in [
+            ("gene_NBK1116/symlinked.nxml", tarfile.SYMTYPE),
+            ("gene_NBK1116/hardlinked.nxml", tarfile.LNKTYPE),
+        ]:
+            info = tarfile.TarInfo(name)
+            info.type = kind
+            info.linkname = "/etc/passwd"
+            tar.addfile(info)
     return buf.getvalue()
 
 
 @pytest.fixture
-def litarch():
+def mirror_state():
+    """What the litarch fixture serves: tests may swap files or add headers.
+
+    ``headers`` maps a path to extra response headers for that path only.
+    """
+    return {"files": {"/ca/84/gene_NBK1116.tar.gz": _book_tarball()}, "headers": {}}
+
+
+@pytest.fixture
+def litarch(mirror_state):
     """Serve a litarch mirror: file_list.csv plus one book tarball."""
-    tarball = _book_tarball()
     listing = io.StringIO()
     writer = csv.writer(listing)
     writer.writerow(
@@ -312,10 +330,8 @@ def litarch():
     writer.writerow(
         ["ca/84/gene_NBK1116.tar.gz", "GeneReviews&#174;", "University of Washington, Seattle", "1993", "NBK1116", "2026-10-16 02:42:01"]
     )
-    files = {
-        "/file_list.csv": listing.getvalue().encode(),
-        "/ca/84/gene_NBK1116.tar.gz": tarball,
-    }
+    files = mirror_state["files"]
+    files["/file_list.csv"] = listing.getvalue().encode()
 
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self):  # noqa: N802
@@ -325,6 +341,8 @@ def litarch():
                 return
             self.send_response(200)
             self.send_header("Content-Length", str(len(body)))
+            for name, value in mirror_state["headers"].get(self.path, {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(body)
 
@@ -369,6 +387,57 @@ def test_an_unknown_accession_is_an_error(litarch, tmp_path):
         download_book(
             "NBK9999999", tmp_path, ReferenceValidationConfig(rate_limit_delay=0.0), mirror=litarch
         )
+
+
+def test_a_book_with_no_chapters_is_an_error_and_leaves_nothing(
+    litarch, mirror_state, tmp_path
+):
+    mirror_state["files"]["/ca/84/gene_NBK1116.tar.gz"] = _book_tarball(with_chapter=False)
+    archive = tmp_path / "archive"
+    with pytest.raises(ValueError, match="held no chapter XML"):
+        download_book(
+            "NBK1116", archive, ReferenceValidationConfig(rate_limit_delay=0.0), mirror=litarch
+        )
+    assert list(archive.iterdir()) == []
+
+
+def test_a_mirror_sending_content_encoding_gzip_still_unpacks(
+    litarch, mirror_state, tmp_path
+):
+    """Some servers label a .tar.gz with Content-Encoding: gzip; urllib3 then
+    strips the file's own gzip layer before tarfile sees it."""
+    mirror_state["headers"]["/ca/84/gene_NBK1116.tar.gz"] = {"Content-Encoding": "gzip"}
+    book_dir = download_book(
+        "NBK1116", tmp_path, ReferenceValidationConfig(rate_limit_delay=0.0), mirror=litarch
+    )
+    assert (book_dir / "men1.nxml").read_bytes() == CHAPTER.read_bytes()
+
+
+def test_a_single_quoted_licence_is_read(config, archive):
+    path = archive / "gene_NBK1116" / "men1.nxml"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(
+        text.replace('license-type="open-access"', "license-type='open-access'"),
+        encoding="utf-8",
+    )
+    location = BookshelfFullTextProvider().locate(MEN1, config)
+    assert not location.declined
+    assert CHAPTER_SENTENCE in location.text
+
+
+def test_an_archive_set_up_later_needs_force(ncbi, config, archive, tmp_path):
+    """Pins what the docs say: a cached decline is not retried on its own."""
+    configured = config.bookshelf_archive_dir
+    config.bookshelf_archive_dir = None
+    ReferenceFetcher(config).fetch("PMID:20301710")
+
+    config.bookshelf_archive_dir = configured
+    again = ReferenceFetcher(config).fetch("PMID:20301710")
+    assert again.content_type == "abstract_only"
+
+    forced = ReferenceFetcher(config).fetch("PMID:20301710", force_refresh=True)
+    assert forced.content_type == "full_text_xml"
+    assert CHAPTER_SENTENCE in forced.content
 
 
 def test_cli_downloads_a_book(litarch, tmp_path):

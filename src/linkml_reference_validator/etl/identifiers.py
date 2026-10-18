@@ -60,10 +60,22 @@ def build_identifiers(content: ReferenceContent) -> ReferenceIdentifiers:
         ('9', '10.1/z')
         >>> build_identifiers(ReferenceContent(reference_id="PPR:PPR42")).pprid
         'PPR42'
+        >>> build_identifiers(ReferenceContent(
+        ...     reference_id="PMID:20301710",
+        ...     metadata={"bookshelf_accession": "NBK1538", "bookshelf_part": "gene/men1"},
+        ... )).bookshelf_part
+        'gene/men1'
     """
     prefix, identifier = _split_reference_id(content.reference_id)
 
-    ids = ReferenceIdentifiers(doi=content.doi or None, is_preprint=content.is_preprint)
+    metadata = content.metadata or {}
+    ids = ReferenceIdentifiers(
+        doi=content.doi or None,
+        is_preprint=content.is_preprint,
+        # Set by PMIDSource on a fresh fetch; not stored in the cache file.
+        bookshelf_accession=metadata.get("bookshelf_accession"),
+        bookshelf_part=metadata.get("bookshelf_part"),
+    )
 
     if prefix and identifier:
         upper = prefix.upper()

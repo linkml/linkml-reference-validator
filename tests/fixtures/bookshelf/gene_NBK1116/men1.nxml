@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE book-part-wrapper PUBLIC "-//NLM//DTD BITS Book Interchange DTD v2.0 20151225//EN" "http://jats.nlm.nih.gov/extensions/bits/2.0/BITS-book2.dtd">
+<book-part-wrapper content-type="chapter" id="men1" from-where="body" dtd-version="2.0">
+  <book-meta>
+    <book-id book-id-type="pmcid">gene</book-id>
+    <book-title-group>
+      <book-title>GeneReviews<sup>&#x000ae;</sup></book-title>
+    </book-title-group>
+    <contrib-group>
+      <contrib contrib-type="editor">
+        <name name-style="western">
+          <surname>Adam</surname>
+          <given-names>Margaret P</given-names>
+        </name>
+        <role>Editor-in-Chief</role>
+      </contrib>
+      <contrib contrib-type="editor">
+        <name name-style="western">
+          <surname>Bick</surname>
+          <given-names>Sarah</given-names>
+        </name>
+        <role>Medical Editor</role>
+      </contrib>
+      <contrib contrib-type="editor">
+        <name name-style="western">
+          <surname>Mirzaa</surname>
+          <given-names>Ghayda M</given-names>
+        </name>
+        <role>Medical Editor</role>
+      </contrib>
+      <contrib contrib-type="editor">
+        <name name-style="western">
+          <surname>Wallace</surname>
+          <given-names>Stephanie E</given-names>
+        </name>
+        <role>Medical Editor</role>
+      </contrib>
+      <contrib contrib-type="editor">
+        <name name-style="western">
+          <surname>Amemiya</surname>
+          <given-names>Anne</given-names>
+        </name>
+        <role>Genetic Counseling Editor</role>
+      </contrib>
+    </contrib-group>
+    <pub-date date-type="pubr" publication-format="electronic">
+      <year>1993</year>
+    </pub-date>
+    <pub-date date-type="pubr" publication-format="electronic">
+      <year>2026</year>
+    </pub-date>
+    <issn>2372-0697</issn>
+    <publisher>
+      <publisher-name>University of Washington, Seattle</publisher-name>
+      <publisher-loc>Seattle (WA)</publisher-loc>
+    </publisher>
+    <permissions>
+      <copyright-statement>Copyright &#x000a9; 1993-2026, University of Washington, Seattle. GeneReviews is a registered trademark of the University of Washington, Seattle. All rights reserved.</copyright-statement>
+      <license xmlns:xlink="http://www.w3.org/1999/xlink" license-type="open-access" xlink:href="https://www.ncbi.nlm.nih.gov/books/NBK138602/">
+        <license-p>GeneReviews&#x000ae; chapters are owned by the University of Washington. Permission is hereby granted to reproduce, distribute, and translate copies of content materials for noncommercial research purposes only, provided that (i) credit for source (<ext-link ext-link-type="uri" xlink:href="https://www.genereviews.org/">https://www.genereviews.org</ext-link>) and copyright (&#x000a9; 1993-2026 University of Washington) are included with each copy; (ii) a link to the original material is provided whenever the material is published elsewhere on the Web; and (iii) reproducers, distributors, and/or translators comply with the <ext-link ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRcopyright_permiss/">GeneReviews&#x000ae; Copyright Notice and Usage Disclaimer</ext-link>. No further modifications are allowed. For clarity, excerpts of GeneReviews chapters for use in lab reports and clinic notes are a permitted use.</license-p>
+        <license-p>For more information, see the <ext-link ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRcopyright_permiss/">GeneReviews&#x000ae; Copyright Notice and Usage Disclaimer</ext-link>.</license-p>
+        <license-p>For questions regarding permissions or whether a specified use is allowed, contact: addmast@wu.edu</license-p>
+      </license>
+    </permissions>
+    <abstract>
+      <p><italic toggle="yes">GeneReviews</italic>, an international point-of-care resource for busy clinicians, provides clinically relevant and medically actionable information for inherited conditions in a standardized journal-style format, covering diagnosis, management, and genetic counseling for patients and their families. Each chapter in <italic toggle="yes">GeneReviews</italic> is written by one or more experts on the specific condition or disease and goes through a rigorous editing and <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRrevprocesses/#GRrevprocesses.Peer_Review">peer review</ext-link> process before being published online.</p>
+      <p><italic toggle="yes">GeneReviews</italic> currently comprises more than 900 chapters and has more than 15 million users annually.</p>
+      <p>The two general formats for <italic toggle="yes">GeneReviews</italic> are: chapters focused on a single gene or phenotype (~95%) and overviews summarizing causes of common genetic conditions (e.g., genetic hearing loss, Alzheimer disease) (~5%).</p>
+      <p>To ensure continuing relevant and medically actionable content, each <italic toggle="yes">GeneReviews</italic> chapter is <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRrevprocesses/#GRrevprocesses.Updates">updated</ext-link> every four to five years (or as needed) by the author(s) in a formal and comprehensive process curated by the <italic toggle="yes">GeneReviews</italic>
+<ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRpersonnel/">editors</ext-link>. Additional <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/GRrevprocesses/#GRrevprocesses.Revisions">revisions</ext-link> may occur more frequently as needed to reflect significant changes in clinically relevant information.</p>
+      <p>Genetic counseling and testing terms used in <italic toggle="yes">GeneReviews</italic> are hyperlinked to definitions in the <italic toggle="yes">GeneReviews</italic>
+<ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/glossary/">Glossary</ext-link>. <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/resource_mats/">Resource Materials</ext-link> include additional information on key genetics concepts used in <italic toggle="yes">GeneReviews</italic>.</p>
+      <p><italic toggle="yes">GeneReviews</italic> are indexed in PubMed. Additionally, the primary author (first or last author) of a <italic toggle="yes">GeneReview </italic>may receive MOC Part 4 credit from the <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.abmgg.org/continuing-certification/improvement-in-medical-professional-practice/">American Board of Medical Genetics and Genomics</ext-link>.&#x000a0;See <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/NBK138603/">For Current/Prospective Authors</ext-link> for more information.</p>
+      <p>Note: For a variety of reasons, GeneReviews occasionally removes chapters from the active website. Click <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" xlink:href="https://www.ncbi.nlm.nih.gov/books/n/gene/archived_chapters/">here</ext-link> for a list of retired chapters.</p>
+    </abstract>
+    <custom-meta-group>
+      <custom-meta>
+        <meta-name>books-source-type</meta-name>
+        <meta-value>Database</meta-value>
+      </custom-meta>
+    </custom-meta-group>
+  </book-meta>
+  <book-part book-part-type="chapter">
+    <book-part-meta>
+      <book-part-id book-part-id-type="pmcid">men1</book-part-id>
+      <title-group>
+        <title>Multiple Endocrine Neoplasia Type 1</title>
+        <alt-title alt-title-type="alt-title">Synonyms: MEN1, MEN1 Syndrome, Multiple Endocrine Adenomatosis, Wermer Syndrome</alt-title>
+      </title-group>
+      <contrib-group>
+        <contrib contrib-type="author">
+          <name name-style="western">
+            <surname>Giusti</surname>
+            <given-names>Francesca</given-names>
+          </name>
+          <degrees>MD, PhD</degrees>
+          <xref ref-type="aff" rid="men1.Tc.aff1"/>
+          <email>francesca.giusti@unifi.it</email>
+        </contrib>
+        <contrib contrib-type="author">
+          <name name-style="western">
+            <surname>Marini</surname>
+            <given-names>Francesca</given-names>
+          </name>
+          <degrees>PhD</degrees>
+          <xref ref-type="aff" rid="men1.Tc.aff2"/>
+          <email>francesca.marini@unifi.it</email>
+        </contrib>
+        <contrib contrib-type="author">
+          <name name-style="western">
+            <surname>Brandi</surname>
+            <given-names>Maria Luisa</given-names>
+          </name>
+          <degrees>MD, PhD</degrees>
+          <xref ref-type="aff" rid="men1.Tc.aff2"/>
+          <email>marialuisa@marialuisabrandi.it</email>
+        </contrib>
+      </contrib-group>
+      <aff id="men1.Tc.aff1">Donatello Bone Clinic
+Villa Donatello Hospital
+Florence, Italy</aff>
+      <aff id="men1.Tc.aff2">Italian Foundation for Research on Bone Diseases (FIRMO)
+Florence, Italy</aff>
+      <pub-history>
+        <date date-type="created">
+          <day>31</day>
+          <month>8</month>
+          <year>2005</year>
+        </date>
+        <date date-type="updated">
+          <day>10</day>
+          <month>3</month>
+          <year>2022</year>
+        </date>
+      </pub-history>
+      <abstract id="men1.Summary">
+        <title>Summary</title>
+        <sec>
+          <title>Clinical characteristics</title>
+          <p>Multiple endocrine neoplasia type 1 (MEN1) includes varying combinations of more than 20 endocrine and non-endocrine tumors.</p>
+          <p>Endocrine tumors become evident either by overproduction of hormones by the tumor or by growth of the tumor itself.</p>
+          <list list-type="bullet">
+            <list-item>
+              <p><bold>Parathyroid tumors</bold> are the most common MEN1-associated endocrinopathy; onset in 90% of individuals is between ages 20 and 25 years with hypercalcemia evident by age 50 years; hypercalcemia causes lethargy, depression, confusion, anorexia, constipation, nausea, vomiting, diuresis, dehydration, hypercalciuria, kidney stones, increased bone resorption/fracture risk, hypertension, and shortened QT interval.</p>
+            </list-item>
+            <list-item>
+              <p><bold>Pituitary tumors</bold> include prolactinoma (the most common), which manifests as oligomenorrhea/amenorrhea and galactorrhea in females and sexual dysfunction in males.</p>
+            </list-item>
+            <list-item>
+              <p><bold>Well-differentiated endocrine tumors of the gastroenteropancreatic (GEP) tract</bold> can manifest as Zollinger-Ellison syndrome (gastrinoma); hypoglycemia (insulinoma); hyperglycemia, anorexia, glossitis, anemia, diarrhea, venous thrombosis, and skin rash (glucagonoma); and watery diarrhea, hypokalemia, and achlorhydria syndrome (vasoactive intestinal peptide [VIP]-secreting tumor).</p>
+            </list-item>
+            <list-item>
+              <p><bold>Carcinoid tumors</bold> are non-hormone-secreting and can manifest as a large mass after age 50 years.</p>
+            </list-item>
+            <list-item>
+              <p><bold>Adrenocortical tumors</bold> can be associated with primary hypercortisolism or hyperaldosteronism.</p>
+            </list-item>
+          </list>
+          <p>Non-endocrine tumors include facial angiofibromas, collagenomas, lipomas, meningiomas, ependymomas, and leiomyomas.</p>
+        </sec>
+        <sec>
+          <title>Diagnosis/testing</title>
+          <p>The clinical diagnosis of MEN1 can be established in a proband with:</p>
+          <list list-type="bullet">
+            <list-item>
+              <p>Two or more endocrine tumors including parathyroid, anterior pituitary, and/or GEP tract tumors or one endocrine tumor (parathyroid, anterior pituitary, or GEP tract tumor); and</p>
+            </list-item>
+            <list-item>
+              <p>A first-degree relative with MEN1.</p>
+            </list-item>
+          </list>
+          <p>The molecular diagnosis can be established by identification of a heterozygous pathogenic variant in <italic toggle="yes">MEN1</italic> on molecular genetic testing.</p>
+        </sec>
+        <sec>
+          <title>Management</title>
+          <p><italic toggle="yes">Treatment of manifestations:</italic> Hyperparathyroidism is treated with subtotal parathyroidectomy and cryopreservation of parathyroid tissue or total parathyroidectomy and autotransplantation of parathyroid tissue; measure parathyroid hormone (PTH) and/or serum calcium to assess for hypoparathyroidism following subtotal or total parathyroidectomy; calcimimetics are used to treat primary hyperparathyroidism in those for whom surgery is contraindicated or has failed; prior to surgery, bone antiresorptive agents are used to reduce hypercalcemia and limit bone resorption. Prolactinomas are treated with dopamine agonists (cabergoline being the drug of choice). Growth hormone-secreting tumors causing acromegaly are treated by transsphenoidal surgery; medical therapy for growth hormone-secreting tumors includes somatostatin analogs, octreotide, and lanreotide. Adrenocorticotrophic hormone-secreting pituitary tumors associated with Cushing disease are surgically removed; nonsecreting pituitary adenomas are treated by transsphenoidal surgery. Proton pump inhibitors or H<sub>2</sub>-receptor blockers reduce gastric acid output caused by gastrinomas. Surgery is indicated for insulinoma and most other pancreatic tumors. Long-acting somatostatin analogs can control the secretory hyperfunction associated with carcinoid syndrome. Surgery is suggested for adrenal tumors greater than 4 cm in diameter, for tumors 1-4 cm in diameter with atypical or suspicious radiologic features, or for tumors that show significant measurable growth over a six-month interval. Measure urinary catecholamines prior to surgery to diagnose and treat a pheochromocytoma to avoid blood pressure peaks during surgery. Skin lesions in individuals with MEN1 are treated the same way as for the general population.</p>
+          <p><italic toggle="yes">Prevention of primary manifestations:</italic> Thymectomy may prevent thymic carcinoid in males, particularly in smokers.</p>
+          <p><italic toggle="yes">Surveillance:</italic> Annual fasting serum calcium, and consider fasting serum intact PTH from age five years; annual serum prolactin, IGF-1, fasting glucose, and insulin from age five years; head MRI every three to five years from age five years; annual chromogranin-A, pancreatic polypeptide, glucagon, and vasoactive intestinal peptide for other pancreatic neuroendocrine tumors from age eight years; annual fasting serum gastrin from age 20 years; consider abdominal CT, MRI, or endoscopic ultrasound every three to five years from age 20 years; consider chest CT, MRI, or somatostatin receptor scintigraphy octreotide scan annually from age 15 years; consider annual skin exam.</p>
+          <p><italic toggle="yes">Agents/circumstances to avoid:</italic> Smoking increases the risk of carcinoid tumors.</p>
+          <p><italic toggle="yes">Evaluation of relatives at risk:</italic> Because early detection affects management, molecular genetic testing is offered to at-risk members of a family in which a germline <italic toggle="yes">MEN1</italic> pathogenic variant has been identified.</p>
+          <p><italic toggle="yes">Pregnancy management:</italic> Women with primary hyperparathyroidism from any cause are at increased risk of developing preeclampsia; infants born to women with primary hyperparathyroidism should be monitored for postnatal hypocalcemia.</p>
+        </sec>
+        <sec>
+          <title>Genetic counseling</title>
+          <p>MEN1 is inherited in an autosomal dominant manner. Approximately 90% of individuals diagnosed with MEN1 have an affected parent; approximately 10% of individuals diagnosed with MEN1 have the disorder as the result of a <italic toggle="yes">de novo MEN1</italic> pathogenic variant that occurred in early embryogenesis. Each child (regardless of sex) of an individual with MEN1 has a 50% chance of inheriting the pathogenic variant. Once the <italic toggle="yes">MEN1</italic> pathogenic variant has been identified in an affected family member, prenatal testing for a pregnancy at increased risk and preimplantation genetic testing for MEN1 are possible.</p>
+        </sec>
+      </abstract>
+      <kwd-group specific-use="books-idx" kwd-group-type="Synonym">
+        <kwd>MEN1</kwd>
+        <kwd>MEN1 Syndrome</kwd>
+        <kwd>Multiple Endocrine Adenomatosis</kwd>
+        <kwd>Wermer Syndrome</kwd>
+      </kwd-group>
+      <kwd-group specific-use="books-idx" kwd-group-type="ProteinName">
+        <kwd>Menin</kwd>
+      </kwd-group>
+      <kwd-group specific-use="books-idx" kwd-group-type="GeneSymbol">
+        <kwd>MEN1</kwd>
+      </kwd-group>
+      <kwd-group specific-use="books-idx" kwd-group-type="DiseaseName">
+        <kwd>Multiple Endocrine Neoplasia Type 1</kwd>
+      </kwd-group>
+      <kwd-group kwd-group-type="Synonyms" specific-use="pubmed-item-list">
+        <kwd>MEN1</kwd>
+        <kwd>MEN1 Syndrome</kwd>
+        <kwd>Multiple Endocrine Adenomatosis</kwd>
+        <kwd>Wermer Syndrome</kwd>
+      </kwd-group>
+    </book-part-meta>
+    <body>
+      <sec id="men1.Diagnosis">
+        <title>Diagnosis</title>
+        <sec id="men1.Suggestive_Findings">
+          <title>Suggestive Findings</title>
+          <p>Multiple endocrine neoplasia type 1 (MEN1) <bold>should be suspected</bold> in individuals with endocrine tumors, although non-endocrine tumors may appear before the manifestations of hormone-secreting endocrine tumors (see <xref ref-type="sec" rid="men1.Clinical_Description">Clinical Description</xref>). Note: A varying combination of more than 20 endocrine and non-endocrine tumors have been reported in individuals with MEN1; no clinical criteria or definition can capture all affected individuals.</p>
+          <p><bold>Parathyroid tumors</bold> manifest as hypercalcemia (primary hyperparathyroidism [PHPT]) as the result of the overproduction of parathyroid hormone. Imaging is not usually required for diagnosis of parathyroid disease, as the underlying cause of PHPT in MEN1 is usually multiglandular disease with enlargement of all the parathyroid glands rather than a single adenoma.</p>
+          <p>
+<bold>Anterior pituitary tumors</bold>
+</p>
+          <list list-type="bullet">
+            <list-item>
+              <p>Prolactinomas (prolactin-secreting anterior pituitary adenomas) manifest as oligomenorrhea/amenorrhea and galactorrhea in females, and sexual dysfunction and (more rarely) gynecomastia in males.</p>
+            </list-item>
+            <list-item>
+              <p>Growth hormone-secreting anterior pituitary adenomas cause gigantism in children and signs and symptoms of acromegaly in adults.</p>
+            </list-item>
+            <list-item>
+              <p>Growth hormone/prolactin (GH/PRL)-secreting anterior pituitary adenomas manifest as signs and symptoms of acromegaly, oligomenorrhea/amenorrhea, and galactorrhea in females, and sexual dysfunction and (more rarely) gynecomastia in males.</p>
+            </list-item>
+            <list-item>
+              <p>Thyroid-stimulating hormone (TSH)-secreting anterior pituitary adenomas cause signs and symptoms of hyperthyroidism.</p>
+            </list-item>
+            <list-item>
+              <p>Adrenocorticotrophic hormone (ACTH)-secreting anterior pituitary adenomas are mostly associated with Cushing disease.</p>
+            </list-item>
+            <list-item>
+              <p>Nonfunctioning (nonsecreting) anterior pituitary adenomas manifest as enlarging tumors, compressing adjacent structures such as the optic chiasm with visual disturbances, and/or hypopituitarism.</p>
+            </list-item>
+          </list>
+          <p>Note: The imaging test of choice for all types of pituitary tumors is MRI.</p>
+          <p><bold>Well-differentiated endocrine tumors of the gastroenteropancreatic (GEP) tract</bold> (including tumors of the stomach, duodenum, pancreas, and intestinal tract) manifest as the following clinical presentations (from most to least frequent):</p>
+          <list list-type="bullet">
+            <list-item>
+              <p>Zollinger-Ellison syndrome (ZES) (i.e., peptic ulcer with or without chronic diarrhea) resulting from a gastrin-secreting duodenal mucosal tumor (gastrinoma)</p>
+            </list-item>
+            <list-item>
+              <p>Hypoglycemia resulting from an insulin-secreting pancreatic tumor (insulinoma)</p>
+            </list-item>
+            <list-item>
+              <p>Hyperglycemia, anorexia, glossitis, anemia, diarrhea, venous thrombosis, and skin rash (necrolytic migratory erythema) resulting from a glucagon-secreting pancreatic tumor (glucagonoma)</p>
+            </list-item>
+            <list-item>
+              <p>Watery diarrhea, hypokalemia, and achlorhydria (WDHA syndrome) resulting from a vasoactive intestinal peptide (VIP)-secreting tumor (VIPoma)</p>
+            </list-item>
+          </list>
+          <p>Note: (1) Nonfunctioning pancreatic endocrine tumors that are difficult to diagnose by biochemical and imaging tests are the most frequently seen tumors in MEN1 [<xref ref-type="bibr" rid="men1.REF.jensen.1999.170">Jensen 1999</xref>]. (2) Type II gastric enterochromaffin-like (ECL) cell carcinoids are included in the well-differentiated endocrine tumors of the GEP tract. They are common in MEN1 and are usually recognized incidentally during gastric endoscopy for ZES [<xref ref-type="bibr" rid="men1.REF.bordi.1998.273">Bordi et al 1998</xref>, <xref ref-type="bibr" rid="men1.REF.gibril.2000.1646">Gibril et al 2000</xref>]. (3) Endoscopic ultrasound (EUS) examination is the most sensitive imaging procedure for the detection of small (&#x02264;10 mm) pancreatic endocrine tumors in asymptomatic individuals with MEN1 [<xref ref-type="bibr" rid="men1.REF.gauger.2003.748">Gauger et al 2003</xref>, <xref ref-type="bibr" rid="men1.REF.langer.2004.1317">Langer et al 2004</xref>, <xref ref-type="bibr" rid="men1.REF.kann.2006.1195">Kann et al 2006</xref>, <xref ref-type="bibr" rid="men1.REF.tonelli.2006.61">Tonelli et al 2006</xref>]. Pancreatic gastrinomas are usually evaluated by CT, MRI, and/or EUS [<xref ref-type="bibr" rid="men1.REF.yates.2015.895">Yates et al 2015</xref>].</p>
+          <p><bold>Non-endocrine tumors associated with MEN1</bold> include facial angiofibromas, collagenomas, lipomas, meningiomas, ependymomas, and leiomyomas.</p>
+          <p>Cutaneous manifestations may be helpful in the diagnosis of individuals with MEN1 even before manifestations of hormone-secreting tumors appear.</p>
+        </sec>
+        <sec id="men1.Establishing_the_Diagnosis">
+          <title>Establishing the Diagnosis</title>
+          <p>The clinical diagnosis of MEN1 can be <bold>established</bold> in a proband with:</p>
+          <list list-type="bullet">
+            <list-item>
+              <p>Two or more endocrine tumors including parathyroid, anterior pituitary, and well-differentiated neuroendocrine tumors of the GEP tract; OR</p>
+            </list-item>
+            <list-item>
+              <p>One of three endocrine tumors (parathyroid, anterior pituitary, or well-differentiated neuroendocrine tumors of the GEP tract) and a first-degree relative with MEN1.</p>
+            </list-item>
+          </list>
+          <p>The molecular diagnosis can be established in a proband with a germline heterozygous <italic toggle="yes">MEN1</italic> pathogenic (or likely pathogenic) variant identified by molecular genetic testing (see <xref ref-type="table" rid="men1.T.molecular_genetic_testing_used_in">Table 1</xref>).</p>
+          <p>Note: (1) Per ACMG/AMP variant interpretation guidelines, the terms "pathogenic variant" and "likely pathogenic variant" are synonymous in a clinical setting, meaning that both are considered diagnostic and can be used for clinical decision making [<xref ref-type="bibr" rid="men1.REF.richards.2015.405">Richards et al 2015</xref>]. Reference to "pathogenic variants" in this section is understood to include likely pathogenic variants. (2) Identification of a heterozygous <italic toggle="yes">MEN1</italic> variant of uncertain significance does not establish or rule out the diagnosis.</p>
+          <p>Molecular testing approaches can include a combination of <bold>gene-targeted testing</bold> (single-gene testing, multigene panel) and <bold>comprehensive</bold>
+<bold>genomic testing</bold> (exome sequencing, genome sequencing) depending on the phenotype.</p>
+          <p>Gene-targeted testing requires that the clinician determine which gene(s) are likely involved, whereas genomic testing does not. Individuals with the distinctive findings described in <xref ref-type="sec" rid="men1.Suggestive_Findings">Suggestive Findings</xref> are likely to be diagnosed using gene-targeted testing (see <xref ref-type="sec" rid="men1.Option_1">Option 1</xref>), whereas those with a phenotype indistinguishable from many other tumor predisposition disorders may be more likely to be diagnosed using genomic testing (see <xref ref-type="sec" rid="men1.Option_2">Option 2</xref>).</p>
+          <sec id="men1.Option_1">
+            <title>Option 1</title>
+            <p><bold>Single-gene testing.</bold> Sequence analysis of <italic toggle="yes">MEN1</italic> is usually performed first, which allows detection of small intragenic deletions/insertions, and missense, nonsense, and splice site variants. Note: Sequence analysis may not detect single-exon, multiexon, or whole-gene deletions/duplications. Therefore, if no variant is detected by sequence analysis, the next step is to perform gene-targeted deletion/duplication analysis to detect exon and whole-gene deletions or duplications (e.g., multiplex ligation-dependent probe amplification [MPLA]).</p>
+            <p><bold>A multigene panel</bold> that includes <italic toggle="yes">MEN1</italic> and other genes of interest (see <xref ref-type="sec" rid="men1.Differential_Diagnosis">Differential Diagnosis</xref>) may also be used. Note: (1) The genes included in the panel and the diagnostic sensitivity of the testing used for each gene vary by laboratory and over time. (2) Some multigene panels may include genes not associated with the condition discussed in this <italic toggle="yes">GeneReview</italic>; thus, clinicians need to determine which multigene panel is most likely to identify the genetic cause of the condition while limiting identification of variants of uncertain significance and pathogenic variants in genes that do not explain the underlying phenotype. (3) In some laboratories, panel options may include a custom laboratory-designed panel and/or custom phenotype-focused exome analysis that includes genes specified by the clinician. (4) Methods used in a panel may include sequence analysis, deletion/duplication analysis, and/or other non-sequencing-based tests.</p>
+            <p>For an introduction to multigene panels click <related-object source-id="gene" document-id="app5" object-id="app5.Multigene_Panels">here</related-object>. More detailed information for clinicians ordering genetic tests can be found <related-object source-id="gene" document-id="app5" object-id="app5.Multigene_Panels_FAQs">here</related-object>.</p>
+          </sec>
+          <sec id="men1.Option_2">
+            <title>Option 2</title>
+            <p>When the phenotype is indistinguishable from many other tumor predisposition disorders, <bold>comprehensive</bold>
+<bold>genomic testing,</bold> which does not require the clinician to determine which gene is likely involved, is the best option. <bold>Exome sequencing</bold> is most commonly used; <bold>genome sequencing</bold> is also possible.</p>
+            <p>For an introduction to comprehensive genomic testing click <related-object source-id="gene" document-id="app5" object-id="app5.Comprehensive_Genomic_Testing">here</related-object>. More detailed information for clinicians ordering genomic testing can be found <related-object source-id="gene" document-id="app5" object-id="app5.Comprehensive_Genomic_Testing_1">here</related-object>.</p>
+            <table-wrap id="men1.T.molecular_genetic_testing_used_in" orientation="portrait" position="anchor">
+              <label>Table 1. </label>
+              <caption>
+                <p>Molecular Genetic Testing Used in Multiple Endocrine Neoplasia Type 1</p>
+              </caption>
+              <table frame="hsides" rules="groups">
+                <thead>
+                  <tr>
+                    <th id="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_1" valign="middle" align="left" scope="col" rowspan="1" colspan="1">Gene&#x000a0;<sup>1</sup></th>
+                    <th id="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_2" valign="middle" align="left" scope="col" rowspan="1" colspan="1">Method</th>
+                    <th id="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_3" valign="middle" align="left" scope="col" rowspan="1" colspan="1">Proportion of Probands with a Germline Pathogenic Variant&#x000a0;<sup>2</sup> Detectable by Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td headers="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_1" rowspan="2" valign="middle" align="left" scope="row" colspan="1">
+<italic toggle="yes">MEN1</italic>
+</td>
+                    <td headers="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_2" valign="middle" align="left" rowspan="1" colspan="1">Sequence analysis&#x000a0;<sup>3</sup></td>
+                    <td headers="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_3" valign="middle" align="left" rowspan="1" colspan="1">Familial: 80%-90%&#x000a0;<sup>4</sup><break/>Simplex: 65%&#x000a0;<sup>4</sup></td>
+                  </tr>
+                  <tr>
+                    <td headers="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_2" valign="middle" colspan="1" align="left" scope="row" rowspan="1">Gene-targeted deletion/duplication analysis&#x000a0;<sup>5</sup></td>
+                    <td headers="hd_h_men1.T.molecular_genetic_testing_used_in_1_1_1_3" valign="middle" align="left" rowspan="1" colspan="1">1%-4%&#x000a0;<sup>4</sup></td>
+                  </tr>
+                </tbody>
+              </table>
+              <table-wrap-foot>
+                <fn>
+                  <p>familial = a proband meeting the diagnostic criteria of MEN1 plus a minimum of one first-degree relative with at least one of these tumors; simplex = a single occurrence of MEN1 in a family</p>
+                </fn>
+                <fn id="men1.TF.1.1">
+                  <label>1. </label>
+                  <p>See <related-object source-id="gene" document-id="men1" object-id="men1.molgen.TA">Table A. Genes and Databases</related-object> for chromosome locus and protein.</p>
+                </fn>
+                <fn id="men1.TF.1.2">
+                  <label>2. </label>
+                  <p>See <xref ref-type="sec" rid="men1.Molecular_Genetics">Molecular Genetics</xref> for information on variants detected in this gene.</p>
+                </fn>
+                <fn id="men1.TF.1.3">
+                  <label>3. </label>
+                  <p>Sequence analysis detects variants that are benign, likely benign, of uncertain significance, likely pathogenic, or pathogenic. Variants may include small intragenic deletions/insertions and missense, nonsense, and splice site variants; typically, exon or whole-gene deletions/duplications are not detected. For issues to consider in interpretation of sequence analysis results, click <related-object link-type="booklink" source-id="gene" document-id="app2" document-type="appendix">here</related-object>.</p>
+                </fn>
+                <fn id="men1.TF.1.4">
+                  <label>4. </label>
+                  <p>
+<xref ref-type="bibr" rid="men1.REF.brandi.2021.133">Brandi et al [2021]</xref>
+</p>
+                </fn>
+                <fn id="men1.TF.1.5">
+                  <label>5. </label>
+                  <p>Gene-targeted deletion/duplication analysis detects intragenic deletions or duplications. Methods used may include a range of techniques such as quantitative PCR, long-range PCR, multiplex ligation-dependent probe amplification (MLPA), and a gene-targeted microarray designed to detect single-exon deletions or duplications.</p>
+                </fn>
+              </table-wrap-foot>
+            </table-wrap>
+          </sec>
+        </sec>
+      </sec>
+    </body>
+  </book-part>
+</book-part-wrapper>

@@ -689,6 +689,7 @@ linkml-reference-validator cache COMMAND [ARGS]...
 
 - `reference` - Cache a reference for offline use
 - `lookup` - Show the cache path for a reference (or print file contents)
+- `bookshelf-download` - Download an NCBI Bookshelf book for chapter full text
 
 ---
 
@@ -880,6 +881,40 @@ linkml-reference-validator cache enrich --provider zotero --apply
 The public source cache is never modified by this command, and validation never
 reads the private destination. Private-library content may be copyrighted; keep
 the research cache private.
+
+---
+
+## cache bookshelf-download
+
+Download one NCBI Bookshelf book from NCBI's litarch archive and unpack its
+chapter XML, so the `bookshelf` full-text provider can read chapters such as
+GeneReviews entries. See
+[Fetch full text](../how-to/fetch-full-text-and-pdfs.md#ncbi-bookshelf-genereviews).
+
+```bash
+linkml-reference-validator cache bookshelf-download ACCESSION [OPTIONS]
+```
+
+**Arguments:**
+
+- `ACCESSION` - The book's NBK accession, e.g. `NBK1116` for GeneReviews
+
+**Options:**
+
+- `--archive-dir PATH` - Where to unpack the book (default: `bookshelf_archive_dir` from the config)
+- `--mirror URL` - Base URL of the litarch archive (default: `https://ftp.ncbi.nlm.nih.gov/pub/litarch`)
+- `--config PATH` - Validation configuration file
+- `--verbose, -v` - Enable detailed logging
+
+```bash
+linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf
+```
+
+Running it again replaces the book's folder with the current release.
+
+The archive is only needed on the machine that caches chapters. Validation
+reads the cached reference (`PMID_*.md`), so a committed cache validates
+without the archive or any NCBI call.
 
 ---
 

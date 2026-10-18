@@ -2,9 +2,11 @@
 
 import json
 import logging
+import tarfile
 from pathlib import Path
 from typing import Optional
 
+import requests  # type: ignore
 import typer
 from typing_extensions import Annotated
 
@@ -14,6 +16,7 @@ from linkml_reference_validator.etl.csl_export import (
     reference_to_csl_json,
 )
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
+from linkml_reference_validator.etl.fulltext.bookshelf import LITARCH_URL, download_book
 from .shared import (
     CacheDirOption,
     VerboseOption,
@@ -338,6 +341,61 @@ def enrich_command(
     if errors:
         typer.echo(f"Errors: {errors}", err=True)
         raise typer.Exit(1)
+
+
+@cache_app.command(name="bookshelf-download")
+def bookshelf_download_command(
+    accession: Annotated[
+        str,
+        typer.Argument(help="NBK accession of the book, e.g. NBK1116 for GeneReviews"),
+    ],
+    archive_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--archive-dir",
+            help="Where to unpack the book (default: bookshelf_archive_dir from config)",
+        ),
+    ] = None,
+    mirror: Annotated[
+        str,
+        typer.Option("--mirror", help="Base URL of the litarch archive"),
+    ] = LITARCH_URL,
+    config_file: ConfigFileOption = None,
+    verbose: VerboseOption = False,
+):
+    """Download an NCBI Bookshelf book so its chapters get full text.
+
+    Fetches the book's tarball from NCBI's litarch archive and keeps only the
+    chapter XML. GeneReviews (NBK1116) is a 640 MB download that unpacks to a
+    fraction of that. Point ``bookshelf_archive_dir`` at the same directory,
+    then re-fetch cited chapters with ``cache reference PMID:... --force``.
+
+    The archive is only read when a chapter is cached. Validation reads the
+    cached reference, so a committed cache needs no archive and no download.
+
+    Examples:
+
+        linkml-reference-validator cache bookshelf-download NBK1116 --archive-dir bookshelf
+    """
+    setup_logging(verbose)
+    config = load_validation_config(config_file)
+    target = archive_dir or config.bookshelf_archive_dir
+    if target is None:
+        typer.echo(
+            "No archive directory: pass --archive-dir or set bookshelf_archive_dir "
+            "in the config file.",
+            err=True,
+        )
+        raise typer.Exit(2)
+
+    try:  # external system boundary: the download and the mirror's file list
+        book_dir = download_book(accession, target, config, mirror=mirror)
+    except (ValueError, requests.RequestException, tarfile.TarError) as exc:
+        typer.echo(f"Could not download {accession}: {exc}", err=True)
+        raise typer.Exit(1)
+
+    chapters = sum(1 for _ in book_dir.glob("*.nxml"))
+    typer.echo(f"Unpacked {chapters} chapter{'s' if chapters != 1 else ''} into {book_dir}")
 
 
 @cache_app.command(name="export")

@@ -537,12 +537,26 @@ class ReferenceValidationConfig(BaseModel):
         ),
     )
     full_text_providers: list[str] = Field(
-        default_factory=lambda: ["pmc", "epmc_preprint", "unpaywall", "openalex"],
+        default_factory=lambda: [
+            "pmc", "bookshelf", "epmc_preprint", "unpaywall", "openalex"
+        ],
         description=(
             "Ordered list of full-text provider names to try until one yields usable "
-            "full text. Names map to built-in providers (pmc, epmc_preprint, unpaywall, "
-            "openalex) or custom providers loaded from YAML. The epmc_preprint provider "
-            "fetches preprint body text via the Europe PMC fulltextRepo PDF route."
+            "full text. Names map to built-in providers (pmc, bookshelf, epmc_preprint, "
+            "unpaywall, openalex) or custom providers loaded from YAML. The "
+            "epmc_preprint provider fetches preprint body text via the Europe PMC "
+            "fulltextRepo PDF route. The bookshelf provider reads NCBI Bookshelf "
+            "chapters (GeneReviews) from bookshelf_archive_dir."
+        ),
+    )
+    bookshelf_archive_dir: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Directory of unpacked NCBI Bookshelf (litarch) books, one "
+            "'<book>_<NBK>' folder per book, filled by "
+            "'linkml-reference-validator cache bookshelf-download'. Without it, "
+            "a PMID for a Bookshelf chapter such as a GeneReviews entry keeps "
+            "only its abstract."
         ),
     )
     pdf_backend: str = Field(
@@ -739,6 +753,10 @@ class ReferenceIdentifiers:
     # record already known to be peer-reviewed (False) without a wasted lookup.
     # None means "unknown", which providers must still attempt.
     is_preprint: Optional[bool] = None
+    # An NCBI Bookshelf chapter (GeneReviews and the like), from the PubMed
+    # record: the NBK accession, and "<book>/<part>" as litarch names the file.
+    bookshelf_accession: Optional[str] = None
+    bookshelf_part: Optional[str] = None
 
 
 @dataclass

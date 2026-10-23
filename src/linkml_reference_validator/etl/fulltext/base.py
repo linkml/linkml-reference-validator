@@ -34,13 +34,14 @@ logger = logging.getLogger(__name__)
 #:
 #: **Scope.** This governs a file found by asking an OA *index* -- OpenAlex or
 #: Unpaywall -- where the index's own status is all that is known about the
-#: terms. It deliberately does not govern ``pmc`` or ``epmc_preprint``, which
-#: return ``oa_status="green"`` with no ``access_type`` and so continue to write
-#: to the public cache. Those providers ask the archive's own API for a document
-#: it serves for machine retrieval, which is a stronger warrant than an index's
-#: summary of a third-party host, and routing them through this rule would
-#: decline most PMID full text for want of a licence field their API does not
-#: return. The asymmetry is deliberate: the same green deposit can be declined
+#: terms. It deliberately does not govern ``pmc``, ``bioc``, ``epmc`` or
+#: ``epmc_preprint``, which return ``oa_status="green"`` with no ``access_type``
+#: and so continue to write to the public cache. Those providers ask the
+#: archive's own API (NCBI's PMC and its BioC rendering of the PMC Open Access
+#: subset, and Europe PMC) for a document it serves for machine retrieval,
+#: which is a stronger warrant than an index's summary of a third-party host,
+#: and routing them through this rule would decline most PMID full text for
+#: want of a licence field their API does not return. The asymmetry is deliberate: the same green deposit can be declined
 #: from OpenAlex and admitted from PMC.
 SELF_EVIDENTLY_OPEN_OA_STATUSES = frozenset({"gold", "diamond", "hybrid"})
 

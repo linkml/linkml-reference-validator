@@ -837,8 +837,9 @@ permission. An unrecognised or missing status is **not** assumed open: an
 unknown licence is not a grant.
 
 This governs files found by asking an OA *index* (OpenAlex, Unpaywall). It does
-not govern the `pmc` and `epmc_preprint` providers, which ask an archive's own
-API for a document it serves for machine retrieval — a stronger warrant than an
+not govern the `pmc`, `bioc`, `epmc` and `epmc_preprint` providers, which ask an
+archive's own API (PMC, its BioC rendering, or Europe PMC) for a document it
+serves for machine retrieval — a stronger warrant than an
 index's summary of a third-party host. The same green deposit can therefore be
 declined from OpenAlex and admitted from PMC.
 

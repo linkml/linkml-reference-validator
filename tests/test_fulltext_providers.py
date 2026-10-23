@@ -453,6 +453,27 @@ class TestBioCFullTextProvider:
         for excluded in ["cited paper", "competing", "wrote the paper", "grant"]:
             assert excluded not in result.text
 
+    @pytest.mark.parametrize(
+        "pmid,path",
+        [("22253583", "22253583"), ("1/../2", "1%2F..%2F2")],
+        ids=["plain", "quoted"],
+    )
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_request_url(self, mock_get, config, pmid, path):
+        """The PMID is a path segment, so it is quoted into one."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        BioCFullTextProvider().locate(ReferenceIdentifiers(pmid=pmid), config)
+
+        assert mock_get.call_args.args[0] == (
+            "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/"
+            f"BioC_xml/{path}/ascii"
+        )
+
     @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
     def test_bioc_fetch_not_found(self, mock_get, config):
         """Test BioC fetch when article not in OA subset."""

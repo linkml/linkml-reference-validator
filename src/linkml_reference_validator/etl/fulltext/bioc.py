@@ -7,6 +7,7 @@ clean paragraph-level text for articles in the PMC Open Access subset.
 import logging
 import time
 from typing import Optional
+from urllib.parse import quote
 
 import requests  # type: ignore
 from bs4 import BeautifulSoup  # type: ignore
@@ -59,7 +60,7 @@ class BioCFullTextProvider(FullTextProvider):
 
         time.sleep(config.rate_limit_delay)
 
-        url = BIOC_URL.format(pmid=ids.pmid)
+        url = BIOC_URL.format(pmid=quote(ids.pmid, safe=""))
         # A RequestException is left to the chain, whose had_error handling
         # keeps the record retryable; catching it here would record a timeout
         # as "this article has no full text".

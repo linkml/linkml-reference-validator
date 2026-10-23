@@ -166,11 +166,7 @@ class EuropePMCFullTextProvider(FullTextProvider):
             >>> provider._extract_body_text(xml)
             'Text here.'
         """
-        try:
-            soup = BeautifulSoup(xml_content, "xml")
-        except Exception as exc:
-            logger.debug(f"Failed to parse Europe PMC XML: {exc}")
-            return None
+        soup = BeautifulSoup(xml_content, "xml")
 
         body = soup.find("body")
         if not body:

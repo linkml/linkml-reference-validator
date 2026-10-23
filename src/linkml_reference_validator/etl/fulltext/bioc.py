@@ -96,7 +96,7 @@ class BioCFullTextProvider(FullTextProvider):
             xml_content: BioC XML response
 
         Returns:
-            Concatenated passage text, or None if parsing fails
+            Concatenated passage text, or None if there is none
 
         Examples:
             >>> provider = BioCFullTextProvider()
@@ -113,11 +113,7 @@ class BioCFullTextProvider(FullTextProvider):
             >>> provider._extract_text(xml)
             'Body.'
         """
-        try:
-            soup = BeautifulSoup(xml_content, "xml")
-        except Exception as exc:
-            logger.debug(f"Failed to parse BioC XML: {exc}")
-            return None
+        soup = BeautifulSoup(xml_content, "xml")
 
         passages = soup.find_all("passage")
         if not passages:

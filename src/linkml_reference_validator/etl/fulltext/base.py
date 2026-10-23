@@ -41,8 +41,9 @@ logger = logging.getLogger(__name__)
 #: subset, and Europe PMC) for a document it serves for machine retrieval,
 #: which is a stronger warrant than an index's summary of a third-party host,
 #: and routing them through this rule would decline most PMID full text for
-#: want of a licence field their API does not return. The asymmetry is deliberate: the same green deposit can be declined
-#: from OpenAlex and admitted from PMC.
+#: want of a licence field their API does not return. The asymmetry is
+#: deliberate: the same green deposit can be declined from OpenAlex and
+#: admitted from PMC.
 SELF_EVIDENTLY_OPEN_OA_STATUSES = frozenset({"gold", "diamond", "hybrid"})
 
 #: ``oa_status`` values that are open *if* the location states a licence. See

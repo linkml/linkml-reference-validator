@@ -21,6 +21,7 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
 
 logger = logging.getLogger(__name__)
 
@@ -59,18 +60,19 @@ class BioCFullTextProvider(FullTextProvider):
         time.sleep(config.rate_limit_delay)
 
         url = BIOC_URL.format(pmid=ids.pmid)
-        try:
-            response = requests.get(url, timeout=30)
-        except requests.RequestException as exc:
-            logger.debug(f"BioC request failed for PMID:{ids.pmid}: {exc}")
-            return None
+        # A RequestException is left to the chain, whose had_error handling
+        # keeps the record retryable; catching it here would record a timeout
+        # as "this article has no full text".
+        response = requests.get(url, timeout=30)
 
         if response.status_code == 404:
             logger.debug(f"PMID:{ids.pmid} not in PMC Open Access subset")
             return None
         if response.status_code != 200:
-            logger.debug(f"BioC returned {response.status_code} for PMID:{ids.pmid}")
-            return None
+            # Not an absence: BioC answers a busy client with 429.
+            raise TransientFullTextError(
+                f"BioC returned {response.status_code} for PMID:{ids.pmid}"
+            )
 
         text = self._extract_text(response.text)
         if not text or len(text) < MIN_FULLTEXT_CHARS:

@@ -443,6 +443,48 @@ class TestBioCFullTextProvider:
         assert result is None
 
 
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_error_body_on_200_is_absence(self, mock_get, config):
+        """BioC answers an unknown ID with a plain-text error on HTTP 200."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "[Error] : No result can be found. <BR><HR>"
+        mock_get.return_value = mock_response
+
+        assert BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="1"), config) is None
+
+    @pytest.mark.parametrize("status", [429, 500, 503])
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_server_failure_is_transient(self, mock_get, config, status):
+        """A rate limit or server error says nothing about the article.
+
+        Returning None would let the chain set full_text_attempted and never
+        ask again; raising keeps the record retryable.
+        """
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = status
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_network_error_propagates(self, mock_get, config):
+        """Left to the chain's had_error handling, as epmc_preprint does."""
+        import requests
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_get.side_effect = requests.Timeout("timed out")
+
+        with pytest.raises(requests.Timeout):
+            BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+
 class TestEuropePMCFullTextProvider:
     """Test Europe PMC fulltext provider."""
 
@@ -542,6 +584,69 @@ class TestEuropePMCFullTextProvider:
 
         result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
         assert result is None
+
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_search_failure_is_transient(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = 503
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_server_failure_is_transient(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(500)]
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_404_is_absence(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(404)]
+
+        assert EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config) is None
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_network_error_propagates(self, mock_get, config):
+        import requests
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        mock_get.side_effect = [_epmc_search_response(), requests.ConnectionError("reset")]
+
+        with pytest.raises(requests.ConnectionError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+
+def _epmc_search_response(result=None):
+    """A Europe PMC search response holding one result (an OA article by default)."""
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {
+        "resultList": {
+            "result": [result if result is not None else {
+                "pmcid": "PMC123456", "isOpenAccess": "Y", "license": "cc-by"
+            }]
+        }
+    }
+    return response
+
+
+def _epmc_fulltext_response(status=200, text=""):
+    """A Europe PMC fullTextXML response."""
+    response = MagicMock()
+    response.status_code = status
+    response.text = text
+    return response
 
 
 class TestProviderRegistration:

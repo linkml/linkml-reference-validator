@@ -21,6 +21,7 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
 
 logger = logging.getLogger(__name__)
 
@@ -63,15 +64,16 @@ class EuropePMCFullTextProvider(FullTextProvider):
             "email": config.email,
         }
 
-        try:
-            response = requests.get(EUROPEPMC_SEARCH_URL, params=params, timeout=30)
-        except requests.RequestException as exc:
-            logger.debug(f"Europe PMC search failed for PMID:{ids.pmid}: {exc}")
-            return None
+        # A RequestException is left to the chain, whose had_error handling
+        # keeps the record retryable, as in epmc_preprint.
+        response = requests.get(EUROPEPMC_SEARCH_URL, params=params, timeout=30)
 
         if response.status_code != 200:
-            logger.debug(f"Europe PMC returned {response.status_code} for PMID:{ids.pmid}")
-            return None
+            # A search miss is an empty resultList on a 200, so any other
+            # status is the service failing, not an answer about the article.
+            raise TransientFullTextError(
+                f"Europe PMC search returned {response.status_code} for PMID:{ids.pmid}"
+            )
 
         try:
             data = response.json()
@@ -135,15 +137,17 @@ class EuropePMCFullTextProvider(FullTextProvider):
 
         time.sleep(config.rate_limit_delay)
 
-        try:
-            response = requests.get(url, timeout=30)
-        except requests.RequestException as exc:
-            logger.debug(f"Europe PMC fulltext fetch failed for {pmcid}: {exc}")
-            return None
+        response = requests.get(url, timeout=30)
 
-        if response.status_code != 200:
-            logger.debug(f"Europe PMC fulltext returned {response.status_code} for {pmcid}")
+        if response.status_code == 404:
+            logger.debug(f"Europe PMC has no fullTextXML for {pmcid}")
             return None
+        if response.status_code != 200:
+            # The search already called this article open access with a PMCID,
+            # so a failure here is treated as transient and retried next run.
+            raise TransientFullTextError(
+                f"Europe PMC fullTextXML returned {response.status_code} for {pmcid}"
+            )
 
         return self._extract_body_text(response.text)
 

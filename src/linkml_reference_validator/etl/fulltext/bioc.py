@@ -26,6 +26,12 @@ logger = logging.getLogger(__name__)
 
 BIOC_URL = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/{pmid}/ascii"
 
+#: BioC ``section_type`` values that are not the article's own prose. ``REF``
+#: is the bibliography -- other papers' titles -- and a snippet quoting a cited
+#: paper must not validate against the paper citing it. The declarations are
+#: boilerplate that no supporting-text claim is drawn from.
+EXCLUDED_SECTION_TYPES = frozenset({"REF", "COMP_INT", "AUTH_CONT", "ACK_FUND"})
+
 
 @FullTextProviderRegistry.register
 class BioCFullTextProvider(FullTextProvider):
@@ -81,6 +87,9 @@ class BioCFullTextProvider(FullTextProvider):
     def _extract_text(self, xml_content: str) -> Optional[str]:
         """Extract paragraph text from BioC XML.
 
+        Passages whose ``section_type`` is in :data:`EXCLUDED_SECTION_TYPES`
+        are skipped.
+
         Args:
             xml_content: BioC XML response
 
@@ -95,6 +104,12 @@ class BioCFullTextProvider(FullTextProvider):
             ... </document></collection>'''
             >>> provider._extract_text(xml)
             'Introduction text.\\n\\nMethods section.'
+            >>> xml = '''<collection><document>
+            ...   <passage><infon key="section_type">INTRO</infon><text>Body.</text></passage>
+            ...   <passage><infon key="section_type">REF</infon><text>Cited.</text></passage>
+            ... </document></collection>'''
+            >>> provider._extract_text(xml)
+            'Body.'
         """
         try:
             soup = BeautifulSoup(xml_content, "xml")
@@ -108,6 +123,9 @@ class BioCFullTextProvider(FullTextProvider):
 
         texts = []
         for passage in passages:
+            section_type = passage.find("infon", attrs={"key": "section_type"})
+            if section_type and section_type.get_text().strip() in EXCLUDED_SECTION_TYPES:
+                continue
             text_elem = passage.find("text")
             if text_elem and text_elem.string:
                 text = text_elem.string.strip()

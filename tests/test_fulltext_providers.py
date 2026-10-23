@@ -403,6 +403,34 @@ class TestBioCFullTextProvider:
         assert result.provider == "bioc"
 
     @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_excludes_reference_list(self, mock_get, config):
+        """Bibliography passages are other papers' titles, not this article.
+
+        A snippet quoting a cited paper must not validate against the paper
+        that cites it.
+        """
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        body = "Our results show the kinase is required for repair. " * 30
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = f"""<collection><document>
+            <passage><infon key="section_type">RESULTS</infon><text>{body}</text></passage>
+            <passage><infon key="section_type">REF</infon><text>A cited paper title.</text></passage>
+            <passage><infon key="section_type">COMP_INT</infon><text>No competing interests.</text></passage>
+            <passage><infon key="section_type">AUTH_CONT</infon><text>AB wrote the paper.</text></passage>
+            <passage><infon key="section_type">ACK_FUND</infon><text>Funded by a grant.</text></passage>
+        </document></collection>"""
+        mock_get.return_value = mock_response
+
+        result = BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert "kinase is required" in result.text
+        for excluded in ["cited paper", "competing", "wrote the paper", "grant"]:
+            assert excluded not in result.text
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
     def test_bioc_fetch_not_found(self, mock_get, config):
         """Test BioC fetch when article not in OA subset."""
         from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider

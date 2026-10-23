@@ -1406,6 +1406,17 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#title-mismatch-against-checking-your-browser-recaptcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title mismatch against "Checking your browser - reCAPTCHA"
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1900,6 +1911,17 @@
     <span class="md-ellipsis">
       
         Title validation failed
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#title-mismatch-against-checking-your-browser-recaptcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Title mismatch against "Checking your browser - reCAPTCHA"
       
     </span>
   </a>
@@ -2591,6 +2613,22 @@ actual_title: &quot;Role of JAK1 in Cell Signaling&quot;
 reference_title: &quot;Role of JAK1&quot;
 actual_title: &quot;Role of JAK1 in Cell Signaling&quot;
 </code></pre>
+<h3 id="title-mismatch-against-checking-your-browser-recaptcha">Title mismatch against "Checking your browser - reCAPTCHA"</h3>
+<p><strong>Symptom</strong> (older versions):</p>
+<pre><code>Title mismatch: expected 'MELAS - GeneReviews® - NCBI Bookshelf'
+but got 'Checking your browser - reCAPTCHA'
+</code></pre>
+<p><strong>Cause:</strong> the host (NCBI does this for Bookshelf and PMC pages) answered a
+<code>url:</code> fetch with a bot check instead of the document. It sends the check with
+HTTP 200, so older versions took it for the document and cached it.</p>
+<p>The <code>url:</code> source now treats a page with a known challenge title as a failed
+fetch: a cached entry is used instead, and nothing is written. A challenge page
+cached by an older version is ignored, as if absent, and replaced by the next
+good fetch.</p>
+<p><strong>Solution:</strong> upgrade, and leave the curated title alone; it is probably
+correct. While the host keeps challenging, a reference with no good cached
+entry reports <code>Could not fetch reference</code> rather than a title mismatch.
+Retrying during the block gets the challenge again.</p>
 <h2 id="schema-issues">Schema Issues</h2>
 <h3 id="no-reference-or-supporting_text-fields-found">No reference or supporting_text fields found</h3>
 <p><strong>Symptom:</strong></p>

@@ -2942,8 +2942,9 @@ location states a licence, since that status names a repository rather than a
 permission. An unrecognised or missing status is <strong>not</strong> assumed open: an
 unknown licence is not a grant.</p>
 <p>This governs files found by asking an OA <em>index</em> (OpenAlex, Unpaywall). It does
-not govern the <code>pmc</code> and <code>epmc_preprint</code> providers, which ask an archive's own
-API for a document it serves for machine retrieval — a stronger warrant than an
+not govern the <code>pmc</code>, <code>bioc</code>, <code>epmc</code> and <code>epmc_preprint</code> providers, which ask an
+archive's own API (PMC, its BioC rendering, or Europe PMC) for a document it
+serves for machine retrieval — a stronger warrant than an
 index's summary of a third-party host. The same green deposit can therefore be
 declined from OpenAlex and admitted from PMC.</p>
 <p><strong>A declined reference is retried when the extractor version moves, not on every

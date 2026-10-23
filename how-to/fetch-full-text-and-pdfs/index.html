@@ -1716,6 +1716,20 @@ The default order is:</p>
   repository PDF).</li>
 <li><strong><code>openalex</code></strong> — OpenAlex open-access location (PDF/HTML).</li>
 </ul>
+<p>Two more built-in providers are available but not in the default chain; add
+them to <code>full_text_providers</code> to use them:</p>
+<ul>
+<li><strong><code>bioc</code></strong> — PMC Open Access articles as BioC passages, from NCBI's BioNLP
+  BioC API, by PMID. The reference list and the competing-interest,
+  author-contribution and funding statements are left out, so a snippet quoting
+  a cited paper cannot validate against the paper citing it.</li>
+<li><strong><code>epmc</code></strong> — Europe PMC's <code>fullTextXML</code> for open-access articles, by PMID.
+  This is the same JATS that <code>pmc</code> reads, served by Europe PMC rather than
+  NCBI, so after <code>pmc</code> it rarely finds anything new. It is useful as a second
+  route when NCBI is down or rate-limiting, or in place of <code>pmc</code> to avoid
+  depending on Entrez. Not to be confused with <code>epmc_preprint</code>, which handles
+  preprints only.</li>
+</ul>
 <p>Providers are skipped silently if they have nothing for a given reference, so
 the chain degrades gracefully: a miss in <code>pmc</code> simply moves on to <code>unpaywall</code>,
 and so on. If no provider yields full text, the reference keeps whatever
@@ -1740,7 +1754,7 @@ your config YAML or on the <code>ReferenceValidationConfig</code> object):</p>
 <tr>
 <td><code>full_text_providers</code></td>
 <td><code>[pmc, bookshelf, epmc_preprint, unpaywall, openalex]</code></td>
-<td>Ordered list of provider names to try until one yields usable full text.</td>
+<td>Ordered list of provider names to try until one yields usable full text. <code>bioc</code> and <code>epmc</code> are also built in but must be added explicitly.</td>
 </tr>
 <tr>
 <td><code>bookshelf_archive_dir</code></td>
@@ -2046,7 +2060,7 @@ the text came from. These provenance fields are written alongside the content:</
 <tbody>
 <tr>
 <td><code>full_text_provider</code></td>
-<td>Name of the provider that supplied the full text (e.g. <code>pmc</code>, <code>epmc_preprint</code>, <code>unpaywall</code>, or a custom name).</td>
+<td>Name of the provider that supplied the full text (e.g. <code>pmc</code>, <code>bioc</code>, <code>epmc</code>, <code>epmc_preprint</code>, <code>unpaywall</code>, or a custom name).</td>
 </tr>
 <tr>
 <td><code>oa_status</code></td>

@@ -9,7 +9,6 @@ import time
 from typing import Optional
 
 import requests  # type: ignore
-from bs4 import BeautifulSoup  # type: ignore
 
 from linkml_reference_validator.models import (
     FullTextLocation,
@@ -21,6 +20,7 @@ from linkml_reference_validator.etl.fulltext.base import (
     FullTextProviderRegistry,
 )
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
 
 logger = logging.getLogger(__name__)
@@ -96,7 +96,7 @@ class EuropePMCFullTextProvider(FullTextProvider):
 
         return FullTextLocation(
             text=text,
-            format_hint="text",
+            format_hint="xml",
             oa_status="green",
             license=result.get("license"),
             provider="epmc",
@@ -129,7 +129,7 @@ class EuropePMCFullTextProvider(FullTextProvider):
             config: Configuration for rate limiting
 
         Returns:
-            Extracted body text, or None
+            Body text from the shared JATS extractor, or None
         """
         if not pmcid.upper().startswith("PMC"):
             pmcid = f"PMC{pmcid}"
@@ -149,37 +149,6 @@ class EuropePMCFullTextProvider(FullTextProvider):
                 f"Europe PMC fullTextXML returned {response.status_code} for {pmcid}"
             )
 
-        return self._extract_body_text(response.text)
-
-    def _extract_body_text(self, xml_content: str) -> Optional[str]:
-        """Extract body paragraphs from JATS XML.
-
-        Args:
-            xml_content: JATS XML content
-
-        Returns:
-            Concatenated paragraph text, or None
-
-        Examples:
-            >>> provider = EuropePMCFullTextProvider()
-            >>> xml = '<article><body><sec><p>Text here.</p></sec></body></article>'
-            >>> provider._extract_body_text(xml)
-            'Text here.'
-        """
-        soup = BeautifulSoup(xml_content, "xml")
-
-        body = soup.find("body")
-        if not body:
-            return None
-
-        paragraphs = body.find_all("p")
-        if not paragraphs:
-            return None
-
-        texts = []
-        for p in paragraphs:
-            text = p.get_text().strip()
-            if text:
-                texts.append(text)
-
-        return "\n\n".join(texts) if texts else None
+        # Bytes, not response.text: requests guesses ISO-8859-1 for XML served
+        # without a charset, whereas the parser reads the XML declaration.
+        return XMLExtractor().extract(response.content, content_type="application/xml")

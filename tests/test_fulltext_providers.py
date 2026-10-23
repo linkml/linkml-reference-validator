@@ -523,14 +523,14 @@ class TestEuropePMCFullTextProvider:
 
         fulltext_response = MagicMock()
         fulltext_response.status_code = 200
-        fulltext_response.text = f"""<?xml version="1.0"?>
+        fulltext_response.content = f"""<?xml version="1.0"?>
         <article>
             <body>
                 <sec>
                     <p>{long_text}</p>
                 </sec>
             </body>
-        </article>"""
+        </article>""".encode()
 
         mock_get.side_effect = [search_response, fulltext_response]
 
@@ -585,6 +585,43 @@ class TestEuropePMCFullTextProvider:
         result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
         assert result is None
 
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_extracts_jats_like_pmc(self, mock_get, config):
+        """The same JATS as PMC, so the same extractor and the same format.
+
+        format_hint "xml" gives the cache entry full_text_xml and its
+        XML_EXTRACTION_CACHE_VERSION stamp, as PMC's entries get.
+        """
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        body = "Europe PMC body paragraph. " * 60
+        xml = f"""<article><body><sec><p>{body}</p>
+            <table-wrap><table><tr><td>TableCell</td></tr></table></table-wrap>
+            </sec></body></article>"""
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(text=xml)]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert result.format_hint == "xml"
+        assert "Europe PMC body paragraph." in result.text
+        assert "TableCell" in result.text
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_honours_the_xml_encoding_declaration(self, mock_get, config):
+        """The parser, not requests' charset guess, decodes the body."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        body = "Fran\u00e7ois measured the binding affinity. " * 40
+        xml = f'<?xml version="1.0" encoding="UTF-8"?><article><body><p>{body}</p></body></article>'
+        fulltext = _epmc_fulltext_response(text=xml)
+        fulltext.text = xml.encode().decode("iso-8859-1")
+        mock_get.side_effect = [_epmc_search_response(), fulltext]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert "Fran\u00e7ois" in result.text
 
     @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
     def test_europepmc_search_failure_is_transient(self, mock_get, config):
@@ -645,7 +682,7 @@ def _epmc_fulltext_response(status=200, text=""):
     """A Europe PMC fullTextXML response."""
     response = MagicMock()
     response.status_code = status
-    response.text = text
+    response.content = text.encode()
     return response
 
 

@@ -1684,7 +1684,9 @@ class ReferenceFetcher:
             # Written before URLSource declined challenge pages (#117), and
             # stamped current, so staleness would never catch it. It is not the
             # document under any flag, stale or trusted: treat it as absent so
-            # it is never evidence and the next good fetch replaces it.
+            # it is never evidence and the next good fetch replaces it. The
+            # legacy return above skips this, which is safe: challenge pages were
+            # cached by Markdown-era versions, never in the pre-Markdown format.
             logger.warning(
                 "Ignoring cache entry for %s: it holds a bot-challenge page "
                 "(%r), not the document. It will be re-fetched.",

@@ -8,6 +8,7 @@ one and reported as a curation error, and the page replaced a good cache entry.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import pytest
@@ -77,28 +78,34 @@ def stale_entry(cache_path):
 
 @pytest.fixture
 def poisoned_entry(cache_path):
-    """A challenge page cached by version 2, before this fix: stamped current."""
+    """A challenge page cached before this fix, stamped current (it was version 2).
+
+    Stamped with the current version, not a literal 2, so the point survives a
+    later bump: staleness is not what keeps such an entry out.
+    """
     cache_path.write_text(
-        _entry(title=CHALLENGE_TITLE, body="Checking your browser", url_version=2)
+        _entry(
+            title=CHALLENGE_TITLE,
+            body="Checking your browser",
+            url_version=URL_SOURCE_CACHE_VERSION,
+        )
     )
-    assert URL_SOURCE_CACHE_VERSION == 2
     assert not ReferenceFetcher._is_stale_cache_entry(cache_path.read_text())
     return cache_path
 
 
+@contextmanager
 def _serving(page: str, content_type: str = "text/html"):
     """Patch the network so every url: fetch gets ``page``."""
-    acquirer = patch("linkml_reference_validator.etl.sources.url.ContentAcquirer")
-    mock = acquirer.start()
-    mock.return_value.fetch_bytes.return_value = (page.encode(), content_type)
-    return acquirer
+    with patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as mock:
+        mock.return_value.fetch_bytes.return_value = (page.encode(), content_type)
+        yield
 
 
 @pytest.fixture
 def challenged():
-    acquirer = _serving(CHALLENGE)
-    yield
-    acquirer.stop()
+    with _serving(CHALLENGE):
+        yield
 
 
 # --- the rule ----------------------------------------------------------------
@@ -125,9 +132,8 @@ def test_no_title_is_not_a_challenge():
 @pytest.mark.parametrize("content_type", ["text/html", "text/plain", ""])
 def test_source_declines_a_challenge_page(content_type):
     """Checked before the HTML sniff, so a mislabelled challenge is caught too."""
-    acquirer = _serving(CHALLENGE, content_type)
-    result = URLSource().fetch(URL, ReferenceValidationConfig(rate_limit_delay=0.0))
-    acquirer.stop()
+    with _serving(CHALLENGE, content_type):
+        result = URLSource().fetch(URL, ReferenceValidationConfig(rate_limit_delay=0.0))
     assert result is None
 
 
@@ -137,9 +143,8 @@ def test_source_keys_on_the_title_tag_not_the_body():
         "<html><head><title>Usability of reCAPTCHA for older adults</title></head>"
         "<body><p>Checking your browser is a phrase users find confusing.</p></body></html>"
     )
-    acquirer = _serving(page)
-    result = URLSource().fetch(URL, ReferenceValidationConfig(rate_limit_delay=0.0))
-    acquirer.stop()
+    with _serving(page):
+        result = URLSource().fetch(URL, ReferenceValidationConfig(rate_limit_delay=0.0))
     assert result is not None
     assert result.title == "Usability of reCAPTCHA for older adults"
 
@@ -184,9 +189,8 @@ def test_a_cached_challenge_page_is_absent(tmp_path, poisoned_entry, trusted):
 
 
 def test_a_cached_challenge_page_is_replaced_by_the_next_good_fetch(fetcher, poisoned_entry):
-    acquirer = _serving(ARTICLE)
-    result = fetcher.fetch(f"url:{URL}")
-    acquirer.stop()
+    with _serving(ARTICLE):
+        result = fetcher.fetch(f"url:{URL}")
 
     assert result is not None
     assert result.title == TITLE

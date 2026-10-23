@@ -25,7 +25,9 @@ from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
 logger = logging.getLogger(__name__)
 
 EUROPEPMC_SEARCH_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
-EUROPEPMC_FULLTEXT_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/{source}/{id}/fullTextXML"
+#: Addressed by the prefixed PMCID (``PMC3257301``). The ``/{source}/{id}/``
+#: form is for the references and citations endpoints; here it 404s.
+EUROPEPMC_FULLTEXT_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/fullTextXML"
 
 
 @FullTextProviderRegistry.register
@@ -127,8 +129,9 @@ class EuropePMCFullTextProvider(FullTextProvider):
         Returns:
             Extracted body text, or None
         """
-        pmcid_clean = pmcid.replace("PMC", "")
-        url = EUROPEPMC_FULLTEXT_URL.format(source="PMC", id=pmcid_clean)
+        if not pmcid.upper().startswith("PMC"):
+            pmcid = f"PMC{pmcid}"
+        url = EUROPEPMC_FULLTEXT_URL.format(pmcid=pmcid)
 
         time.sleep(config.rate_limit_delay)
 

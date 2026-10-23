@@ -472,6 +472,30 @@ class TestEuropePMCFullTextProvider:
         assert result.provider == "epmc"
 
     @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_url_keeps_pmc_prefix(self, mock_get, config):
+        """fullTextXML is addressed by the prefixed PMCID, not /PMC/{number}/.
+
+        The /{source}/{id}/ form belongs to the references and citations
+        endpoints; on fullTextXML it 404s for every article.
+        """
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
+            "resultList": {"result": [{"pmcid": "PMC3257301", "isOpenAccess": "Y"}]}
+        }
+        fulltext_response = MagicMock()
+        fulltext_response.status_code = 404
+        mock_get.side_effect = [search_response, fulltext_response]
+
+        EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="22253583"), config)
+
+        assert mock_get.call_args_list[1].args[0] == (
+            "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC3257301/fullTextXML"
+        )
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
     def test_europepmc_not_open_access(self, mock_get, config):
         """Test Europe PMC when article is not open access."""
         from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider

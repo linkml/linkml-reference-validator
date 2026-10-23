@@ -75,7 +75,7 @@ class BioCFullTextProvider(FullTextProvider):
             )
 
         text = self._extract_text(response.text)
-        if not text or len(text) < MIN_FULLTEXT_CHARS:
+        if not text or len(text) <= MIN_FULLTEXT_CHARS:
             logger.debug(f"BioC returned insufficient text for PMID:{ids.pmid}")
             return None
 

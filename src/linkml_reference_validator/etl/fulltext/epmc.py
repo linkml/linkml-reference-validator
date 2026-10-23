@@ -91,7 +91,7 @@ class EuropePMCFullTextProvider(FullTextProvider):
             return None
 
         text = self._fetch_fulltext_xml(pmcid, config)
-        if not text or len(text) < MIN_FULLTEXT_CHARS:
+        if not text or len(text) <= MIN_FULLTEXT_CHARS:
             return None
 
         return FullTextLocation(

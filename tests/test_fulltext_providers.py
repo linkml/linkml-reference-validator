@@ -298,10 +298,33 @@ def _pmid_html_gate(config, text):
         return source._fetch_pmc_fulltext("123", config)[0] is not None
 
 
+def _bioc_gate(config, text):
+    """Drive BioCFullTextProvider.locate's floor."""
+    from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+    response = MagicMock()
+    response.status_code = 200
+    response.text = f"<collection><document><passage><text>{text}</text></passage></document></collection>"
+    with patch("linkml_reference_validator.etl.fulltext.bioc.requests.get", return_value=response):
+        return BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="123"), config) is not None
+
+
+def _epmc_gate(config, text):
+    """Drive EuropePMCFullTextProvider.locate's floor."""
+    from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+    xml = f"<article><body><p>{text}</p></body></article>"
+    with patch(
+        "linkml_reference_validator.etl.fulltext.epmc.requests.get",
+        side_effect=[_epmc_search_response(), _epmc_fulltext_response(text=xml)],
+    ):
+        return EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="123"), config) is not None
+
+
 @pytest.mark.parametrize(
     "drive",
-    [_pmc_xml_gate, _pmc_html_gate, _pmid_xml_gate, _pmid_html_gate],
-    ids=["pmc-xml", "pmc-html", "pmid-xml", "pmid-html"],
+    [_pmc_xml_gate, _pmc_html_gate, _pmid_xml_gate, _pmid_html_gate, _bioc_gate, _epmc_gate],
+    ids=["pmc-xml", "pmc-html", "pmid-xml", "pmid-html", "bioc", "epmc"],
 )
 def test_every_floor_gate_is_exclusive(config, drive):
     """All four gates must agree that the floor itself is not enough.

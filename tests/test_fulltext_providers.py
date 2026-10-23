@@ -668,6 +668,20 @@ class TestEuropePMCFullTextProvider:
         assert "Fran\u00e7ois" in result.text
 
     @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_non_json_search_body_is_transient(self, mock_get, config):
+        """A 200 that is not JSON is a maintenance or error page, not an answer."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = ValueError("Expecting value: line 1 column 1")
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
     def test_europepmc_search_failure_is_transient(self, mock_get, config):
         from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
         from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError

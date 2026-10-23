@@ -69,8 +69,8 @@ class EuropePMCFullTextProvider(FullTextProvider):
             Europe PMC has no fullTextXML for it, or the text is below the floor
 
         Raises:
-            TransientFullTextError: Europe PMC answered with a status that says
-                nothing about the article
+            TransientFullTextError: Europe PMC answered with a status or body
+                that says nothing about the article
             requests.RequestException: A request itself failed
 
         Examples:
@@ -102,11 +102,14 @@ class EuropePMCFullTextProvider(FullTextProvider):
                 f"Europe PMC search returned {response.status_code} for PMID:{ids.pmid}"
             )
 
-        try:
+        try:  # external system boundary
             data = response.json()
-        except ValueError:
-            logger.debug(f"Invalid JSON from Europe PMC for PMID:{ids.pmid}")
-            return None
+        except ValueError as exc:
+            # A 200 that is not JSON is the service's HTML maintenance or error
+            # page, which says nothing about the article.
+            raise TransientFullTextError(
+                f"Europe PMC search returned a non-JSON body for PMID:{ids.pmid}"
+            ) from exc
 
         result = self._find_oa_result(data)
         if not result:

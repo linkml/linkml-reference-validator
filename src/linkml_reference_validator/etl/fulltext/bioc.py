@@ -32,6 +32,13 @@ BIOC_URL = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_
 #: is the bibliography -- other papers' titles -- and a snippet quoting a cited
 #: paper must not validate against the paper citing it. The declarations are
 #: boilerplate that no supporting-text claim is drawn from.
+#:
+#: Changing this set does not reach entries already cached. BioC text is cached
+#: as ``content_type: full_text``, which has no format-specific version stamp,
+#: so ``_is_stale_cache_entry`` re-fetches it only when the global
+#: ``EXTRACTOR_CACHE_VERSION`` moves, and that re-fetches every entry. Widening
+#: the set (``SUPPL`` and ``ABBR`` are candidates) should add a BioC stamp, as
+#: ``XML_EXTRACTION_CACHE_VERSION`` is for XML, rather than pay for that.
 EXCLUDED_SECTION_TYPES = frozenset({"REF", "COMP_INT", "AUTH_CONT", "ACK_FUND"})
 
 

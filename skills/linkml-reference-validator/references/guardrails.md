@@ -11,9 +11,11 @@ target class, explicit config, cache location, and which findings block each
 stage. Keep these decisions in version control so humans and agents run the
 same checks.
 
-If LRV is absent from a uv project, add it with `uv add linkml-reference-validator`
-and commit the dependency and lockfile changes as part of setup. Skill installation
-alone does not supply the runtime. Check the locked release's subcommand help when
+If LRV is absent from a uv project, add it with
+`uv add linkml-reference-validator linkml` and commit the dependency and lockfile
+changes as part of setup. `validate data` needs `linkml` and exits 2 without it;
+the text, lookup, and repair commands do not. Skill installation alone does not
+supply the runtime. Check the locked release's subcommand help when
 integrating or upgrading: repository wrappers can target an older release than
 upstream documentation.
 

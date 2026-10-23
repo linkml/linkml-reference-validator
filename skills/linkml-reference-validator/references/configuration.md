@@ -95,5 +95,5 @@ Review suggestions for fidelity to the source and the intended claim. When
 applying a data repair, `--no-dry-run --output repaired.yaml` preserves the input;
 otherwise the CLI overwrites it with a backup. Revalidate the result with the
 same schema, config, and source content. Consult the
-[CLI reference](https://linkml.io/linkml-reference-validator/reference/cli/)
+[CLI reference](https://linkml.github.io/linkml-reference-validator/reference/cli/)
 for source-specific options supported by the installed release.

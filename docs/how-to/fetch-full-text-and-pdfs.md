@@ -35,6 +35,20 @@ pmc → bookshelf → epmc_preprint → unpaywall → openalex
   repository PDF).
 - **`openalex`** — OpenAlex open-access location (PDF/HTML).
 
+Two more built-in providers are available but not in the default chain; add
+them to `full_text_providers` to use them:
+
+- **`bioc`** — PMC Open Access articles as BioC passages, from NCBI's BioNLP
+  BioC API, by PMID. The reference list and the competing-interest,
+  author-contribution and funding statements are left out, so a snippet quoting
+  a cited paper cannot validate against the paper citing it.
+- **`epmc`** — Europe PMC's `fullTextXML` for open-access articles, by PMID.
+  This is the same JATS that `pmc` reads, served by Europe PMC rather than
+  NCBI, so after `pmc` it rarely finds anything new. It is useful as a second
+  route when NCBI is down or rate-limiting, or in place of `pmc` to avoid
+  depending on Entrez. Not to be confused with `epmc_preprint`, which handles
+  preprints only.
+
 Providers are skipped silently if they have nothing for a given reference, so
 the chain degrades gracefully: a miss in `pmc` simply moves on to `unpaywall`,
 and so on. If no provider yields full text, the reference keeps whatever
@@ -48,7 +62,7 @@ your config YAML or on the `ReferenceValidationConfig` object):
 | Key | Default | Description |
 |-----|---------|-------------|
 | `fetch_full_text` | `true` | Attempt to obtain full text via the provider chain when a metadata source does not already return full text. |
-| `full_text_providers` | `[pmc, bookshelf, epmc_preprint, unpaywall, openalex]` | Ordered list of provider names to try until one yields usable full text. |
+| `full_text_providers` | `[pmc, bookshelf, epmc_preprint, unpaywall, openalex]` | Ordered list of provider names to try until one yields usable full text. `bioc` and `epmc` are also built in but must be added explicitly. |
 | `bookshelf_archive_dir` | `null` | Directory of unpacked NCBI Bookshelf books, read by the `bookshelf` provider. |
 | `private_cache_dir` | `~/.cache/linkml-reference-validator/private` | Separate research cache for closed/user-library full text; never read by validation. |
 | `pdf_backend` | `pypdf` | Name of the PDF text-extraction backend. |
@@ -360,7 +374,7 @@ the text came from. These provenance fields are written alongside the content:
 
 | Field | Description |
 |-------|-------------|
-| `full_text_provider` | Name of the provider that supplied the full text (e.g. `pmc`, `epmc_preprint`, `unpaywall`, or a custom name). |
+| `full_text_provider` | Name of the provider that supplied the full text (e.g. `pmc`, `bioc`, `epmc`, `epmc_preprint`, `unpaywall`, or a custom name). |
 | `oa_status` | Open-access status reported by the provider (e.g. `gold`, `green`, `bronze`). |
 | `license` | License of the open-access copy, when known. |
 | `local_pdf_path` | Path (relative to the cache directory) to the downloaded PDF, when one was persisted. |

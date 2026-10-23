@@ -543,10 +543,12 @@ class ReferenceValidationConfig(BaseModel):
         description=(
             "Ordered list of full-text provider names to try until one yields usable "
             "full text. Names map to built-in providers (pmc, bookshelf, epmc_preprint, "
-            "unpaywall, openalex) or custom providers loaded from YAML. The "
-            "epmc_preprint provider fetches preprint body text via the Europe PMC "
-            "fulltextRepo PDF route. The bookshelf provider reads NCBI Bookshelf "
-            "chapters (GeneReviews) from bookshelf_archive_dir."
+            "unpaywall, openalex, and the opt-in bioc and epmc) or custom providers "
+            "loaded from YAML. The epmc_preprint provider fetches preprint body text "
+            "via the Europe PMC fulltextRepo PDF route. The bookshelf provider reads "
+            "NCBI Bookshelf chapters (GeneReviews) from bookshelf_archive_dir. The "
+            "bioc provider reads PMC Open Access articles as BioC passages, and epmc "
+            "reads the same articles' JATS from Europe PMC instead of NCBI."
         ),
     )
     bookshelf_archive_dir: Optional[Path] = Field(

@@ -16,7 +16,7 @@ When a reference field contains a URL, the validator:
 
 1. Fetches the web page content
 2. Extracts the page title (see [Titles](#titles))
-3. Sanitizes HTML and caches the content for future validations
+3. Converts HTML to readable text and caches it for future validations
 4. Validates your supporting text against the page content
 
 ## URL Format
@@ -80,20 +80,29 @@ When the validator encounters a URL reference, it:
 The fetcher stores:
 
 - **Title**: See [Titles](#titles)
-- **Content**: Sanitized HTML for HTML pages; plain text and XML as received;
+- **Content**: Readable text for HTML pages; plain text and XML as received;
   extracted text for PDFs
 - **Content type**: `url` for pages, `full_text_pdf` for PDFs with text
 
-HTML is sanitized before it is cached, because caches are often committed to
-public repositories and page scripts routinely carry signed asset URLs and API
-keys. `<script>`, `<style>`, `<noscript>` and `<template>` elements and HTML
-comments are removed. So are `<meta>`, `<link>` and `<base>`, which hold nothing
-but attributes. Every other tag attribute is removed except `rowspan`,
-`colspan` and `scope`, which carry table structure. Body markup and text are
-kept. There is no HTML-to-text conversion, so tag names can still surface
-during normalization. If validation fails because tags interrupt the text,
-consider extracting plain text and validating against a local `file:`
-reference instead.
+HTML is converted to readable text before it is cached. A quote copied from
+the page then matches even when it runs through a link, bold or italic text,
+and a cached page can be read, and diffed, line by line:
+
+- Inline tags (`<a>`, `<b>`, `<em>`, `<span>`, ...) are removed and their
+  text is kept in place.
+- Block-level tags (`<p>`, `<li>`, `<h1>`-`<h6>`, `<div>`, `<br>`, ...) start
+  a new line.
+- A table row is one line, its cells separated by ` | `. Normalization drops
+  the `|`, so a quote copied from a rendered row with its cells separated by
+  spaces still matches.
+- `<pre>` keeps its whitespace. Elsewhere whitespace collapses to one space.
+- Entities such as `&amp;` are unescaped.
+
+The whole page is kept, including navigation, sidebars and footers; it is not
+narrowed to the article body. Because caches are often committed to public
+repositories and page scripts routinely carry signed asset URLs and API keys,
+`<script>`, `<style>`, `<noscript>` and `<template>` elements and HTML comments
+are removed with their text, and no tag attribute reaches the cache.
 
 #### Titles
 
@@ -176,11 +185,11 @@ URL validation is designed for static web pages. It may not work well with:
 
 ### Raw Content
 
-The validator stores sanitized page markup, not extracted text. For HTML pages:
+The validator stores the page's text, not its markup. For HTML pages:
 
-- HTML tags are preserved in the cache, without attributes other than
-  `rowspan`, `colspan` and `scope`
-- The text normalization during validation handles most cases
+- Text that only appears in an attribute, such as an image's `alt` text, is
+  not kept
+- Text inside `<noscript>` or `<template>` is not kept
 - Complex HTML layouts may require careful text extraction
 
 ### No Rendering
@@ -218,7 +227,22 @@ Ensure the cached content contains the text you're referencing.
 - Use `linkml-reference-validator cache reference url:https://... --force` to update cached content when pages change
 - Periodically review cached URLs to ensure they're still accessible
 
-### 4. Mix Reference Types
+### 4. Cite Pages With Fragments
+
+A fragment such as `#page=54` is never sent to the server, so it isn't part of
+the cache key. `url:https://example.com/report.pdf#page=54` and
+`...report.pdf#page=55` share one cache file, `url_https___example.com_report.pdf.md`,
+and the document is fetched and extracted once. Each reference still carries
+its own page-anchored URL, and quotes are matched against the whole document,
+not the cited page. Query strings (`?v=2`) do stay part of the key.
+
+Caches written before this change hold one file per fragment, such as
+`url_https___example.com_report.pdf#page_54.md`. These are still read, until
+the reference is next fetched (for example with `cache reference ... --force`);
+the fresh entry goes to the shared file, after which the per-fragment files can
+be deleted.
+
+### 5. Mix Reference Types
 
 URL references work alongside PMIDs and DOIs:
 

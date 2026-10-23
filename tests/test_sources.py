@@ -1069,3 +1069,30 @@ class TestGEOSource:
         result = source.fetch("GSE67472", config)
 
         assert result is None
+
+
+def test_fetch_url_pdf_unmapped_glyph_warning_names_url(tmp_path, caplog):
+    from linkml_reference_validator.models import ReferenceValidationConfig
+    from linkml_reference_validator.etl.sources.url import URLSource
+    from tests.test_extractors import _build_minimal_pdf
+
+    config = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache", rate_limit_delay=0.0
+    )
+    pdf_bytes = _build_minimal_pdf("in\x00ammation")
+
+    with (
+        patch(
+            "linkml_reference_validator.etl.sources.url.ContentAcquirer"
+        ) as MockAcquirer,
+        caplog.at_level("WARNING", logger="linkml_reference_validator.etl.extract.pdf"),
+    ):
+        MockAcquirer.return_value.fetch_bytes.return_value = (
+            pdf_bytes,
+            "application/pdf",
+        )
+        result = URLSource().fetch("https://x/y.pdf", config)
+
+    assert result is not None
+    assert "in�ammation" in result.content
+    assert any("https://x/y.pdf" in r.getMessage() for r in caplog.records)

@@ -20,9 +20,12 @@ import requests
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
-from linkml_reference_validator.etl.extract.html import sanitize_html
+from linkml_reference_validator.etl.extract.html import html_to_text
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
-from linkml_reference_validator.etl.rules import LANDING_PAGE_RULES
+from linkml_reference_validator.etl.rules import (
+    LANDING_PAGE_RULES,
+    is_bot_challenge_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,16 +34,17 @@ _META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 # data-name= and data-content=, since "-" is a word boundary.
 _META_NAME = re.compile(r"""(?<=\s)name\s*=\s*["']citation_title["']""", re.IGNORECASE)
 _META_CONTENT = re.compile(r"""(?<=\s)content\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
+_TITLE_TAG = re.compile(r"<title[^>]*>([^<]+)</title>", re.IGNORECASE)
 
 
 @ReferenceSourceRegistry.register
 class URLSource(ReferenceSource):
     """Fetch reference content from web URLs.
 
-    Fetches HTML and plain text content. HTML keeps its markup but is
-    sanitized (see :func:`sanitize_html`) so page scripts and attributes do not
-    reach the cache. Plain text and XML are stored as fetched. Content is cached
-    to disk like other sources.
+    Fetches HTML and plain text content. HTML is flattened to readable text
+    (see :func:`html_to_text`), so page scripts and attributes do not reach the
+    cache and a quote can run through a link or bold text. Plain text and XML
+    are stored as fetched. Content is cached to disk like other sources.
 
     Examples:
         >>> source = URLSource()
@@ -98,7 +102,7 @@ class URLSource(ReferenceSource):
 
         if is_pdf:
             text = PDFExtractor(backend=config.pdf_backend).extract(
-                data, content_type="application/pdf"
+                data, content_type="application/pdf", source=url
             )
             return ReferenceContent(
                 reference_id=f"url:{url}",
@@ -109,10 +113,16 @@ class URLSource(ReferenceSource):
             )
 
         content = self._decode(data, content_type_header)
-        # Before sanitizing: citation_title lives in a <meta> attribute.
+        if self._is_bot_challenge(content):
+            # A host answering with a bot check (NCBI does, on an HTTP 200) has
+            # not served the document. Returning None makes this a failed fetch,
+            # so a cached entry is served instead and nothing is written (#117).
+            logger.warning(f"Failed to fetch {url}: the host served a bot-challenge page")
+            return None
+        # Before flattening: citation_title lives in a <meta> attribute.
         title = self._extract_title(content, url)
         if "html" in content_type_header or self._looks_like_html(data):
-            content = sanitize_html(content)
+            content = html_to_text(content)
 
         return ReferenceContent(
             reference_id=f"url:{url}",
@@ -191,6 +201,26 @@ class URLSource(ReferenceSource):
         return None
 
     @staticmethod
+    def _is_bot_challenge(content: str) -> bool:
+        """Report whether a page's ``<title>`` is a bot-challenge page's.
+
+        Keyed on the ``<title>`` tag, not the body: an article may quote a
+        challenge's wording, but it does not carry it as its own title.
+
+        Examples:
+            >>> URLSource._is_bot_challenge(
+            ...     "<html><title>Checking your browser - reCAPTCHA</title></html>")
+            True
+            >>> URLSource._is_bot_challenge(
+            ...     "<title>A study</title><p>Checking your browser</p>")
+            False
+            >>> URLSource._is_bot_challenge("plain text, no title")
+            False
+        """
+        match = _TITLE_TAG.search(content)
+        return match is not None and is_bot_challenge_title(match.group(1))
+
+    @staticmethod
     def _looks_like_html(data: bytes) -> bool:
         """Report whether a body is an HTML page, whatever its content type said.
 
@@ -265,7 +295,7 @@ class URLSource(ReferenceSource):
             return citation_title
 
         # Look for HTML title tag (simple regex, no BeautifulSoup)
-        match = re.search(r"<title[^>]*>([^<]+)</title>", content, re.IGNORECASE)
+        match = _TITLE_TAG.search(content)
         if match:
             return match.group(1).strip()
 

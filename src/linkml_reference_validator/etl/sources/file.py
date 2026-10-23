@@ -1,6 +1,6 @@
 """Local file reference source.
 
-Reads content from local files (markdown, text, HTML).
+Reads content from local files (markdown, text, HTML, SVG, drawio).
 
 Examples:
     >>> from linkml_reference_validator.etl.sources.file import FileSource
@@ -15,6 +15,9 @@ import re
 from pathlib import Path
 from typing import Optional
 
+from linkml_reference_validator.etl.acquire import resolve_format
+from linkml_reference_validator.etl.extract import ExtractorRegistry
+from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 
@@ -25,8 +28,15 @@ logger = logging.getLogger(__name__)
 class FileSource(ReferenceSource):
     """Fetch reference content from local files.
 
-    Supports markdown (.md), plain text (.txt), and HTML (.html) files.
-    Content is read as-is without parsing (HTML entities preserved).
+    Supports markdown (.md), plain text (.txt), HTML (.html), SVG (.svg) and
+    drawio (.drawio, .drawio.xml) files. Content is read as-is without parsing
+    (HTML entities preserved), except for figures: an SVG or drawio figure is
+    matched against the text it renders, read by
+    :class:`~linkml_reference_validator.etl.extract.svg.SVGExtractor` or
+    :class:`~linkml_reference_validator.etl.extract.drawio.DrawioExtractor`,
+    so a quote cannot pass against markup, attributes or hidden text. A figure
+    with no rendered text, or whose rendered text cannot be determined, is
+    ``unavailable``.
 
     Path resolution:
     - Absolute paths work directly
@@ -79,6 +89,10 @@ class FileSource(ReferenceSource):
             logger.warning(f"Not a file: {file_path}")
             return None
 
+        figure_format = resolve_format(None, file_path.name, None)
+        if figure_format in FIGURE_CONTENT_TYPES:
+            return self._fetch_figure(file_path, figure_format)
+
         content = file_path.read_text(encoding="utf-8")
         title = self._extract_title(content, file_path)
 
@@ -87,6 +101,32 @@ class FileSource(ReferenceSource):
             title=title,
             content=content,
             content_type="local_file",
+        )
+
+    def _fetch_figure(self, file_path: Path, figure_format: str) -> ReferenceContent:
+        """Read an SVG or drawio figure as the labels it draws.
+
+        Examples:
+            >>> import tempfile
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     figure = Path(d) / "fig.svg"
+            ...     _ = figure.write_text(
+            ...         '<svg xmlns="http://www.w3.org/2000/svg">'
+            ...         '<desc>Hidden</desc><text>PTEN</text></svg>')
+            ...     ref = FileSource()._fetch_figure(figure, "svg")
+            >>> (ref.content, ref.content_type, ref.title)
+            ('PTEN', 'local_svg', 'fig.svg')
+        """
+        # The registry maps each figure format to its extractor.
+        extractor = ExtractorRegistry.get(figure_format)
+        if extractor is None:
+            raise LookupError(f"no extractor is registered for {figure_format}")
+        text = extractor.extract(file_path.read_bytes())
+        return ReferenceContent(
+            reference_id=f"file:{file_path}",
+            title=file_path.name,
+            content=text,
+            content_type=FIGURE_CONTENT_TYPES[figure_format] if text else "unavailable",
         )
 
     def _resolve_path(self, identifier: str, config: ReferenceValidationConfig) -> Path:

@@ -28,6 +28,21 @@ Validation uses an explicit ligature table instead of broad Unicode NFKC
 normalization so this change does not equate scientific notation such as `H₂O`
 with `H2O`, `10⁶` with `106`, or the micro sign `µ` with Greek `μ`.
 
+### Unmapped PDF glyphs do not match
+
+Some PDFs draw a glyph without saying which character it is, so text extraction
+gets no character at all. This is common for `fi`/`fl` ligatures, and sometimes
+happens for digits or minus signs. PDF extraction writes U+FFFD (`�`) in its
+place and logs a warning with the count, so cached text reads `in�ammation`.
+Validation does not guess the missing character: a quote containing
+`inflammation` will not match that text. Check the cached file for `�` and
+quote around the damaged word or supply better full text.
+
+Matching treats `�` like punctuation, so the damaged word splits in two: the
+cached text above reads as `in ammation`. A quote that starts or ends inside
+the damaged word still matches, so `ammation of the gut` matches
+`in�ammation of the gut`.
+
 ## Quick Start
 
 ### Repair a Single Quote
@@ -120,6 +135,22 @@ Suggested fix (85%): "Haemophilus influenzae type b" → "H. influenzae type b"
 ```
 
 Use with caution - verify the suggestion preserves the intended meaning.
+
+A correction that would change what the quote claims is reported, but never
+offered or applied as the fix:
+
+- **It drops a word of the quote,** such as "no" or "in mice".
+- **It swaps a word for one that differs only in a prefix,** such as
+  "unaffected" for "affected", "hyperphosphorylated" for
+  "hypophosphorylated", or "intracellular" for "extracellular". This holds
+  even when the quote also has a typo ("unaffectd").
+- **It adds a negation** the quote doesn't have, such as "not", "never",
+  "without" or "failed to".
+
+Words of three letters or fewer must match exactly, so "in" is never
+corrected to "on". These checks err towards caution, so some real typos go
+unfixed and need fixing by hand: a typo in a word's first few letters can look
+like a changed prefix ("ctivation" reads as "activation" without its "a").
 
 ### 4. Removal Recommendation (Very Low Confidence)
 

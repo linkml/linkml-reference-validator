@@ -7,6 +7,9 @@ body markup and text, loses ``script``/``style``/``noscript``/``template``
 and comments, drops ``meta``/``link``/``base`` (they hold nothing but
 attributes), and keeps only the table-structural attributes ``rowspan``,
 ``colspan`` and ``scope``. Plain text and XML are stored as before.
+
+Since #102 the page is also flattened to readable text (see
+``test_url_html_to_text.py``); what is dropped here is still dropped.
 """
 
 from unittest.mock import patch
@@ -94,15 +97,11 @@ def test_attributes_are_dropped(cached, gone):
     assert gone not in cached.content
 
 
-@pytest.mark.parametrize("kept", ['scope="col"', 'colspan="2"', 'rowspan="2"'])
-def test_table_structure_attributes_are_kept(cached, kept):
-    assert kept in cached.content
-
-
-def test_body_text_and_markup_survive(cached):
-    assert "<p>Patients showed <a>lactic acidosis</a>.</p>" in cached.content
-    assert "<td>POLG</td>" not in cached.content  # rowspan kept on it
-    assert "POLG" in cached.content
+def test_body_text_survives_as_readable_text(cached):
+    """Markup is no longer kept (#102): table structure becomes one line per row."""
+    assert "Patients showed lactic acidosis." in cached.content.splitlines()
+    assert "Gene | Finding" in cached.content.splitlines()
+    assert "POLG | A | B" in cached.content.splitlines()
     assert cached.content_type == "url"
 
 

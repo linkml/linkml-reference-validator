@@ -89,6 +89,28 @@ def clean_pdf_title(title: Optional[str]) -> Optional[str]:
     return title
 
 
+UNMAPPED_GLYPH = "\ufffd"
+"""Stand-in for a glyph the PDF gave no Unicode mapping (U+FFFD)."""
+
+
+def replace_unmapped_glyphs(text: str) -> tuple[str, int]:
+    """Replace NUL characters with U+FFFD and return the text and the count.
+
+    pypdf emits ``\\x00`` for glyphs with no ToUnicode mapping, usually
+    fi/fl/ffi ligatures but sometimes digits or minus signs, so the right
+    character cannot be guessed. U+FFFD keeps the loss visible and countable
+    while making the text valid for tools like grep, which treat NUL as binary.
+
+    Examples:
+        >>> replace_unmapped_glyphs("in\\x00ammation")
+        ('in\ufffdammation', 1)
+        >>> replace_unmapped_glyphs("inflammation")
+        ('inflammation', 0)
+    """
+    count = text.count("\x00")
+    return text.replace("\x00", UNMAPPED_GLYPH), count
+
+
 _BACKENDS: dict[str, type] = {
     "pypdf": PypdfBackend,
 }
@@ -116,14 +138,25 @@ class PDFExtractor(Extractor):
         return ["pdf"]
 
     def extract(
-        self, data: Union[bytes, str], *, content_type: Optional[str] = None
+        self,
+        data: Union[bytes, str],
+        *,
+        content_type: Optional[str] = None,
+        source: Optional[str] = None,
     ) -> Optional[str]:
+        """Extract text from PDF bytes; ``source`` (e.g. a URL) names it in logs."""
         # The base accepts str for text formats, but a PDF is binary: decoded
         # text cannot be reparsed as one, so say so rather than failing deep
         # inside the backend.
         if isinstance(data, str):
             raise TypeError("PDF extraction requires bytes, not decoded text")
-        text = self._backend.extract_text(data)
+        # Replace here rather than in a backend so every backend gets it.
+        text, unmapped = replace_unmapped_glyphs(self._backend.extract_text(data))
+        if unmapped:
+            origin = f" from {source}" if source else ""
+            logger.warning(
+                f"PDF text{origin} has {unmapped} unmapped glyph(s), replaced with U+FFFD"
+            )
         return text if text and text.strip() else None
 
     def extract_title(self, data: bytes) -> Optional[str]:

@@ -49,6 +49,7 @@ def test_placeholder_titles_have_examples():
 
 def test_consumers_import_the_rules():
     assert url.LANDING_PAGE_RULES is rules.LANDING_PAGE_RULES
+    assert url.is_bot_challenge_title is rules.is_bot_challenge_title
     assert pdf.PDF_PLACEHOLDER_TITLE is rules.PDF_PLACEHOLDER_TITLE
     assert pmc.PMC_ARTICLE_BODY_CLASSES is rules.PMC_ARTICLE_BODY_CLASSES
     assert xml.STUB_NOTICE_PHRASES is rules.STUB_NOTICE_PHRASES

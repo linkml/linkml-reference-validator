@@ -7,12 +7,27 @@ fetching from various sources (PMID, DOI, file, URL) using a plugin architecture
 import json
 import logging
 import re
+from collections import Counter
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
 
 from ruamel.yaml import YAML  # type: ignore
+from ruamel.yaml.scalarstring import DoubleQuotedScalarString
+
+from linkml_reference_validator.cache import (
+    _FRONTMATTER_DELIMITER,
+    _recover_legacy_scalars,
+    _same_reference_id,
+    _validate_cache_file,
+    CacheFrontmatter,
+    CacheSupplementaryFile,
+    cache_filename,
+    cache_key,
+    legacy_cache_filename,
+)
 
 from linkml_reference_validator.models import (
     FullTextLocation,
@@ -27,7 +42,9 @@ from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.rules import is_bot_challenge_title
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
+from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.loader import register_custom_full_text_providers
@@ -119,16 +136,23 @@ ABSENT_CONTENT_CACHE_VERSION = 1
 #: URL (#93). Neither fix rewrites an entry already written, and both kinds of
 #: entry carry a current ``extractor_version``, so without this they would be
 #: served as they are forever. Stamped from ``reference.metadata``, like the
-#: HTML stamp, and only on a fresh URLSource fetch.
-URL_SOURCE_CACHE_VERSION = 1
+#: HTML stamp, and only on a fresh URLSource fetch. Version 2: HTML is cached as
+#: readable text rather than markup, so a quote through a link or bold text
+#: matches (#102).
+URL_SOURCE_CACHE_VERSION = 2
 
-#: A cache file's frontmatter delimiter: a line that is exactly ``---``.
-#: Splitting on the bare string instead lets any *value* containing ``---`` - a
-#: URL reference_id, a title - truncate the block, which loses every field after
-#: it and hides the version stamp. An entry whose stamp is hidden reads as
-#: unstamped, so it is re-fetched, rewritten with the same id, and read as
-#: unstamped again: a re-fetch on every run, forever.
-_FRONTMATTER_DELIMITER = re.compile(r"^---[ \t]*$", re.MULTILINE)
+#: Version what FileSource writes for an SVG or drawio figure, scoped to
+#: ``file:`` entries whose path ends in ``.svg`` or ``.drawio`` (a drawio file
+#: cached before it was read as a figure is stale on the same terms). Version 1: an SVG is read as the text it renders
+#: (#104). Before it, the file was cached as raw markup, so a quote could pass
+#: against a ``<desc>``, an attribute value or hidden text; such an entry carries
+#: a current ``extractor_version`` and would otherwise be served forever.
+#: Version 2: labels are separated by a blank line, so a quote is matched
+#: within one label; version 1 text cannot tell its labels apart.
+#: Version 3: a connector the drawing confirms adds an edge line
+#: ("PTEN inhibits AKT"); version 2 text lacks them, so a quote of an edge
+#: would fail against it.
+SVG_EXTRACTION_CACHE_VERSION = 3
 
 _FORMAT_TO_CONTENT_TYPE = {
     "pdf": "full_text_pdf",
@@ -308,6 +332,10 @@ class ReferenceFetcher:
         Returns:
             ReferenceContent if found, None otherwise
 
+        Raises:
+            pydantic.ValidationError: Source metadata violates the cache model.
+                Validation happens before writing, leaving an existing file intact.
+
         Examples:
             >>> config = ReferenceValidationConfig()
             >>> fetcher = ReferenceFetcher(config)
@@ -400,6 +428,11 @@ class ReferenceFetcher:
         if content and normalized_reference_id.startswith("url:"):
             content.metadata = dict(
                 content.metadata or {}, url_source_version=URL_SOURCE_CACHE_VERSION
+            )
+
+        if content and self._is_figure_file_reference(normalized_reference_id):
+            content.metadata = dict(
+                content.metadata or {}, svg_extraction_version=SVG_EXTRACTION_CACHE_VERSION
             )
 
         if content and self.config.fetch_full_text and self.needs_full_text(content):
@@ -952,6 +985,11 @@ class ReferenceFetcher:
         fmt = sniff_format(data) or resolve_format(content_type, location.url, location.format_hint)
         if fmt is None:
             return None, None, None, False
+        if fmt in FIGURE_CONTENT_TYPES:
+            # A figure, graphical abstract or logo, never the article: figures
+            # are read only for a file: reference that names the figure itself.
+            logger.info(f"Not using {location.url} as full text: it is a {fmt} figure")
+            return None, fmt, None, False
 
         extractor: Optional[Extractor]
         if fmt == "pdf":
@@ -962,11 +1000,16 @@ class ReferenceFetcher:
             return None, fmt, None, False
 
         try:  # external system boundary: parsing arbitrary downloaded bytes
-            text = (
-                HTMLExtractor().extract_full_text(data)
-                if fmt == "html"
-                else extractor.extract(data, content_type=content_type)
-            )
+            if fmt == "html":
+                text = HTMLExtractor().extract_full_text(data)
+            elif fmt == "pdf":
+                # Deliberately not extractor.extract(...): only the PDF extractor
+                # takes source=, which names the URL when it warns about lost glyphs.
+                text = self._pdf_extractor.extract(
+                    data, content_type=content_type, source=location.url
+                )
+            else:
+                text = extractor.extract(data, content_type=content_type)
         except Exception as exc:
             logger.warning(f"Extraction failed for {location.url}: {exc}")
             return None, fmt, None, True
@@ -1118,8 +1161,40 @@ class ReferenceFetcher:
             >>> path = fetcher.get_cache_path("url:https://example.com/book/chapter1")
             >>> path.name
             'url_https___example.com_book_chapter1.md'
+
+            A ``url:`` fragment is not part of the key, so every page of one
+            PDF shares an entry:
+
+            >>> fetcher.get_cache_path("url:https://example.com/r.pdf#page=54").name
+            'url_https___example.com_r.pdf.md'
         """
         return self._cache_path(reference_id, self.config.get_cache_dir())
+
+    def find_cache_file(self, reference_id: str) -> Path:
+        """Return the public cache file to read for a reference.
+
+        That is :meth:`get_cache_path` unless only a ``url:`` entry written
+        before #114 exists, keyed by the full URL, fragment included; then that
+        file. Writes always go to :meth:`get_cache_path`, so a legacy entry is
+        read until the reference is next fetched and never updated in place.
+
+        Args:
+            reference_id: Normalized reference identifier
+
+        Returns:
+            Path to the cache file, which may not exist
+
+        Examples:
+            >>> config = ReferenceValidationConfig()
+            >>> fetcher = ReferenceFetcher(config)
+            >>> fetcher.find_cache_file("url:https://example.com/r.pdf#page=54").name
+            'url_https___example.com_r.pdf.md'
+        """
+        path = self.get_cache_path(reference_id)
+        if path.exists() or cache_key(reference_id) == reference_id:
+            return path
+        legacy = path.parent / legacy_cache_filename(reference_id)
+        return legacy if legacy.exists() else path
 
     def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
         """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
@@ -1130,13 +1205,7 @@ class ReferenceFetcher:
             reference_id = f"{prefix}:{identifier}"
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
         # prefix maps here could follow a second alias and change the cache key.
-        safe_id = (
-            reference_id.replace(":", "_")
-            .replace("/", "_")
-            .replace("?", "_")
-            .replace("=", "_")
-        )
-        path = cache_dir / f"{safe_id}.md"
+        path = cache_dir / cache_filename(reference_id)
         if prefix.upper() == "DOI":
             return self._existing_case_variant(path)
         return path
@@ -1159,13 +1228,18 @@ class ReferenceFetcher:
         replacement characters elsewhere cost nothing.
         """
         if not reference.reference_id.upper().startswith("DOI:"):
-            return reference.reference_id
+            # A url: entry is shared by every fragment, so it names none (#114).
+            return cache_key(reference.reference_id)
         try:
             with cache_path.open(encoding="utf-8", errors="replace") as handle:
                 for position, line in enumerate(handle):
                     if line.startswith("reference_id:"):
                         stored = line.split(":", 1)[1].strip()
-                        return stored or reference.reference_id
+                        # A sanitized filename can also collide for distinct
+                        # DOIs. Preserve case only when it is the same DOI.
+                        if _same_reference_id(stored, reference.reference_id):
+                            return stored
+                        return reference.reference_id
                     # The opening delimiter is the first line; the closing one
                     # ends the frontmatter and with it anywhere the id can be.
                     if position and line.strip() == "---":
@@ -1339,6 +1413,11 @@ class ReferenceFetcher:
 
         Args:
             reference: Reference content to save
+
+        Raises:
+            pydantic.ValidationError: Invalid known metadata from a source or
+                lenient cache read. Do not silently coerce it or claim a cache
+                write succeeded; leave any existing cache file untouched.
         """
         cache_path = self._cache_path(
             reference.reference_id,
@@ -1347,129 +1426,75 @@ class ReferenceFetcher:
             else self.config.get_cache_dir(),
         )
 
-        lines = []
-        lines.append("---")
-        # An entry that already exists keeps the spelling it was written with.
-        # The path resolves to that file either way, so rewriting this line
-        # under the caller's capitalization would leave a one-line diff in a
-        # committed cache on every cross-spelling re-fetch -- the churn this
-        # resolution exists to remove, one layer in.
-        lines.append(f"reference_id: {self._stored_reference_id(cache_path, reference)}")
-        lines.append(f"extractor_version: {EXTRACTOR_CACHE_VERSION}")
-        html_version = (reference.metadata or {}).get("html_full_text_version")
-        if reference.content_type == "full_text_html" and isinstance(html_version, int):
-            lines.append(f"html_full_text_version: {html_version}")
-        # YAML booleans are not extraction versions, despite bool subclassing int.
-        xml_version = (reference.metadata or {}).get("xml_extraction_version")
-        if reference.content_type == "full_text_xml" and type(xml_version) is int:
-            lines.append(f"xml_extraction_version: {xml_version}")
-        url_version = (reference.metadata or {}).get("url_source_version")
-        if type(url_version) is int:
-            lines.append(f"url_source_version: {url_version}")
-        # Written from the constant, unlike the HTML and XML stamps, which come
-        # from `reference.metadata` so a metadata-only rewrite preserves the
-        # original. The invariant that makes that safe: nothing reaches a save
-        # path holding an `unavailable` entry it did not just produce.
-        #
-        # `_load_from_disk` filters stale entries out, so an `unavailable` entry
-        # that survives a cache hit already carries the current stamp and
-        # re-writing it is a no-op -- and at version 2 a stamp-1 entry is stale,
-        # so the cache-hit branch is never taken for it at all.
-        #
-        # The two paths that *do* hold an untouched cached entry are
-        # `_stale_fallback` and `_preserve_cached_full_text`, and both are safe
-        # only because they document that the entry is deliberately not
-        # re-saved. Those are the contracts a future change would have to
-        # violate: re-saving an untouched `unavailable` entry would certify it as
-        # re-tested when it was not, recreating #88 one version up. Move this to
-        # metadata if such a path is ever added.
-        if reference.content_type == "unavailable":
-            lines.append(f"absent_content_version: {ABSENT_CONTENT_CACHE_VERSION}")
-        if reference.title:
-            lines.append(f"title: {self._quote_yaml_value(reference.title)}")
-        if reference.authors:
-            lines.append("authors:")
-            for author in reference.authors:
-                lines.append(f"- {self._quote_yaml_value(author)}")
-        if reference.journal:
-            lines.append(f"journal: {self._quote_yaml_value(reference.journal)}")
-        if reference.year:
-            lines.append(f"year: '{reference.year}'")
-        if reference.doi:
-            lines.append(f"doi: {reference.doi}")
-        if reference.keywords:
-            lines.append("keywords:")
-            for keyword in reference.keywords:
-                lines.append(f"- {self._quote_yaml_value(keyword)}")
-        if reference.publication_types:
-            lines.append("publication_types:")
-            for publication_type in reference.publication_types:
-                lines.append(f"- {self._quote_yaml_value(publication_type)}")
-        lines.append(f"content_type: {reference.content_type}")
-        if reference.is_preprint is not None:
-            lines.append(f"is_preprint: {str(reference.is_preprint).lower()}")
-        if reference.peer_review_status:
-            lines.append(
-                f"peer_review_status: {self._quote_yaml_value(reference.peer_review_status)}"
-            )
-        if reference.full_text_attempted:
-            lines.append("full_text_attempted: true")
-        if reference.full_text_declined:
-            lines.append(
-                f"full_text_declined: "
-                f"{self._quote_yaml_value(reference.full_text_declined)}"
-            )
-        if reference.full_text_provider:
-            lines.append(f"full_text_provider: {reference.full_text_provider}")
-        if reference.full_text_url:
-            lines.append(f"full_text_url: {self._quote_yaml_value(reference.full_text_url)}")
-        if reference.oa_status:
-            lines.append(f"oa_status: {reference.oa_status}")
-        if reference.license:
-            lines.append(f"license: {self._quote_yaml_value(reference.license)}")
-        if reference.local_pdf_path:
-            lines.append(f"local_pdf_path: {self._quote_yaml_value(reference.local_pdf_path)}")
-        if reference.full_text_access_type:
-            lines.append(
-                "full_text_access_type: "
-                f"{self._quote_yaml_value(reference.full_text_access_type)}"
-            )
-        if reference.full_text_source_item_id:
-            lines.append(
-                "full_text_source_item_id: "
-                f"{self._quote_yaml_value(reference.full_text_source_item_id)}"
-            )
-        if reference.metadata and "extra_fields_captured" in reference.metadata:
-            extra_fields = reference.metadata.get("extra_fields_captured")
-            if isinstance(extra_fields, list):
-                lines.append("extra_fields_captured:")
-                for field_name in extra_fields:
-                    if isinstance(field_name, str):
-                        lines.append(f"- {self._quote_yaml_value(field_name)}")
-                    else:
-                        logger.warning(
-                            "Skipping non-string item in extra_fields_captured: %r (type %s)",
-                            field_name,
-                            type(field_name).__name__,
-                        )
-        if reference.supplementary_files:
-            lines.append("supplementary_files:")
-            for sf in reference.supplementary_files:
-                lines.append(f"  - filename: {self._quote_yaml_value(sf.filename)}")
-                if sf.download_url:
-                    lines.append(f"    download_url: {self._quote_yaml_value(sf.download_url)}")
-                if sf.content_type:
-                    lines.append(f"    content_type: {sf.content_type}")
-                if sf.size_bytes is not None:
-                    lines.append(f"    size_bytes: {sf.size_bytes}")
-                if sf.checksum:
-                    lines.append(f"    checksum: {sf.checksum}")
-                if sf.description:
-                    lines.append(f"    description: {self._quote_yaml_value(sf.description)}")
-                if sf.local_path:
-                    lines.append(f"    local_path: {self._quote_yaml_value(sf.local_path)}")
-        lines.append("---")
-        lines.append("")
+        metadata = reference.metadata or {}
+        html_version = metadata.get("html_full_text_version")
+        xml_version = metadata.get("xml_extraction_version")
+        url_version = metadata.get("url_source_version")
+        svg_version = metadata.get("svg_extraction_version")
+        extra_fields = metadata.get("extra_fields_captured")
+        captured = None
+        if isinstance(extra_fields, list):
+            captured = []
+            for field_name in extra_fields:
+                if isinstance(field_name, str):
+                    captured.append(field_name)
+                else:
+                    logger.warning(
+                        "Skipping non-string item in extra_fields_captured: %r (type %s)",
+                        field_name, type(field_name).__name__,
+                    )
+
+        frontmatter = CacheFrontmatter(
+            # Preserve the spelling already written for case-insensitive DOIs.
+            reference_id=self._stored_reference_id(cache_path, reference),
+            content_type=reference.content_type,
+            extractor_version=EXTRACTOR_CACHE_VERSION,
+            html_full_text_version=(
+                html_version if reference.content_type == "full_text_html"
+                and type(html_version) is int else None
+            ),
+            xml_extraction_version=(
+                xml_version if reference.content_type == "full_text_xml"
+                and type(xml_version) is int else None
+            ),
+            url_source_version=url_version if type(url_version) is int else None,
+            svg_extraction_version=svg_version if type(svg_version) is int else None,
+            # Only freshly tested or current unavailable entries reach a save.
+            # Stale fallbacks and preserved entries must never be re-saved:
+            # doing so would certify their absence of content as re-tested.
+            absent_content_version=(
+                ABSENT_CONTENT_CACHE_VERSION
+                if reference.content_type == "unavailable" else None
+            ),
+            title=reference.title or None,
+            authors=reference.authors or None,
+            journal=reference.journal or None,
+            year=reference.year or None,
+            doi=reference.doi or None,
+            keywords=reference.keywords or None,
+            publication_types=reference.publication_types or None,
+            is_preprint=reference.is_preprint,
+            peer_review_status=reference.peer_review_status or None,
+            full_text_attempted=True if reference.full_text_attempted else None,
+            full_text_declined=reference.full_text_declined or None,
+            full_text_provider=reference.full_text_provider or None,
+            full_text_url=reference.full_text_url or None,
+            oa_status=reference.oa_status or None,
+            license=reference.license or None,
+            local_pdf_path=reference.local_pdf_path or None,
+            full_text_access_type=reference.full_text_access_type or None,
+            full_text_source_item_id=reference.full_text_source_item_id or None,
+            extra_fields_captured=captured,
+            supplementary_files=[
+                CacheSupplementaryFile.model_validate({
+                    key: None if value == "" and key != "filename" else value
+                    for key, value in asdict(sf).items()
+                })
+                for sf in reference.supplementary_files
+            ] if reference.supplementary_files else None,
+        )
+        frontmatter = self._preserve_cache_extensions(cache_path, frontmatter)
+        lines = ["---", self._dump_frontmatter(frontmatter).rstrip("\n"), "---", ""]
 
         if reference.title:
             lines.append(f"# {reference.title}")
@@ -1496,6 +1521,80 @@ class ReferenceFetcher:
         if private:
             cache_path.chmod(0o600)
         logger.info(f"Cached {reference.reference_id} to {cache_path}")
+
+    @staticmethod
+    def _preserve_cache_extensions(
+        path: Path, frontmatter: CacheFrontmatter
+    ) -> CacheFrontmatter:
+        """Carry consumer metadata across rewrites of the same reference.
+
+        Only unknown keys survive; current fetched values own all known fields.
+        Attachment extensions follow unique filenames, not list positions.
+        Read only the destination cache, so public/private metadata stays apart.
+        A damaged old header must not prevent a fresh fetch from repairing it.
+        """
+        if not path.exists():
+            return frontmatter
+        previous = _validate_cache_file(path, recover_legacy_scalars=True).frontmatter
+        if previous is None:
+            logger.warning(
+                "Cannot preserve extension fields from invalid cache header %s; "
+                "replacing it with fresh metadata.", path,
+            )
+            return frontmatter
+        if not _same_reference_id(previous.reference_id, frontmatter.reference_id):
+            return frontmatter
+
+        frontmatter = frontmatter.model_copy(update=previous.model_extra or {})
+        old_files = previous.supplementary_files or []
+        new_files = frontmatter.supplementary_files or []
+        old_counts = Counter(sf.filename for sf in old_files)
+        new_counts = Counter(sf.filename for sf in new_files)
+        by_filename = {
+            sf.filename: sf for sf in old_files
+            if old_counts[sf.filename] == new_counts[sf.filename] == 1
+        }
+        if new_files:
+            frontmatter.supplementary_files = [
+                sf.model_copy(update=by_filename[sf.filename].model_extra or {})
+                if sf.filename in by_filename else sf
+                for sf in new_files
+            ]
+        return frontmatter
+
+    def _dump_frontmatter(self, frontmatter: CacheFrontmatter) -> str:
+        """Serialize the public model, preserving string types and special text.
+
+        Keep the established double-quoting style for metadata while letting
+        the YAML emitter handle scalar ambiguities (numbers, dates, etc.).
+        """
+        def quoted(value: Any) -> Any:
+            """Apply string styles recursively to the model's plain data."""
+            if isinstance(value, str):
+                if self._quote_yaml_value(value) != value:
+                    return DoubleQuotedScalarString(value)
+            elif isinstance(value, list):
+                return [quoted(item) for item in value]
+            elif isinstance(value, dict):
+                return {key: quoted(item) for key, item in value.items()}
+            return value
+
+        data = frontmatter.model_dump(exclude_none=True)
+        # Omit absent known fields, but preserve explicit null extension values.
+        data.update(frontmatter.model_extra or {})
+        for entry, attachment in zip(
+            data.get("supplementary_files", []), frontmatter.supplementary_files or []
+        ):
+            entry.update(attachment.model_extra or {})
+        data = quoted(data)
+        # IDs have historically been plain YAML scalars. Keep that spelling;
+        # ruamel will still quote an ID if its contents require it.
+        data["reference_id"] = frontmatter.reference_id
+        yaml = YAML()
+        yaml.width = 4096
+        stream = StringIO()
+        yaml.dump(data, stream)
+        return stream.getvalue()
 
     def _load_from_disk(
         self,
@@ -1528,7 +1627,7 @@ class ReferenceFetcher:
         Returns:
             ReferenceContent if cached, None otherwise
         """
-        cache_path = self.get_cache_path(reference_id)
+        cache_path = self.find_cache_file(reference_id)
         is_legacy = False
 
         if not cache_path.exists():
@@ -1557,7 +1656,44 @@ class ReferenceFetcher:
                 reference_id,
             )
             return None
+        if self._is_figure_file_reference(reference_id) and self._is_stale_cache_entry(
+            content_text
+        ):
+            # Raw SVG markup is never evidence, not even as a fallback: its
+            # <desc>, attributes and hidden text are what #104 stopped quotes
+            # matching. The file itself is the source, so there is nothing
+            # worth preserving either; a fresh read replaces the entry.
+            logger.warning(
+                "Ignoring cache entry for %s: it holds raw SVG markup from "
+                "before the figure was read as rendered text",
+                reference_id,
+            )
+            return None
         reference = self._load_markdown_format(content_text, reference_id)
+        if reference is not None and reference.reference_id != reference_id and (
+            cache_key(reference.reference_id) == cache_key(reference_id)
+        ):
+            # One url: entry serves every fragment of its URL. Hand back the
+            # page-anchored URL this caller cited, not whichever was stored.
+            reference.reference_id = reference_id
+        if (
+            reference is not None
+            and reference_id.startswith("url:")
+            and is_bot_challenge_title(reference.title)
+        ):
+            # Written before URLSource declined challenge pages (#117), and
+            # stamped current, so staleness would never catch it. It is not the
+            # document under any flag, stale or trusted: treat it as absent so
+            # it is never evidence and the next good fetch replaces it. The
+            # legacy return above skips this, which is safe: challenge pages were
+            # cached by Markdown-era versions, never in the pre-Markdown format.
+            logger.warning(
+                "Ignoring cache entry for %s: it holds a bot-challenge page "
+                "(%r), not the document. It will be re-fetched.",
+                reference_id,
+                reference.title,
+            )
+            return None
         if (
             allow_stale
             and not allow_stale_html
@@ -1672,6 +1808,24 @@ class ReferenceFetcher:
             return None
         return parts[1], parts[2]
 
+    @staticmethod
+    def _is_figure_file_reference(reference_id: str) -> bool:
+        """Whether a reference is a ``file:`` SVG or drawio figure, read as the labels it draws.
+
+        Examples:
+            >>> ReferenceFetcher._is_figure_file_reference("file:/figs/Fig1.SVG")
+            True
+            >>> ReferenceFetcher._is_figure_file_reference("file:/figs/pathway.drawio")
+            True
+            >>> ReferenceFetcher._is_figure_file_reference("url:https://x/fig1.svg")
+            False
+        """
+        # The same test FileSource routes on, so the stamp cannot drift from it.
+        return (
+            reference_id.startswith("file:")
+            and resolve_format(None, reference_id, None) in FIGURE_CONTENT_TYPES
+        )
+
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:
         """Report whether extraction or format-specific full-text processing needs refreshing.
@@ -1727,6 +1881,13 @@ class ReferenceFetcher:
             if type(url_version) is not int or url_version < URL_SOURCE_CACHE_VERSION:
                 return True
 
+        if isinstance(metadata, dict) and cls._is_figure_file_reference(
+            str(metadata.get("reference_id", ""))
+        ):
+            svg_version = metadata.get("svg_extraction_version")
+            if type(svg_version) is not int or svg_version < SVG_EXTRACTION_CACHE_VERSION:
+                return True
+
         # Scoped to `unavailable`, which leaves one gap: with
         # `source_extra_fields["PMID"]` configured, a record with no abstract is
         # stored as `summary` carrying the extra-fields blob, so an
@@ -1766,6 +1927,8 @@ class ReferenceFetcher:
 
         yaml_parser = YAML(typ="safe")
         frontmatter = yaml_parser.load(split[0])
+        if isinstance(frontmatter, dict):
+            frontmatter = _recover_legacy_scalars(frontmatter)
         body = split[1].strip()
 
         content = self._extract_content_from_markdown(body)
@@ -1788,6 +1951,8 @@ class ReferenceFetcher:
             metadata["html_full_text_version"] = frontmatter["html_full_text_version"]
         if "url_source_version" in frontmatter:
             metadata["url_source_version"] = frontmatter["url_source_version"]
+        if "svg_extraction_version" in frontmatter:
+            metadata["svg_extraction_version"] = frontmatter["svg_extraction_version"]
         if "extra_fields_captured" in frontmatter:
             metadata["extra_fields_captured"] = frontmatter["extra_fields_captured"]
 

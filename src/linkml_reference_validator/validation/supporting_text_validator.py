@@ -2,10 +2,15 @@
 
 import logging
 import re
+from functools import lru_cache
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
-from linkml_reference_validator.matching import split_supporting_text
+from linkml_reference_validator.matching import (
+    FIGURE_CONTENT_TYPES,
+    SVG_LABEL_SEPARATOR,
+    split_supporting_text,
+)
 from linkml_reference_validator.models import (
     ReferenceContent,
     ReferenceValidationConfig,
@@ -88,6 +93,12 @@ class SupportingTextValidator:
         """
         self.config = config
         self.fetcher = ReferenceFetcher(config)
+        # Keep only recent publication/figure-label normalizations, not each
+        # query. Key by text rather than reference ID so refreshed content is
+        # never matched against an earlier version. Each validator owns its
+        # cache; finishing a batch releases it instead of retaining texts globally.
+        # normalize_text is static, so the wrapper does not retain self in a cycle.
+        self._normalize_reference_text = lru_cache(maxsize=128)(self.normalize_text)
         self._literal_bracket_regexes = [
             re.compile(pattern) for pattern in config.literal_bracket_patterns
         ]
@@ -358,7 +369,33 @@ class SupportingTextValidator:
             )
 
         query_parts = self._split_query(supporting_text)
-        return self._substring_match(query_parts, reference.content, supporting_text)
+        return self._substring_match(
+            query_parts, reference.content, supporting_text, self.searchable_texts(reference)
+        )
+
+    @classmethod
+    def searchable_texts(cls, reference: ReferenceContent) -> list[str]:
+        """The texts each quote part must fall within one of, and fuzzy matches are drawn from.
+
+        A reference is one text, except an SVG figure: its labels are searched
+        one at a time, because labels adjacent in the extracted text may sit
+        anywhere in the figure and a quote running from one into the next says
+        what neither does. ``...`` still joins parts from different labels.
+
+        Examples:
+            >>> figure = ReferenceContent(
+            ...     reference_id="file:fig.svg", content="PTEN\\n\\nactivates AKT",
+            ...     content_type="local_svg")
+            >>> SupportingTextValidator.searchable_texts(figure)
+            ['PTEN', 'activates AKT']
+            >>> notes = ReferenceContent(reference_id="file:notes.md", content="PTEN\\n\\nactivates AKT")
+            >>> SupportingTextValidator.searchable_texts(notes)
+            ['PTEN\\n\\nactivates AKT']
+        """
+        content = reference.content or ""
+        if reference.content_type in FIGURE_CONTENT_TYPES.values():
+            return content.split(SVG_LABEL_SEPARATOR)
+        return [content]
 
     def _split_query(self, text: str) -> list[str]:
         """Split query into parts while stripping editorial brackets by default.
@@ -471,16 +508,22 @@ class SupportingTextValidator:
         query_parts: list[str],
         content: str,
         original_query: Optional[str] = None,
+        searchable: Optional[list[str]] = None,
     ) -> SupportingTextMatch:
         """Deterministic substring matching after normalization.
 
-        All query parts must appear as substrings in the content (order independent).
+        Each query part must appear as a substring of one searchable text (order independent).
+        With ``searchable`` (see :meth:`searchable_texts`), each part must appear
+        within one of those texts instead, and the fuzzy suggestion is the best
+        drawn from any one of them.
         When validation fails, generates fuzzy matching suggestions to help users.
 
         Args:
             query_parts: List of query text parts
             content: Reference content to search
             original_query: Original query text for fuzzy suggestion generation
+            searchable: Texts a part must fall within one of; defaults to
+                the whole content
 
         Returns:
             SupportingTextMatch with optional suggestions when validation fails
@@ -510,23 +553,34 @@ class SupportingTextValidator:
                 error_message=NO_QUOTED_TEXT_MESSAGE,
             )
 
-        normalized_content = self.normalize_text(content)
+        texts = searchable if searchable is not None else [content]
+        normalized_texts = [self._normalize_reference_text(text) for text in texts]
         matched_parts = []
 
         for part in query_parts:
             normalized_part = self.normalize_text(part)
 
-            if normalized_part not in normalized_content:
-                # Generate fuzzy suggestion for the failed part
+            if not any(normalized_part in text for text in normalized_texts):
+                # Generate fuzzy suggestion for the failed part, from one text
+                # at a time: a suggestion spanning two would fail again.
                 query_for_suggestion = original_query if original_query else part
-                suggested_fix, best_match, similarity = self.generate_suggested_fix(
-                    query_for_suggestion, content
+                suggested_fix, best_match, similarity = max(
+                    (self.generate_suggested_fix(query_for_suggestion, text) for text in texts),
+                    key=lambda suggestion: suggestion[2],
                 )
 
+                error_message = f"Text part not found as substring: '{part}'"
+                if len(normalized_texts) > 1 and normalized_part in " ".join(normalized_texts):
+                    error_message = (
+                        f"Text part is not within any one figure label: '{part}'. "
+                        "It matches only labels joined in document order, so it "
+                        "may run across them: quote each label on its own, "
+                        "joined with '...'"
+                    )
                 return SupportingTextMatch(
                     found=False,
                     similarity_score=similarity / 100.0,  # Convert to 0-1 scale
-                    error_message=f"Text part not found as substring: '{part}'",
+                    error_message=error_message,
                     suggested_fix=suggested_fix,
                     best_match=best_match,
                 )

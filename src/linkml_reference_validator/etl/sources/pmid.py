@@ -165,6 +165,11 @@ class PMIDSource(ReferenceSource):
         content_type = "abstract_only" if abstract else "unavailable"
 
         metadata: dict = {}
+        chapter = self._parse_bookshelf_chapter(article_xml)
+        if chapter:
+            # PubMed holds only the summary of a Bookshelf chapter (GeneReviews
+            # and the like); the bookshelf provider reads the rest (#41).
+            metadata["bookshelf_accession"], metadata["bookshelf_part"] = chapter
         extra = extract_extra_fields(
             record_dict, config.source_extra_fields.get("PMID", {})
         )
@@ -388,6 +393,46 @@ class PMIDSource(ReferenceSource):
         # it. BeautifulSoup honours the declaration for bytes and fixes it up
         # for str.
         return BeautifulSoup(xml_content, "xml")
+
+    @staticmethod
+    def _parse_bookshelf_chapter(soup: BeautifulSoup) -> Optional[tuple[str, str]]:
+        """Return ``(NBK accession, "<book>/<part>")`` for a Bookshelf chapter.
+
+        A chapter's PubMed record is a ``BookDocument``: it carries the NBK
+        accession, and the ``book`` and ``part`` attributes that name the
+        chapter's file in NCBI's litarch archive (``gene_NBK1116/men1.nxml``).
+        A journal article has none of these.
+
+        Args:
+            soup: Parsed PubMed article XML
+
+        Returns:
+            The accession and part, or None if this is not a whole chapter
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<PubmedBookArticle><BookDocument>
+            ...   <ArticleIdList><ArticleId IdType="bookaccession">NBK1538</ArticleId></ArticleIdList>
+            ...   <Book><BookTitle book="gene">GeneReviews</BookTitle></Book>
+            ...   <ArticleTitle book="gene" part="men1">Multiple Endocrine Neoplasia Type 1</ArticleTitle>
+            ... </BookDocument></PubmedBookArticle>'''
+            >>> PMIDSource._parse_bookshelf_chapter(BeautifulSoup(xml, "xml"))
+            ('NBK1538', 'gene/men1')
+            >>> PMIDSource._parse_bookshelf_chapter(BeautifulSoup("<PubmedArticle/>", "xml")) is None
+            True
+        """
+        document = soup.find("BookDocument")
+        if document is None:
+            return None
+        accession = document.find("ArticleId", attrs={"IdType": "bookaccession"})
+        title = document.find("ArticleTitle")
+        # A whole book (no part) has no single chapter file to read.
+        if accession is None or title is None:
+            return None
+        book, part = title.get("book"), title.get("part")
+        if not book or not part:
+            return None
+        return accession.get_text().strip(), f"{book}/{part}"
 
     def _parse_mesh_terms(self, soup: BeautifulSoup) -> Optional[list[str]]:
         """Parse MeSH terms from a PubMed article XML document.

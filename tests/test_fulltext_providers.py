@@ -298,10 +298,33 @@ def _pmid_html_gate(config, text):
         return source._fetch_pmc_fulltext("123", config)[0] is not None
 
 
+def _bioc_gate(config, text):
+    """Drive BioCFullTextProvider.locate's floor."""
+    from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+    response = MagicMock()
+    response.status_code = 200
+    response.text = f"<collection><document><passage><text>{text}</text></passage></document></collection>"
+    with patch("linkml_reference_validator.etl.fulltext.bioc.requests.get", return_value=response):
+        return BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="123"), config) is not None
+
+
+def _epmc_gate(config, text):
+    """Drive EuropePMCFullTextProvider.locate's floor."""
+    from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+    xml = f"<article><body><p>{text}</p></body></article>"
+    with patch(
+        "linkml_reference_validator.etl.fulltext.epmc.requests.get",
+        side_effect=[_epmc_search_response(), _epmc_fulltext_response(text=xml)],
+    ):
+        return EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="123"), config) is not None
+
+
 @pytest.mark.parametrize(
     "drive",
-    [_pmc_xml_gate, _pmc_html_gate, _pmid_xml_gate, _pmid_html_gate],
-    ids=["pmc-xml", "pmc-html", "pmid-xml", "pmid-html"],
+    [_pmc_xml_gate, _pmc_html_gate, _pmid_xml_gate, _pmid_html_gate, _bioc_gate, _epmc_gate],
+    ids=["pmc-xml", "pmc-html", "pmid-xml", "pmid-html", "bioc", "epmc"],
 )
 def test_every_floor_gate_is_exclusive(config, drive):
     """All four gates must agree that the floor itself is not enough.
@@ -354,3 +377,527 @@ def test_the_floor_does_not_follow_the_notice_length_down():
     gates silently start admitting the band they just vacated.
     """
     assert MIN_FULLTEXT_CHARS >= 1000
+
+
+class TestBioCFullTextProvider:
+    """Test BioC XML fulltext provider."""
+
+    def test_provider_name(self):
+        """Test the provider name."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        assert BioCFullTextProvider.name() == "bioc"
+
+    def test_requires_pmid(self, config):
+        """Test that provider requires PMID."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        result = BioCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1234/test"), config)
+        assert result is None
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_fetch_success(self, mock_get, config):
+        """Test successful BioC fulltext fetch."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        long_intro = "This is the introduction paragraph. " * 20
+        long_results = "This is the results section with detailed findings. " * 20
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = f"""<?xml version="1.0" encoding="UTF-8"?>
+        <collection>
+            <document>
+                <passage>
+                    <text>{long_intro}</text>
+                </passage>
+                <passage>
+                    <text>{long_results}</text>
+                </passage>
+            </document>
+        </collection>"""
+        mock_get.return_value = mock_response
+
+        result = BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert result.text is not None
+        assert "introduction paragraph" in result.text
+        assert "results section" in result.text
+        assert result.provider == "bioc"
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_excludes_reference_list(self, mock_get, config):
+        """Bibliography passages are other papers' titles, not this article.
+
+        A snippet quoting a cited paper must not validate against the paper
+        that cites it.
+        """
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        body = "Our results show the kinase is required for repair. " * 30
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = f"""<collection><document>
+            <passage><infon key="section_type">RESULTS</infon><text>{body}</text></passage>
+            <passage><infon key="section_type">REF</infon><text>A cited paper title.</text></passage>
+            <passage><infon key="section_type">COMP_INT</infon><text>No competing interests.</text></passage>
+            <passage><infon key="section_type">AUTH_CONT</infon><text>AB wrote the paper.</text></passage>
+            <passage><infon key="section_type">ACK_FUND</infon><text>Funded by a grant.</text></passage>
+        </document></collection>"""
+        mock_get.return_value = mock_response
+
+        result = BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert "kinase is required" in result.text
+        for excluded in ["cited paper", "competing", "wrote the paper", "grant"]:
+            assert excluded not in result.text
+
+    @pytest.mark.parametrize(
+        "pmid,path",
+        [("22253583", "22253583"), ("1/../2", "1%2F..%2F2")],
+        ids=["plain", "quoted"],
+    )
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_request_url(self, mock_get, config, pmid, path):
+        """The PMID is a path segment, so it is quoted into one."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        BioCFullTextProvider().locate(ReferenceIdentifiers(pmid=pmid), config)
+
+        assert mock_get.call_args.args[0] == (
+            "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/"
+            f"BioC_xml/{path}/ascii"
+        )
+
+    def test_bioc_passage_text_with_child_nodes_is_kept(self):
+        """``.string`` is None once <text> has a child; the passage must survive."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        xml = """<collection><document>
+            <passage><text>The <i>BRCA1</i> variant was pathogenic.</text></passage>
+        </document></collection>"""
+
+        assert BioCFullTextProvider()._extract_text(xml) == "The BRCA1 variant was pathogenic."
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_fetch_not_found(self, mock_get, config):
+        """Test BioC fetch when article not in OA subset."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_get.return_value = mock_response
+
+        result = BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="99999999"), config)
+        assert result is None
+
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_error_body_on_200_is_absence(self, mock_get, config):
+        """BioC answers an unknown ID with a plain-text error on HTTP 200."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = "[Error] : No result can be found. <BR><HR>"
+        mock_get.return_value = mock_response
+
+        assert BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="1"), config) is None
+
+    @pytest.mark.parametrize("status", [429, 500, 503])
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_server_failure_is_transient(self, mock_get, config, status):
+        """A rate limit or server error says nothing about the article.
+
+        Returning None would let the chain set full_text_attempted and never
+        ask again; raising keeps the record retryable.
+        """
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = status
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+    def test_bioc_network_error_propagates(self, mock_get, config):
+        """Left to the chain's had_error handling, as epmc_preprint does."""
+        import requests
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        mock_get.side_effect = requests.Timeout("timed out")
+
+        with pytest.raises(requests.Timeout):
+            BioCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+
+class TestEuropePMCFullTextProvider:
+    """Test Europe PMC fulltext provider."""
+
+    def test_provider_name(self):
+        """Test the provider name."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        assert EuropePMCFullTextProvider.name() == "epmc"
+
+    def test_requires_pmid(self, config):
+        """Test that provider requires PMID."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1234/test"), config)
+        assert result is None
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fetch_success(self, mock_get, config):
+        """Test fetching fulltext via Europe PMC."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        long_text = "This is the full article text from Europe PMC. " * 25
+
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
+            "resultList": {
+                "result": [{
+                    "pmid": "12345678",
+                    "pmcid": "PMC123456",
+                    "isOpenAccess": "Y",
+                    "license": "cc-by",
+                }]
+            }
+        }
+
+        fulltext_response = MagicMock()
+        fulltext_response.status_code = 200
+        fulltext_response.content = f"""<?xml version="1.0"?>
+        <article>
+            <body>
+                <sec>
+                    <p>{long_text}</p>
+                </sec>
+            </body>
+        </article>""".encode()
+
+        mock_get.side_effect = [search_response, fulltext_response]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert result.text is not None
+        assert "Europe PMC" in result.text
+        assert result.provider == "epmc"
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_url_keeps_pmc_prefix(self, mock_get, config):
+        """fullTextXML is addressed by the prefixed PMCID, not /PMC/{number}/.
+
+        The /{source}/{id}/ form belongs to the references and citations
+        endpoints; on fullTextXML it 404s for every article.
+        """
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        search_response = MagicMock()
+        search_response.status_code = 200
+        search_response.json.return_value = {
+            "resultList": {"result": [{"pmcid": "PMC3257301", "isOpenAccess": "Y"}]}
+        }
+        fulltext_response = MagicMock()
+        fulltext_response.status_code = 404
+        mock_get.side_effect = [search_response, fulltext_response]
+
+        EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="22253583"), config)
+
+        assert mock_get.call_args_list[1].args[0] == (
+            "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC3257301/fullTextXML"
+        )
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_not_open_access(self, mock_get, config):
+        """Test Europe PMC when article is not open access."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "resultList": {
+                "result": [{
+                    "pmid": "12345678",
+                    "isOpenAccess": "N",
+                }]
+            }
+        }
+        mock_get.return_value = mock_response
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+        assert result is None
+
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_extracts_jats_like_pmc(self, mock_get, config):
+        """The same JATS as PMC, so the same extractor and the same format.
+
+        format_hint "xml" gives the cache entry full_text_xml and its
+        XML_EXTRACTION_CACHE_VERSION stamp, as PMC's entries get.
+        """
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        body = "Europe PMC body paragraph. " * 60
+        xml = f"""<article><body><sec><p>{body}</p>
+            <table-wrap><table><tr><td>TableCell</td></tr></table></table-wrap>
+            </sec></body></article>"""
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(text=xml)]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result is not None
+        assert result.format_hint == "xml"
+        assert "Europe PMC body paragraph." in result.text
+        assert "TableCell" in result.text
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_honours_the_xml_encoding_declaration(self, mock_get, config):
+        """The parser, not requests' charset guess, decodes the body."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        body = "Fran\u00e7ois measured the binding affinity. " * 40
+        xml = f'<?xml version="1.0" encoding="UTF-8"?><article><body><p>{body}</p></body></article>'
+        fulltext = _epmc_fulltext_response(text=xml)
+        fulltext.text = xml.encode().decode("iso-8859-1")
+        mock_get.side_effect = [_epmc_search_response(), fulltext]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert "Fran\u00e7ois" in result.text
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_non_json_search_body_is_transient(self, mock_get, config):
+        """A 200 that is not JSON is a maintenance or error page, not an answer."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.side_effect = ValueError("Expecting value: line 1 column 1")
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_search_failure_is_transient(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
+
+        mock_response = MagicMock()
+        mock_response.status_code = 503
+        mock_get.return_value = mock_response
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_server_failure_is_transient(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
+
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(500)]
+
+        with pytest.raises(TransientFullTextError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_fulltext_404_is_absence(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(404)]
+
+        assert EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config) is None
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_network_error_propagates(self, mock_get, config):
+        import requests
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        mock_get.side_effect = [_epmc_search_response(), requests.ConnectionError("reset")]
+
+        with pytest.raises(requests.ConnectionError):
+            EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_licence_reaches_the_location(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        xml = f"<article><body><p>{'Licensed body text. ' * 80}</p></body></article>"
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(text=xml)]
+
+        result = EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config)
+
+        assert result.license == "cc-by"
+        assert result.oa_status == "green"
+        assert result.access_type is None
+
+    @pytest.mark.parametrize(
+        "search",
+        [
+            {"resultList": {"result": []}},
+            {"resultList": {"result": [{"isOpenAccess": "Y"}]}},
+            {"hitCount": 0},
+        ],
+        ids=["empty-result-list", "oa-without-pmcid", "no-result-list"],
+    )
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_search_without_an_oa_pmcid_is_absence(self, mock_get, config, search):
+        """No fullTextXML request is made without an OA result carrying a PMCID."""
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = search
+        mock_get.return_value = response
+
+        assert EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config) is None
+        assert mock_get.call_count == 1
+
+    @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+    def test_europepmc_xml_without_body_is_absence(self, mock_get, config):
+        from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
+
+        xml = f"<article><front><abstract><p>{'Abstract only. ' * 100}</p></abstract></front></article>"
+        mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(text=xml)]
+
+        assert EuropePMCFullTextProvider().locate(ReferenceIdentifiers(pmid="12345678"), config) is None
+
+
+def _epmc_search_response(result=None):
+    """A Europe PMC search response holding one result (an OA article by default)."""
+    response = MagicMock()
+    response.status_code = 200
+    response.json.return_value = {
+        "resultList": {
+            "result": [result if result is not None else {
+                "pmcid": "PMC123456", "isOpenAccess": "Y", "license": "cc-by"
+            }]
+        }
+    }
+    return response
+
+
+def _epmc_fulltext_response(status=200, text=""):
+    """A Europe PMC fullTextXML response."""
+    response = MagicMock()
+    response.status_code = status
+    response.content = text.encode()
+    return response
+
+
+class TestProviderRegistration:
+    """Test that new providers are properly registered."""
+
+    def test_bioc_registered(self):
+        """Test BioC provider is registered."""
+        provider = FullTextProviderRegistry.get("bioc")
+        assert provider is not None
+
+    def test_epmc_registered(self):
+        """Test Europe PMC provider is registered."""
+        provider = FullTextProviderRegistry.get("epmc")
+        assert provider is not None
+
+
+# ============================================================================
+# bioc and epmc through the enrichment chain
+# ============================================================================
+
+
+def _enrich_pmid(tmp_path, provider_name):
+    """Run ReferenceFetcher._enrich_with_full_text with one provider configured."""
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.models import ReferenceContent
+
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(
+            cache_dir=tmp_path / "cache",
+            rate_limit_delay=0.0,
+            full_text_providers=[provider_name],
+        )
+    )
+    content = ReferenceContent(
+        reference_id="PMID:12345678",
+        content="An abstract.",
+        content_type="abstract_only",
+    )
+    return fetcher._enrich_with_full_text(content)
+
+
+def _bioc_response(status=200, body="BioC results paragraph. " * 80):
+    response = MagicMock()
+    response.status_code = status
+    response.text = f"<collection><document><passage><text>{body}</text></passage></document></collection>"
+    return response
+
+
+@patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+def test_bioc_enriches_through_the_chain(mock_get, tmp_path):
+    mock_get.return_value = _bioc_response()
+
+    content = _enrich_pmid(tmp_path, "bioc")
+
+    assert content.full_text_provider == "bioc"
+    assert content.content_type == "full_text"
+    assert content.content.startswith("An abstract.")
+    assert "BioC results paragraph." in content.content
+
+
+@patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
+def test_epmc_enriches_through_the_chain(mock_get, tmp_path):
+    from linkml_reference_validator.etl.reference_fetcher import XML_EXTRACTION_CACHE_VERSION
+
+    xml = f"<article><body><p>{'Europe PMC paragraph. ' * 80}</p></body></article>"
+    mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(text=xml)]
+
+    content = _enrich_pmid(tmp_path, "epmc")
+
+    assert content.full_text_provider == "epmc"
+    assert content.content_type == "full_text_xml"
+    assert content.metadata["xml_extraction_version"] == XML_EXTRACTION_CACHE_VERSION
+    assert content.license == "cc-by"
+    assert "Europe PMC paragraph." in content.content
+
+
+@pytest.mark.parametrize(
+    "provider_name,target,response",
+    [
+        ("bioc", "bioc", lambda: _bioc_response(status=429)),
+        ("epmc", "epmc", lambda: _epmc_fulltext_response(status=503)),
+    ],
+    ids=["bioc-429", "epmc-503"],
+)
+def test_a_transient_failure_does_not_record_an_absence(tmp_path, provider_name, target, response):
+    """A rate limit must leave the record retryable, not mark it attempted."""
+    with patch(
+        f"linkml_reference_validator.etl.fulltext.{target}.requests.get",
+        return_value=response(),
+    ):
+        content = _enrich_pmid(tmp_path, provider_name)
+
+    assert content.content_type == "abstract_only"
+    assert not content.full_text_attempted
+
+
+@patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
+def test_a_bioc_miss_records_an_absence(mock_get, tmp_path):
+    """The counterpart: a clean 404 is a finding, so the chain is not re-run."""
+    mock_get.return_value = _bioc_response(status=404)
+
+    content = _enrich_pmid(tmp_path, "bioc")
+
+    assert content.full_text_attempted is True

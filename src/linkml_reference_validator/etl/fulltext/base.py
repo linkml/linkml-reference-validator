@@ -34,14 +34,16 @@ logger = logging.getLogger(__name__)
 #:
 #: **Scope.** This governs a file found by asking an OA *index* -- OpenAlex or
 #: Unpaywall -- where the index's own status is all that is known about the
-#: terms. It deliberately does not govern ``pmc`` or ``epmc_preprint``, which
-#: return ``oa_status="green"`` with no ``access_type`` and so continue to write
-#: to the public cache. Those providers ask the archive's own API for a document
-#: it serves for machine retrieval, which is a stronger warrant than an index's
-#: summary of a third-party host, and routing them through this rule would
-#: decline most PMID full text for want of a licence field their API does not
-#: return. The asymmetry is deliberate: the same green deposit can be declined
-#: from OpenAlex and admitted from PMC.
+#: terms. It deliberately does not govern ``pmc``, ``bioc``, ``epmc`` or
+#: ``epmc_preprint``, which return ``oa_status="green"`` with no ``access_type``
+#: and so continue to write to the public cache. Those providers ask the
+#: archive's own API (NCBI's PMC and its BioC rendering of the PMC Open Access
+#: subset, and Europe PMC) for a document it serves for machine retrieval,
+#: which is a stronger warrant than an index's summary of a third-party host,
+#: and routing them through this rule would decline most PMID full text for
+#: want of a licence field their API does not return. The asymmetry is
+#: deliberate: the same green deposit can be declined from OpenAlex and
+#: admitted from PMC.
 SELF_EVIDENTLY_OPEN_OA_STATUSES = frozenset({"gold", "diamond", "hybrid"})
 
 #: ``oa_status`` values that are open *if* the location states a licence. See
@@ -146,6 +148,16 @@ def access_type_for_oa_status(
     if status in LICENCE_DEPENDENT_OA_STATUSES and states_a_licence(licence):
         return "open"
     return PUBLISHER_FREE_ACCESS
+
+
+class TransientFullTextError(RuntimeError):
+    """A provider failed for a reason that says nothing about the article.
+
+    ``_enrich_with_full_text`` already treats a raised exception as
+    ``had_error``, which keeps the record retryable. Raising this rather than
+    returning ``None`` is how a provider says "ask me again" instead of "there
+    is nothing here".
+    """
 
 
 class FullTextProvider(ABC):

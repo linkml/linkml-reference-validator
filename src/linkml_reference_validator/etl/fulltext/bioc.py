@@ -1,0 +1,161 @@
+"""BioC XML full-text provider.
+
+Fetches structured full text from the NCBI BioNLP BioC API, which provides
+clean paragraph-level text for articles in the PMC Open Access subset.
+"""
+
+import logging
+import time
+from typing import Optional
+from urllib.parse import quote
+
+import requests  # type: ignore
+from bs4 import BeautifulSoup  # type: ignore
+
+from linkml_reference_validator.models import (
+    FullTextLocation,
+    ReferenceIdentifiers,
+    ReferenceValidationConfig,
+)
+from linkml_reference_validator.etl.fulltext.base import (
+    FullTextProvider,
+    FullTextProviderRegistry,
+    TransientFullTextError,
+)
+from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
+
+logger = logging.getLogger(__name__)
+
+BIOC_URL = "https://www.ncbi.nlm.nih.gov/research/bionlp/RESTful/pmcoa.cgi/BioC_xml/{pmid}/ascii"
+
+#: BioC ``section_type`` values that are not the article's own prose. ``REF``
+#: is the bibliography -- other papers' titles -- and a snippet quoting a cited
+#: paper must not validate against the paper citing it. The declarations are
+#: boilerplate that no supporting-text claim is drawn from.
+#:
+#: Changing this set does not reach entries already cached. BioC text is cached
+#: as ``content_type: full_text``, which has no format-specific version stamp,
+#: so ``_is_stale_cache_entry`` re-fetches it only when the global
+#: ``EXTRACTOR_CACHE_VERSION`` moves, and that re-fetches every entry. Widening
+#: the set (``SUPPL`` and ``ABBR`` are candidates) should add a BioC stamp, as
+#: ``XML_EXTRACTION_CACHE_VERSION`` is for XML, rather than pay for that.
+EXCLUDED_SECTION_TYPES = frozenset({"REF", "COMP_INT", "AUTH_CONT", "ACK_FUND"})
+
+
+@FullTextProviderRegistry.register
+class BioCFullTextProvider(FullTextProvider):
+    """Fetch full text via the NCBI BioNLP BioC XML API.
+
+    The BioC API provides structured, clean paragraph text for articles in
+    the PMC Open Access subset. It returns text with passage-level structure
+    (title, abstract, body sections) without inline markup.
+
+    Examples:
+        >>> BioCFullTextProvider.name()
+        'bioc'
+    """
+
+    @classmethod
+    def name(cls) -> str:
+        return "bioc"
+
+    def locate(
+        self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
+    ) -> Optional[FullTextLocation]:
+        """Return the article's BioC passage text, or None if BioC has none.
+
+        Args:
+            ids: Identifiers of the reference; only the PMID is used
+            config: Configuration for rate limiting
+
+        Returns:
+            A text location, or None when there is no PMID, the article is not
+            in the PMC Open Access subset, or the text is below the floor
+
+        Raises:
+            TransientFullTextError: BioC answered with a status other than 200
+                or 404, which says nothing about the article
+            requests.RequestException: The request itself failed
+
+        Examples:
+            >>> config = ReferenceValidationConfig(rate_limit_delay=0.0)
+            >>> BioCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None
+            True
+        """
+        if not ids.pmid:
+            return None
+
+        time.sleep(config.rate_limit_delay)
+
+        url = BIOC_URL.format(pmid=quote(ids.pmid, safe=""))
+        # A RequestException is left to the chain, whose had_error handling
+        # keeps the record retryable; catching it here would record a timeout
+        # as "this article has no full text".
+        response = requests.get(url, timeout=30)
+
+        if response.status_code == 404:
+            logger.debug(f"PMID:{ids.pmid} not in PMC Open Access subset")
+            return None
+        if response.status_code != 200:
+            # Not an absence: BioC answers a busy client with 429.
+            raise TransientFullTextError(
+                f"BioC returned {response.status_code} for PMID:{ids.pmid}"
+            )
+
+        text = self._extract_text(response.text)
+        if not text or len(text) <= MIN_FULLTEXT_CHARS:
+            logger.debug(f"BioC returned insufficient text for PMID:{ids.pmid}")
+            return None
+
+        return FullTextLocation(
+            text=text,
+            format_hint="text",
+            oa_status="green",
+            provider="bioc",
+        )
+
+    def _extract_text(self, xml_content: str) -> Optional[str]:
+        """Extract paragraph text from BioC XML.
+
+        Passages whose ``section_type`` is in :data:`EXCLUDED_SECTION_TYPES`
+        are skipped.
+
+        Args:
+            xml_content: BioC XML response
+
+        Returns:
+            Concatenated passage text, or None if there is none
+
+        Examples:
+            >>> provider = BioCFullTextProvider()
+            >>> xml = '''<collection><document>
+            ...   <passage><text>Introduction text.</text></passage>
+            ...   <passage><text>Methods section.</text></passage>
+            ... </document></collection>'''
+            >>> provider._extract_text(xml)
+            'Introduction text.\\n\\nMethods section.'
+            >>> xml = '''<collection><document>
+            ...   <passage><infon key="section_type">INTRO</infon><text>Body.</text></passage>
+            ...   <passage><infon key="section_type">REF</infon><text>Cited.</text></passage>
+            ... </document></collection>'''
+            >>> provider._extract_text(xml)
+            'Body.'
+        """
+        soup = BeautifulSoup(xml_content, "xml")
+
+        passages = soup.find_all("passage")
+        if not passages:
+            return None
+
+        texts = []
+        for passage in passages:
+            section_type = passage.find("infon", attrs={"key": "section_type"})
+            if section_type and section_type.get_text().strip() in EXCLUDED_SECTION_TYPES:
+                continue
+            text_elem = passage.find("text")
+            if text_elem:
+                text = text_elem.get_text().strip()
+                if text:
+                    texts.append(text)
+
+        return "\n\n".join(texts) if texts else None

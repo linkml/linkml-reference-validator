@@ -39,6 +39,12 @@ class EuropePMCFullTextProvider(FullTextProvider):
     then fetches full-text XML when available. This provider handles regular
     OA articles; preprints are handled by EuropePMCPreprintProvider.
 
+    The JATS is the same as the ``pmc`` provider's, fetched from Europe PMC
+    rather than NCBI, so ``epmc`` adds little after ``pmc`` in the chain. Its
+    use is as a second route to the same articles when NCBI is unavailable or
+    rate-limiting, or in place of ``pmc`` for users who would rather not
+    depend on Entrez.
+
     Examples:
         >>> EuropePMCFullTextProvider.name()
         'epmc'
@@ -51,6 +57,27 @@ class EuropePMCFullTextProvider(FullTextProvider):
     def locate(
         self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
     ) -> Optional[FullTextLocation]:
+        """Return the article's Europe PMC full text, or None if it has none.
+
+        Args:
+            ids: Identifiers of the reference; only the PMID is used
+            config: Configuration for rate limiting and the contact email
+
+        Returns:
+            A text location carrying the search result's licence, or None when
+            there is no PMID, the article is not open access or has no PMCID,
+            Europe PMC has no fullTextXML for it, or the text is below the floor
+
+        Raises:
+            TransientFullTextError: Europe PMC answered with a status that says
+                nothing about the article
+            requests.RequestException: A request itself failed
+
+        Examples:
+            >>> config = ReferenceValidationConfig(rate_limit_delay=0.0)
+            >>> EuropePMCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None
+            True
+        """
         if not ids.pmid:
             return None
 
@@ -110,6 +137,19 @@ class EuropePMCFullTextProvider(FullTextProvider):
 
         Returns:
             First OA result dict, or None
+
+        Examples:
+            >>> provider = EuropePMCFullTextProvider()
+            >>> data = {"resultList": {"result": [
+            ...     {"pmid": "1", "isOpenAccess": "N"},
+            ...     {"pmid": "2", "isOpenAccess": "Y", "pmcid": "PMC2"},
+            ... ]}}
+            >>> provider._find_oa_result(data)["pmcid"]
+            'PMC2'
+            >>> provider._find_oa_result({"resultList": {"result": []}}) is None
+            True
+            >>> provider._find_oa_result({}) is None
+            True
         """
         results = data.get("resultList", {}).get("result", [])
         for result in results:

@@ -55,6 +55,26 @@ class BioCFullTextProvider(FullTextProvider):
     def locate(
         self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
     ) -> Optional[FullTextLocation]:
+        """Return the article's BioC passage text, or None if BioC has none.
+
+        Args:
+            ids: Identifiers of the reference; only the PMID is used
+            config: Configuration for rate limiting
+
+        Returns:
+            A text location, or None when there is no PMID, the article is not
+            in the PMC Open Access subset, or the text is below the floor
+
+        Raises:
+            TransientFullTextError: BioC answered with a status other than 200
+                or 404, which says nothing about the article
+            requests.RequestException: The request itself failed
+
+        Examples:
+            >>> config = ReferenceValidationConfig(rate_limit_delay=0.0)
+            >>> BioCFullTextProvider().locate(ReferenceIdentifiers(doi="10.1/x"), config) is None
+            True
+        """
         if not ids.pmid:
             return None
 

@@ -20,6 +20,7 @@ from linkml_reference_validator.models import (
 from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
+    TransientFullTextError,  # re-exported: it was defined here first
 )
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
@@ -27,16 +28,6 @@ from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.rules import PMC_ARTICLE_BODY_CLASSES
 
 logger = logging.getLogger(__name__)
-
-
-class TransientFullTextError(RuntimeError):
-    """A provider failed for a reason that says nothing about the article.
-
-    ``_enrich_with_full_text`` already treats a raised exception as
-    ``had_error``, which keeps the record retryable. Raising this rather than
-    returning ``None`` is how a provider says "ask me again" instead of "there
-    is nothing here".
-    """
 
 
 #: Classes PMC has used for the article body. ``main-article-body`` is what it

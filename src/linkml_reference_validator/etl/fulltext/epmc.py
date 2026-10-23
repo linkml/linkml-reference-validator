@@ -18,10 +18,10 @@ from linkml_reference_validator.models import (
 from linkml_reference_validator.etl.fulltext.base import (
     FullTextProvider,
     FullTextProviderRegistry,
+    TransientFullTextError,
 )
 from linkml_reference_validator.etl.extract import MIN_FULLTEXT_CHARS
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
-from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
 
 logger = logging.getLogger(__name__)
 

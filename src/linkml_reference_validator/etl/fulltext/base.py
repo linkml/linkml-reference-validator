@@ -149,6 +149,16 @@ def access_type_for_oa_status(
     return PUBLISHER_FREE_ACCESS
 
 
+class TransientFullTextError(RuntimeError):
+    """A provider failed for a reason that says nothing about the article.
+
+    ``_enrich_with_full_text`` already treats a raised exception as
+    ``had_error``, which keeps the record retryable. Raising this rather than
+    returning ``None`` is how a provider says "ask me again" instead of "there
+    is nothing here".
+    """
+
+
 class FullTextProvider(ABC):
     """Abstract base class for full-text providers."""
 

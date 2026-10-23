@@ -508,7 +508,7 @@ class TestBioCFullTextProvider:
         ask again; raising keeps the record retryable.
         """
         from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
-        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
 
         mock_response = MagicMock()
         mock_response.status_code = status
@@ -671,7 +671,7 @@ class TestEuropePMCFullTextProvider:
     def test_europepmc_non_json_search_body_is_transient(self, mock_get, config):
         """A 200 that is not JSON is a maintenance or error page, not an answer."""
         from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
-        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
 
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -684,7 +684,7 @@ class TestEuropePMCFullTextProvider:
     @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
     def test_europepmc_search_failure_is_transient(self, mock_get, config):
         from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
-        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
 
         mock_response = MagicMock()
         mock_response.status_code = 503
@@ -696,7 +696,7 @@ class TestEuropePMCFullTextProvider:
     @patch("linkml_reference_validator.etl.fulltext.epmc.requests.get")
     def test_europepmc_fulltext_server_failure_is_transient(self, mock_get, config):
         from linkml_reference_validator.etl.fulltext.epmc import EuropePMCFullTextProvider
-        from linkml_reference_validator.etl.fulltext.pmc import TransientFullTextError
+        from linkml_reference_validator.etl.fulltext.base import TransientFullTextError
 
         mock_get.side_effect = [_epmc_search_response(), _epmc_fulltext_response(500)]
 

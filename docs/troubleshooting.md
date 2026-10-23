@@ -448,24 +448,25 @@ actual_title: "Role of JAK1 in Cell Signaling"
 
 ### Title mismatch against "Checking your browser - reCAPTCHA"
 
-**Symptom:**
+**Symptom** (older versions):
 ```
 Title mismatch: expected 'MELAS - GeneReviews® - NCBI Bookshelf'
-but got 'Checking your browser - reCAPTCHA' (this is a bot-challenge page, ...)
+but got 'Checking your browser - reCAPTCHA'
 ```
 
 **Cause:** the host (NCBI does this for Bookshelf and PMC pages) answered a
 `url:` fetch with a bot check instead of the document. It sends the check with
-HTTP 200, so it looks like a successful fetch.
+HTTP 200, so older versions took it for the document and cached it.
 
 The `url:` source now treats a page with a known challenge title as a failed
-fetch. If a cached entry exists it is used instead, and nothing is written to
-the cache. A challenge page can only reach this message if it was cached by an
-older version.
+fetch: a cached entry is used instead, and nothing is written. A challenge page
+cached by an older version is ignored, as if absent, and replaced by the next
+good fetch.
 
-**Solution:** leave the curated title alone; it is probably correct. Delete the
-cache entry holding the challenge page and fetch it again once the host stops
-challenging. Retrying while the block lasts will get the challenge again.
+**Solution:** upgrade, and leave the curated title alone; it is probably
+correct. While the host keeps challenging, a reference with no good cached
+entry reports `Could not fetch reference` rather than a title mismatch.
+Retrying during the block gets the challenge again.
 
 ## Schema Issues
 

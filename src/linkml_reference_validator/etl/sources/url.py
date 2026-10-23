@@ -22,7 +22,10 @@ from linkml_reference_validator.etl.sources.base import ReferenceSource, Referen
 from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
 from linkml_reference_validator.etl.extract.html import html_to_text
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
-from linkml_reference_validator.etl.rules import BOT_CHALLENGE_TITLE, LANDING_PAGE_RULES
+from linkml_reference_validator.etl.rules import (
+    LANDING_PAGE_RULES,
+    is_bot_challenge_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,24 +35,6 @@ _META_TAG = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
 _META_NAME = re.compile(r"""(?<=\s)name\s*=\s*["']citation_title["']""", re.IGNORECASE)
 _META_CONTENT = re.compile(r"""(?<=\s)content\s*=\s*(["'])(.*?)\1""", re.IGNORECASE | re.DOTALL)
 _TITLE_TAG = re.compile(r"<title[^>]*>([^<]+)</title>", re.IGNORECASE)
-
-
-def is_bot_challenge_title(title: Optional[str]) -> bool:
-    """Report whether a title is a bot-challenge page's, per ``BOT_CHALLENGE_TITLE``.
-
-    Examples:
-        >>> is_bot_challenge_title("Checking your browser - reCAPTCHA")
-        True
-        >>> is_bot_challenge_title("  Just a moment...  ")
-        True
-        >>> is_bot_challenge_title("MELAS - GeneReviews - NCBI Bookshelf")
-        False
-        >>> is_bot_challenge_title(None)
-        False
-    """
-    if not title:
-        return False
-    return BOT_CHALLENGE_TITLE.match(" ".join(html.unescape(title).split())) is not None
 
 
 @ReferenceSourceRegistry.register

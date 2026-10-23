@@ -6,7 +6,6 @@ from functools import lru_cache
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
-from linkml_reference_validator.etl.sources.url import is_bot_challenge_title
 from linkml_reference_validator.matching import (
     FIGURE_CONTENT_TYPES,
     SVG_LABEL_SEPARATOR,
@@ -21,28 +20,6 @@ from linkml_reference_validator.models import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-def _title_mismatch_hint(actual_title: Optional[str]) -> str:
-    """Say so when the title being compared is a bot-challenge page's.
-
-    A cache entry written before ``url:`` declined challenge pages (#117) can
-    hold one, and a bare "title mismatch" reads as the curator's mistake.
-
-    Examples:
-        >>> _title_mismatch_hint("A real title")
-        ''
-        >>> "bot-challenge" in _title_mismatch_hint("Checking your browser - reCAPTCHA")
-        True
-    """
-    if not is_bot_challenge_title(actual_title):
-        return ""
-    return (
-        " (this is a bot-challenge page, not the document: the cached entry "
-        "holds what the host served when it blocked the fetch, so the curated "
-        "title is probably fine; delete the cache entry and re-fetch it once "
-        "the host stops challenging)"
-    )
 
 #: Message used whenever a blank excerpt is rejected, so every layer reports
 #: the same diagnosis for the same defect.
@@ -213,7 +190,6 @@ class SupportingTextValidator:
                 message=(
                     f"Title mismatch for {reference_id}: "
                     f"expected '{expected_title}' but got '{reference.title}'"
-                    + _title_mismatch_hint(reference.title)
                 ),
                 path=path,
             )
@@ -308,7 +284,7 @@ class SupportingTextValidator:
                 title_valid = False
                 title_message = (
                     f"Title mismatch: expected '{expected_title}' "
-                    f"but got '{reference.title}'" + _title_mismatch_hint(reference.title)
+                    f"but got '{reference.title}'"
                 )
 
         match = self.find_text_in_reference(supporting_text, reference)

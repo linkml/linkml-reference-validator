@@ -23,7 +23,9 @@ Examples:
     True
 """
 
+import html
 import re
+from typing import Optional
 
 # --- PDF landing pages -----------------------------------------------------
 
@@ -100,11 +102,33 @@ PDF_PLACEHOLDER_TITLE_COUNTEREXAMPLES: tuple[str, ...] = (
 #: about reCAPTCHA is still a paper.
 BOT_CHALLENGE_TITLE = re.compile(
     r"^(checking your browser( before accessing\b.*)?(\s*[-|]\s*recaptcha)?"
-    r"|just a moment(\.{3}|\u2026)?"
-    r"|attention required!?\s*\|\s*cloudflare"
+    r"|just a moment(\.{3}|\u2026)?(\s*\|\s*cloudflare)?"
+    r"|attention required(!(\s*\|\s*cloudflare)?|\s*\|\s*cloudflare)"
     r"|access denied)$",
     re.IGNORECASE,
 )
+
+
+def is_bot_challenge_title(title: Optional[str]) -> bool:
+    """Report whether a title is a bot-challenge page's, per ``BOT_CHALLENGE_TITLE``.
+
+    Entities are decoded and whitespace collapsed first, so ``&nbsp;`` and line
+    breaks inside a ``<title>`` do not hide a match.
+
+    Examples:
+        >>> is_bot_challenge_title("Checking your browser - reCAPTCHA")
+        True
+        >>> is_bot_challenge_title("  Just a moment...  ")
+        True
+        >>> is_bot_challenge_title("MELAS - GeneReviews - NCBI Bookshelf")
+        False
+        >>> is_bot_challenge_title(None)
+        False
+    """
+    if not title:
+        return False
+    return BOT_CHALLENGE_TITLE.match(" ".join(html.unescape(title).split())) is not None
+
 
 #: Titles that are challenge pages and must be declined.
 BOT_CHALLENGE_TITLE_EXAMPLES: tuple[str, ...] = (
@@ -113,7 +137,9 @@ BOT_CHALLENGE_TITLE_EXAMPLES: tuple[str, ...] = (
     "Checking your browser before accessing pmc.ncbi.nlm.nih.gov",
     "Just a moment...",  # Cloudflare
     "Just a moment\u2026",
+    "Just a moment... | Cloudflare",
     "Attention Required! | Cloudflare",
+    "Attention Required!",
     "Access Denied",  # Akamai
 )
 
@@ -124,6 +150,7 @@ BOT_CHALLENGE_TITLE_COUNTEREXAMPLES: tuple[str, ...] = (
     "Usability of reCAPTCHA for older adults",
     "Just a moment of inattention: driver distraction and crash risk",
     "Checking your browser history for signs of compromise",
+    "Attention required: a review of sustained attention in ADHD",
 )
 
 # --- Article body containers in HTML full text -----------------------------

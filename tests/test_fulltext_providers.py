@@ -474,6 +474,16 @@ class TestBioCFullTextProvider:
             f"BioC_xml/{path}/ascii"
         )
 
+    def test_bioc_passage_text_with_child_nodes_is_kept(self):
+        """``.string`` is None once <text> has a child; the passage must survive."""
+        from linkml_reference_validator.etl.fulltext.bioc import BioCFullTextProvider
+
+        xml = """<collection><document>
+            <passage><text>The <i>BRCA1</i> variant was pathogenic.</text></passage>
+        </document></collection>"""
+
+        assert BioCFullTextProvider()._extract_text(xml) == "The BRCA1 variant was pathogenic."
+
     @patch("linkml_reference_validator.etl.fulltext.bioc.requests.get")
     def test_bioc_fetch_not_found(self, mock_get, config):
         """Test BioC fetch when article not in OA subset."""

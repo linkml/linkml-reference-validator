@@ -153,8 +153,8 @@ class BioCFullTextProvider(FullTextProvider):
             if section_type and section_type.get_text().strip() in EXCLUDED_SECTION_TYPES:
                 continue
             text_elem = passage.find("text")
-            if text_elem and text_elem.string:
-                text = text_elem.string.strip()
+            if text_elem:
+                text = text_elem.get_text().strip()
                 if text:
                     texts.append(text)
 

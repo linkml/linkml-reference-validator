@@ -42,6 +42,7 @@ from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
 from linkml_reference_validator.etl.extract import Extractor, ExtractorRegistry  # noqa: F401  (registers extractors)
 from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.rules import is_bot_challenge_title
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
 from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 import linkml_reference_validator.etl.fulltext  # noqa: F401  (registers providers)
@@ -1675,6 +1676,24 @@ class ReferenceFetcher:
             # One url: entry serves every fragment of its URL. Hand back the
             # page-anchored URL this caller cited, not whichever was stored.
             reference.reference_id = reference_id
+        if (
+            reference is not None
+            and reference_id.startswith("url:")
+            and is_bot_challenge_title(reference.title)
+        ):
+            # Written before URLSource declined challenge pages (#117), and
+            # stamped current, so staleness would never catch it. It is not the
+            # document under any flag, stale or trusted: treat it as absent so
+            # it is never evidence and the next good fetch replaces it. The
+            # legacy return above skips this, which is safe: challenge pages were
+            # cached by Markdown-era versions, never in the pre-Markdown format.
+            logger.warning(
+                "Ignoring cache entry for %s: it holds a bot-challenge page "
+                "(%r), not the document. It will be re-fetched.",
+                reference_id,
+                reference.title,
+            )
+            return None
         if (
             allow_stale
             and not allow_stale_html

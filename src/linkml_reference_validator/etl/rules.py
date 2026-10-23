@@ -19,9 +19,13 @@ Examples:
     ['J-STAGE']
     >>> PMC_ARTICLE_BODY_CLASSES[0]
     'main-article-body'
+    >>> bool(BOT_CHALLENGE_TITLE.match("Checking your browser - reCAPTCHA"))
+    True
 """
 
+import html
 import re
+from typing import Optional
 
 # --- PDF landing pages -----------------------------------------------------
 
@@ -86,6 +90,67 @@ PDF_PLACEHOLDER_TITLE_COUNTEREXAMPLES: tuple[str, ...] = (
     "Canine Distemper in Dogs",
     "Converting LaTeX Manuscripts to report.pdf",
     "Why we stopped using .docx",
+)
+
+# --- Bot-challenge interstitials -------------------------------------------
+
+#: ``<title>`` of the page a host serves in place of the document when it
+#: challenges a client it takes for a bot. NCBI serves "Checking your browser -
+#: reCAPTCHA" for Bookshelf and PMC pages on an HTTP 200, so no status check
+#: sees it, and ``url:`` used to cache it as the reference (#117). Only whole
+#: titles match: a paper may well be called "Access denied: ...", and one
+#: about reCAPTCHA is still a paper.
+BOT_CHALLENGE_TITLE = re.compile(
+    r"^(checking your browser( before accessing\b.*)?(\s*[-|]\s*recaptcha)?"
+    r"|just a moment(\.{3}|\u2026)?(\s*\|\s*cloudflare)?"
+    r"|attention required(!(\s*\|\s*cloudflare)?|\s*\|\s*cloudflare)"
+    r"|access denied)$",
+    re.IGNORECASE,
+)
+
+
+def is_bot_challenge_title(title: Optional[str]) -> bool:
+    """Report whether a title is a bot-challenge page's, per ``BOT_CHALLENGE_TITLE``.
+
+    Entities are decoded and whitespace collapsed first, so ``&nbsp;`` and line
+    breaks inside a ``<title>`` do not hide a match.
+
+    Examples:
+        >>> is_bot_challenge_title("Checking your browser - reCAPTCHA")
+        True
+        >>> is_bot_challenge_title("  Just a moment...  ")
+        True
+        >>> is_bot_challenge_title("MELAS - GeneReviews - NCBI Bookshelf")
+        False
+        >>> is_bot_challenge_title(None)
+        False
+    """
+    if not title:
+        return False
+    return BOT_CHALLENGE_TITLE.match(" ".join(html.unescape(title).split())) is not None
+
+
+#: Titles that are challenge pages and must be declined.
+BOT_CHALLENGE_TITLE_EXAMPLES: tuple[str, ...] = (
+    "Checking your browser - reCAPTCHA",  # NCBI Bookshelf and PMC
+    "checking your browser",
+    "Checking your browser before accessing pmc.ncbi.nlm.nih.gov",
+    "Just a moment...",  # Cloudflare
+    "Just a moment\u2026",
+    "Just a moment... | Cloudflare",
+    "Attention Required! | Cloudflare",
+    "Attention Required!",
+    "Access Denied",  # Akamai
+)
+
+#: Real titles that must be kept, including ones that share the words.
+BOT_CHALLENGE_TITLE_COUNTEREXAMPLES: tuple[str, ...] = (
+    "MELAS - GeneReviews\u00ae - NCBI Bookshelf",
+    "Access denied: barriers to specialist care in rural areas",
+    "Usability of reCAPTCHA for older adults",
+    "Just a moment of inattention: driver distraction and crash risk",
+    "Checking your browser history for signs of compromise",
+    "Attention required: a review of sustained attention in ADHD",
 )
 
 # --- Article body containers in HTML full text -----------------------------

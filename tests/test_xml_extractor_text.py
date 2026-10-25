@@ -269,3 +269,22 @@ def test_empty_input_returns_none(data):
 def test_rarer_jats_blocks_are_separated(markup, expected):
     """Verse lines, code blocks, attributions and arrays are blocks too."""
     assert extract(markup) == expected
+
+
+def test_entity_declaration_quoted_in_body_does_not_disable_rewrite():
+    """Only the DOCTYPE's internal subset declares entities, not body text."""
+    text = extract(
+        b"<p>Example: <![CDATA[<!ENTITY nbsp \"x\">]]></p><p>Hello&nbsp;world</p>",
+        prolog=PMC_DOCTYPE,
+    )
+    assert "Hello world" in text
+
+
+def test_internal_declaration_after_prolog_is_honoured():
+    """An XML declaration and a comment may precede the DOCTYPE."""
+    text = XMLExtractor().extract(
+        b'\xef\xbb\xbf<?xml version="1.0"?>\n<!-- note -->\n'
+        b'<!DOCTYPE article [\n  <!ENTITY nbsp "[space]">\n]>'
+        b"<article><body><p>A&nbsp;B</p></body></article>"
+    )
+    assert text == "A[space]B"

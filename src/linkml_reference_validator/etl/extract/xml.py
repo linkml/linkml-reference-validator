@@ -177,6 +177,14 @@ _HTML_ENTITY_REFS = {
 _ENTITY_REFERENCE = re.compile(
     r"<!\[CDATA\[.*?\]\]>|<!--.*?-->|&([A-Za-z][A-Za-z0-9]*);", re.DOTALL
 )
+#: The DOCTYPE's internal subset, after an optional BOM (decoded or as
+#: latin-1 bytes), XML declaration, comments and processing instructions.
+#: Only declarations here count, not a ``<!ENTITY`` quoted in the body.
+_INTERNAL_SUBSET = re.compile(
+    r"\A(?:\ufeff|\xef\xbb\xbf)?\s*(?:(?:<\?.*?\?>|<!--.*?-->)\s*)*"
+    r"<!DOCTYPE[^\[>]*\[(.*?)\]\s*>",
+    re.DOTALL,
+)
 _ENTITY_DECLARATION = re.compile(r"<!ENTITY\s+([A-Za-z_][\w.-]*)")
 
 
@@ -194,11 +202,14 @@ def _define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
         '<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>'
         >>> _define_html_entities("<a><![CDATA[&nbsp;]]>&unknownname;</a>")
         '<a><![CDATA[&nbsp;]]>&unknownname;</a>'
+        >>> _define_html_entities("<a><![CDATA[<!ENTITY nbsp>]]>&nbsp;</a>")
+        '<a><![CDATA[<!ENTITY nbsp>]]>&#160;</a>'
     """
     # latin-1 maps every byte to one code point and back, so bytes round-trip
     # exactly whatever encoding they are really in.
     text = data.decode("latin-1") if isinstance(data, bytes) else data
-    declared = set(_ENTITY_DECLARATION.findall(text))
+    subset = _INTERNAL_SUBSET.match(text)
+    declared = set(_ENTITY_DECLARATION.findall(subset.group(1))) if subset else set()
 
     def replace(match: re.Match[str]) -> str:
         name = match.group(1)

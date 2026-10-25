@@ -893,6 +893,8 @@ spanning any of these could fail against correct text. Version 1 XML entries
 are refreshed on the next fetch, as above. Whitespace inside a paragraph is now
 collapsed to single spaces (a no-break space included), as it already was in
 table cells.
+The HTML-entity repair applies to UTF-8 and other ASCII-compatible encodings
+only; in a UTF-16 or UTF-32 document an undeclared `&nbsp;` is still dropped.
 
 Entries that record *no* content carry their own stamp. A cache entry written
 as `content_type: unavailable` is a claim about what an extractor could not

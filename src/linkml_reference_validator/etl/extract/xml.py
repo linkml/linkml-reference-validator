@@ -195,6 +195,11 @@ def _define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
     stays true: references are ASCII and are only found in ASCII-compatible
     encodings. An entity the document declares itself keeps its declaration.
 
+    UTF-16 and UTF-32 bytes are deliberately left alone: their references
+    are not ASCII byte runs, so an undeclared ``&nbsp;`` there is still
+    dropped by the parser, as it always was. PMC and the providers serve
+    UTF-8.
+
     Examples:
         >>> _define_html_entities(b"A&nbsp;B &amp; C&mdash;D")
         b'A&#160;B &amp; C&#8212;D'

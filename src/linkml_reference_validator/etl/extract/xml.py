@@ -2,14 +2,17 @@
 
 Changing what this yields for the same input may make already-cached text wrong
 rather than merely older; see :mod:`linkml_reference_validator.etl.extract` for
-when to bump cache versions. Table changes use ``XML_EXTRACTION_CACHE_VERSION``
-so PDF and HTML entries remain current.
+when to bump cache versions. Changes confined to XML output use
+``XML_EXTRACTION_CACHE_VERSION`` so PDF and HTML entries remain current.
 """
 
 import logging
+import re
+from html.entities import html5
 from typing import Optional, Union
 
 from bs4 import BeautifulSoup, CData, NavigableString, Tag  # type: ignore
+from lxml import etree  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.rules import STUB_NOTICE_PHRASES
@@ -77,8 +80,39 @@ def is_stub_notice(text: str) -> bool:
 MAX_TABLE_ROWS = 200
 
 
-def _table_text(node: Tag) -> str:
-    """Keep inline text contiguous, separating blocks and excluding nested tables."""
+#: Elements that end a run of text. Their content is padded with spaces so a
+#: neighbour never welds onto it: adjacent list items once read "itembeta".
+#: Inline markup (italic, sub, xref, ...) is deliberately absent, so H<sub>2</sub>O
+#: stays H2O.
+BLOCK_ELEMENTS = frozenset(
+    {
+        "p",
+        "break",
+        "br",
+        "list-item",
+        "title",
+        "label",
+        "caption",
+        "def-item",
+        "term",
+        "def",
+        "disp-quote",
+        "disp-formula",
+        "fig",
+        "boxed-text",
+    }
+)
+
+
+def _block_text(node: Tag) -> str:
+    """Keep inline text contiguous, separating blocks and excluding nested tables.
+
+    Examples:
+        >>> soup = BeautifulSoup("<p>a<break/>b <list><list-item>c</list-item>"
+        ...     "<list-item>d</list-item></list> H<sub>2</sub>O</p>", "xml")
+        >>> _block_text(soup.p)
+        'a b c d H2O'
+    """
 
     def walk(tag: Tag) -> str:
         """Render descendants without mutating the parsed document."""
@@ -88,12 +122,111 @@ def _table_text(node: Tag) -> str:
                 parts.append(str(child))
             elif isinstance(child, Tag) and child.name not in {"table", "table-wrap"}:
                 value = walk(child)
-                if child.name in {"p", "break", "br", "list-item", "title"}:
+                if child.name in BLOCK_ELEMENTS:
                     value = " " + value + " "
                 parts.append(value)
         return "".join(parts)
 
     return " ".join(walk(node).split())
+
+
+def _rendered_by_enclosing_paragraph(p: Tag) -> bool:
+    """Whether an outer ``<p>`` already renders this one.
+
+    JATS nests paragraphs (a ``<list>`` or ``<fig>`` inside ``<p>``), and the
+    outer paragraph's text includes them, so emitting both repeated the text.
+    Tables are the exception: :func:`_block_text` leaves them to the table
+    pass, so a paragraph inside one is not covered by an outer paragraph.
+    """
+    for parent in p.parents:
+        if parent.name in {"table", "table-wrap"}:
+            return False
+        if parent.name == "p":
+            return True
+    return False
+
+
+#: Named entities XML predefines; these already mean what they say.
+_XML_PREDEFINED_ENTITIES = frozenset({"amp", "lt", "gt", "quot", "apos"})
+
+#: HTML named entities as numeric character references. JATS and PMC define
+#: these in an external DTD that is never loaded, so without this the parser
+#: drops ``&nbsp;`` and ``&mdash;`` and welds the words either side together.
+_HTML_ENTITY_REFS = {
+    name[:-1]: "".join(f"&#{ord(char)};" for char in value)
+    for name, value in html5.items()
+    if name.endswith(";") and name[:-1] not in _XML_PREDEFINED_ENTITIES
+}
+
+#: CDATA sections and comments are matched first so they are left verbatim.
+_ENTITY_REFERENCE = re.compile(
+    r"<!\[CDATA\[.*?\]\]>|<!--.*?-->|&([A-Za-z][A-Za-z0-9]*);", re.DOTALL
+)
+_ENTITY_DECLARATION = re.compile(r"<!ENTITY\s+([A-Za-z_][\w.-]*)")
+
+
+def define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
+    """Rewrite undeclared HTML named entities as numeric character references.
+
+    Bytes are rewritten in place without decoding, so a declared encoding
+    stays true: references are ASCII and are only found in ASCII-compatible
+    encodings. An entity the document declares itself keeps its declaration.
+
+    Examples:
+        >>> define_html_entities(b"A&nbsp;B &amp; C&mdash;D")
+        b'A&#160;B &amp; C&#8212;D'
+        >>> define_html_entities('<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>')
+        '<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>'
+        >>> define_html_entities("<a><![CDATA[&nbsp;]]>&unknownname;</a>")
+        '<a><![CDATA[&nbsp;]]>&unknownname;</a>'
+    """
+    # latin-1 maps every byte to one code point and back, so bytes round-trip
+    # exactly whatever encoding they are really in.
+    text = data.decode("latin-1") if isinstance(data, bytes) else data
+    declared = set(_ENTITY_DECLARATION.findall(text))
+
+    def replace(match: re.Match[str]) -> str:
+        name = match.group(1)
+        if name is None or name in declared:
+            return match.group(0)
+        return _HTML_ENTITY_REFS.get(name, match.group(0))
+
+    text = _ENTITY_REFERENCE.sub(replace, text)
+    return text.encode("latin-1") if isinstance(data, bytes) else text
+
+
+def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
+    """Parse untrusted article XML, returning None when it holds no document.
+
+    lxml parses first, with the settings the SVG extractor uses: internal
+    entities are expanded, external ones (XXE) and the network are never
+    read, and libxml2's amplification limit stops billion laughs. Handing raw
+    bytes straight to BeautifulSoup lost the whole body when the document
+    declared an entity. The expanded tree is then re-read by BeautifulSoup,
+    which the rendering below is written against.
+    """
+    data = define_html_entities(data)
+    encoding = None
+    if isinstance(data, str):
+        # The text is already decoded; its declaration no longer describes it.
+        data, encoding = data.encode("utf-8"), "utf-8"
+    parser = etree.XMLParser(
+        encoding=encoding,
+        resolve_entities="internal",
+        no_network=True,
+        load_dtd=False,
+        huge_tree=False,
+        recover=True,
+    )
+    try:  # untrusted external input: recover mode still rejects an empty document
+        root = etree.fromstring(data, parser)
+    except etree.XMLSyntaxError as e:
+        logger.info("Could not parse XML: %s", e)
+        return None
+    if root is None:
+        logger.info("XML held no root element")
+        return None
+    return BeautifulSoup(etree.tostring(root), "xml")
 
 
 def _table_heading(wrap: Tag) -> str:
@@ -105,7 +238,7 @@ def _table_heading(wrap: Tag) -> str:
             None,
         )
         if node is not None:
-            parts.append(_table_text(node))
+            parts.append(_block_text(node))
     return " ".join(part for part in parts if part)
 
 
@@ -129,7 +262,7 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
             # This pass targets JATS tables, not arbitrary XML layout tables.
             continue
         if table.name == "table-wrap-foot":
-            note = _table_text(table)
+            note = _block_text(table)
             if note:
                 sections.append(note)
             continue
@@ -149,7 +282,7 @@ def _tables_as_text(soup: BeautifulSoup) -> list[str]:
                     or cell.find_parent("table") is not table
                 ):
                     continue
-                value = _table_text(cell).replace("\\", "\\\\").replace("|", "\\|")
+                value = _block_text(cell).replace("\\", "\\\\").replace("|", "\\|")
                 for span in ("rowspan", "colspan"):
                     if cell.has_attr(span) and str(cell[span]) != "1":
                         value += f" [{span}={cell[span]}]"
@@ -196,11 +329,9 @@ class XMLExtractor(Extractor):
     def extract(
         self, data: Union[bytes, str], *, content_type: Optional[str] = None
     ) -> Optional[str]:
-        # Passed through untouched, bytes or str. Decoding bytes here would
-        # assume UTF-8 and raise on any article declaring another encoding;
-        # re-encoding str here would leave that declaration contradicting the
-        # bytes. The parser gets both cases right on its own.
-        soup = BeautifulSoup(data, "xml")
+        soup = _parse(data)
+        if soup is None:
+            return None
         body = next(
             (
                 node
@@ -214,14 +345,15 @@ class XMLExtractor(Extractor):
                 p
                 for p in body.find_all("p")
                 if not p.find_parent(["sub-article", "response"])
+                and not _rendered_by_enclosing_paragraph(p)
             ]
             if body
             else []
         )
         text = "\n\n".join(
-            p.get_text()
+            rendered
             for p in paragraphs
-            if not p.find_parent("table-wrap") and p.get_text().strip()
+            if not p.find_parent("table-wrap") and (rendered := _block_text(p))
         )
 
         # Judged on the extracted body, not the raw markup: a citation title or
@@ -240,9 +372,9 @@ class XMLExtractor(Extractor):
         # Keep existing attribution/alternative prose that the renderer does not
         # emit. Table content must not inflate the stub check above.
         text = "\n\n".join(
-            p.get_text()
+            rendered
             for p in paragraphs
-            if p.get_text().strip()
+            if (rendered := _block_text(p))
             and not (
                 p.find_parent("table-wrap")
                 and p.find_parent(["label", "caption", "table", "table-wrap-foot"])

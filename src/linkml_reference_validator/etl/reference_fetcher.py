@@ -104,8 +104,12 @@ EXTRACTOR_CACHE_VERSION = 1
 #: PMC or a configured text provider is trusted under FullTextLocation's contract.
 HTML_FULL_TEXT_CACHE_VERSION = 1
 
-#: XML table extraction changes only XML caches, independent of HTML acceptance.
-XML_EXTRACTION_CACHE_VERSION = 1
+#: XML extraction changes only XML caches, independent of HTML acceptance.
+#: 1: JATS tables are rendered. 2: nested paragraphs are emitted once, list
+#: items and line breaks no longer weld words together, HTML named entities
+#: (``&nbsp;``, ``&mdash;``) survive, and documents declaring an entity keep
+#: their body.
+XML_EXTRACTION_CACHE_VERSION = 2
 
 #: Version the claim "this reference has no content at all", scoped to
 #: ``content_type: unavailable``. Such an entry records what an extractor could

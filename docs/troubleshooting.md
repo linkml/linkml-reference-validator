@@ -882,6 +882,18 @@ XML remains available with the existing stale-cache warning and is not rewritten
 it may still lack table rows. A later process retries the refresh. Existing
 stale HTML rejection remains unchanged.
 
+`xml_extraction_version: 2` fixes body text that version 1 could get wrong. A
+paragraph nested in another (a `<list>` or `<fig>` inside `<p>`, which JATS
+does routinely) was emitted twice; adjacent list items and lines split by
+`<break/>` were welded together ("alpha itembeta item"); HTML named entities
+such as `&nbsp;` and `&mdash;`, which PMC's external DTD defines but which is
+never loaded, were dropped and glued the words either side; and a document
+declaring its own entity in an internal DTD subset lost its whole body. A quote
+spanning any of these could fail against correct text. Version 1 XML entries
+are refreshed on the next fetch, as above. Whitespace inside a paragraph is now
+collapsed to single spaces (a no-break space included), as it already was in
+table cells.
+
 Entries that record *no* content carry their own stamp. A cache entry written
 as `content_type: unavailable` is a claim about what an extractor could not
 find, so an extractor fix can make it wrong -- and because such an entry carries

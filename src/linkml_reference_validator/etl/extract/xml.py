@@ -16,6 +16,10 @@ from bs4 import BeautifulSoup, CData, NavigableString, Tag  # type: ignore
 from lxml import etree  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
+from linkml_reference_validator.etl.extract.untrusted_xml import (
+    encode_for_parser,
+    untrusted_xml_parser,
+)
 from linkml_reference_validator.etl.rules import STUB_NOTICE_PHRASES
 
 logger = logging.getLogger(__name__)
@@ -237,7 +241,8 @@ def _decode_undeclared(data: bytes) -> Union[bytes, str]:
 def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     """Parse untrusted article XML, returning None when it holds no document.
 
-    lxml parses first, with the settings the SVG extractor uses: internal
+    lxml parses first, with the settings every XML extractor shares (see
+    :mod:`~linkml_reference_validator.etl.extract.untrusted_xml`): internal
     entities are expanded, external ones (XXE) and the network are never
     read, and libxml2's amplification limit stops billion laughs. Handing raw
     bytes straight to BeautifulSoup lost the whole body when the document
@@ -246,19 +251,8 @@ def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     """
     if isinstance(data, bytes):
         data = _decode_undeclared(data)
-    data = define_html_entities(data)
-    encoding = None
-    if isinstance(data, str):
-        # The text is already decoded; its declaration no longer describes it.
-        data, encoding = data.encode("utf-8"), "utf-8"
-    parser = etree.XMLParser(
-        encoding=encoding,
-        resolve_entities="internal",
-        no_network=True,
-        load_dtd=False,
-        huge_tree=False,
-        recover=True,
-    )
+    data, encoding = encode_for_parser(define_html_entities(data))
+    parser = untrusted_xml_parser(encoding=encoding, recover=True)
     try:  # untrusted external input: recover mode still rejects an empty document
         root = etree.fromstring(data, parser)
     except etree.XMLSyntaxError as e:

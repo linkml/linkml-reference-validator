@@ -1670,6 +1670,17 @@ class ReferenceFetcher:
             )
             return None
         reference = self._load_markdown_format(content_text, reference_id)
+        if reference is not None and not _same_reference_id(
+            cache_key(reference.reference_id), cache_key(reference_id)
+        ):
+            # Sanitized filenames are not unique: never serve another source's
+            # text, including from a trusted cache or the stale fallback path.
+            logger.warning(
+                "Ignoring cache entry for %s: it belongs to %s",
+                reference_id,
+                reference.reference_id,
+            )
+            return None
         if reference is not None and reference.reference_id != reference_id and (
             cache_key(reference.reference_id) == cache_key(reference_id)
         ):

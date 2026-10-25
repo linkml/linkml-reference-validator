@@ -180,6 +180,9 @@ _ENTITY_REFERENCE = re.compile(
 #: The DOCTYPE's internal subset, after an optional BOM (decoded or as
 #: latin-1 bytes), XML declaration, comments and processing instructions.
 #: Only declarations here count, not a ``<!ENTITY`` quoted in the body.
+#: Known limit: the match ends at the first ``]>``, so a declaration after an
+#: entity value containing ``]>`` (``<!ENTITY x "a]>b">``) is missed and an
+#: HTML name it redefines is rewritten anyway. Article XML does not do this.
 _INTERNAL_SUBSET = re.compile(
     r"\A(?:\ufeff|\xef\xbb\xbf)?\s*(?:(?:<\?.*?\?>|<!--.*?-->)\s*)*"
     r"<!DOCTYPE[^\[>]*\[(.*?)\]\s*>",

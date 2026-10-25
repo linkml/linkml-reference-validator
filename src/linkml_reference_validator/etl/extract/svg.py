@@ -85,6 +85,10 @@ from lxml import html as lxml_html  # type: ignore[import-untyped]
 
 from linkml_reference_validator.etl.extract.base import Extractor, ExtractorRegistry
 from linkml_reference_validator.etl.extract.html import NON_CONTENT_TAGS, TEXT_BREAK_TAGS
+from linkml_reference_validator.etl.extract.untrusted_xml import (
+    encode_for_parser,
+    untrusted_xml_parser,
+)
 from linkml_reference_validator.etl.extract.svg_geometry import (
     SHAPES,
     connector_endpoints,
@@ -1267,25 +1271,12 @@ def _check_static(root: etree._Element) -> list[_Rule]:
 def _parse(data: Union[bytes, str]) -> etree._Element:
     """Parse untrusted SVG without reading external entities or the network.
 
-    Internal entities are expanded, as a browser expands them: leaving
-    ``&not;`` out of a label would change what it says. An external entity
-    (XXE) is never loaded, so it is undefined and the parse fails, and
-    libxml2's amplification limit rejects an exponential internal one
-    (billion laughs). Either way the extractor returns None.
+    See :mod:`~linkml_reference_validator.etl.extract.untrusted_xml`. An
+    external entity is undefined, so the parse fails, and an exponential
+    internal one is rejected; either way the extractor returns None.
     """
-    encoding = None
-    if isinstance(data, str):
-        # The text is already decoded; its declaration no longer describes it.
-        data, encoding = data.encode("utf-8"), "utf-8"
-    parser = etree.XMLParser(
-        encoding=encoding,
-        resolve_entities="internal",
-        no_network=True,
-        load_dtd=False,
-        huge_tree=False,
-        remove_comments=True,
-    )
-    return etree.fromstring(data, parser)
+    data, encoding = encode_for_parser(data)
+    return etree.fromstring(data, untrusted_xml_parser(encoding=encoding))
 
 
 def parse_untrusted_xml(data: Union[bytes, str]) -> etree._Element:

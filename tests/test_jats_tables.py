@@ -6,7 +6,10 @@ import pytest
 
 from linkml_reference_validator.etl import rules
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    XML_EXTRACTION_CACHE_VERSION,
+    ReferenceFetcher,
+)
 from linkml_reference_validator.models import (
     FullTextLocation,
     ReferenceContent,
@@ -105,7 +108,7 @@ def make_fetcher(tmp_path):
     )
 
 
-@pytest.mark.parametrize("version", [None, 0, 1, 99])
+@pytest.mark.parametrize("version", [None, 0, 1, XML_EXTRACTION_CACHE_VERSION, 99])
 def test_xml_version_roundtrip(tmp_path, version):
     """Metadata-only rewrites neither certify old XML nor downgrade future stamps."""
     fetcher = make_fetcher(tmp_path)
@@ -119,7 +122,7 @@ def test_xml_version_roundtrip(tmp_path, version):
     ref = fetcher._load_from_disk("unknown:xml", allow_stale=True)
     fetcher._save_to_disk(ref)
     assert ReferenceFetcher._is_stale_cache_entry(path.read_text()) == (
-        version in (None, 0)
+        version is None or version < XML_EXTRACTION_CACHE_VERSION
     )
     assert ref.metadata.get("xml_extraction_version") == version
     if version is None:
@@ -151,7 +154,7 @@ def test_provider_xml_stamp_and_abstract(tmp_path):
         ref, FullTextLocation(text=text, format_hint="xml"), "pmc"
     )
     assert ref.content.startswith("Original abstract\n\n")
-    assert ref.metadata["xml_extraction_version"] == 1
+    assert ref.metadata["xml_extraction_version"] == XML_EXTRACTION_CACHE_VERSION
     assert make_fetcher(tmp_path)._load_from_disk(ref.reference_id) is not None
 
 
@@ -189,8 +192,8 @@ def test_warm_legacy_xml_refreshes_from_real_source(tmp_path, monkeypatch):
     )
     fresh = fetcher.fetch("JATSFIXTURE:28530713")
     assert "| On IvIg treatment | Yes | Yes | No |" in fresh.content
-    assert fresh.metadata["xml_extraction_version"] == 1
-    assert "xml_extraction_version: 1" in path.read_text()
+    assert fresh.metadata["xml_extraction_version"] == XML_EXTRACTION_CACHE_VERSION
+    assert f"xml_extraction_version: {XML_EXTRACTION_CACHE_VERSION}" in path.read_text()
     assert make_fetcher(tmp_path).fetch("JATSFIXTURE:28530713").content == fresh.content
     assert reads == ["28530713"]
 
@@ -238,7 +241,7 @@ def test_downloaded_xml_provider_uses_tables(tmp_path):
         )
         assert ref.content.startswith("Abstract\n\n")
         assert "| On IvIg treatment | Yes | Yes | No |" in ref.content
-        assert ref.metadata["xml_extraction_version"] == 1
+        assert ref.metadata["xml_extraction_version"] == XML_EXTRACTION_CACHE_VERSION
         assert not fetcher._is_stale_cache_entry(
             fetcher.get_cache_path(ref.reference_id).read_text()
         )

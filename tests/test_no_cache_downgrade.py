@@ -39,7 +39,10 @@ from unittest.mock import patch
 
 import pytest
 
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    XML_EXTRACTION_CACHE_VERSION,
+    ReferenceFetcher,
+)
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 
 FULL_TEXT_BODY = "Severe cleft palate was found in all homozygous mutants. " * 40
@@ -62,7 +65,7 @@ def _write_cache(cache_dir, reference_id, content_type, body, stamped=False):
     if stamped:
         stamp = "extractor_version: 1\n"
         if content_type == "full_text_xml":
-            stamp += "xml_extraction_version: 1\n"
+            stamp += f"xml_extraction_version: {XML_EXTRACTION_CACHE_VERSION}\n"
         elif content_type == "full_text_html":
             stamp += "html_full_text_version: 1\n"
     path = cache_dir / f"{reference_id.replace(':', '_')}.md"

@@ -180,7 +180,7 @@ _ENTITY_REFERENCE = re.compile(
 _ENTITY_DECLARATION = re.compile(r"<!ENTITY\s+([A-Za-z_][\w.-]*)")
 
 
-def define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
+def _define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
     """Rewrite undeclared HTML named entities as numeric character references.
 
     Bytes are rewritten in place without decoding, so a declared encoding
@@ -188,11 +188,11 @@ def define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
     encodings. An entity the document declares itself keeps its declaration.
 
     Examples:
-        >>> define_html_entities(b"A&nbsp;B &amp; C&mdash;D")
+        >>> _define_html_entities(b"A&nbsp;B &amp; C&mdash;D")
         b'A&#160;B &amp; C&#8212;D'
-        >>> define_html_entities('<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>')
+        >>> _define_html_entities('<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>')
         '<!DOCTYPE a [<!ENTITY nbsp "x">]><a>&nbsp;</a>'
-        >>> define_html_entities("<a><![CDATA[&nbsp;]]>&unknownname;</a>")
+        >>> _define_html_entities("<a><![CDATA[&nbsp;]]>&unknownname;</a>")
         '<a><![CDATA[&nbsp;]]>&unknownname;</a>'
     """
     # latin-1 maps every byte to one code point and back, so bytes round-trip
@@ -261,7 +261,7 @@ def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     """
     if isinstance(data, bytes):
         data = _decode_undeclared(data)
-    data, encoding = encode_for_parser(define_html_entities(data))
+    data, encoding = encode_for_parser(_define_html_entities(data))
     parser = untrusted_xml_parser(encoding=encoding, recover=True)
     try:  # untrusted external input: recover mode still rejects an empty document
         root = etree.fromstring(data, parser)

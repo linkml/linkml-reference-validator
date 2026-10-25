@@ -318,3 +318,16 @@ def test_attribution_paragraph_in_table_inside_paragraph_kept():
 def test_comment_inside_paragraph_does_not_leak():
     """Comments are markup, not text."""
     assert extract(b"<p>Before<!-- editor: check this --> after.</p>") == "Before after."
+
+
+def test_utf8_truncated_mid_character_stays_utf8():
+    """A download cut inside a multibyte character is still UTF-8."""
+    text = XMLExtractor().extract(b"<article><body><p>caf\xc3\xa9 ok</p><p>x\xc3")
+    assert text is not None
+    assert "café ok" in text
+
+
+def test_utf8_with_one_stray_byte_stays_utf8():
+    """One bad byte in a UTF-8 article does not re-decode every character."""
+    text = extract(b"<p>caf\xc3\xa9 and na\xc3\xafve</p><p>stray \xff byte</p>")
+    assert "café and naïve" in text

@@ -243,13 +243,17 @@ def _decode_undeclared(data: bytes) -> Union[bytes, str]:
     UTF-8 is then most likely a legacy single-byte file, which lxml would
     fill with replacement characters; it is read as windows-1252, the last
     resort BeautifulSoup used. BeautifulSoup's own sniffing is not used: it
-    read undeclared UTF-8 as MacRoman.
+    read undeclared UTF-8 as MacRoman. Bytes that are mostly valid UTF-8 (a
+    download cut mid-character, one stray byte) stay UTF-8, so one bad byte
+    does not turn every "é" into "Ã©".
 
     Examples:
         >>> _decode_undeclared(b"<a>caf\xe9</a>")
         '<a>café</a>'
         >>> _decode_undeclared("<a>café</a>".encode())
         b'<a>caf\xc3\xa9</a>'
+        >>> _decode_undeclared(b"<a>caf\xc3\xa9</a><b>\xc3")[-4:]
+        b'<b>\xc3'
         >>> _decode_undeclared(b'<?xml version="1.0" encoding="ISO-8859-1"?><a>\xe9</a>')[-6:]
         b'>\xe9</a>'
     """
@@ -257,9 +261,18 @@ def _decode_undeclared(data: bytes) -> Union[bytes, str]:
         data.removeprefix(codecs.BOM_UTF8)
     ):
         return data
-    try:  # sniffing untrusted external bytes
-        data.decode("utf-8")
-    except UnicodeDecodeError:
+    # final=False leaves out a character cut off at the very end, so a
+    # truncated download is not counted against UTF-8.
+    decoded = codecs.getincrementaldecoder("utf-8")(errors="replace").decode(
+        data, final=False
+    )
+    # A U+FFFD the document really contains is not an invalid sequence.
+    invalid = decoded.count("\ufffd") - data.count("\ufffd".encode())
+    non_ascii = len(decoded) - len(decoded.encode("ascii", errors="ignore"))
+    # Mostly valid UTF-8 is UTF-8 with a cut-off tail or a stray byte; lxml
+    # replaces just those. In legacy single-byte text almost every non-ASCII
+    # byte is an invalid sequence.
+    if invalid and invalid >= non_ascii - invalid:
         return data.decode("windows-1252", errors="replace")
     return data
 

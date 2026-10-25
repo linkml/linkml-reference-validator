@@ -6,6 +6,7 @@ when to bump cache versions. Changes confined to XML output use
 ``XML_EXTRACTION_CACHE_VERSION`` so PDF and HTML entries remain current.
 """
 
+import codecs
 import logging
 import re
 from html.entities import html5
@@ -195,6 +196,44 @@ def define_html_entities(data: Union[bytes, str]) -> Union[bytes, str]:
     return text.encode("latin-1") if isinstance(data, bytes) else text
 
 
+#: Byte-order marks that announce an encoding without a declaration.
+_UNICODE_BOMS = (
+    codecs.BOM_UTF32_LE,
+    codecs.BOM_UTF32_BE,
+    codecs.BOM_UTF16_LE,
+    codecs.BOM_UTF16_BE,
+)
+_ENCODING_DECLARATION = re.compile(rb"\s*<\?xml[^>]*\bencoding\s*=")
+
+
+def _decode_undeclared(data: bytes) -> Union[bytes, str]:
+    r"""Decode bytes that declare no encoding and are not valid UTF-8.
+
+    With no BOM or declaration XML is UTF-8, and lxml reads it so. Invalid
+    UTF-8 is then most likely a legacy single-byte file, which lxml would
+    fill with replacement characters; it is read as windows-1252, the last
+    resort BeautifulSoup used. BeautifulSoup's own sniffing is not used: it
+    read undeclared UTF-8 as MacRoman.
+
+    Examples:
+        >>> _decode_undeclared(b"<a>caf\xe9</a>")
+        '<a>café</a>'
+        >>> _decode_undeclared("<a>café</a>".encode())
+        b'<a>caf\xc3\xa9</a>'
+        >>> _decode_undeclared(b'<?xml version="1.0" encoding="ISO-8859-1"?><a>\xe9</a>')[-6:]
+        b'>\xe9</a>'
+    """
+    if data.startswith(_UNICODE_BOMS) or _ENCODING_DECLARATION.match(
+        data.removeprefix(codecs.BOM_UTF8)
+    ):
+        return data
+    try:  # sniffing untrusted external bytes
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return data.decode("windows-1252", errors="replace")
+    return data
+
+
 def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     """Parse untrusted article XML, returning None when it holds no document.
 
@@ -205,6 +244,8 @@ def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     declared an entity. The expanded tree is then re-read by BeautifulSoup,
     which the rendering below is written against.
     """
+    if isinstance(data, bytes):
+        data = _decode_undeclared(data)
     data = define_html_entities(data)
     encoding = None
     if isinstance(data, str):

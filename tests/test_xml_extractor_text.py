@@ -201,3 +201,25 @@ def test_str_input_with_entities():
         "<article><body><p>Fran\u00e7ois&mdash;Dupont</p></body></article>"
     )
     assert text == "Fran\u00e7ois\u2014Dupont"
+
+
+def test_undeclared_utf8_bytes_decoded_as_utf8():
+    """XML with no declaration or BOM is UTF-8 by definition.
+
+    BeautifulSoup's encoding sniffing once read these bytes as MacRoman,
+    giving "Fran√ßois".
+    """
+    data = "<article><body><p>François Dupont wrote this.</p></body></article>"
+    assert XMLExtractor().extract(data.encode("utf-8")) == "François Dupont wrote this."
+
+
+def test_undeclared_non_utf8_bytes_fall_back_to_windows_1252():
+    """Undeclared bytes that are not valid UTF-8 are read as windows-1252."""
+    data = b"<article><body><p>Fran\xe7ois \x93quoted\x94 caf\xe9</p></body></article>"
+    assert XMLExtractor().extract(data) == "François “quoted” café"
+
+
+def test_utf16_with_bom_is_not_treated_as_legacy_bytes():
+    """A UTF-16 document announces itself with a BOM; it is not re-decoded."""
+    data = "<article><body><p>François</p></body></article>".encode("utf-16")
+    assert XMLExtractor().extract(data) == "François"

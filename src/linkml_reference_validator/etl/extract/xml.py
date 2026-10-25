@@ -261,6 +261,14 @@ def _parse(data: Union[bytes, str]) -> Optional[BeautifulSoup]:
     if root is None:
         logger.info("XML held no root element")
         return None
+    if parser.error_log:
+        # A truncated download parses to a partial tree; say so, or a cut-off
+        # body is cached as if it were the whole article.
+        logger.info(
+            "XML was malformed; recovered from %d error(s), first: %s",
+            len(parser.error_log),
+            parser.error_log[0].message,
+        )
     return BeautifulSoup(etree.tostring(root), "xml")
 
 

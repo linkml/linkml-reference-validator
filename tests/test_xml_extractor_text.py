@@ -223,3 +223,24 @@ def test_utf16_with_bom_is_not_treated_as_legacy_bytes():
     """A UTF-16 document announces itself with a BOM; it is not re-decoded."""
     data = "<article><body><p>François</p></body></article>".encode("utf-16")
     assert XMLExtractor().extract(data) == "François"
+
+
+def test_truncated_xml_keeps_what_parsed_and_says_so(caplog):
+    """Recover mode keeps a cut-off body, and logs that it had to recover."""
+    with caplog.at_level("INFO", logger="linkml_reference_validator.etl.extract.xml"):
+        text = XMLExtractor().extract(b"<article><body><p>First paragraph.</p><p>Second para")
+    assert text == "First paragraph.\n\nSecond para"
+    assert "recovered from" in caplog.text
+
+
+def test_well_formed_xml_logs_no_recovery(caplog):
+    """Clean input produces no recovery message."""
+    with caplog.at_level("INFO", logger="linkml_reference_validator.etl.extract.xml"):
+        XMLExtractor().extract(b"<article><body><p>Fine.</p></body></article>")
+    assert "recovered from" not in caplog.text
+
+
+@pytest.mark.parametrize("data", [b"", b"   ", ""])
+def test_empty_input_returns_none(data):
+    """Empty input is no document, not an error."""
+    assert XMLExtractor().extract(data) is None

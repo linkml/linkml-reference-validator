@@ -288,3 +288,33 @@ def test_internal_declaration_after_prolog_is_honoured():
         b"<article><body><p>A&nbsp;B</p></body></article>"
     )
     assert text == "A[space]B"
+
+
+def test_caption_of_table_inside_paragraph_once():
+    """A caption <p> in a table-wrap inside a <p> appears once, as the heading.
+
+    The outer paragraph leaves the table-wrap to the table pass, and the
+    caption paragraph is filtered from the prose because the table pass
+    prints it as the table's heading.
+    """
+    text = extract(
+        b"<p>See below.<table-wrap><label>Table 1</label><caption><p>Patient ages.</p>"
+        b"</caption><table><tr><td>42</td></tr></table></table-wrap></p>"
+    )
+    assert text.count("Patient ages.") == 1
+    assert "## Table 1 Patient ages." in text
+    assert text.startswith("See below.")
+
+
+def test_attribution_paragraph_in_table_inside_paragraph_kept():
+    """Prose in a table-wrap outside its caption and table is kept once."""
+    text = extract(
+        b"<p>Intro.<table-wrap><table><tr><td>1</td></tr></table>"
+        b"<attrib><p>Adapted from Smith.</p></attrib></table-wrap></p>"
+    )
+    assert text.count("Adapted from Smith.") == 1
+
+
+def test_comment_inside_paragraph_does_not_leak():
+    """Comments are markup, not text."""
+    assert extract(b"<p>Before<!-- editor: check this --> after.</p>") == "Before after."

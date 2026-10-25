@@ -105,6 +105,16 @@ BLOCK_ELEMENTS = frozenset(
         "disp-formula",
         "fig",
         "boxed-text",
+        "verse-line",
+        "preformat",
+        "code",
+        "attrib",
+        # <array> is a table without table semantics, so it is rendered
+        # inline; its cells must still be kept apart.
+        "array",
+        "tr",
+        "td",
+        "th",
     }
 )
 

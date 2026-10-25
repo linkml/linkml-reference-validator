@@ -244,3 +244,28 @@ def test_well_formed_xml_logs_no_recovery(caplog):
 def test_empty_input_returns_none(data):
     """Empty input is no document, not an error."""
     assert XMLExtractor().extract(data) is None
+
+
+@pytest.mark.parametrize(
+    "markup,expected",
+    [
+        (
+            b"<p><disp-quote><verse-group><verse-line>line one</verse-line>"
+            b"<verse-line>line two</verse-line></verse-group></disp-quote></p>",
+            "line one line two",
+        ),
+        (b"<p>Run<preformat>make all</preformat>then</p>", "Run make all then"),
+        (b"<p>Run<code>make all</code>then</p>", "Run make all then"),
+        (
+            b"<p><disp-quote><p>Quoted.</p><attrib>A. Author</attrib></disp-quote></p>",
+            "Quoted. A. Author",
+        ),
+        (
+            b"<p><array><tbody><tr><td>a</td><td>b</td></tr></tbody></array>after</p>",
+            "a b after",
+        ),
+    ],
+)
+def test_rarer_jats_blocks_are_separated(markup, expected):
+    """Verse lines, code blocks, attributions and arrays are blocks too."""
+    assert extract(markup) == expected

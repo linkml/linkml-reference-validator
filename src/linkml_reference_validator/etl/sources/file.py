@@ -79,7 +79,7 @@ class FileSource(ReferenceSource):
             >>> # Would read file in real usage:
             >>> # ref = source.fetch("./notes.md", config)
         """
-        file_path = self._resolve_path(identifier, config)
+        file_path = self.resolve_path(identifier, config)
 
         if not file_path.exists():
             logger.warning(f"File not found: {file_path}")
@@ -129,40 +129,40 @@ class FileSource(ReferenceSource):
             content_type=FIGURE_CONTENT_TYPES[figure_format] if text else "unavailable",
         )
 
-    def _resolve_path(self, identifier: str, config: ReferenceValidationConfig) -> Path:
+    @staticmethod
+    def resolve_path(identifier: str, config: ReferenceValidationConfig) -> Path:
         """Resolve a file path from identifier.
 
         - Absolute paths are used directly
         - Relative paths use reference_base_dir if set, otherwise CWD
+
+        The result is canonical (``.``, ``..`` and symlinks resolved), so every
+        spelling of one file gives one path, and one cache key (#135).
 
         Args:
             identifier: File path string
             config: Configuration with optional reference_base_dir
 
         Returns:
-            Resolved Path object
+            Resolved absolute Path object
 
         Examples:
+            >>> import tempfile
             >>> from linkml_reference_validator.models import ReferenceValidationConfig
-            >>> source = FileSource()
-            >>> config = ReferenceValidationConfig()
-            >>> # Absolute path stays absolute
-            >>> p = source._resolve_path("/tmp/test.md", config)
-            >>> p.is_absolute()
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     config = ReferenceValidationConfig(reference_base_dir=Path(d))
+            ...     relative = FileSource.resolve_path("./sub/../notes.md", config)
+            ...     absolute = FileSource.resolve_path(str(Path(d) / "notes.md"), config)
+            >>> relative == absolute and relative.is_absolute()
             True
         """
         path = Path(identifier)
 
-        # Absolute paths are used directly
-        if path.is_absolute():
-            return path
-
         # Relative paths: use base_dir if set, otherwise CWD
-        base_dir = getattr(config, "reference_base_dir", None)
-        if base_dir is not None:
-            return Path(base_dir) / path
-        else:
-            return Path.cwd() / path
+        if not path.is_absolute():
+            base_dir = getattr(config, "reference_base_dir", None)
+            path = Path(base_dir) / path if base_dir is not None else Path.cwd() / path
+        return path.resolve()
 
     def _extract_title(self, content: str, file_path: Path) -> str:
         """Extract title from content or use filename.

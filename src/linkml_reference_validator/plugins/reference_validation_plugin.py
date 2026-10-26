@@ -266,14 +266,14 @@ if _LINKML_AVAILABLE:
                     # A title field names the paper, so it applies only when
                     # one paper is cited; listed objects carry their own.
                     if len(references) == 1:
+                        reference_id, expected_title = references[0]
                         for title_field in title_fields:
                             title_value = instance.get(title_field)
                             if title_value:
-                                references[0] = (references[0][0], title_value)
+                                expected_title = title_value
                                 break
-                    if len(references) == 1:
                         yield from self._validate_excerpt(
-                            excerpt_value, *references[0], excerpt_path
+                            excerpt_value, reference_id, expected_title, excerpt_path
                         )
                     else:
                         yield from self._validate_excerpt_any(

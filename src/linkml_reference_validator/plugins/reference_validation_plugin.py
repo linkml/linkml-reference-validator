@@ -533,11 +533,16 @@ if _LINKML_AVAILABLE:
                 'PMID:12345678'
                 >>> plugin._extract_reference_id({"id": "PMID:12345678"})
                 'PMID:12345678'
+                >>> plugin._extract_reference_id({"id": 123}) is None
+                True
             """
-            if isinstance(reference_value, str):
+            if isinstance(reference_value, dict):
+                reference_value = reference_value.get("id") or reference_value.get(
+                    "reference_id"
+                )
+            # Only text can be an identifier; {"id": 123} would crash parsing.
+            if isinstance(reference_value, str) and reference_value:
                 return reference_value
-            elif isinstance(reference_value, dict):
-                return reference_value.get("id") or reference_value.get("reference_id")
             return None
 
         def _extract_title(self, reference_value: Any) -> Optional[str]:

@@ -125,6 +125,9 @@ def test_skipped_prefix_in_list_counts_as_skipped(setup):
         0,
         False,
         {},
+        [{"id": 123}],
+        {"id": 123},
+        {"id": ""},
     ],
 )
 def test_reference_without_usable_id_is_an_error(setup, reference):

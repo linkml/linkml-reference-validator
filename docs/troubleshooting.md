@@ -724,6 +724,37 @@ attributes:
     slot_uri: linkml:authoritative_reference
 ```
 
+### Citing several references for one excerpt
+
+A reference slot may be `multivalued: true`, holding a list of identifiers
+(or inlined objects with an `id`). The excerpt then passes if **any** listed
+reference contains it: a statement can rest on several papers, and its quote
+comes from one of them. References are tried in order, and the remaining ones
+are not fetched once one passes. A reference whose prefix is in
+`skip_prefixes` is not evidence either way: the other references still decide,
+and the excerpt is counted as skipped only if every listed reference is skipped.
+If none holds the excerpt, a single error names each reference with its own
+reason. The excerpt counts once in "Snippets
+checked", however many references were tried.
+
+A title slot names one paper, so it is compared only when a single reference
+is listed. With several, give each listed object its own `title`.
+
+Before this, a list was silently ignored: its excerpts were never compared and a
+fabricated quote passed with exit code 0.
+
+### "Reference at '...' has no usable identifier"
+
+**Cause:**
+The reference slot holds a value, but no identifier can be read from it: an
+inlined object with no `id` (or `reference_id`), an empty string, a number, or
+a `null` list item. The excerpt beside it cannot be checked, so this is an
+error rather than a silent pass.
+
+**Solution:**
+Give the reference an identifier, e.g. `reference: {id: PMID:12345678}`. An
+excerpt with no reference value at all is not affected by this check.
+
 ### "Reference base directory not found"
 
 **Cause:**

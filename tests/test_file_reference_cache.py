@@ -117,3 +117,12 @@ def test_symlink_keeps_the_path_as_written(config, notes):
     current.symlink_to(other)
     assert fetcher.fetch("file:current.md").content == "other version"
     assert len(list(config.cache_dir.glob("*.md"))) == 1
+
+
+def test_forced_refresh_of_a_deleted_file_finds_nothing(config, notes):
+    fetcher = ReferenceFetcher(config)
+    assert fetcher.fetch(f"file:{notes}") is not None
+    notes.unlink()
+    outcome = fetcher.fetch_with_provenance(f"file:{notes}", force_refresh=True)
+    assert outcome.content is None
+    assert not outcome.served_stale

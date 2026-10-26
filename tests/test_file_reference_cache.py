@@ -102,3 +102,18 @@ def test_unchanged_file_is_written_once(config, notes, mocker):
     assert fetcher.fetch("file:notes.md").content == "version two"
     assert save.call_count == 2
     assert "version two" in fetcher.get_cache_path("file:notes.md").read_text()
+
+
+def test_symlink_keeps_the_path_as_written(config, notes):
+    current = config.reference_base_dir / "current.md"
+    current.symlink_to(notes)
+    fetcher = ReferenceFetcher(config)
+    ref = fetcher.fetch("file:current.md")
+    assert ref.content == "version one"
+    assert ref.reference_id == f"file:{current}"
+    other = config.reference_base_dir / "other.md"
+    other.write_text("other version", encoding="utf-8")
+    current.unlink()
+    current.symlink_to(other)
+    assert fetcher.fetch("file:current.md").content == "other version"
+    assert len(list(config.cache_dir.glob("*.md"))) == 1

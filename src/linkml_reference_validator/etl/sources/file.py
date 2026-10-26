@@ -11,6 +11,7 @@ Examples:
 """
 
 import logging
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -136,8 +137,12 @@ class FileSource(ReferenceSource):
         - Absolute paths are used directly
         - Relative paths use reference_base_dir if set, otherwise CWD
 
-        The result is canonical (``.``, ``..`` and symlinks resolved), so every
-        spelling of one file gives one path, and one cache key (#135).
+        The result is absolute with ``.`` and ``..`` collapsed, so relative and
+        absolute spellings of one path give one path, and one cache key (#135).
+        Symlinks are deliberately not followed: a report names the path the
+        curator wrote, and repointing a link (a "current version" link, say)
+        does not leave an entry under the old target behind. A link and its
+        target are therefore two references, each read live from the file.
 
         Args:
             identifier: File path string
@@ -162,7 +167,7 @@ class FileSource(ReferenceSource):
         if not path.is_absolute():
             base_dir = getattr(config, "reference_base_dir", None)
             path = Path(base_dir) / path if base_dir is not None else Path.cwd() / path
-        return path.resolve()
+        return Path(os.path.abspath(path))
 
     def _extract_title(self, content: str, file_path: Path) -> str:
         """Extract title from content or use filename.

@@ -90,3 +90,15 @@ def test_svg_figure_sees_an_edit(config):
     assert fetcher.fetch("file:fig.svg").content == "AKT"
     assert ReferenceFetcher(config).fetch(f"file:{figure}").content == "AKT"
     assert len(list(config.cache_dir.glob("*.md"))) == 1
+
+
+def test_unchanged_file_is_written_once(config, notes, mocker):
+    fetcher = ReferenceFetcher(config)
+    save = mocker.spy(fetcher, "_save_to_disk")
+    for _ in range(3):
+        assert fetcher.fetch("file:notes.md").content == "version one"
+    assert save.call_count == 1
+    notes.write_text("version two", encoding="utf-8")
+    assert fetcher.fetch("file:notes.md").content == "version two"
+    assert save.call_count == 2
+    assert "version two" in fetcher.get_cache_path("file:notes.md").read_text()

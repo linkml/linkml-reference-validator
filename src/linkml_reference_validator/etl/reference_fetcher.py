@@ -308,6 +308,10 @@ class ReferenceFetcher:
         # obtained: a stale fallback stays flagged on every later read in this
         # process instead of being laundered into a fresh-looking hit.
         self._cache: dict[str, FetchOutcome] = {}
+        # What was last written for each file: reference. Never served (a file is
+        # always read live), only compared, so a file cited many times is written
+        # once per change rather than once per citation.
+        self._saved_files: dict[str, ReferenceContent] = {}
         self._acquirer = ContentAcquirer()
         # Build the PDF extractor once: this validates config.pdf_backend up front
         # (an unknown backend raises here, at init, rather than mid-fetch) and avoids
@@ -382,7 +386,10 @@ class ReferenceFetcher:
         # records which version a cache entry was read from. So it is always
         # read from the file: neither cache is consulted, and a file that has
         # gone is not found, rather than served from an old copy (#135). The
-        # entry is still written, for the cache commands and export.
+        # entry is still written, for the cache commands and export, when it
+        # differs from what this fetcher last wrote. Skipping the read on an
+        # unchanged mtime and size would be cheaper, but a timestamp is too
+        # coarse to catch a same-size edit made just after the last read.
         live = normalized_reference_id.startswith("file:")
 
         # Check memory cache
@@ -453,7 +460,9 @@ class ReferenceFetcher:
             return self._stale_fallback(normalized_reference_id, force_refresh or live)
 
         if live:
-            self._save_by_access(content)
+            if self._saved_files.get(normalized_reference_id) != content:
+                self._save_by_access(content)
+                self._saved_files[normalized_reference_id] = content
             return FetchOutcome(content=content)
 
         preserved = self._preserve_cached_full_text(

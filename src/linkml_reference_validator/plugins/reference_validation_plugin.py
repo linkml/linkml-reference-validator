@@ -237,7 +237,9 @@ if _LINKML_AVAILABLE:
                 unusable: list[LinkMLValidationResult] = []
                 for ref_field in reference_fields:
                     ref_value = instance.get(ref_field)
-                    if not ref_value:
+                    # Absent, null or an empty list is no reference. Any other
+                    # value, "" and 0 included, was meant as one.
+                    if ref_value is None or ref_value == []:
                         continue
                     ref_path = f"{path}.{ref_field}" if path else ref_field
                     # A multivalued slot holds a list; a single value is a

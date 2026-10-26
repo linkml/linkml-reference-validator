@@ -37,6 +37,7 @@ from linkml_reference_validator.models import (
 )
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.clinicaltrials import NCT_ID_PATTERN
+from linkml_reference_validator.etl.sources.file import FileSource
 from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
@@ -307,6 +308,10 @@ class ReferenceFetcher:
         # obtained: a stale fallback stays flagged on every later read in this
         # process instead of being laundered into a fresh-looking hit.
         self._cache: dict[str, FetchOutcome] = {}
+        # What was last written for each file: reference. Never served (a file is
+        # always read live), only compared, so a file cited many times is written
+        # once per change rather than once per citation.
+        self._saved_files: dict[str, ReferenceContent] = {}
         self._acquirer = ContentAcquirer()
         # Build the PDF extractor once: this validates config.pdf_backend up front
         # (an unknown backend raises here, at init, rather than mid-fetch) and avoids
@@ -377,13 +382,22 @@ class ReferenceFetcher:
             >>> # outcome.served_stale
         """
         normalized_reference_id = self.normalize_reference_id(reference_id)
+        # A local file is cheap to read and can change at any time, and nothing
+        # records which version a cache entry was read from. So it is always
+        # read from the file: neither cache is consulted, and a file that has
+        # gone is not found, rather than served from an old copy (#135). The
+        # entry is still written, for the cache commands and export, when it
+        # differs from what this fetcher last wrote. Skipping the read on an
+        # unchanged mtime and size would be cheaper, but a timestamp is too
+        # coarse to catch a same-size edit made just after the last read.
+        live = normalized_reference_id.startswith("file:")
 
         # Check memory cache
-        if not force_refresh and normalized_reference_id in self._cache:
+        if not force_refresh and not live and normalized_reference_id in self._cache:
             return self._cache[normalized_reference_id]
 
         # Check disk cache
-        if not force_refresh:
+        if not force_refresh and not live:
             cached = self._load_from_disk(
                 normalized_reference_id,
                 allow_stale=self.config.trust_cached_entries,
@@ -443,7 +457,13 @@ class ReferenceFetcher:
             content = self._enrich_with_full_text(content)
 
         if not content:
-            return self._stale_fallback(normalized_reference_id, force_refresh)
+            return self._stale_fallback(normalized_reference_id, force_refresh or live)
+
+        if live:
+            if self._saved_files.get(normalized_reference_id) != content:
+                self._save_by_access(content)
+                self._saved_files[normalized_reference_id] = content
+            return FetchOutcome(content=content)
 
         preserved = self._preserve_cached_full_text(
             normalized_reference_id, content, force_refresh
@@ -1120,10 +1140,23 @@ class ReferenceFetcher:
             'clinicaltrials:NCT12345678'
             >>> fetcher.normalize_reference_id("CLINICALTRIALS:nct12345678")
             'clinicaltrials:NCT12345678'
+
+            A ``file:`` path is resolved, so relative and absolute spellings of
+            one file are one reference:
+
+            >>> import tempfile
+            >>> base = Path(tempfile.gettempdir())
+            >>> config = ReferenceValidationConfig(reference_base_dir=base)
+            >>> fetcher = ReferenceFetcher(config)
+            >>> relative = fetcher.normalize_reference_id("file:./sub/../notes.md")
+            >>> relative == fetcher.normalize_reference_id(f"file:{base / 'notes.md'}")
+            True
         """
         prefix, identifier = self._parse_reference_id(reference_id)
         if prefix == "UNKNOWN":
             return reference_id.strip()
+        if prefix == "file":
+            return f"file:{FileSource.resolve_path(identifier, self.config)}"
         return f"{prefix}:{identifier}"
 
     def _normalize_prefix(self, prefix: str) -> str:
@@ -1147,7 +1180,8 @@ class ReferenceFetcher:
     def get_cache_path(self, reference_id: str) -> Path:
         """Get the cache file path for a reference.
 
-        Bare NCT IDs and ClinicalTrials casing are canonicalized. For configured
+        Bare NCT IDs, ClinicalTrials casing and ``file:`` paths are
+        canonicalized. For configured
         prefix aliases, pass the result of :meth:`normalize_reference_id`.
 
         Args:
@@ -1207,6 +1241,8 @@ class ReferenceFetcher:
         )
         if prefix == "clinicaltrials":
             reference_id = f"{prefix}:{identifier}"
+        if prefix == "file":
+            reference_id = f"file:{FileSource.resolve_path(identifier, self.config)}"
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
         # prefix maps here could follow a second alias and change the cache key.
         path = cache_dir / cache_filename(reference_id)

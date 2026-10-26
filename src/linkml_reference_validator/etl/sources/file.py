@@ -165,7 +165,7 @@ class FileSource(ReferenceSource):
 
         # Relative paths: use base_dir if set, otherwise CWD
         if not path.is_absolute():
-            base_dir = getattr(config, "reference_base_dir", None)
+            base_dir = config.reference_base_dir
             path = Path(base_dir) / path if base_dir is not None else Path.cwd() / path
         return Path(os.path.abspath(path))
 

@@ -269,3 +269,20 @@ def test_a_preserved_entry_keeps_failing_until_forced(cache_dir, mocker):
     # What --force costs, asserted rather than left to the reader. It is the
     # remedy the failure message names, so the cost belongs in the contract.
     assert "Scraped page text" not in path.read_text(encoding="utf-8")
+
+
+def test_caching_a_file_reference_writes_a_current_entry(cache_dir, tmp_path):
+    """A file: reference is read live, yet the command still leaves an entry (#135)."""
+    notes = tmp_path / "notes.md"
+    notes.write_text("# Notes\n\nversion one", encoding="utf-8")
+
+    result = _run(cache_dir, f"file:{notes}")
+
+    assert result.exit_code == 0, result.output
+    assert "Successfully cached" in result.output
+    entry = _fetcher(cache_dir).get_cache_path(f"file:{notes}").read_text()
+    assert "version one" in entry
+
+    notes.write_text("# Notes\n\nversion two", encoding="utf-8")
+    assert _run(cache_dir, f"file:{notes}").exit_code == 0
+    assert "version two" in _fetcher(cache_dir).get_cache_path(f"file:{notes}").read_text()

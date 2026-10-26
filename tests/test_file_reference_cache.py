@@ -7,11 +7,13 @@ from linkml_reference_validator.models import ReferenceValidationConfig
 
 
 def svg(label: str) -> str:
+    """An SVG figure that draws one text label."""
     return f'<svg xmlns="http://www.w3.org/2000/svg"><text>{label}</text></svg>'
 
 
 @pytest.fixture
 def config(tmp_path):
+    """A config with its own cache, resolving relative paths against ``refs``."""
     return ReferenceValidationConfig(
         cache_dir=tmp_path / "cache", reference_base_dir=tmp_path / "refs"
     )
@@ -19,6 +21,7 @@ def config(tmp_path):
 
 @pytest.fixture
 def notes(config):
+    """A markdown file in the reference base directory, reading ``version one``."""
     config.reference_base_dir.mkdir()
     path = config.reference_base_dir / "notes.md"
     path.write_text("version one", encoding="utf-8")

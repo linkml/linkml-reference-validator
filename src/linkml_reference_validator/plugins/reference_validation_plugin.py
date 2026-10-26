@@ -259,6 +259,8 @@ if _LINKML_AVAILABLE:
                                 self._unusable_reference(item, item_path, excerpt_path)
                             )
                     if not references:
+                        # Deliberately the first such field only: one error
+                        # is enough to say the excerpt cannot be checked.
                         unusable = unusable or field_unusable
                         continue
                     validated_with_excerpt = True

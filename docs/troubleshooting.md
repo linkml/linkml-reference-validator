@@ -730,8 +730,11 @@ A reference slot may be `multivalued: true`, holding a list of identifiers
 (or inlined objects with an `id`). The excerpt then passes if **any** listed
 reference contains it: a statement can rest on several papers, and its quote
 comes from one of them. References are tried in order, and the remaining ones
-are not fetched once one passes. If none holds the excerpt, a single error names
-each reference with its own reason. The excerpt counts once in "Snippets
+are not fetched once one passes. A reference whose prefix is in
+`skip_prefixes` is not evidence either way: the other references still decide,
+and the excerpt is counted as skipped only if every listed reference is skipped.
+If none holds the excerpt, a single error names each reference with its own
+reason. The excerpt counts once in "Snippets
 checked", however many references were tried.
 
 A title slot names one paper, so it is compared only when a single reference

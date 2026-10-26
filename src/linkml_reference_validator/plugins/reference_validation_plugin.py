@@ -612,7 +612,9 @@ if _LINKML_AVAILABLE:
             The excerpt passes if one reference holds it; curators cite every
             paper a statement rests on, and a quote comes from one of them.
             References are tried in order and the rest are not fetched once
-            one passes. The excerpt counts once, however many were tried.
+            one passes. A reference with a skipped prefix vouches for nothing:
+            the excerpt is skipped only if every reference is. The excerpt
+            counts once, however many were tried.
 
             Args:
                 excerpt: Supporting text to validate
@@ -623,18 +625,25 @@ if _LINKML_AVAILABLE:
                 One ValidationResult naming every reference, if none holds it
             """
             results = []
+            skipped = []
             for reference_id, expected_title in references:
                 result = self.validator.validate(
                     excerpt, reference_id, expected_title=expected_title, path=path
                 )
+                # A skipped prefix is valid only in that nothing was checked;
+                # it is no evidence for the excerpt, so the others still decide.
+                if result.skipped:
+                    skipped.append(reference_id)
+                    continue
                 if result.is_valid:
-                    if result.match_result is not None:
-                        self.snippets_checked += 1
-                    elif result.skipped:
-                        self.snippets_skipped += 1
+                    self.snippets_checked += int(result.match_result is not None)
                     self.titles_checked += int(result.title_checked)
                     return
                 results.append((reference_id, result))
+
+            if not results:
+                self.snippets_skipped += 1
+                return
 
             if any(result.match_result is not None for _, result in results):
                 self.snippets_checked += 1
@@ -647,6 +656,8 @@ if _LINKML_AVAILABLE:
                 f"{reference_id}: {result.message or 'validation failed'}"
                 for reference_id, result in results
             )
+            if skipped:
+                details += f"; not checked (skipped prefix): {', '.join(skipped)}"
             yield LinkMLValidationResult(
                 type="reference_validation",
                 severity=Severity.ERROR if Severity.ERROR in severities else severities[0],

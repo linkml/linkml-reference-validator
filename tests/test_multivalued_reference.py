@@ -159,3 +159,34 @@ def test_cli_exits_nonzero_for_fabricated_quote(setup, tmp_path):
     )
     assert result.exit_code == 1, result.output
     assert "Snippets checked: 1" in result.output
+
+
+@pytest.mark.parametrize(
+    "references",
+    [["GO:123", "PMID:TEST001"], ["PMID:TEST001", "GO:123"]],
+)
+def test_skipped_reference_is_no_evidence_for_a_fabricated_quote(setup, references):
+    """A skipped prefix must not vouch for a quote another reference lacks."""
+    _, _, plugin, validator = setup
+    report = validator.validate({"reference": references, "supporting_text": FABRICATED})
+    assert len(report.results) == 1
+    assert "PMID:TEST001" in report.results[0].message
+    assert (plugin.snippets_checked, plugin.snippets_skipped) == (1, 0)
+
+
+def test_skipped_reference_beside_a_holding_reference_passes(setup):
+    """The quote passes on the reference that holds it, skip or no skip."""
+    _, _, plugin, validator = setup
+    report = validator.validate(
+        {"reference": ["GO:123", "PMID:TEST001"], "supporting_text": QUOTE_1}
+    )
+    assert report.results == []
+    assert (plugin.snippets_checked, plugin.snippets_skipped) == (1, 0)
+
+
+def test_all_listed_references_skipped_counts_as_skipped(setup):
+    """Only when every reference is skipped is the excerpt skipped."""
+    _, _, plugin, validator = setup
+    report = validator.validate({"reference": ["GO:123", "GO:456"], "supporting_text": QUOTE_1})
+    assert report.results == []
+    assert (plugin.snippets_checked, plugin.snippets_skipped) == (0, 1)

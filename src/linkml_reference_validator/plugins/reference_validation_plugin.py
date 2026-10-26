@@ -660,7 +660,12 @@ if _LINKML_AVAILABLE:
                 self.snippets_unavailable += 1
             self.titles_checked += int(any(result.title_checked for _, result in results))
 
-            severities = [self._convert_severity(result.severity) for _, result in results]
+            # Severity is declared most severe first; take the most severe so
+            # the outcome does not depend on the order references are listed.
+            severity = min(
+                (self._convert_severity(result.severity) for _, result in results),
+                key=list(Severity).index,
+            )
             details = "; ".join(
                 f"{reference_id}: {result.message or 'validation failed'}"
                 for reference_id, result in results
@@ -669,7 +674,7 @@ if _LINKML_AVAILABLE:
                 details += f"; not checked (skipped prefix): {', '.join(skipped)}"
             yield LinkMLValidationResult(
                 type="reference_validation",
-                severity=Severity.ERROR if Severity.ERROR in severities else severities[0],
+                severity=severity,
                 message=(
                     f"Supporting text not found in any of the {len(results)} "
                     f"cited references ({details})"

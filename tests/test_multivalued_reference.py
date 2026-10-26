@@ -2,10 +2,14 @@
 
 import pytest
 from linkml.validator import Validator  # type: ignore[import-untyped]
+from linkml.validator.report import Severity  # type: ignore[import-untyped]
 from typer.testing import CliRunner
 
 from linkml_reference_validator.cli import app
-from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml_reference_validator.models import (
+    ReferenceValidationConfig,
+    ValidationSeverity,
+)
 from linkml_reference_validator.plugins.reference_validation_plugin import (
     ReferenceValidationPlugin,
 )
@@ -197,3 +201,26 @@ def test_all_listed_references_skipped_counts_as_skipped(setup):
     report = validator.validate({"reference": ["GO:123", "GO:456"], "supporting_text": QUOTE_1})
     assert report.results == []
     assert (plugin.snippets_checked, plugin.snippets_skipped) == (0, 1)
+
+
+@pytest.mark.parametrize(
+    "references,expected",
+    [
+        (["UNSUPPORTED:1", "PMID:TEST001"], Severity.ERROR),
+        (["PMID:TEST001", "UNSUPPORTED:1"], Severity.ERROR),
+        (["UNSUPPORTED:1", "UNSUPPORTED:2"], Severity.WARN),
+    ],
+)
+def test_combined_error_takes_the_most_severe(setup, references, expected):
+    """The combined severity does not depend on the order references are listed."""
+    schema, cache, _, _ = setup
+    plugin = ReferenceValidationPlugin(
+        config=ReferenceValidationConfig(
+            cache_dir=cache,
+            fetch_full_text=False,
+            unknown_prefix_severity=ValidationSeverity.WARNING,
+        )
+    )
+    validator = Validator(schema=str(schema), validation_plugins=[plugin])
+    report = validator.validate({"reference": references, "supporting_text": FABRICATED})
+    assert [result.severity for result in report.results] == [expected]

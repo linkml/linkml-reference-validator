@@ -1574,6 +1574,28 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#citing-several-references-for-one-excerpt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citing several references for one excerpt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-at-has-no-usable-identifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Reference at '...' has no usable identifier"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#reference-base-directory-not-found" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2078,6 +2100,28 @@
     <span class="md-ellipsis">
       
         "Multiple reference fields found"
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#citing-several-references-for-one-excerpt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Citing several references for one excerpt
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#reference-at-has-no-usable-identifier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        "Reference at '...' has no usable identifier"
       
     </span>
   </a>
@@ -2846,6 +2890,30 @@ attributes:
   reference_id:
     slot_uri: linkml:authoritative_reference
 </code></pre>
+<h3 id="citing-several-references-for-one-excerpt">Citing several references for one excerpt</h3>
+<p>A reference slot may be <code>multivalued: true</code>, holding a list of identifiers
+(or inlined objects with an <code>id</code>). The excerpt then passes if <strong>any</strong> listed
+reference contains it: a statement can rest on several papers, and its quote
+comes from one of them. References are tried in order, and the remaining ones
+are not fetched once one passes. A reference whose prefix is in
+<code>skip_prefixes</code> is not evidence either way: the other references still decide,
+and the excerpt is counted as skipped only if every listed reference is skipped.
+If none holds the excerpt, a single error names each reference with its own
+reason. The excerpt counts once in "Snippets
+checked", however many references were tried.</p>
+<p>A title slot names one paper, so it is compared only when a single reference
+is listed. With several, give each listed object its own <code>title</code>.</p>
+<p>Before this, a list was silently ignored: its excerpts were never compared and a
+fabricated quote passed with exit code 0.</p>
+<h3 id="reference-at-has-no-usable-identifier">"Reference at '...' has no usable identifier"</h3>
+<p><strong>Cause:</strong>
+The reference slot holds a value, but no identifier can be read from it: an
+inlined object with no <code>id</code> (or <code>reference_id</code>), an empty string, a number, or
+a <code>null</code> list item. The excerpt beside it cannot be checked, so this is an
+error rather than a silent pass.</p>
+<p><strong>Solution:</strong>
+Give the reference an identifier, e.g. <code>reference: {id: PMID:12345678}</code>. An
+excerpt with no reference value at all is not affected by this check.</p>
 <h3 id="reference-base-directory-not-found">"Reference base directory not found"</h3>
 <p><strong>Cause:</strong>
 Using <code>file:</code> references but base directory not configured</p>

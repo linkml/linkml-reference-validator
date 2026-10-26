@@ -224,3 +224,25 @@ def test_combined_error_takes_the_most_severe(setup, references, expected):
     validator = Validator(schema=str(schema), validation_plugins=[plugin])
     report = validator.validate({"reference": references, "supporting_text": FABRICATED})
     assert [result.severity for result in report.results] == [expected]
+
+
+@pytest.mark.parametrize(
+    "references",
+    [["UNSUPPORTED:1", "PMID:TEST001"], ["PMID:TEST001", "UNSUPPORTED:1"]],
+)
+def test_unavailable_beside_a_mismatch_counts_as_checked(setup, references):
+    """A real comparison outranks an unfetchable reference in the counts."""
+    _, _, plugin, validator = setup
+    report = validator.validate({"reference": references, "supporting_text": FABRICATED})
+    assert len(report.results) == 1
+    assert (plugin.snippets_checked, plugin.snippets_unavailable) == (1, 0)
+
+
+def test_all_listed_references_unavailable_counts_as_unavailable(setup):
+    """With nothing fetched, the excerpt is unavailable, not checked."""
+    _, _, plugin, validator = setup
+    report = validator.validate(
+        {"reference": ["UNSUPPORTED:1", "UNSUPPORTED:2"], "supporting_text": QUOTE_1}
+    )
+    assert len(report.results) == 1
+    assert (plugin.snippets_checked, plugin.snippets_unavailable) == (0, 1)

@@ -1144,8 +1144,13 @@ class ReferenceFetcher:
             A ``file:`` path is resolved, so relative and absolute spellings of
             one file are one reference:
 
-            >>> fetcher.normalize_reference_id("file:/data/./notes.md")
-            'file:/data/notes.md'
+            >>> import tempfile
+            >>> base = Path(tempfile.gettempdir())
+            >>> config = ReferenceValidationConfig(reference_base_dir=base)
+            >>> fetcher = ReferenceFetcher(config)
+            >>> relative = fetcher.normalize_reference_id("file:./sub/../notes.md")
+            >>> relative == fetcher.normalize_reference_id(f"file:{base / 'notes.md'}")
+            True
         """
         prefix, identifier = self._parse_reference_id(reference_id)
         if prefix == "UNKNOWN":

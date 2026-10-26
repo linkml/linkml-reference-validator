@@ -327,6 +327,7 @@ class RepairConfig(BaseModel):
             "+/-": "±",
             "+-": "±",
             "CO2": "CO₂",
+            "H2O2": "H₂O₂",
             "H2O": "H₂O",
             "O2": "O₂",
             "N2": "N₂",

@@ -113,13 +113,19 @@ class SupportingTextRepairer:
         self.validator = SupportingTextValidator(validation_config)
         self.fetcher = ReferenceFetcher(validation_config)
 
-    def apply_character_mappings(self, text: str) -> str:
+    def apply_character_mappings(self, text: str, skip_punctuation: bool = False) -> str:
         """Apply character normalization mappings to text.
 
-        Replaces ASCII approximations with proper Unicode characters.
+        Replaces ASCII approximations with proper Unicode characters. A mapping
+        applies only where no ASCII letter or digit adjoins it, so ``O2`` is
+        left alone in ``CDKN2A`` and ``+-`` in ``Ca2+-dependent``. All mappings
+        apply in one pass, longest first, so one mapping's output is never
+        rewritten by another.
 
         Args:
             text: Text to normalize
+            skip_punctuation: Leave out mappings that change only punctuation,
+                which validation ignores and so cannot confirm
 
         Returns:
             Text with character substitutions applied
@@ -131,11 +137,61 @@ class SupportingTextRepairer:
             'CO₂ and H₂O'
             >>> repairer.apply_character_mappings("+/- 5 percent")
             '± 5 percent'
+            >>> repairer.apply_character_mappings("CDKN2A, H2O2 and Ca2+-dependent")
+            'CDKN2A, H₂O₂ and Ca2+-dependent'
+            >>> repairer.apply_character_mappings("5 +- 2 mM CO2", skip_punctuation=True)
+            '5 +- 2 mM CO₂'
         """
-        result = text
-        for original, replacement in self.repair_config.character_mappings.items():
-            result = result.replace(original, replacement)
-        return result
+        normalize = SupportingTextValidator.normalize_text
+        mappings = {
+            original: replacement
+            for original, replacement in self.repair_config.character_mappings.items()
+            if not (skip_punctuation and normalize(original) == normalize(replacement))
+        }
+        if not mappings:
+            return text
+        alternatives = "|".join(re.escape(original) for original in sorted(mappings, key=len, reverse=True))
+        pattern = rf"(?<![A-Za-z0-9])(?:{alternatives})(?![A-Za-z0-9])"
+        return re.sub(pattern, lambda match: mappings[match.group(0)], text)
+
+    def _all_parts_found(
+        self, text: str, texts: list[str], literal: bool = False
+    ) -> bool:
+        """Whether every part of ``text`` lies within one of ``texts``, as validation checks.
+
+        The text is split on ``...`` and editorial brackets as the validator
+        splits it. By default parts are compared with the validator's
+        normalization, which ignores punctuation; with ``literal`` only case
+        and whitespace are ignored.
+
+        Args:
+            text: Supporting text to check
+            texts: Texts a part must fall within one of (see
+                :meth:`SupportingTextValidator.searchable_texts`)
+            literal: Compare punctuation too
+
+        Returns:
+            True if the text has parts and each was found
+
+        Examples:
+            >>> from linkml_reference_validator.models import ReferenceValidationConfig
+            >>> repairer = SupportingTextRepairer(ReferenceValidationConfig())
+            >>> texts = ["Ca2+-dependent CO₂ fixation was measured."]
+            >>> repairer._all_parts_found("CO₂ fixation ... was [then] measured", texts)
+            True
+            >>> repairer._all_parts_found("Ca2±dependent CO₂", texts)
+            True
+            >>> repairer._all_parts_found("Ca2±dependent CO₂", texts, literal=True)
+            False
+            >>> repairer._all_parts_found("[note]", texts)
+            False
+        """
+        normalize = normalize_whitespace if literal else SupportingTextValidator.normalize_text
+        parts = self.validator._split_query(text)
+        searchable = [normalize(candidate) for candidate in texts]
+        return bool(parts) and all(
+            any(normalize(part) in candidate for candidate in searchable) for part in parts
+        )
 
     def try_ellipsis_insertion(
         self, snippet: str, reference_content: str
@@ -359,15 +415,16 @@ class SupportingTextRepairer:
         reference_content = reference.content
         # Where the validator will look: an SVG figure label by label.
         texts = SupportingTextValidator.searchable_texts(reference)
-        searchable = [SupportingTextValidator.normalize_text(text) for text in texts]
 
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
+        if not self._all_parts_found(normalized, texts, literal=True):
+            # Validation ignores punctuation, so it cannot confirm a mapping
+            # that changes only punctuation: keep those only when the
+            # reference has the mapped text as written.
+            normalized = self.apply_character_mappings(supporting_text, skip_punctuation=True)
         if normalized != supporting_text:
-            # Check if normalized version validates
-            normalized_lower = SupportingTextValidator.normalize_text(normalized)
-
-            if any(normalized_lower in text for text in searchable):
+            if self._all_parts_found(normalized, texts):
                 # Calculate similarity for the normalization
                 similarity = calculate_text_similarity(normalized, supporting_text)
                 actions.append(RepairAction(
@@ -393,15 +450,7 @@ class SupportingTextRepairer:
         ellipsis_result = self.try_ellipsis_insertion(supporting_text, reference_content)
         if ellipsis_result:
             # Verify the ellipsis version validates
-            parts = self.validator._split_query(ellipsis_result)
-            all_found = True
-            for part in parts:
-                part_norm = SupportingTextValidator.normalize_text(part)
-                if not any(part_norm in text for text in searchable):
-                    all_found = False
-                    break
-
-            if all_found:
+            if self._all_parts_found(ellipsis_result, texts):
                 actions.append(RepairAction(
                     action_type=RepairActionType.ELLIPSIS_INSERTION,
                     original_text=supporting_text,

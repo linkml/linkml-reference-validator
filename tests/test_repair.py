@@ -125,6 +125,145 @@ class TestCharacterNormalization:
         result = repairer.apply_character_mappings(original)
         assert result == original
 
+    @pytest.mark.parametrize(
+        "original,expected",
+        [
+            ("Ca2+-dependent CO2 fixation", "Ca2+-dependent CO₂ fixation"),
+            ("NAD+-linked and Mg2+-ATPase", "NAD+-linked and Mg2+-ATPase"),
+            ("CDKN2A and O2", "CDKN2A and O₂"),
+            ("Neuro-2a N2a cells and HEK293N2", "Neuro-2a N2a cells and HEK293N2"),
+            ("H2O2 and H2O", "H₂O₂ and H₂O"),
+            ("CO2 not O2CO2", "CO₂ not O2CO2"),
+            ("5 +- 2 and +/- 5", "5 ± 2 and ± 5"),
+        ],
+    )
+    def test_mappings_apply_only_to_whole_symbols(
+        self, repairer: SupportingTextRepairer, original: str, expected: str
+    ):
+        """A mapping applies only where no letter or digit adjoins it (#128)."""
+        assert repairer.apply_character_mappings(original) == expected
+
+    def test_mappings_apply_in_one_pass(self, validation_config: ReferenceValidationConfig):
+        """One mapping's output is not rewritten by another mapping."""
+        config = RepairConfig(character_mappings={"a": "b", "b": "c"})
+        repairer = SupportingTextRepairer(validation_config, config)
+        assert repairer.apply_character_mappings("a b") == "b c"
+
+    def test_mappings_can_skip_punctuation_only_changes(self, repairer: SupportingTextRepairer):
+        """With skip_punctuation, mappings the validator cannot see are left out."""
+        assert (
+            repairer.apply_character_mappings("5 +- 2 mM CO2", skip_punctuation=True)
+            == "5 +- 2 mM CO₂"
+        )
+
+
+class TestCharacterNormalizationRepair:
+    """attempt_repair's character-normalization strategy (#128, #129)."""
+
+    def test_ion_charge_and_hyphen_survive_repair(self, repairer: SupportingTextRepairer):
+        """The issue #128 reproduction repairs CO2 and leaves Ca2+- alone."""
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="Ca2+-dependent CO₂ fixation was measured in HEK293 cells.",
+        )
+        result = repairer.attempt_repair("Ca2+-dependent CO2 fixation", "PMID:1", ref)
+        assert result.is_repaired
+        assert result.repaired_text == "Ca2+-dependent CO₂ fixation"
+        assert result.actions[0].action_type == RepairActionType.CHARACTER_NORMALIZATION
+        assert result.actions[0].confidence == RepairConfidence.HIGH
+
+    def test_gene_symbol_is_not_mapped(self, repairer: SupportingTextRepairer):
+        """A quote mentioning CDKN2A and O2 repairs O2 only."""
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="Loss of CDKN2A under low O₂ tension was common.",
+        )
+        result = repairer.attempt_repair("CDKN2A under low O2 tension", "PMID:1", ref)
+        assert result.is_repaired
+        assert result.repaired_text == "CDKN2A under low O₂ tension"
+
+    def test_punctuation_only_mapping_is_rejected(
+        self, validation_config: ReferenceValidationConfig
+    ):
+        """A mapping that changes only punctuation is not applied when the reference keeps the original."""
+        config = RepairConfig(character_mappings={"CO2": "CO₂", "--": "–"})
+        repairer = SupportingTextRepairer(validation_config, config)
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="CO₂ rose -- sharply -- in hypoxic tumors.",
+        )
+        result = repairer.attempt_repair("CO2 rose -- sharply", "PMID:1", ref)
+        assert result.is_repaired
+        assert result.repaired_text == "CO₂ rose -- sharply"
+        assert result.actions[0].confidence == RepairConfidence.HIGH
+
+    def test_punctuation_only_mapping_kept_when_reference_has_it(
+        self, validation_config: ReferenceValidationConfig
+    ):
+        """A punctuation mapping is applied when the reference has the mapped form."""
+        config = RepairConfig(character_mappings={"CO2": "CO₂", "--": "–"})
+        repairer = SupportingTextRepairer(validation_config, config)
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="CO₂ rose – sharply – in hypoxic tumors.",
+        )
+        result = repairer.attempt_repair("CO2 rose -- sharply", "PMID:1", ref)
+        assert result.repaired_text == "CO₂ rose – sharply"
+
+    @pytest.mark.parametrize(
+        "quote,content",
+        [
+            (
+                "CO2 levels rose sharply ... Glycolytic flux doubled in hypoxic tumor cells",
+                "CO₂ levels rose sharply in the first hour. Later, after many other "
+                "measurements were taken and recorded in detail, Glycolytic flux "
+                "doubled in hypoxic tumor cells.",
+            ),
+            (
+                "CO2 levels rose sharply [over time] over the first week",
+                "CO₂ levels rose sharply over the first week.",
+            ),
+            (
+                "CO2 levels [in tumors] rose sharply ... doubled in hypoxic tumor cells",
+                "CO₂ levels rose sharply. Much later, glycolytic flux doubled in "
+                "hypoxic tumor cells.",
+            ),
+        ],
+    )
+    def test_quotes_with_ellipsis_or_brackets_repair(
+        self, repairer: SupportingTextRepairer, quote: str, content: str
+    ):
+        """The mapped quote is checked part by part, as validation does (#129)."""
+        ref = ReferenceContent(reference_id="PMID:1", content=content)
+        result = repairer.attempt_repair(quote, "PMID:1", ref)
+        assert result.is_repaired
+        assert result.repaired_text == repairer.apply_character_mappings(quote)
+        assert result.actions[0].action_type == RepairActionType.CHARACTER_NORMALIZATION
+        assert repairer.validator.find_text_in_reference(result.repaired_text, ref).found
+
+    def test_svg_parts_in_different_labels_repair(self, repairer: SupportingTextRepairer):
+        """Each part of an SVG quote may sit in its own label."""
+        ref = ReferenceContent(
+            reference_id="file:fig.svg",
+            content="CO₂ uptake\n\nactivates AKT",
+            content_type="local_svg",
+        )
+        result = repairer.attempt_repair("CO2 uptake ... activates AKT", "file:fig.svg", ref)
+        assert result.is_repaired
+        assert result.repaired_text == "CO₂ uptake ... activates AKT"
+
+    def test_svg_quote_across_labels_does_not_repair(self, repairer: SupportingTextRepairer):
+        """A part spanning two SVG labels is still not a character-normalization repair."""
+        ref = ReferenceContent(
+            reference_id="file:fig.svg",
+            content="CO₂ uptake\n\nactivates AKT",
+            content_type="local_svg",
+        )
+        result = repairer.attempt_repair("CO2 uptake activates AKT", "file:fig.svg", ref)
+        assert not any(
+            a.action_type == RepairActionType.CHARACTER_NORMALIZATION for a in result.actions
+        )
+
 
 # ============================================================================
 # Ellipsis Insertion Tests

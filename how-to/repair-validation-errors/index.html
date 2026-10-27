@@ -2331,10 +2331,25 @@ the damaged word still matches, so <code>ammation of the gut</code> matches
 </code></pre>
 <p>Common mappings:
 - <code>CO2</code> → <code>CO₂</code>
+- <code>H2O2</code> → <code>H₂O₂</code>
 - <code>H2O</code> → <code>H₂O</code>
 - <code>O2</code> → <code>O₂</code>
 - <code>+/-</code> → <code>±</code>
 - <code>+-</code> → <code>±</code></p>
+<p>Where a mapping starts or ends with a letter or digit, it applies only if no
+letter or digit sits directly next to it on that side. So <code>O2</code> is left alone in
+<code>CDKN2A</code> and <code>N2</code> in <code>HEK293N2</code>. The same rule also skips formulas joined to a
+coefficient or prefix, such as <code>6CO2</code>, <code>2H2O2</code> and <code>pCO2</code>. Fix those by hand.
+A mapping that starts and ends with punctuation, such as <code>+/-</code>, applies
+anywhere, so <code>5+/-2</code> becomes <code>5±2</code>. All mappings are applied in one pass,
+longest first.</p>
+<p>Validation ignores punctuation, spells out Greek letters and folds ligatures,
+so it cannot confirm a mapping that changes only those, such as <code>+-</code> → <code>±</code> or
+a custom <code>alpha</code> → <code>α</code>. Such a mapping is kept only when the reference
+contains the repaired text exactly as written, apart from case and whitespace.
+That is what keeps <code>Ca2+-dependent</code> from becoming <code>Ca2±dependent</code>.</p>
+<p>Quotes with <code>...</code> or <code>[editorial brackets]</code> are checked part by part, the same
+way validation checks them.</p>
 <h3 id="2-ellipsis-insertion-medium-confidence">2. Ellipsis Insertion (Medium Confidence)</h3>
 <p>When text parts exist in the reference but aren't contiguous:</p>
 <p><strong>Before:</strong></p>

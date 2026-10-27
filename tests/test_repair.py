@@ -128,20 +128,34 @@ class TestCharacterNormalization:
     @pytest.mark.parametrize(
         "original,expected",
         [
-            ("Ca2+-dependent CO2 fixation", "Ca2+-dependent CO₂ fixation"),
-            ("NAD+-linked and Mg2+-ATPase", "NAD+-linked and Mg2+-ATPase"),
             ("CDKN2A and O2", "CDKN2A and O₂"),
             ("Neuro-2a N2a cells and HEK293N2", "Neuro-2a N2a cells and HEK293N2"),
             ("H2O2 and H2O", "H₂O₂ and H₂O"),
             ("CO2 not O2CO2", "CO₂ not O2CO2"),
             ("5 +- 2 and +/- 5", "5 ± 2 and ± 5"),
+            ("5+/-2, 5+-2 and +/-5", "5±2, 5±2 and ±5"),
+            ("µO2 and αCO2", "µO2 and αCO2"),
         ],
     )
     def test_mappings_apply_only_to_whole_symbols(
         self, repairer: SupportingTextRepairer, original: str, expected: str
     ):
-        """A mapping applies only where no letter or digit adjoins it (#128)."""
+        """A mapping applies only where no letter or digit adjoins its letters or digits (#128)."""
         assert repairer.apply_character_mappings(original) == expected
+
+    @pytest.mark.parametrize(
+        "original",
+        ["6CO2 + 6H2O", "2H2O2", "pCO2 and 13CO2", "N2O"],
+    )
+    def test_formulas_joined_to_other_symbols_are_not_mapped(
+        self, repairer: SupportingTextRepairer, original: str
+    ):
+        """The rule that protects gene symbols also skips coefficients, prefixes and unmapped formulas."""
+        assert repairer.apply_character_mappings(original) == original
+
+    def test_punctuation_mapping_inside_ion_charge_applies(self, repairer: SupportingTextRepairer):
+        """Punctuation keys ignore neighbours; attempt_repair's literal check guards ``Ca2+-``."""
+        assert repairer.apply_character_mappings("Ca2+-dependent") == "Ca2±dependent"
 
     def test_mappings_apply_in_one_pass(self, validation_config: ReferenceValidationConfig):
         """One mapping's output is not rewritten by another mapping."""

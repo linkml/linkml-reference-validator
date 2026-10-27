@@ -69,6 +69,33 @@ def _format_excerpt(text: str, limit: int = 60) -> str:
     return f"'{text[:limit]}...'"
 
 
+def _whole_symbol_pattern(symbol: str) -> str:
+    """Regex for ``symbol`` where no letter or digit adjoins its letters or digits.
+
+    An edge of ``symbol`` that is punctuation may touch anything.
+
+    Args:
+        symbol: Text to match literally
+
+    Returns:
+        A regex pattern
+
+    Examples:
+        >>> bool(re.search(_whole_symbol_pattern("O2"), "CDKN2A"))
+        False
+        >>> bool(re.search(_whole_symbol_pattern("O2"), "low O2."))
+        True
+        >>> bool(re.search(_whole_symbol_pattern("O2"), "µO2"))
+        False
+        >>> bool(re.search(_whole_symbol_pattern("+/-"), "5+/-2"))
+        True
+    """
+    # [^\W_] is a Unicode letter or digit.
+    before = r"(?<![^\W_])" if symbol[:1].isalnum() else ""
+    after = r"(?![^\W_])" if symbol[-1:].isalnum() else ""
+    return f"{before}{re.escape(symbol)}{after}"
+
+
 class SupportingTextRepairer:
     """Repair supporting text validation errors.
 
@@ -116,11 +143,13 @@ class SupportingTextRepairer:
     def apply_character_mappings(self, text: str, skip_punctuation: bool = False) -> str:
         """Apply character normalization mappings to text.
 
-        Replaces ASCII approximations with proper Unicode characters. A mapping
-        applies only where no ASCII letter or digit adjoins it, so ``O2`` is
-        left alone in ``CDKN2A`` and ``+-`` in ``Ca2+-dependent``. All mappings
-        apply in one pass, longest first, so one mapping's output is never
-        rewritten by another.
+        Replaces ASCII approximations with proper Unicode characters. Where a
+        mapping starts or ends with a letter or digit, no letter or digit may
+        adjoin it there, so ``O2`` is left alone in ``CDKN2A``. A mapping that
+        starts and ends with punctuation, such as ``+-``, applies anywhere;
+        :meth:`attempt_repair` checks those against the reference as written,
+        which keeps ``Ca2+-dependent`` intact. All mappings apply in one pass,
+        longest first, so one mapping's output is never rewritten by another.
 
         Args:
             text: Text to normalize
@@ -137,8 +166,8 @@ class SupportingTextRepairer:
             'CO₂ and H₂O'
             >>> repairer.apply_character_mappings("+/- 5 percent")
             '± 5 percent'
-            >>> repairer.apply_character_mappings("CDKN2A, H2O2 and Ca2+-dependent")
-            'CDKN2A, H₂O₂ and Ca2+-dependent'
+            >>> repairer.apply_character_mappings("CDKN2A, H2O2 and 5+/-2")
+            'CDKN2A, H₂O₂ and 5±2'
             >>> repairer.apply_character_mappings("5 +- 2 mM CO2", skip_punctuation=True)
             '5 +- 2 mM CO₂'
         """
@@ -150,9 +179,10 @@ class SupportingTextRepairer:
         }
         if not mappings:
             return text
-        alternatives = "|".join(re.escape(original) for original in sorted(mappings, key=len, reverse=True))
-        pattern = rf"(?<![A-Za-z0-9])(?:{alternatives})(?![A-Za-z0-9])"
-        return re.sub(pattern, lambda match: mappings[match.group(0)], text)
+        alternatives = "|".join(
+            _whole_symbol_pattern(original) for original in sorted(mappings, key=len, reverse=True)
+        )
+        return re.sub(alternatives, lambda match: mappings[match.group(0)], text)
 
     def _all_parts_found(
         self, text: str, texts: list[str], literal: bool = False

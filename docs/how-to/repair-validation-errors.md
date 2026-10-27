@@ -105,10 +105,28 @@ supporting_text: "CO₂ levels were measured"
 
 Common mappings:
 - `CO2` → `CO₂`
+- `H2O2` → `H₂O₂`
 - `H2O` → `H₂O`
 - `O2` → `O₂`
 - `+/-` → `±`
 - `+-` → `±`
+
+Where a mapping starts or ends with a letter or digit, it applies only if no
+letter or digit sits directly next to it on that side. So `O2` is left alone in
+`CDKN2A` and `N2` in `HEK293N2`. The same rule also skips formulas joined to a
+coefficient or prefix, such as `6CO2`, `2H2O2` and `pCO2`. Fix those by hand.
+A mapping that starts and ends with punctuation, such as `+/-`, applies
+anywhere, so `5+/-2` becomes `5±2`. All mappings are applied in one pass,
+longest first.
+
+Validation ignores punctuation, spells out Greek letters and folds ligatures,
+so it cannot confirm a mapping that changes only those, such as `+-` → `±` or
+a custom `alpha` → `α`. Such a mapping is kept only when the reference
+contains the repaired text exactly as written, apart from case and whitespace.
+That is what keeps `Ca2+-dependent` from becoming `Ca2±dependent`.
+
+Quotes with `...` or `[editorial brackets]` are checked part by part, the same
+way validation checks them.
 
 ### 2. Ellipsis Insertion (Medium Confidence)
 

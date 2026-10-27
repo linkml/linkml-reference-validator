@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class ValidationSeverity(str, Enum):
@@ -327,12 +327,31 @@ class RepairConfig(BaseModel):
             "+/-": "±",
             "+-": "±",
             "CO2": "CO₂",
+            "H2O2": "H₂O₂",
             "H2O": "H₂O",
             "O2": "O₂",
             "N2": "N₂",
         },
         description="Character substitution mappings for normalization",
     )
+
+    @field_validator("character_mappings")
+    @classmethod
+    def _no_empty_mapping_keys(cls, mappings: dict[str, str]) -> dict[str, str]:
+        """Reject an empty key, which would match between every character.
+
+        Examples:
+            >>> RepairConfig(character_mappings={"CO2": "CO₂"}).character_mappings
+            {'CO2': 'CO₂'}
+            >>> RepairConfig(character_mappings={"": "x"})
+            Traceback (most recent call last):
+            ...
+            pydantic_core._pydantic_core.ValidationError: 1 validation error for RepairConfig
+            ...
+        """
+        if "" in mappings:
+            raise ValueError("character_mappings keys must not be empty")
+        return mappings
     skip_references: list[str] = Field(
         default_factory=list,
         description="Reference IDs to skip during repair (known issues)",

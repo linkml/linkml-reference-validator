@@ -174,6 +174,12 @@ class TestCharacterNormalization:
         repairer = SupportingTextRepairer(validation_config, config)
         assert repairer.apply_character_mappings("a b") == "b c"
 
+    def test_single_letter_key_needs_whole_word(self, validation_config: ReferenceValidationConfig):
+        """A user's single-letter key does not rewrite that letter inside words."""
+        config = RepairConfig(character_mappings={"a": "b"})
+        repairer = SupportingTextRepairer(validation_config, config)
+        assert repairer.apply_character_mappings("a cat") == "b cat"
+
     def test_mappings_can_skip_unverifiable_changes(self, repairer: SupportingTextRepairer):
         """With skip_unverifiable, mappings the validator cannot see are left out."""
         assert (
@@ -288,6 +294,37 @@ class TestCharacterNormalizationRepair:
         assert not any(
             a.action_type == RepairActionType.CHARACTER_NORMALIZATION for a in result.actions
         )
+
+    def test_fallback_that_still_fails_does_not_repair(self, repairer: SupportingTextRepairer):
+        """When neither the full nor the verifiable mappings validate, there is no normalization action."""
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="Glucose was 5 ± 2 mM in all samples.",
+        )
+        result = repairer.attempt_repair("5 +- 2 mM CO2", "PMID:1", ref)
+        assert not any(
+            a.action_type == RepairActionType.CHARACTER_NORMALIZATION for a in result.actions
+        )
+
+    def test_ellipsis_repair_across_svg_labels(self, repairer: SupportingTextRepairer):
+        """Strategy 2 checks each inserted-ellipsis part label by label, through the shared helper."""
+        ref = ReferenceContent(
+            reference_id="file:fig.svg",
+            content=(
+                "Kinase A binds the receptor.\n\n"
+                "An unrelated label long enough to leave a gap between the two parts.\n\n"
+                "The complex activates AKT."
+            ),
+            content_type="local_svg",
+        )
+        result = repairer.attempt_repair(
+            "Kinase A binds the receptor. The complex activates AKT.", "file:fig.svg", ref
+        )
+        assert result.is_repaired
+        assert result.actions[0].action_type == RepairActionType.ELLIPSIS_INSERTION
+        assert result.repaired_text is not None
+        assert "..." in result.repaired_text
+        assert repairer.validator.find_text_in_reference(result.repaired_text, ref).found
 
 
 # ============================================================================

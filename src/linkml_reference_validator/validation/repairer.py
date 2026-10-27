@@ -17,6 +17,7 @@ Examples:
 
 import logging
 import re
+from functools import lru_cache
 from typing import Optional
 
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
@@ -94,6 +95,27 @@ def _whole_symbol_pattern(symbol: str) -> str:
     before = r"(?<![^\W_])" if symbol[:1].isalnum() else ""
     after = r"(?![^\W_])" if symbol[-1:].isalnum() else ""
     return f"{before}{re.escape(symbol)}{after}"
+
+
+@lru_cache(maxsize=32)
+def _mappings_pattern(symbols: tuple[str, ...]) -> re.Pattern[str]:
+    """Compiled regex matching any of ``symbols`` as whole symbols, longest first.
+
+    Cached, since the same mappings are applied to every quote.
+
+    Args:
+        symbols: Texts to match literally
+
+    Returns:
+        A compiled regex
+
+    Examples:
+        >>> _mappings_pattern(("O2", "H2O2")).findall("H2O2 and O2")
+        ['H2O2', 'O2']
+    """
+    return re.compile(
+        "|".join(_whole_symbol_pattern(symbol) for symbol in sorted(symbols, key=len, reverse=True))
+    )
 
 
 class SupportingTextRepairer:
@@ -181,24 +203,23 @@ class SupportingTextRepairer:
         }
         if not mappings:
             return text
-        alternatives = "|".join(
-            _whole_symbol_pattern(original) for original in sorted(mappings, key=len, reverse=True)
-        )
-        return re.sub(alternatives, lambda match: mappings[match.group(0)], text)
+        pattern = _mappings_pattern(tuple(mappings))
+        return pattern.sub(lambda match: mappings[match.group(0)], text)
 
     def _all_parts_found(
-        self, text: str, texts: list[str], literal: bool = False
+        self, text: str, searchable: list[str], literal: bool = False
     ) -> bool:
-        """Whether every part of ``text`` lies within one of ``texts``, as validation checks.
+        """Whether every part of ``text`` lies within one of ``searchable``, as validation checks.
 
         The text is split on ``...`` and editorial brackets as the validator
         splits it. By default parts are compared with the validator's
         normalization, which ignores punctuation; with ``literal`` only case
-        and whitespace are ignored.
+        and whitespace are ignored. ``searchable`` must already be normalized
+        the same way, so a long reference is normalized once, not per check.
 
         Args:
             text: Supporting text to check
-            texts: Texts a part must fall within one of (see
+            searchable: Normalized texts a part must fall within one of (see
                 :meth:`SupportingTextValidator.searchable_texts`)
             literal: Compare punctuation too
 
@@ -208,19 +229,20 @@ class SupportingTextRepairer:
         Examples:
             >>> from linkml_reference_validator.models import ReferenceValidationConfig
             >>> repairer = SupportingTextRepairer(ReferenceValidationConfig())
-            >>> texts = ["Ca2+-dependent CO₂ fixation was measured."]
-            >>> repairer._all_parts_found("CO₂ fixation ... was [then] measured", texts)
+            >>> text = "Ca2+-dependent CO₂ fixation was measured."
+            >>> searchable = [SupportingTextValidator.normalize_text(text)]
+            >>> literal = [normalize_whitespace(text)]
+            >>> repairer._all_parts_found("CO₂ fixation ... was [then] measured", searchable)
             True
-            >>> repairer._all_parts_found("Ca2±dependent CO₂", texts)
+            >>> repairer._all_parts_found("Ca2±dependent CO₂", searchable)
             True
-            >>> repairer._all_parts_found("Ca2±dependent CO₂", texts, literal=True)
+            >>> repairer._all_parts_found("Ca2±dependent CO₂", literal, literal=True)
             False
-            >>> repairer._all_parts_found("[note]", texts)
+            >>> repairer._all_parts_found("[note]", searchable)
             False
         """
         normalize = normalize_whitespace if literal else SupportingTextValidator.normalize_text
         parts = self.validator._split_query(text)
-        searchable = [normalize(candidate) for candidate in texts]
         return bool(parts) and all(
             any(normalize(part) in candidate for candidate in searchable) for part in parts
         )
@@ -447,10 +469,12 @@ class SupportingTextRepairer:
         reference_content = reference.content
         # Where the validator will look: an SVG figure label by label.
         texts = SupportingTextValidator.searchable_texts(reference)
+        searchable = [SupportingTextValidator.normalize_text(text) for text in texts]
+        literal_searchable = [normalize_whitespace(text) for text in texts]
 
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
-        if not self._all_parts_found(normalized, texts, literal=True):
+        if not self._all_parts_found(normalized, literal_searchable, literal=True):
             # Validation's normalization ignores punctuation, spells out Greek
             # letters and folds ligatures, so it cannot confirm a mapping such
             # as "+-" -> "±" or "alpha" -> "α": keep those only when the
@@ -460,7 +484,7 @@ class SupportingTextRepairer:
             # a HIGH-confidence repair must be safe to apply unreviewed.
             normalized = self.apply_character_mappings(supporting_text, skip_unverifiable=True)
         if normalized != supporting_text:
-            if self._all_parts_found(normalized, texts):
+            if self._all_parts_found(normalized, searchable):
                 # Calculate similarity for the normalization
                 similarity = calculate_text_similarity(normalized, supporting_text)
                 actions.append(RepairAction(
@@ -486,7 +510,7 @@ class SupportingTextRepairer:
         ellipsis_result = self.try_ellipsis_insertion(supporting_text, reference_content)
         if ellipsis_result:
             # Verify the ellipsis version validates
-            if self._all_parts_found(ellipsis_result, texts):
+            if self._all_parts_found(ellipsis_result, searchable):
                 actions.append(RepairAction(
                     action_type=RepairActionType.ELLIPSIS_INSERTION,
                     original_text=supporting_text,

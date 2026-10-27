@@ -2,6 +2,7 @@
 
 import pytest
 from pathlib import Path
+from pydantic import ValidationError
 
 from linkml_reference_validator.models import (
     RepairAction,
@@ -179,6 +180,11 @@ class TestCharacterNormalization:
         config = RepairConfig(character_mappings={"a": "b"})
         repairer = SupportingTextRepairer(validation_config, config)
         assert repairer.apply_character_mappings("a cat") == "b cat"
+
+    def test_empty_mapping_key_is_rejected(self):
+        """An empty key would match between every character, so the config refuses it."""
+        with pytest.raises(ValidationError, match="empty"):
+            RepairConfig(character_mappings={"": "x", "CO2": "CO₂"})
 
     def test_mappings_can_skip_unverifiable_changes(self, repairer: SupportingTextRepairer):
         """With skip_unverifiable, mappings the validator cannot see are left out."""

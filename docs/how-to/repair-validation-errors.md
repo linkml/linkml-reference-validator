@@ -121,10 +121,12 @@ longest first.
 
 Validation ignores punctuation, spells out Greek letters and folds ligatures,
 so it cannot confirm a mapping that changes only those, such as `+-` → `±` or
-a custom `alpha` → `α`. Such a mapping is kept only when the
-reference contains the repaired text exactly as written, apart from case and
-whitespace. That is what keeps `Ca2+-dependent` from becoming `Ca2±dependent`. Quotes with `...` or `[editorial brackets]` are checked part by
-part, the same way validation checks them.
+a custom `alpha` → `α`. Such a mapping is kept only when the reference
+contains the repaired text exactly as written, apart from case and whitespace.
+That is what keeps `Ca2+-dependent` from becoming `Ca2±dependent`.
+
+Quotes with `...` or `[editorial brackets]` are checked part by part, the same
+way validation checks them.
 
 ### 2. Ellipsis Insertion (Medium Confidence)
 

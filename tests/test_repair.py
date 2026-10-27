@@ -143,6 +143,17 @@ class TestCharacterNormalization:
         """A mapping applies only where no letter or digit adjoins its letters or digits (#128)."""
         assert repairer.apply_character_mappings(original) == expected
 
+    def test_greek_letter_mapping_is_unverifiable(
+        self, validation_config: ReferenceValidationConfig
+    ):
+        """Normalization spells out Greek letters, so ``alpha`` -> ``α`` counts as unverifiable."""
+        config = RepairConfig(character_mappings={"alpha": "α", "CO2": "CO₂"})
+        repairer = SupportingTextRepairer(validation_config, config)
+        assert (
+            repairer.apply_character_mappings("alpha-catenin and CO2", skip_unverifiable=True)
+            == "alpha-catenin and CO₂"
+        )
+
     @pytest.mark.parametrize(
         "original",
         ["6CO2 + 6H2O", "2H2O2", "pCO2 and 13CO2", "N2O"],
@@ -163,10 +174,10 @@ class TestCharacterNormalization:
         repairer = SupportingTextRepairer(validation_config, config)
         assert repairer.apply_character_mappings("a b") == "b c"
 
-    def test_mappings_can_skip_punctuation_only_changes(self, repairer: SupportingTextRepairer):
-        """With skip_punctuation, mappings the validator cannot see are left out."""
+    def test_mappings_can_skip_unverifiable_changes(self, repairer: SupportingTextRepairer):
+        """With skip_unverifiable, mappings the validator cannot see are left out."""
         assert (
-            repairer.apply_character_mappings("5 +- 2 mM CO2", skip_punctuation=True)
+            repairer.apply_character_mappings("5 +- 2 mM CO2", skip_unverifiable=True)
             == "5 +- 2 mM CO₂"
         )
 

@@ -140,7 +140,7 @@ class SupportingTextRepairer:
         self.validator = SupportingTextValidator(validation_config)
         self.fetcher = ReferenceFetcher(validation_config)
 
-    def apply_character_mappings(self, text: str, skip_punctuation: bool = False) -> str:
+    def apply_character_mappings(self, text: str, skip_unverifiable: bool = False) -> str:
         """Apply character normalization mappings to text.
 
         Replaces ASCII approximations with proper Unicode characters. Where a
@@ -153,8 +153,10 @@ class SupportingTextRepairer:
 
         Args:
             text: Text to normalize
-            skip_punctuation: Leave out mappings that change only punctuation,
-                which validation ignores and so cannot confirm
+            skip_unverifiable: Leave out mappings that validation's
+                normalization cannot tell apart from the original, and so
+                cannot confirm: punctuation, spelled-out Greek letters,
+                ligatures
 
         Returns:
             Text with character substitutions applied
@@ -168,14 +170,14 @@ class SupportingTextRepairer:
             '± 5 percent'
             >>> repairer.apply_character_mappings("CDKN2A, H2O2 and 5+/-2")
             'CDKN2A, H₂O₂ and 5±2'
-            >>> repairer.apply_character_mappings("5 +- 2 mM CO2", skip_punctuation=True)
+            >>> repairer.apply_character_mappings("5 +- 2 mM CO2", skip_unverifiable=True)
             '5 +- 2 mM CO₂'
         """
         normalize = SupportingTextValidator.normalize_text
         mappings = {
             original: replacement
             for original, replacement in self.repair_config.character_mappings.items()
-            if not (skip_punctuation and normalize(original) == normalize(replacement))
+            if not (skip_unverifiable and normalize(original) == normalize(replacement))
         }
         if not mappings:
             return text
@@ -449,10 +451,11 @@ class SupportingTextRepairer:
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
         if not self._all_parts_found(normalized, texts, literal=True):
-            # Validation ignores punctuation, so it cannot confirm a mapping
-            # that changes only punctuation: keep those only when the
+            # Validation's normalization ignores punctuation, spells out Greek
+            # letters and folds ligatures, so it cannot confirm a mapping such
+            # as "+-" -> "±" or "alpha" -> "α": keep those only when the
             # reference has the mapped text as written.
-            normalized = self.apply_character_mappings(supporting_text, skip_punctuation=True)
+            normalized = self.apply_character_mappings(supporting_text, skip_unverifiable=True)
         if normalized != supporting_text:
             if self._all_parts_found(normalized, texts):
                 # Calculate similarity for the normalization

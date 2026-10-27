@@ -209,6 +209,20 @@ class TestCharacterNormalizationRepair:
         assert result.actions[0].action_type == RepairActionType.CHARACTER_NORMALIZATION
         assert result.actions[0].confidence == RepairConfidence.HIGH
 
+    def test_default_plus_minus_mapping_repairs_end_to_end(
+        self, repairer: SupportingTextRepairer
+    ):
+        """The default ``+-`` mapping is kept when the reference has ``±`` as written."""
+        ref = ReferenceContent(
+            reference_id="PMID:1",
+            content="Fasting glucose was 5 ± 2 mM in all patients.",
+        )
+        result = repairer.attempt_repair("glucose was 5 +- 2 mM", "PMID:1", ref)
+        assert result.is_repaired
+        assert result.repaired_text == "glucose was 5 ± 2 mM"
+        assert result.actions[0].action_type == RepairActionType.CHARACTER_NORMALIZATION
+        assert result.actions[0].confidence == RepairConfidence.HIGH
+
     def test_gene_symbol_is_not_mapped(self, repairer: SupportingTextRepairer):
         """A quote mentioning CDKN2A and O2 repairs O2 only."""
         ref = ReferenceContent(

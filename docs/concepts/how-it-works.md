@@ -13,7 +13,8 @@ linkml-reference-validator validates that quoted text (supporting text) actually
 Before matching, both the supporting text and reference content are normalized:
 
 - **Lowercased**: `"MUC1"` → `"muc1"`
-- **Punctuation removed**: `"c-Abl"` → `"c abl"`
+- **Punctuation removed**: `"c-Abl"` → `"c abl"` (a point or comma between
+  digits is kept, so `"10.5"` stays one number)
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 
@@ -35,6 +36,23 @@ supporting_text = "MUC1 oncoprotein"
 reference_content = "...The MUC1 oncoprotein blocks nuclear..."
 # Match: "muc1 oncoprotein" found in normalized reference
 ```
+
+**Matches start and end on whole words:**
+
+A quote may not begin or end inside a word of the reference. Otherwise a quote
+stating the opposite of the paper would pass:
+
+```python
+supporting_text = "activates AKT signaling"
+reference_content = "...Loss of PTEN inactivates AKT signaling..."
+# NOT FOUND: "activates" only occurs inside "inactivates"
+
+supporting_text = "5 mM H2O2"
+reference_content = "...treated with 10.5 mM H2O2..."
+# NOT FOUND: "5" only occurs inside "10.5"
+```
+
+Each part of a quote split with `...` is held to the same rule.
 
 **Empty excerpts are rejected:**
 

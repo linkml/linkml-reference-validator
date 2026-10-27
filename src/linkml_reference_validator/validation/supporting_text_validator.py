@@ -570,7 +570,13 @@ class SupportingTextValidator:
                 )
 
                 error_message = f"Text part not found as substring: '{part}'"
-                if len(normalized_texts) > 1 and self.contains_words(
+                if any(normalized_part in text for text in normalized_texts):
+                    error_message = (
+                        f"Text part occurs only inside longer words: '{part}'. "
+                        "A match must start and end on whole words, so a quote "
+                        "of 'activates' does not match 'inactivates'"
+                    )
+                elif len(normalized_texts) > 1 and self.contains_words(
                     normalized_part, " ".join(normalized_texts)
                 ):
                     error_message = (
@@ -606,6 +612,13 @@ class SupportingTextValidator:
         to single spaces, so padding each with one space anchors the part
         on word boundaries at both ends.
 
+        One allowance: when the part ends in a letter, the reference word it
+        ends on may carry trailing digits. Extraction welds superscript
+        citations onto the word before them (JATS ``suppressor<sup>12</sup>``,
+        PMC HTML and PDF text all give ``suppressor12``), and a quote of that
+        sentence must not fail on its last word. A part ending in a digit gets
+        no allowance, so ``10`` never matches ``105``.
+
         An empty part (one that was all punctuation) is found, as with a
         plain substring test; a quote with no quoted text at all is
         rejected before matching.
@@ -626,12 +639,23 @@ class SupportingTextValidator:
             False
             >>> SupportingTextValidator.contains_words("pten", "pten")
             True
+            >>> SupportingTextValidator.contains_words("tumor suppressor", "a tumor suppressor12 in")
+            True
+            >>> SupportingTextValidator.contains_words("tumor suppressor", "a tumor suppressor1,2")
+            True
+            >>> SupportingTextValidator.contains_words("a dose of 10", "a dose of 105 mg")
+            False
             >>> SupportingTextValidator.contains_words("", "anything")
             True
         """
         if not part:
             return True
-        return f" {part} " in f" {text} "
+        if f" {part} " in f" {text} ":
+            return True
+        if not part[-1].isalpha():
+            return False
+        citation = rf"(?:^| ){re.escape(part)}\d[\d,]*(?: |$)"
+        return re.search(citation, text) is not None
 
     def generate_suggested_fix(
         self,

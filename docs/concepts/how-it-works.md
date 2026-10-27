@@ -54,6 +54,17 @@ reference_content = "...treated with 10.5 mM H2O2..."
 
 Each part of a quote split with `...` is held to the same rule.
 
+One allowance: when a quote ends in a letter, the reference word it ends on may
+carry trailing digits. Full-text extraction welds superscript citations onto the
+word before them, so `tumor suppressor<sup>12</sup>` reads as `suppressor12`,
+and a quote of `PTEN is a tumor suppressor` must still match. A quote ending in
+a digit gets no allowance (`10` never matches `105`). The same allowance means a
+quote ending in `AKT` matches `AKT1`, as plain substring matching always did.
+
+Because a point or comma between digits stays part of the number, numbers must
+be quoted with the reference's own separators: `days 3, 5 and 7` does not match
+`days 3,5 and 7`, and `10 000` does not match `10,000`.
+
 **Empty excerpts are rejected:**
 
 An empty or whitespace-only excerpt is always an error, never a pass. The

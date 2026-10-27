@@ -396,8 +396,10 @@ def find_fuzzy_match_in_text(
     query_norm = normalize_whitespace(query)
     text_norm = normalize_whitespace(text)
 
-    # Stage 1: Try exact substring match (fastest - O(n))
-    if query_norm in text_norm:
+    # Stage 1: Try exact match (fastest - O(n)). On whole words, as validation
+    # matches: a hit inside a longer word ("activates" in "inactivates") would
+    # otherwise come back as a perfect match and be offered as its own fix.
+    if re.search(rf"(?<!\w){re.escape(query_norm)}(?!\w)", text_norm):
         return (True, 100.0, query)
 
     # Stage 2: Quick check - if query is very short, require exact match

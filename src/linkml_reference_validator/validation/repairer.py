@@ -454,7 +454,10 @@ class SupportingTextRepairer:
             # Validation's normalization ignores punctuation, spells out Greek
             # letters and folds ligatures, so it cannot confirm a mapping such
             # as "+-" -> "±" or "alpha" -> "α": keep those only when the
-            # reference has the mapped text as written.
+            # reference has the mapped text as written. The check covers the
+            # whole quote, so any other punctuation that differs (a curly
+            # quote, an en dash) drops even a correct "±". That is deliberate:
+            # a HIGH-confidence repair must be safe to apply unreviewed.
             normalized = self.apply_character_mappings(supporting_text, skip_unverifiable=True)
         if normalized != supporting_text:
             if self._all_parts_found(normalized, texts):

@@ -470,11 +470,11 @@ class SupportingTextRepairer:
         # Where the validator will look: an SVG figure label by label.
         texts = SupportingTextValidator.searchable_texts(reference)
         searchable = [SupportingTextValidator.normalize_text(text) for text in texts]
-        literal_searchable = [normalize_whitespace(text) for text in texts]
 
         # Strategy 1: Try character normalization
         normalized = self.apply_character_mappings(supporting_text)
-        if not self._all_parts_found(normalized, literal_searchable, literal=True):
+        verifiable = self.apply_character_mappings(supporting_text, skip_unverifiable=True)
+        if normalized != verifiable:
             # Validation's normalization ignores punctuation, spells out Greek
             # letters and folds ligatures, so it cannot confirm a mapping such
             # as "+-" -> "±" or "alpha" -> "α": keep those only when the
@@ -482,7 +482,9 @@ class SupportingTextRepairer:
             # whole quote, so any other punctuation that differs (a curly
             # quote, an en dash) drops even a correct "±". That is deliberate:
             # a HIGH-confidence repair must be safe to apply unreviewed.
-            normalized = self.apply_character_mappings(supporting_text, skip_unverifiable=True)
+            literal_searchable = [normalize_whitespace(text) for text in texts]
+            if not self._all_parts_found(normalized, literal_searchable, literal=True):
+                normalized = verifiable
         if normalized != supporting_text:
             if self._all_parts_found(normalized, searchable):
                 # Calculate similarity for the normalization

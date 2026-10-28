@@ -2144,6 +2144,12 @@
 <li><strong>Lowercased</strong>: <code>"MUC1"</code> → <code>"muc1"</code></li>
 <li><strong>Punctuation removed</strong>: <code>"c-Abl"</code> → <code>"c abl"</code> (a point or comma between
   digits is kept, so <code>"10.5"</code> stays one number)</li>
+<li><strong>Meaning-bearing symbols kept as words</strong>: <code>&lt;</code> <code>&gt;</code> <code>≤</code> <code>≥</code> become <code>lt</code> <code>gt</code>
+  <code>le</code> <code>ge</code>, <code>±</code> (or <code>+/-</code>) becomes <code>pm</code>, and a minus sign before a number stays
+  on it, so <code>"p &lt; 0.05"</code> does not match <code>"p &gt; 0.05"</code> and <code>"2.5 fold"</code> does not
+  match <code>"-2.5 fold"</code>. ASCII and Unicode spellings are equivalent (<code>&lt;=</code> and <code>≤</code>,
+  <code>-</code> and <code>−</code>). A hyphen after a word or digit (<code>IL-6</code>, <code>3-5</code>) is still
+  punctuation.</li>
 <li><strong>Whitespace collapsed</strong>: Multiple spaces become single space</li>
 <li><strong>Editorial notes removed</strong>: <code>"[mucin 1]"</code> → <code>""</code></li>
 </ul>

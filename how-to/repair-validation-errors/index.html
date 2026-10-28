@@ -2343,10 +2343,11 @@ coefficient or prefix, such as <code>6CO2</code>, <code>2H2O2</code> and <code>p
 A mapping that starts and ends with punctuation, such as <code>+/-</code>, applies
 anywhere, so <code>5+/-2</code> becomes <code>5±2</code>. All mappings are applied in one pass,
 longest first.</p>
-<p>Validation ignores punctuation, spells out Greek letters and folds ligatures,
-so it cannot confirm a mapping that changes only those, such as <code>+-</code> → <code>±</code> or
-a custom <code>alpha</code> → <code>α</code>. Such a mapping is kept only when the reference
-contains the repaired text exactly as written, apart from case and whitespace.
+<p>Validation reads <code>+-</code> (except before a letter), <code>+/-</code> and <code>±</code> all as the same
+word, ignores other punctuation, spells out Greek letters and folds ligatures,
+so it cannot confirm a mapping that changes only those, such as <code>+-</code> → <code>±</code> or a
+custom <code>alpha</code> → <code>α</code>. Such a mapping is kept only when the reference contains
+the repaired text exactly as written, apart from case and whitespace.
 That is what keeps <code>Ca2+-dependent</code> from becoming <code>Ca2±dependent</code>.</p>
 <p>Quotes with <code>...</code> or <code>[editorial brackets]</code> are checked part by part, the same
 way validation checks them.</p>

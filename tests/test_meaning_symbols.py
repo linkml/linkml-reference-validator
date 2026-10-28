@@ -73,6 +73,8 @@ def test_same_meaning_in_other_spellings_matches(quote, content):
         ("pH 7.4-8.0", "a pH 7.4-8.0 buffer"),
         ("3'-5' exonuclease", "a 3′–5′ exonuclease activity"),
         ("Ca2+ dependent", "a Ca2+-dependent kinase"),
+        ("reduced by 10-20%", "reduced by 10%-20% overall"),
+        ("tilted 5-10°", "tilted 5°-10° at rest"),
         ("A B transition", "the A → B transition"),
         ("A B transition", "the A -> B transition"),
     ],
@@ -90,6 +92,8 @@ def test_normalize_text_spells_out_meaning_symbols():
     assert normalize("5 ± 2") == normalize("5 +/- 2") == normalize("5 +- 2") == "5 pm 2"
     assert normalize("by −2.5 fold") == normalize("by -2.5 fold") == "by neg2.5 fold"
     assert normalize("IL-6 and COVID-19") == "il 6 and covid 19"
+    assert normalize("10%-20%") == normalize("10-20%") == "10 20"
+    assert normalize("x=-5, [-3]") == "x neg5 neg3"
 
 
 def test_plus_minus_repair_still_needs_the_symbol_as_written():

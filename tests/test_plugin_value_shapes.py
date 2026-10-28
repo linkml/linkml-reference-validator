@@ -212,3 +212,121 @@ def test_cli_exits_nonzero_for_fabricated_keyed_evidence(keyed, tmp_path):
     result = _cli(schema, cache, data)
     assert result.exit_code == 1, result.output
     assert "Snippets checked: 1" in result.output
+
+
+ANONYMOUS_EVIDENCE_SCHEMA = """
+id: https://example.org/anon
+name: anon
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ex: https://example.org/
+default_prefix: ex
+classes:
+  Evidence:
+    attributes:
+      reference:
+        range: string
+      supporting_text:
+        range: string
+  Statement:
+    tree_root: true
+    attributes:
+      has_evidence:
+        range: Evidence
+        multivalued: true
+        inlined: true
+"""
+
+KEY_SLOT_SCHEMA = """
+id: https://example.org/keyslot
+name: keyslot
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ex: https://example.org/
+default_prefix: ex
+classes:
+  Evidence:
+    attributes:
+      reference:
+        key: true
+      supporting_text:
+        range: string
+  Statement:
+    tree_root: true
+    attributes:
+      has_evidence:
+        range: Evidence
+        multivalued: true
+        inlined: true
+        inlined_as_list: false
+"""
+
+
+def test_single_object_in_a_multivalued_slot_without_identifier_is_validated(
+    tmp_path, fixtures_dir
+):
+    """With no identifier the dict cannot be a keyed mapping: it is one object, as before."""
+    _, _, plugin, validator = _setup(tmp_path, fixtures_dir, ANONYMOUS_EVIDENCE_SCHEMA)
+    report = validator.validate(
+        {"has_evidence": {"reference": "PMID:TEST001", "supporting_text": FABRICATED}}
+    )
+    assert len(report.results) == 1
+    assert report.results[0].instantiates == "has_evidence.supporting_text"
+    assert plugin.snippets_checked == 1
+
+
+def test_single_object_with_an_identifier_in_a_multivalued_slot_is_validated(keyed):
+    """A dict whose values are not all objects is one object, not a mapping."""
+    _, _, plugin, validator = keyed
+    report = validator.validate(
+        {
+            "id": "S1",
+            "has_evidence": {
+                "id": "E1", "reference": "PMID:TEST001", "supporting_text": FABRICATED,
+            },
+        }
+    )
+    assert len(report.results) == 1
+    assert plugin.snippets_checked == 1
+
+
+def test_a_key_slot_is_filled_in_from_the_mapping_key(tmp_path, fixtures_dir):
+    """Evidence keyed by its ``key: true`` reference: the key is the reference."""
+    _, _, plugin, validator = _setup(tmp_path, fixtures_dir, KEY_SLOT_SCHEMA)
+    report = validator.validate(
+        {"has_evidence": {"PMID:TEST001": {"supporting_text": FABRICATED}}}
+    )
+    assert len(report.results) == 1
+    assert report.results[0].instantiates == "has_evidence[PMID:TEST001].supporting_text"
+    assert plugin.snippets_checked == 1
+
+
+def test_null_and_compact_entries_in_a_keyed_mapping_do_not_crash(keyed):
+    """``E1: null`` is an object with only its key; ``E2: text`` is the compact form."""
+    _, _, plugin, validator = keyed
+    report = validator.validate(
+        {
+            "id": "S1",
+            "has_evidence": {
+                "E1": None,
+                "E3": {"reference": "PMID:TEST001", "supporting_text": FABRICATED},
+            },
+        }
+    )
+    assert [r.instantiates for r in report.results] == ["has_evidence[E3].supporting_text"]
+    report = validator.validate({"id": "S1", "has_evidence": {"E2": "compact text"}})
+    assert report.results == []
+
+
+def test_a_non_text_listed_excerpt_is_an_error_at_its_index(excerpts):
+    _, _, _, validator = excerpts
+    report = validator.validate({"reference": "PMID:TEST001", "supporting_text": [QUOTE, 5]})
+    assert [r.instantiates for r in report.results] == ["supporting_text[1]"]
+    assert "must be text" in report.results[0].message
+
+
+def test_a_null_listed_excerpt_is_skipped_like_an_absent_one(excerpts):
+    _, _, plugin, validator = excerpts
+    report = validator.validate({"reference": "PMID:TEST001", "supporting_text": [QUOTE, None]})
+    assert report.results == []
+    assert plugin.snippets_checked == 1

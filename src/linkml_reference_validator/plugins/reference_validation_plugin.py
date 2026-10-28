@@ -221,7 +221,8 @@ if _LINKML_AVAILABLE:
                     problem = self._excerpt_problem(item, excerpt_field, item_path)
                     if problem is not None:
                         yield problem
-                    elif item:
+                    elif isinstance(item, str) and item:
+                        # Anything not text was reported by _excerpt_problem.
                         excerpts.append((item, item_path))
 
                 if not excerpts:
@@ -332,9 +333,8 @@ if _LINKML_AVAILABLE:
                 if isinstance(value, dict):
                     range_class = slot.range
                     if range_class and self.schema_view.get_class(range_class):
-                        if slot.multivalued:
-                            # A multivalued slot holding a dict is a keyed
-                            # mapping (inlined_as_list: false), not one
+                        if slot.multivalued and self._is_keyed_mapping(value, range_class):
+                            # A keyed mapping (inlined_as_list: false), not one
                             # object: validate every object in it (#139).
                             yield from self._validate_keyed_objects(
                                 value, range_class, slot_path
@@ -392,6 +392,21 @@ if _LINKML_AVAILABLE:
                 source="ReferenceValidationPlugin",
             )
 
+        def _is_keyed_mapping(self, value: dict[str, Any], class_name: str) -> bool:
+            """Whether a dict in a multivalued slot maps keys to objects of ``class_name``.
+
+            Only a class with an identifier or ``key`` slot can be keyed, and
+            then only when every value is an object (or null, an object with
+            only its key). Anything else is one object written without the
+            list, which is validated as such, as it always was: reading its
+            fields as keys would skip it.
+            """
+            if not self.schema_view or not value:
+                return False
+            if self.schema_view.get_identifier_slot(class_name, use_key=True) is None:
+                return False
+            return all(obj is None or isinstance(obj, dict) for obj in value.values())
+
         def _validate_keyed_objects(
             self, mapping: dict[str, Any], class_name: str, path: str
         ) -> Iterator[LinkMLValidationResult]:
@@ -404,7 +419,7 @@ if _LINKML_AVAILABLE:
             """
             if not self.schema_view:
                 return
-            identifier = self.schema_view.get_identifier_slot(class_name)
+            identifier = self.schema_view.get_identifier_slot(class_name, use_key=True)
             for key, obj in mapping.items():
                 if obj is None:
                     obj = {}

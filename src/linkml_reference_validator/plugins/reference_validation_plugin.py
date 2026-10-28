@@ -395,17 +395,24 @@ if _LINKML_AVAILABLE:
         def _is_keyed_mapping(self, value: dict[str, Any], class_name: str) -> bool:
             """Whether a dict in a multivalued slot maps keys to objects of ``class_name``.
 
-            Only a class with an identifier or ``key`` slot can be keyed, and
-            then only when every value is an object (or null, an object with
-            only its key). Anything else is one object written without the
-            list, which is validated as such, as it always was: reading its
-            fields as keys would skip it.
+            Decided by the keys: a dict any of whose keys is a slot of the class
+            (or a slot's alias) is one object written without the list, and is
+            validated as such, as it always was. Otherwise it is a keyed mapping,
+            which only a class with an identifier or ``key`` slot can have. The
+            values are not consulted, so a compact entry beside an object does
+            not hide that object; :meth:`_validate_keyed_objects` skips such
+            entries one by one.
             """
             if not self.schema_view or not value:
                 return False
             if self.schema_view.get_identifier_slot(class_name, use_key=True) is None:
                 return False
-            return all(obj is None or isinstance(obj, dict) for obj in value.values())
+            slot_names = set(self.schema_view.class_slots(class_name))
+            for slot_name in list(slot_names):
+                alias = self.schema_view.induced_slot(slot_name, class_name).alias
+                if alias:
+                    slot_names.add(alias)
+            return not any(key in slot_names for key in value)
 
         def _validate_keyed_objects(
             self, mapping: dict[str, Any], class_name: str, path: str

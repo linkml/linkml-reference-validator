@@ -756,8 +756,10 @@ Evidence objects in a multivalued slot written as a mapping from identifier to
 object (`inlined_as_list: false`) are each validated, at a path such as
 `has_evidence[E1].supporting_text`; the key is used as the object's identifier
 (or `key` slot) when the object omits it. A dict is read this way only when the
-class has an identifier or key slot and every value is an object; otherwise it
-is a single object written without the list, and is validated as one. Before this, the objects in such a mapping were never
+class has an identifier or key slot and none of the dict's keys is a slot of
+the class; a dict with such a key is a single object written without the list,
+and is validated as one. A compact (non-object) entry in a mapping is left to
+schema validation, and does not stop the objects beside it being checked. Before this, the objects in such a mapping were never
 visited, and a fabricated quote passed with exit code 0. The list form of the
 same slot was, and is, validated the same way.
 

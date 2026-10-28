@@ -330,3 +330,19 @@ def test_a_null_listed_excerpt_is_skipped_like_an_absent_one(excerpts):
     report = validator.validate({"reference": "PMID:TEST001", "supporting_text": [QUOTE, None]})
     assert report.results == []
     assert plugin.snippets_checked == 1
+
+
+def test_a_compact_entry_does_not_hide_the_objects_beside_it(keyed):
+    """Mixed entries: the mapping is still keyed, and its objects are validated."""
+    _, _, plugin, validator = keyed
+    report = validator.validate(
+        {
+            "id": "S1",
+            "has_evidence": {
+                "E1": {"reference": "PMID:TEST001", "supporting_text": FABRICATED},
+                "E2": "compact value",
+            },
+        }
+    )
+    assert [r.instantiates for r in report.results] == ["has_evidence[E1].supporting_text"]
+    assert plugin.snippets_checked == 1

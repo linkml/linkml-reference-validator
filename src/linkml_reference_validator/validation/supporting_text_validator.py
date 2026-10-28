@@ -824,10 +824,11 @@ class SupportingTextValidator:
         text = re.sub(r"±|\+/[-−]|\+[-−](?![^\W\d_])", " pm ", text)
         # A minus sign stays on its number, so "2.5" does not match "-2.5".
         # It is a sign only at the start, after a space, an opening bracket or
-        # quote, "=", ":", "~", "≈" or an exponent's "^" (10^-5 is not 10^5);
-        # anywhere else it is a hyphen or a range dash: IL-6, 3-5, 3'-5',
-        # 10%-20%, 5°-10°.
-        text = re.sub(r'(?:^|(?<=[\s(\[{=:~≈^"“]))[-−](?=\d)', "neg", text)
+        # curly quote, "=", ":", "~", "≈" or an exponent's "^" (10^-5 is not
+        # 10^5); anywhere else it is a hyphen or a range dash: IL-6, 3-5,
+        # 3'-5', 10%-20%, 5°-10°. Straight quotes are left out because they
+        # double as primes and inch marks (5"-10").
+        text = re.sub(r"(?:^|(?<=[\s(\[{=:~≈^“‘«]))[-−](?=\d)", "neg", text)
 
         # A point or comma between digits is part of the number: splitting
         # "10.5" into "10 5" would let a quote of "5 mM" match "10.5 mM".

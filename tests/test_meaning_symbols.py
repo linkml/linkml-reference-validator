@@ -35,6 +35,8 @@ def found(quote: str, content: str) -> bool:
         ("10^5 M", "a dose of 10^-5 M"),
         ("about 2 fold", "about ~-2 fold"),
         ("approximately ≈ 2", "approximately ≈−2"),
+        ("a value of 2.5", "a value of “-2.5”"),
+        ("a value of 2.5", "a value of ‘−2.5’"),
     ],
 )
 def test_reversed_comparison_or_sign_fails(quote, content):
@@ -77,6 +79,7 @@ def test_same_meaning_in_other_spellings_matches(quote, content):
         ("3'-5' exonuclease", "a 3′–5′ exonuclease activity"),
         ("Ca2+ dependent", "a Ca2+-dependent kinase"),
         ("reduced by 10-20%", "reduced by 10%-20% overall"),
+        ('a 5-10" tilt', 'a 5"-10" tilt'),
         ("tilted 5-10°", "tilted 5°-10° at rest"),
         ("A B transition", "the A → B transition"),
         ("A B transition", "the A -> B transition"),

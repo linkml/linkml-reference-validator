@@ -1769,6 +1769,22 @@ classes:
 <pre><code class="language-yaml">- id: PMID:16888623
   title: &quot;MUC1 oncoprotein blocks nuclear targeting of c-Abl&quot;
 </code></pre>
+<p>The reference may take the same shapes as for excerpts:</p>
+<ul>
+<li><strong>A list of one</strong> is checked like a single reference.</li>
+<li><strong>Several references with one title field</strong> pass if the title is any one
+  reference's title, since it names one paper. If it is none of them, a single
+  error names each reference with its own reason. A reference whose prefix is
+  skipped vouches for nothing.</li>
+<li><strong>Reference objects with their own <code>title</code></strong>, listed or not, and with no title
+  field beside them, each have that title checked against their own reference.</li>
+<li><strong>A reference with no usable identifier</strong> (an object without <code>id</code>, an empty
+  string) is reported as an error, not skipped.</li>
+</ul>
+<p>With an excerpt as well, the title field is checked the same way: against the
+one reference, or, with several, passing if it is any one reference's title.
+It replaces any <code>title</code> a reference object carries. Without a title field,
+each reference object's own <code>title</code> is checked with the excerpt.</p>
 <h2 id="combined-validation">Combined Validation</h2>
 <p>When both title and excerpt fields are present, both are validated together:</p>
 <ol>

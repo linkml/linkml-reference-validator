@@ -106,7 +106,18 @@ EXTRACTOR_CACHE_VERSION = 1
 #: repository metadata rather than an article. PDF/XML caches need no refresh.
 #: Downloaded/raw HTML is structurally checked; pre-extracted text supplied by
 #: PMC or a configured text provider is trusted under FullTextLocation's contract.
-HTML_FULL_TEXT_CACHE_VERSION = 1
+#: Version 2: an article region keeps all of its text, not only its ``<p>``
+#: text, so lists, tables, headings and bare ``<div>`` text are no longer
+#: dropped, and unclosed ``<p>`` no longer repeats and welds text (#121).
+#: Version-1 text lacks them, so a correct quote of a list item fails against it.
+HTML_FULL_TEXT_CACHE_VERSION = 2
+
+#: The first ``html_full_text_version`` whose entries passed landing-page
+#: rejection. An entry stamped at least this is a checked article body, so when
+#: a refresh fails it is served stale like any other type, though it may lack
+#: text a later version extracts. Only entries below it, which may be landing
+#: pages, are withheld.
+HTML_VERIFIED_BODY_VERSION = 1
 
 #: XML extraction changes only XML caches, independent of HTML acceptance.
 #: 1: JATS tables are rendered. 2: nested paragraphs are emitted once, list
@@ -1740,6 +1751,7 @@ class ReferenceFetcher:
             and reference is not None
             and reference.content_type == "full_text_html"
             and self._is_stale_cache_entry(content_text)
+            and not self._is_verified_html_body(content_text)
         ):
             logger.warning(
                 "Refusing stale HTML full text for %s: it may be a repository "
@@ -1865,6 +1877,30 @@ class ReferenceFetcher:
             reference_id.startswith("file:")
             and resolve_format(None, reference_id, None) in FIGURE_CONTENT_TYPES
         )
+
+    @classmethod
+    def _is_verified_html_body(cls, content_text: str) -> bool:
+        """Whether an HTML entry's stamp shows it passed landing-page rejection.
+
+        Args:
+            content_text: The cache file's contents, including frontmatter
+
+        Returns:
+            True if ``html_full_text_version`` is at least
+            ``HTML_VERIFIED_BODY_VERSION``
+
+        Examples:
+            >>> ReferenceFetcher._is_verified_html_body(
+            ...     "---\\nhtml_full_text_version: 1\\n---\\nBody.")
+            True
+            >>> ReferenceFetcher._is_verified_html_body("---\\ntitle: T\\n---\\nBody.")
+            False
+        """
+        split = cls._split_frontmatter(content_text)
+        if split is None:
+            return False
+        match = re.search(r"^html_full_text_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
+        return match is not None and int(match.group(1)) >= HTML_VERIFIED_BODY_VERSION
 
     @classmethod
     def _is_stale_cache_entry(cls, content_text: str) -> bool:

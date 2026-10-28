@@ -213,6 +213,9 @@ if _LINKML_AVAILABLE:
             # Whether any excerpt was checked or attempted: that check includes
             # the title, or reports why neither can be checked.
             excerpt_attempted = False
+            # A title field beside several references is checked once per
+            # instance, after every excerpt field: (title, reference IDs, path).
+            pending_title: Optional[tuple[str, list[str], str]] = None
 
             for excerpt_field in excerpt_fields:
                 excerpt_value = instance.get(excerpt_field)
@@ -269,21 +272,19 @@ if _LINKML_AVAILABLE:
                         )
                 else:
                     # One title for several references: like the excerpt, it
-                    # passes if it is any one of theirs. Checked once, on its
-                    # own, so the excerpt may come from one reference and the
-                    # title name another.
+                    # passes if it is any one of theirs. Checked on its own, so
+                    # the excerpt may come from one reference and the title
+                    # name another, and once, after the excerpt fields.
+                    reference_ids = [ref.reference_id for ref in resolved]
                     for excerpt, item_path in excerpts:
                         yield from self._validate_excerpt_any(
-                            excerpt,
-                            [(reference_id, None) for reference_id, _ in references],
-                            item_path,
+                            excerpt, [(rid, None) for rid in reference_ids], item_path
                         )
                     title_path = f"{path}.{title_field}" if path else title_field
-                    yield from self._validate_title_any(
-                        instance[title_field],
-                        [reference_id for reference_id, _ in references],
-                        title_path,
-                    )
+                    pending_title = (instance[title_field], reference_ids, title_path)
+
+            if pending_title is not None:
+                yield from self._validate_title_any(*pending_title)
 
             # If there was no excerpt to check, validate titles on their own,
             # over the same reference shapes as excerpts (#146). An excerpt

@@ -283,3 +283,53 @@ def test_excerpt_and_title_failures_beside_several_references_are_both_reported(
         }
     )
     assert sorted(r.instantiates for r in report.results) == ["supporting_text", "title"]
+
+
+TWO_EXCERPTS_SCHEMA = """
+id: https://example.org/twoexcerpts
+name: twoexcerpts
+prefixes:
+  linkml: https://w3id.org/linkml/
+  oa: http://www.w3.org/ns/oa#
+  ex: https://example.org/
+default_prefix: ex
+classes:
+  Evidence:
+    tree_root: true
+    attributes:
+      reference:
+        range: string
+        multivalued: true
+      title:
+        range: string
+      supporting_text:
+        range: string
+      quote:
+        range: string
+        slot_uri: oa:exact
+"""
+
+
+def test_a_title_beside_two_excerpt_slots_is_checked_once(tmp_path, fixtures_dir):
+    """One title, one check: not once per excerpt slot."""
+    _, _, plugin, validator = _setup(tmp_path, fixtures_dir, TWO_EXCERPTS_SCHEMA)
+    report = validator.validate(
+        {
+            "reference": ["PMID:TEST001", "PMID:TEST002"],
+            "title": WRONG,
+            "supporting_text": QUOTE_1,
+            "quote": QUOTE_1,
+        }
+    )
+    assert [r.instantiates for r in report.results] == ["title"]
+    assert plugin.snippets_checked == 2
+    assert plugin.titles_checked == 1
+
+
+def test_a_title_beside_an_excerpt_and_only_skipped_references_is_not_checked(with_excerpt):
+    _, _, plugin, validator = with_excerpt
+    report = validator.validate(
+        {"reference": ["GO:1", "GO:2"], "title": WRONG, "supporting_text": QUOTE_1}
+    )
+    assert report.results == []
+    assert plugin.titles_checked == 0

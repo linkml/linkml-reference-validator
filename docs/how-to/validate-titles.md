@@ -106,6 +106,23 @@ classes:
   title: "MUC1 oncoprotein blocks nuclear targeting of c-Abl"
 ```
 
+The reference may take the same shapes as for excerpts:
+
+- **A list of one** is checked like a single reference.
+- **Several references with one title field** pass if the title is any one
+  reference's title, since it names one paper. If it is none of them, a single
+  error names each reference with its own reason. A reference whose prefix is
+  skipped vouches for nothing.
+- **Reference objects with their own `title`**, listed or not, and with no title
+  field beside them, each have that title checked against their own reference.
+- **A reference with no usable identifier** (an object without `id`, an empty
+  string) is reported as an error, not skipped.
+
+With an excerpt as well, the title field is checked the same way: against the
+one reference, or, with several, passing if it is any one reference's title.
+It replaces any `title` a reference object carries. Without a title field,
+each reference object's own `title` is checked with the excerpt.
+
 ## Combined Validation
 
 When both title and excerpt fields are present, both are validated together:

@@ -200,8 +200,9 @@ if _LINKML_AVAILABLE:
             excerpt_fields = self._find_excerpt_fields(class_name)
             title_fields = self._find_title_fields(class_name)
 
-            # Track whether we've validated with excerpt (which includes title validation)
-            validated_with_excerpt = False
+            # Whether any excerpt was checked or attempted: that check includes
+            # the title, or reports why neither can be checked.
+            excerpt_attempted = False
 
             for excerpt_field in excerpt_fields:
                 excerpt_value = instance.get(excerpt_field)
@@ -227,93 +228,44 @@ if _LINKML_AVAILABLE:
 
                 if not excerpts:
                     continue
+                excerpt_attempted = True
 
                 # A reference given but unusable must not let the excerpt pass
-                # unchecked. It is reported only if no other reference field
-                # supplies a usable identifier, as the fields were always tried
-                # in turn.
-                unusable: list[LinkMLValidationResult] = []
-                for ref_field in reference_fields:
-                    ref_value = instance.get(ref_field)
-                    # Absent, null or an empty list is no reference. Any other
-                    # value, "" and 0 included, was meant as one.
-                    if ref_value is None or ref_value == []:
-                        continue
-                    ref_path = f"{path}.{ref_field}" if path else ref_field
-                    # A multivalued slot holds a list; a single value is a
-                    # list of one, validated exactly as before.
-                    items = ref_value if isinstance(ref_value, list) else [ref_value]
-                    references = []
-                    field_unusable = []
-                    for i, item in enumerate(items):
-                        reference_id = self._extract_reference_id(item)
-                        if reference_id:
-                            references.append((reference_id, self._extract_title(item)))
-                        else:
-                            item_path = (
-                                f"{ref_path}[{i}]" if isinstance(ref_value, list) else ref_path
-                            )
-                            field_unusable.append(
-                                self._unusable_reference(item, item_path, excerpt_path)
-                            )
-                    if not references:
-                        # Deliberately the first such field only: one error
-                        # is enough to say the excerpt cannot be checked.
-                        unusable = unusable or field_unusable
-                        continue
-                    validated_with_excerpt = True
-                    yield from field_unusable
-                    # A title field names the paper, so it applies only when
-                    # one paper is cited; listed objects carry their own.
-                    if len(references) == 1:
-                        reference_id, expected_title = references[0]
-                        for title_field in title_fields:
-                            title_value = instance.get(title_field)
-                            if title_value:
-                                expected_title = title_value
-                                break
-                        for excerpt, item_path in excerpts:
-                            yield from self._validate_excerpt(
-                                excerpt, reference_id, expected_title, item_path
-                            )
-                    else:
-                        for excerpt, item_path in excerpts:
-                            yield from self._validate_excerpt_any(
-                                excerpt, references, item_path
-                            )
-                    # Break after the first field with a usable reference to avoid duplicates
-                    break
-                else:
-                    yield from unusable
-
-            # If no excerpt validation was done, validate title independently
-            if not validated_with_excerpt and title_fields:
-                # Validate only the first available title against the first available reference
-                first_title_field: Optional[str] = None
-                first_title_value: Optional[str] = None
-                for title_field in title_fields:
-                    title_value = instance.get(title_field)
-                    if title_value:
-                        first_title_field = title_field
-                        first_title_value = title_value
-                        break
-
-                if first_title_field and first_title_value:
-                    for ref_field in reference_fields:
-                        ref_value = instance.get(ref_field)
-                        if ref_value:
-                            reference_id = self._extract_reference_id(
-                                ref_value)
-                            if reference_id:
-                                yield from self._validate_title(
-                                    first_title_value,
-                                    reference_id,
-                                    f"{path}.{first_title_field}"
-                                    if path
-                                    else first_title_field,
-                                )
-                            # Break after processing first reference field with a value
+                # unchecked: it is reported, by _resolve_references.
+                resolved, unusable = self._resolve_references(
+                    instance, reference_fields, path, excerpt_path
+                )
+                yield from unusable
+                if not resolved:
+                    continue
+                references = [(reference_id, title) for reference_id, title, _ in resolved]
+                # A title field names the paper, so it applies only when
+                # one paper is cited; listed objects carry their own.
+                if len(references) == 1:
+                    reference_id, expected_title = references[0]
+                    for title_field in title_fields:
+                        title_value = instance.get(title_field)
+                        if title_value:
+                            expected_title = title_value
                             break
+                    for excerpt, item_path in excerpts:
+                        yield from self._validate_excerpt(
+                            excerpt, reference_id, expected_title, item_path
+                        )
+                else:
+                    for excerpt, item_path in excerpts:
+                        yield from self._validate_excerpt_any(
+                            excerpt, references, item_path
+                        )
+
+            # If there was no excerpt to check, validate titles on their own,
+            # over the same reference shapes as excerpts (#146). An excerpt
+            # whose references were unusable has already reported them, and
+            # left no identifier to check a title against.
+            if not excerpt_attempted:
+                yield from self._validate_titles_only(
+                    instance, reference_fields, title_fields, path
+                )
 
             # Only slots actually defined on the class can be induced; data may
             # carry extra keys (a stray ``id``, metadata, a typo) that are not
@@ -353,6 +305,142 @@ if _LINKML_AVAILABLE:
                                 yield from self._validate_instance(
                                     item, range_class, item_path
                                 )
+
+        def _resolve_references(
+            self,
+            instance: dict[str, Any],
+            reference_fields: list[str],
+            path: str,
+            checked_path: str,
+        ) -> tuple[list[tuple[str, Optional[str], str]], list[LinkMLValidationResult]]:
+            """The references an instance cites, and errors for unusable ones.
+
+            Reference fields are tried in turn; the first holding a usable
+            identifier supplies the references. A multivalued slot holds a list;
+            a single value is a list of one. Absent, null or an empty list is
+            no reference, but any other value, "" and 0 included, was meant as
+            one, so a value with no readable identifier is reported rather than
+            letting ``checked_path`` pass unchecked. Errors come from the field
+            used, or, if none is usable, from the first field with a value
+            only: one error is enough to say the check cannot be made.
+
+            Returns:
+                ``(reference ID, its own title, path of the reference)`` for
+                each usable reference, and the errors to report
+            """
+            unusable: list[LinkMLValidationResult] = []
+            for ref_field in reference_fields:
+                ref_value = instance.get(ref_field)
+                if ref_value is None or ref_value == []:
+                    continue
+                ref_path = f"{path}.{ref_field}" if path else ref_field
+                is_list = isinstance(ref_value, list)
+                items = ref_value if is_list else [ref_value]
+                references = []
+                field_unusable = []
+                for i, item in enumerate(items):
+                    item_path = f"{ref_path}[{i}]" if is_list else ref_path
+                    reference_id = self._extract_reference_id(item)
+                    if reference_id:
+                        references.append((reference_id, self._extract_title(item), item_path))
+                    else:
+                        field_unusable.append(
+                            self._unusable_reference(item, item_path, checked_path)
+                        )
+                if references:
+                    return references, field_unusable
+                unusable = unusable or field_unusable
+            return [], unusable
+
+        def _validate_titles_only(
+            self,
+            instance: dict[str, Any],
+            reference_fields: list[str],
+            title_fields: list[str],
+            path: str,
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate titles where there is no excerpt to validate them with.
+
+            The instance's first title names one paper: with one reference it
+            must be that reference's title; with several it passes if it is any
+            one's, as an excerpt does. Without one, each listed reference object
+            that carries its own ``title`` is checked against its own reference.
+            A reference with no usable identifier is reported, not skipped.
+            """
+            title_field = next((f for f in title_fields if instance.get(f)), None)
+            if title_field is not None:
+                title_path = f"{path}.{title_field}" if path else title_field
+                resolved, unusable = self._resolve_references(
+                    instance, reference_fields, path, title_path
+                )
+                yield from unusable
+                title = instance[title_field]
+                if len(resolved) == 1:
+                    yield from self._validate_title(title, resolved[0][0], title_path)
+                elif resolved:
+                    yield from self._validate_title_any(
+                        title, [reference_id for reference_id, _, _ in resolved], title_path
+                    )
+                return
+
+            resolved, unusable = self._resolve_references(
+                instance, reference_fields, path, f"{path}.title" if path else "title"
+            )
+            # Only a reference carrying a title of its own has something unchecked.
+            yield from (
+                problem
+                for problem in unusable
+                if self._extract_title((problem.instance or {}).get("reference"))
+            )
+            for reference_id, own_title, reference_path in resolved:
+                if own_title:
+                    yield from self._validate_title(
+                        own_title, reference_id, f"{reference_path}.title"
+                    )
+
+        def _validate_title_any(
+            self, title: str, reference_ids: list[str], path: str
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate a title that should be the title of one of several references.
+
+            Mirrors :meth:`_validate_excerpt_any`: the first reference whose
+            title matches passes it and the rest are not fetched; a skipped
+            prefix vouches for nothing; the title counts once; if none matches,
+            one error names each reference with its own reason.
+            """
+            results = []
+            for reference_id in reference_ids:
+                result = self.validator.validate_title(
+                    reference_id, expected_title=title, path=path
+                )
+                if result.skipped:
+                    continue
+                if result.is_valid:
+                    self.titles_checked += int(result.title_checked)
+                    return
+                results.append((reference_id, result))
+            if not results:
+                return
+            self.titles_checked += int(any(result.title_checked for _, result in results))
+            severity = min(
+                (self._convert_severity(result.severity) for _, result in results),
+                key=list(Severity).index,
+            )
+            details = "; ".join(
+                f"{reference_id}: {result.message or 'title validation failed'}"
+                for reference_id, result in results
+            )
+            yield LinkMLValidationResult(
+                type="reference_validation",
+                severity=severity,
+                message=(
+                    f"Title matches none of the {len(results)} cited references ({details})"
+                ),
+                instance={"title": title, "reference_ids": [r for r, _ in results]},
+                instantiates=path,
+                context=[path] if path else [],
+                source="ReferenceValidationPlugin",
+            )
 
         def _excerpt_problem(
             self, excerpt: Any, excerpt_field: str, path: str

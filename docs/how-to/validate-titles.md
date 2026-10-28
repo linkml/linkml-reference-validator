@@ -118,6 +118,10 @@ The reference may take the same shapes as for excerpts:
 - **A reference with no usable identifier** (an object without `id`, an empty
   string) is reported as an error, not skipped.
 
+With an excerpt as well, the title is checked together with it, and the
+title field is compared only when a single reference is cited; with several,
+each reference object's own `title` is used.
+
 ## Combined Validation
 
 When both title and excerpt fields are present, both are validated together:

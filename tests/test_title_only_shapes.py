@@ -186,3 +186,44 @@ def test_references_with_no_title_anywhere_report_nothing(listed):
     _, _, plugin, validator = listed
     assert validator.validate({"reference": [""]}).results == []
     assert plugin.titles_checked == 0
+
+
+def test_unusable_object_message_names_its_own_title_path(objects):
+    """With no title field, the title left unchecked is the object's own."""
+    _, _, _, validator = objects
+    report = validator.validate({"reference": [{"title": WRONG}]})
+    assert "so 'reference[0].title' cannot be checked" in report.results[0].message
+
+
+def test_skipped_references_are_named_in_the_error(listed):
+    _, _, _, validator = listed
+    report = validator.validate({"reference": ["GO:123", "PMID:TEST001"], "title": WRONG})
+    assert "not checked (skipped prefix): GO:123" in report.results[0].message
+
+
+def test_a_title_against_only_skipped_references_is_not_checked(listed):
+    _, _, plugin, validator = listed
+    report = validator.validate({"reference": ["GO:1", "GO:2"], "title": WRONG})
+    assert report.results == []
+    assert plugin.titles_checked == 0
+
+
+def test_an_unusable_reference_beside_an_excerpt_and_a_title_is_reported_once(listed):
+    """The excerpt path reports it; the title path does not repeat it."""
+    _, _, _, validator = listed
+    report = validator.validate(
+        {"reference": [""], "title": WRONG, "supporting_text": "Protein X functions"}
+    )
+    assert len(report.results) == 1
+    assert "no usable identifier" in report.results[0].message
+
+
+def test_a_title_field_wins_over_a_reference_objects_own_title(tmp_path, fixtures_dir):
+    """Only the title field is checked when both are given, as with excerpts."""
+    schema = OBJECT_SCHEMA + "      title:\n        range: string\n"
+    _, _, plugin, validator = _setup(tmp_path, fixtures_dir, schema)
+    report = validator.validate(
+        {"reference": {"id": "PMID:TEST001", "title": WRONG}, "title": TITLE_1}
+    )
+    assert report.results == []
+    assert plugin.titles_checked == 1

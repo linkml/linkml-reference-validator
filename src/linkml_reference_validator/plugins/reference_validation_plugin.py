@@ -4,7 +4,7 @@ import logging
 from collections.abc import Iterator
 from importlib.util import find_spec
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, NamedTuple, Optional
 
 from curies import Converter
 
@@ -25,6 +25,16 @@ _LINKML_AVAILABLE = (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class ResolvedReference(NamedTuple):
+    """A reference an instance cites, as read from its reference field."""
+
+    reference_id: str
+    #: The title carried by a reference object, if any.
+    title: Optional[str]
+    #: Where the reference is in the data, e.g. ``reference[1]``.
+    path: str
 
 
 if _LINKML_AVAILABLE:
@@ -233,12 +243,13 @@ if _LINKML_AVAILABLE:
                 # A reference given but unusable must not let the excerpt pass
                 # unchecked: it is reported, by _resolve_references.
                 resolved, unusable = self._resolve_references(
-                    instance, reference_fields, path, excerpt_path
+                    instance, reference_fields, path
                 )
-                yield from unusable
+                for value, value_path in unusable:
+                    yield self._unusable_reference(value, value_path, excerpt_path)
                 if not resolved:
                     continue
-                references = [(reference_id, title) for reference_id, title, _ in resolved]
+                references = [(ref.reference_id, ref.title) for ref in resolved]
                 # A title field names the paper, so it applies only when
                 # one paper is cited; listed objects carry their own.
                 if len(references) == 1:
@@ -311,24 +322,31 @@ if _LINKML_AVAILABLE:
             instance: dict[str, Any],
             reference_fields: list[str],
             path: str,
-            checked_path: str,
-        ) -> tuple[list[tuple[str, Optional[str], str]], list[LinkMLValidationResult]]:
-            """The references an instance cites, and errors for unusable ones.
+        ) -> tuple[list[ResolvedReference], list[tuple[Any, str]]]:
+            """The references an instance cites, and the values that name none.
 
             Reference fields are tried in turn; the first holding a usable
             identifier supplies the references. A multivalued slot holds a list;
             a single value is a list of one. Absent, null or an empty list is
             no reference, but any other value, "" and 0 included, was meant as
-            one, so a value with no readable identifier is reported rather than
-            letting ``checked_path`` pass unchecked. Errors come from the field
-            used, or, if none is usable, from the first field with a value
-            only: one error is enough to say the check cannot be made.
+            one, so a value with no readable identifier is returned for the
+            caller to report, with its path, rather than letting a check pass
+            unchecked. They come from the field used, or, if none is usable,
+            from the first field with a value only: one error is enough to say
+            the check cannot be made.
 
             Returns:
-                ``(reference ID, its own title, path of the reference)`` for
-                each usable reference, and the errors to report
+                The usable references, and ``(value, path)`` for each unusable one
+
+            Examples:
+                >>> plugin = ReferenceValidationPlugin(config=ReferenceValidationConfig())
+                >>> plugin._resolve_references(
+                ...     {"ref": ["PMID:1", {"title": "T"}]}, ["ref"], "")
+                ([ResolvedReference(reference_id='PMID:1', title=None, path='ref[0]')], [({'title': 'T'}, 'ref[1]')])
+                >>> plugin._resolve_references({"ref": ""}, ["ref"], "e")
+                ([], [('', 'e.ref')])
             """
-            unusable: list[LinkMLValidationResult] = []
+            unusable: list[tuple[Any, str]] = []
             for ref_field in reference_fields:
                 ref_value = instance.get(ref_field)
                 if ref_value is None or ref_value == []:
@@ -342,11 +360,11 @@ if _LINKML_AVAILABLE:
                     item_path = f"{ref_path}[{i}]" if is_list else ref_path
                     reference_id = self._extract_reference_id(item)
                     if reference_id:
-                        references.append((reference_id, self._extract_title(item), item_path))
-                    else:
-                        field_unusable.append(
-                            self._unusable_reference(item, item_path, checked_path)
+                        references.append(
+                            ResolvedReference(reference_id, self._extract_title(item), item_path)
                         )
+                    else:
+                        field_unusable.append((item, item_path))
                 if references:
                     return references, field_unusable
                 unusable = unusable or field_unusable
@@ -371,31 +389,30 @@ if _LINKML_AVAILABLE:
             if title_field is not None:
                 title_path = f"{path}.{title_field}" if path else title_field
                 resolved, unusable = self._resolve_references(
-                    instance, reference_fields, path, title_path
+                    instance, reference_fields, path
                 )
-                yield from unusable
+                for value, value_path in unusable:
+                    yield self._unusable_reference(value, value_path, title_path)
                 title = instance[title_field]
                 if len(resolved) == 1:
-                    yield from self._validate_title(title, resolved[0][0], title_path)
+                    yield from self._validate_title(
+                        title, resolved[0].reference_id, title_path
+                    )
                 elif resolved:
                     yield from self._validate_title_any(
-                        title, [reference_id for reference_id, _, _ in resolved], title_path
+                        title, [ref.reference_id for ref in resolved], title_path
                     )
                 return
 
-            resolved, unusable = self._resolve_references(
-                instance, reference_fields, path, f"{path}.title" if path else "title"
-            )
-            # Only a reference carrying a title of its own has something unchecked.
-            yield from (
-                problem
-                for problem in unusable
-                if self._extract_title((problem.instance or {}).get("reference"))
-            )
-            for reference_id, own_title, reference_path in resolved:
-                if own_title:
+            resolved, unusable = self._resolve_references(instance, reference_fields, path)
+            # Only a reference carrying a title of its own leaves one unchecked.
+            for value, value_path in unusable:
+                if self._extract_title(value):
+                    yield self._unusable_reference(value, value_path, f"{value_path}.title")
+            for ref in resolved:
+                if ref.title:
                     yield from self._validate_title(
-                        own_title, reference_id, f"{reference_path}.title"
+                        ref.title, ref.reference_id, f"{ref.path}.title"
                     )
 
         def _validate_title_any(
@@ -409,11 +426,13 @@ if _LINKML_AVAILABLE:
             one error names each reference with its own reason.
             """
             results = []
+            skipped = []
             for reference_id in reference_ids:
                 result = self.validator.validate_title(
                     reference_id, expected_title=title, path=path
                 )
                 if result.skipped:
+                    skipped.append(reference_id)
                     continue
                 if result.is_valid:
                     self.titles_checked += int(result.title_checked)
@@ -430,6 +449,8 @@ if _LINKML_AVAILABLE:
                 f"{reference_id}: {result.message or 'title validation failed'}"
                 for reference_id, result in results
             )
+            if skipped:
+                details += f"; not checked (skipped prefix): {', '.join(skipped)}"
             yield LinkMLValidationResult(
                 type="reference_validation",
                 severity=severity,

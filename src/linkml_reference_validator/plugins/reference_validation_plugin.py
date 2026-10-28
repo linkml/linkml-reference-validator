@@ -207,27 +207,25 @@ if _LINKML_AVAILABLE:
                 excerpt_value = instance.get(excerpt_field)
                 excerpt_path = f"{path}.{excerpt_field}" if path else excerpt_field
 
-                # A present-but-insubstantial excerpt is evidence of nothing. It
-                # must be reported here rather than skipped: downstream
-                # substring matching would accept it against almost any
-                # reference, and it may have no reference at all.
-                if isinstance(excerpt_value, str):
-                    content_problem = self.validator.check_excerpt_content(
-                        excerpt_value
-                    )
-                    if content_problem:
-                        yield LinkMLValidationResult(
-                            type="reference_validation",
-                            severity=Severity.ERROR,
-                            message=f"{content_problem} (in '{excerpt_field}')",
-                            instance={excerpt_field: excerpt_value},
-                            instantiates=excerpt_path,
-                            context=[excerpt_path],
-                            source="ReferenceValidationPlugin",
-                        )
-                        continue
+                # A multivalued excerpt slot holds a list: each item is an
+                # excerpt in its own right, checked at its own [i] path (#141).
+                if isinstance(excerpt_value, list):
+                    items = [
+                        (item, f"{excerpt_path}[{i}]")
+                        for i, item in enumerate(excerpt_value)
+                    ]
+                else:
+                    items = [(excerpt_value, excerpt_path)]
+                excerpts: list[tuple[str, str]] = []
+                for item, item_path in items:
+                    problem = self._excerpt_problem(item, excerpt_field, item_path)
+                    if problem is not None:
+                        yield problem
+                    elif isinstance(item, str) and item:
+                        # Anything not text was reported by _excerpt_problem.
+                        excerpts.append((item, item_path))
 
-                if not excerpt_value:
+                if not excerpts:
                     continue
 
                 # A reference given but unusable must not let the excerpt pass
@@ -274,13 +272,15 @@ if _LINKML_AVAILABLE:
                             if title_value:
                                 expected_title = title_value
                                 break
-                        yield from self._validate_excerpt(
-                            excerpt_value, reference_id, expected_title, excerpt_path
-                        )
+                        for excerpt, item_path in excerpts:
+                            yield from self._validate_excerpt(
+                                excerpt, reference_id, expected_title, item_path
+                            )
                     else:
-                        yield from self._validate_excerpt_any(
-                            excerpt_value, references, excerpt_path
-                        )
+                        for excerpt, item_path in excerpts:
+                            yield from self._validate_excerpt_any(
+                                excerpt, references, item_path
+                            )
                     # Break after the first field with a usable reference to avoid duplicates
                     break
                 else:
@@ -333,7 +333,16 @@ if _LINKML_AVAILABLE:
                 if isinstance(value, dict):
                     range_class = slot.range
                     if range_class and self.schema_view.get_class(range_class):
-                        yield from self._validate_instance(value, range_class, slot_path)
+                        if slot.multivalued and self._is_keyed_mapping(value, range_class):
+                            # A keyed mapping (inlined_as_list: false), not one
+                            # object: validate every object in it (#139).
+                            yield from self._validate_keyed_objects(
+                                value, range_class, slot_path
+                            )
+                        else:
+                            yield from self._validate_instance(
+                                value, range_class, slot_path
+                            )
 
                 elif isinstance(value, list):
                     for i, item in enumerate(value):
@@ -344,6 +353,88 @@ if _LINKML_AVAILABLE:
                                 yield from self._validate_instance(
                                     item, range_class, item_path
                                 )
+
+        def _excerpt_problem(
+            self, excerpt: Any, excerpt_field: str, path: str
+        ) -> Optional[LinkMLValidationResult]:
+            """Report an excerpt that cannot be evidence, or None if it may be.
+
+            A present-but-insubstantial excerpt is evidence of nothing. It must
+            be reported rather than skipped: downstream substring matching
+            would accept it against almost any reference, and it may have no
+            reference at all. An absent excerpt (None) is not a problem here;
+            whether the slot is required is the schema's business.
+
+            Examples:
+                >>> plugin = ReferenceValidationPlugin(config=ReferenceValidationConfig())
+                >>> plugin._excerpt_problem("Protein X binds Y", "supporting_text", "p") is None
+                True
+                >>> plugin._excerpt_problem(None, "supporting_text", "p") is None
+                True
+                >>> plugin._excerpt_problem(5, "supporting_text", "p").message
+                "Supporting text must be text, not int (in 'supporting_text')"
+            """
+            if excerpt is None:
+                return None
+            if isinstance(excerpt, str):
+                message = self.validator.check_excerpt_content(excerpt)
+            else:
+                message = f"Supporting text must be text, not {type(excerpt).__name__}"
+            if not message:
+                return None
+            return LinkMLValidationResult(
+                type="reference_validation",
+                severity=Severity.ERROR,
+                message=f"{message} (in '{excerpt_field}')",
+                instance={excerpt_field: excerpt},
+                instantiates=path,
+                context=[path],
+                source="ReferenceValidationPlugin",
+            )
+
+        def _is_keyed_mapping(self, value: dict[str, Any], class_name: str) -> bool:
+            """Whether a dict in a multivalued slot maps keys to objects of ``class_name``.
+
+            Decided by the keys: a dict any of whose keys is a slot of the class
+            (or a slot's alias) is one object written without the list, and is
+            validated as such, as it always was. Otherwise it is a keyed mapping,
+            which only a class with an identifier or ``key`` slot can have. The
+            values are not consulted, so a compact entry beside an object does
+            not hide that object; :meth:`_validate_keyed_objects` skips such
+            entries one by one.
+            """
+            if not self.schema_view or not value:
+                return False
+            if self.schema_view.get_identifier_slot(class_name, use_key=True) is None:
+                return False
+            slot_names = set(self.schema_view.class_slots(class_name))
+            for slot_name in list(slot_names):
+                alias = self.schema_view.induced_slot(slot_name, class_name).alias
+                if alias:
+                    slot_names.add(alias)
+            return not any(key in slot_names for key in value)
+
+        def _validate_keyed_objects(
+            self, mapping: dict[str, Any], class_name: str, path: str
+        ) -> Iterator[LinkMLValidationResult]:
+            """Validate each object of a keyed mapping (``inlined_as_list: false``).
+
+            The key is the object's identifier, so it is supplied when the
+            object omits it, as LinkML loaders do. A value that is not a mapping
+            is the compact form, which sets one non-key slot and so cannot hold
+            both a reference and an excerpt; it is left to schema validation.
+            """
+            if not self.schema_view:
+                return
+            identifier = self.schema_view.get_identifier_slot(class_name, use_key=True)
+            for key, obj in mapping.items():
+                if obj is None:
+                    obj = {}
+                if not isinstance(obj, dict):
+                    continue
+                if identifier is not None and identifier.name not in obj:
+                    obj = {identifier.name: key, **obj}
+                yield from self._validate_instance(obj, class_name, f"{path}[{key}]")
 
         def _convert_severity(self, severity: Any) -> Severity:
             """Translate internal severities to LinkML Severity enum.

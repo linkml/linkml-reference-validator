@@ -227,3 +227,59 @@ def test_a_title_field_wins_over_a_reference_objects_own_title(tmp_path, fixture
     )
     assert report.results == []
     assert plugin.titles_checked == 1
+
+
+# ------------------------------------------- title beside an excerpt, several refs
+
+EXCERPT_SCHEMA = LIST_SCHEMA + "      supporting_text:\n        range: string\n"
+QUOTE_1 = "Protein X functions in cell cycle regulation"
+
+
+@pytest.fixture
+def with_excerpt(tmp_path, fixtures_dir):
+    return _setup(tmp_path, fixtures_dir, EXCERPT_SCHEMA)
+
+
+def test_a_wrong_title_beside_an_excerpt_and_several_references_fails(with_excerpt):
+    """The title field is checked against every cited reference, not ignored."""
+    _, _, plugin, validator = with_excerpt
+    report = validator.validate(
+        {
+            "reference": ["PMID:TEST001", "PMID:TEST002"],
+            "title": WRONG,
+            "supporting_text": QUOTE_1,
+        }
+    )
+    assert len(report.results) == 1
+    assert report.results[0].instantiates == "title"
+    assert "PMID:TEST001" in report.results[0].message
+    assert plugin.snippets_checked == 1
+    assert plugin.titles_checked == 1
+
+
+@pytest.mark.parametrize("title", [TITLE_1, TITLE_2])
+def test_a_title_of_any_cited_reference_passes_beside_an_excerpt(with_excerpt, title):
+    """Any one reference's title passes, even if the excerpt comes from another."""
+    _, _, _, validator = with_excerpt
+    report = validator.validate(
+        {
+            "reference": ["PMID:TEST001", "PMID:TEST002"],
+            "title": title,
+            "supporting_text": QUOTE_1,
+        }
+    )
+    assert report.results == []
+
+
+def test_excerpt_and_title_failures_beside_several_references_are_both_reported(
+    with_excerpt,
+):
+    _, _, _, validator = with_excerpt
+    report = validator.validate(
+        {
+            "reference": ["PMID:TEST001", "PMID:TEST002"],
+            "title": WRONG,
+            "supporting_text": "totally fabricated quote not in the paper",
+        }
+    )
+    assert sorted(r.instantiates for r in report.results) == ["supporting_text", "title"]

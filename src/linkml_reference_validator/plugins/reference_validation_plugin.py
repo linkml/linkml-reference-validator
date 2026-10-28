@@ -250,24 +250,40 @@ if _LINKML_AVAILABLE:
                 if not resolved:
                     continue
                 references = [(ref.reference_id, ref.title) for ref in resolved]
-                # A title field names the paper, so it applies only when
-                # one paper is cited; listed objects carry their own.
+                # A title field names the paper, so it replaces any title a
+                # reference object carries.
+                title_field = next((f for f in title_fields if instance.get(f)), None)
                 if len(references) == 1:
                     reference_id, expected_title = references[0]
-                    for title_field in title_fields:
-                        title_value = instance.get(title_field)
-                        if title_value:
-                            expected_title = title_value
-                            break
+                    if title_field is not None:
+                        expected_title = instance[title_field]
                     for excerpt, item_path in excerpts:
                         yield from self._validate_excerpt(
                             excerpt, reference_id, expected_title, item_path
                         )
-                else:
+                elif title_field is None:
+                    # Listed objects carry their own titles.
                     for excerpt, item_path in excerpts:
                         yield from self._validate_excerpt_any(
                             excerpt, references, item_path
                         )
+                else:
+                    # One title for several references: like the excerpt, it
+                    # passes if it is any one of theirs. Checked once, on its
+                    # own, so the excerpt may come from one reference and the
+                    # title name another.
+                    for excerpt, item_path in excerpts:
+                        yield from self._validate_excerpt_any(
+                            excerpt,
+                            [(reference_id, None) for reference_id, _ in references],
+                            item_path,
+                        )
+                    title_path = f"{path}.{title_field}" if path else title_field
+                    yield from self._validate_title_any(
+                        instance[title_field],
+                        [reference_id for reference_id, _ in references],
+                        title_path,
+                    )
 
             # If there was no excerpt to check, validate titles on their own,
             # over the same reference shapes as excerpts (#146). An excerpt

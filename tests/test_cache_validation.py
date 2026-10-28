@@ -332,7 +332,11 @@ def test_attachment_extensions_follow_filenames_on_rewrite(tmp_path):
 def test_extensions_are_not_copied_between_colliding_reference_ids(
     tmp_path, reference_id, fresh_id
 ):
-    """Filename sanitization collisions do not confer ownership of metadata."""
+    """Filename sanitization collisions confer neither the file nor its metadata.
+
+    The second reference gets its own, disambiguated file (#131), so the first
+    entry, and its extension fields, are left exactly as they were.
+    """
     fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path))
     path = fetcher.get_cache_path(reference_id)
     write_cache(
@@ -340,11 +344,15 @@ def test_extensions_are_not_copied_between_colliding_reference_ids(
         f"reference_id: {reference_id}\ncontent_type: unknown\ndatabase: Orphanet",
         path.name,
     )
+    before = path.read_bytes()
     fresh = ReferenceContent(reference_id=fresh_id)
-    assert fetcher.get_cache_path(fresh.reference_id) == path
+    fresh_path = fetcher.get_cache_path(fresh.reference_id)
+    assert fresh_path != path
     fetcher._save_to_disk(fresh)
-    assert validate_cache_file(path).frontmatter.model_extra == {}
-    assert validate_cache_file(path).frontmatter.reference_id == fresh_id
+    assert path.read_bytes() == before
+    assert validate_cache_file(fresh_path).frontmatter.model_extra == {}
+    assert validate_cache_file(fresh_path).frontmatter.reference_id == fresh_id
+    assert validate_cache_file(fresh_path).is_valid
 
 
 @pytest.mark.parametrize(

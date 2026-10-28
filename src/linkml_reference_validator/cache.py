@@ -181,6 +181,31 @@ def _sanitized_filename(reference_id: str) -> str:
     name = re.sub(r"[:/?=]", "_", reference_id)
     if len(name.encode("utf-8")) + len(".md") <= MAX_CACHE_FILENAME_BYTES:
         return name + ".md"
+    return _hashed_filename(name, reference_id)
+
+
+def disambiguated_cache_filename(reference_id: str) -> str:
+    """Return the filename for a reference whose usual name another one holds.
+
+    Sanitizing maps ``:`` ``/`` ``?`` and ``=`` to ``_``, so distinct
+    references can share :func:`cache_filename`: ``url:https://ex.org/a?b=c``
+    and ``url:https://ex.org/a/b/c``. The first writer keeps the shared name;
+    the other is written here, under the same name ending in a hash of its own
+    ID, so no existing entry is renamed (#131).
+
+    >>> disambiguated_cache_filename("url:https://ex.org/a/b/c")
+    'url_https___ex.org_a_b_c_5acbea067cb82733.md'
+    """
+    key = cache_key(reference_id)
+    return _hashed_filename(re.sub(r"[:/?=]", "_", key), key)
+
+
+def _hashed_filename(name: str, reference_id: str) -> str:
+    """``name``, cut to fit, ending in ``_`` and a hash of ``reference_id``.
+
+    A DOI is hashed case-insensitively, so case variants of one DOI still
+    differ only in case.
+    """
     digest_source = (
         reference_id.casefold() if reference_id.upper().startswith("DOI:") else reference_id
     )
@@ -288,11 +313,13 @@ def _validate_cache_file(
 
     reference_id = result.frontmatter.reference_id
     expected = cache_filename(reference_id)
-    # A fragment-keyed name from before #114 is still read, so still valid.
-    accepted = {expected, legacy_cache_filename(reference_id)}
+    # A fragment-keyed name from before #114 is still read, so still valid, as
+    # is the name a reference gets when another holds its usual one (#131).
+    disambiguated = disambiguated_cache_filename(reference_id)
+    accepted = {expected, legacy_cache_filename(reference_id), disambiguated}
     matches = path.name in accepted
     if reference_id.upper().startswith("DOI:"):
-        matches = path.name.casefold() == expected.casefold()
+        matches = path.name.casefold() in {expected.casefold(), disambiguated.casefold()}
     if not matches:
         result.findings.append(
             CacheFinding(

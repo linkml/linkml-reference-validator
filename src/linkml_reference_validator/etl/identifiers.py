@@ -41,7 +41,9 @@ def doi_url_path(doi: str) -> str:
     SICI-style Wiley DOIs use ``#`` as a check character, and interpolated raw,
     ``...CO;2-#`` would be requested as ``...CO;2-`` (#137). The ``/`` between
     prefix and suffix is kept, which Crossref, DataCite, OpenAlex and Unpaywall
-    all accept, as they accept the percent-encoded rest.
+    all accept, as they accept the percent-encoded rest. A ``%`` is encoded too,
+    since a DOI may legitimately contain one, so a DOI given already
+    percent-encoded is encoded twice: give DOIs as registered, not URL-escaped.
 
     Examples:
         >>> doi_url_path("10.1000/xyz123")

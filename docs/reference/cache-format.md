@@ -129,7 +129,10 @@ first one written keeps that name. When the name is already held by a file whose
 `reference_id` is a different reference, the other one is written under the same
 name ending in `_` and the 16-hex-digit hash of its own ID instead, and the
 checker accepts that name for it. An entry is never served for a reference other
-than the one it records. DOI filenames are compared
+than the one it records: a hand-written entry whose `reference_id` is a
+placeholder, or an alias spelling such as `pubmed:123` in `PMID_123.md`, is now
+treated as a miss and fetched afresh under the disambiguated name. DOI filenames
+are compared
 case-insensitively, matching the fetcher's existing behavior. Other filenames must
 match exactly. This uses the ID already stored in the file, without applying
 configured prefix aliases or requiring a currently registered reference source.

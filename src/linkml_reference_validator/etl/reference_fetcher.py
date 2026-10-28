@@ -281,6 +281,10 @@ class FetchOutcome:
     served_stale: bool = False
 
 
+#: One safe loader for the frontmatter reads on every cache-path lookup, rather
+#: than building a new one per call.
+_SAFE_YAML = YAML(typ="safe")
+
 
 def _read_stored_reference_id(cache_path: Path) -> Optional[str]:
     """The ``reference_id`` recorded in a cache file's frontmatter, if any.
@@ -317,7 +321,7 @@ def _read_stored_reference_id(cache_path: Path) -> Optional[str]:
     except OSError:  # no existing entry, or unreadable
         return None
     try:
-        metadata = YAML(typ="safe").load("".join(lines))
+        metadata = _SAFE_YAML.load("".join(lines))
     except YAMLError:  # damaged frontmatter: unknown, not another reference
         return None
     if not isinstance(metadata, dict) or metadata.get("reference_id") is None:
@@ -1297,14 +1301,19 @@ class ReferenceFetcher:
         A file at the usual name that records a *different* reference -- the two
         IDs sanitize alike -- keeps that name, and this reference is given its
         disambiguated name instead, so neither is served the other's text and no
-        existing entry is renamed (#131).
+        existing entry is renamed (#131). A reference already written under its
+        disambiguated name stays there, even once the usual name is free again,
+        so deleting the other entry does not orphan it.
         """
         reference_id = self._canonical_cache_id(reference_id)
+        disambiguated = cache_dir / disambiguated_cache_filename(reference_id)
+        if disambiguated.exists():
+            return disambiguated
         path = cache_dir / cache_filename(reference_id)
         if reference_id.upper().startswith("DOI:"):
             path = self._existing_case_variant(path)
         if self._names_other_reference(path, reference_id):
-            return cache_dir / disambiguated_cache_filename(reference_id)
+            return disambiguated
         return path
 
     def _canonical_cache_id(self, reference_id: str) -> str:

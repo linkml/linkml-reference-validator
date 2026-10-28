@@ -96,3 +96,20 @@ def test_long_url_entry_round_trips_through_the_cache(tmp_path):
 
     result = validate_cache_file(path)
     assert not [f for f in result.findings if f.code == "filename_mismatch"]
+
+
+def test_the_cap_applies_from_one_byte_over():
+    """A name of exactly the limit is left alone; one byte more is capped."""
+    prefix = "PMID:"
+    exact = prefix + "1" * (MAX_CACHE_FILENAME_BYTES - len("PMID_") - len(".md"))
+    assert cache_filename(exact) == exact.replace(":", "_") + ".md"
+    assert len(cache_filename(exact).encode()) == MAX_CACHE_FILENAME_BYTES
+    over = exact + "1"
+    assert cache_filename(over) != over.replace(":", "_") + ".md"
+    assert len(cache_filename(over).encode()) <= MAX_CACHE_FILENAME_BYTES
+
+
+def test_a_long_url_with_a_fragment_does_not_crash(tmp_path):
+    """The pre-#114 fragment-keyed probe is capped too, so it cannot raise."""
+    with _with_source(None):
+        assert _fetcher(tmp_path).fetch(LONG_URL + "#page=4") is None

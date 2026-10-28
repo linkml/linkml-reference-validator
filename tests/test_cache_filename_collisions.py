@@ -141,3 +141,28 @@ def test_ids_the_yaml_writer_quotes_are_still_recognised_as_their_own(tmp_path):
         assert fetcher.get_cache_path(reference_id).name == cache_filename(
             fetcher._canonical_cache_id(reference_id)
         ), reference_id
+
+
+def test_deleting_the_holder_does_not_orphan_the_disambiguated_entry(tmp_path):
+    """Once written under its own name, a reference keeps reading and writing there."""
+    with _Calls({FIRST: "First text.", SECOND: "Second text."}):
+        _fetcher(tmp_path).fetch(FIRST)
+        _fetcher(tmp_path).fetch(SECOND)
+    (tmp_path / cache_filename(FIRST)).unlink()
+
+    with _Calls({}) as stub:
+        assert _fetcher(tmp_path).fetch(SECOND).content == "Second text."
+    assert stub.calls == []
+    assert len(list(tmp_path.glob("*.md"))) == 1
+
+
+def test_fragment_reference_whose_usual_name_is_held_elsewhere(tmp_path):
+    """A url: fragment shares its URL's entry, disambiguated or not."""
+    with _Calls({FIRST: "First text.", SECOND: "Second text."}):
+        _fetcher(tmp_path).fetch(FIRST)
+        _fetcher(tmp_path).fetch(SECOND)
+    with _Calls({}) as stub:
+        page = _fetcher(tmp_path).fetch(SECOND + "#page=3")
+    assert stub.calls == []
+    assert page is not None and page.content == "Second text."
+    assert page.reference_id == SECOND + "#page=3"

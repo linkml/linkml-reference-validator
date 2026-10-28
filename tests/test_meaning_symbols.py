@@ -32,6 +32,9 @@ def found(quote: str, content: str) -> bool:
         ("stored at 80 °C", "samples were stored at −80 °C"),
         ("2.5 fold change", "a -2.5 fold change"),
         ("a mean of 5 2 mM", "a mean of 5 ± 2 mM"),
+        ("10^5 M", "a dose of 10^-5 M"),
+        ("about 2 fold", "about ~-2 fold"),
+        ("approximately ≈ 2", "approximately ≈−2"),
     ],
 )
 def test_reversed_comparison_or_sign_fails(quote, content):

@@ -2142,7 +2142,8 @@
 <p>Before matching, both the supporting text and reference content are normalized:</p>
 <ul>
 <li><strong>Lowercased</strong>: <code>"MUC1"</code> → <code>"muc1"</code></li>
-<li><strong>Punctuation removed</strong>: <code>"c-Abl"</code> → <code>"c abl"</code></li>
+<li><strong>Punctuation removed</strong>: <code>"c-Abl"</code> → <code>"c abl"</code> (a point or comma between
+  digits is kept, so <code>"10.5"</code> stays one number)</li>
 <li><strong>Whitespace collapsed</strong>: Multiple spaces become single space</li>
 <li><strong>Editorial notes removed</strong>: <code>"[mucin 1]"</code> → <code>""</code></li>
 </ul>
@@ -2158,6 +2159,27 @@ Normalized: &quot;muc1 oncoprotein blocks c abl&quot;
 reference_content = &quot;...The MUC1 oncoprotein blocks nuclear...&quot;
 # Match: &quot;muc1 oncoprotein&quot; found in normalized reference
 </code></pre>
+<p><strong>Matches start and end on whole words:</strong></p>
+<p>A quote may not begin or end inside a word of the reference. Otherwise a quote
+stating the opposite of the paper would pass:</p>
+<pre><code class="language-python">supporting_text = &quot;activates AKT signaling&quot;
+reference_content = &quot;...Loss of PTEN inactivates AKT signaling...&quot;
+# NOT FOUND: &quot;activates&quot; only occurs inside &quot;inactivates&quot;
+
+supporting_text = &quot;5 mM H2O2&quot;
+reference_content = &quot;...treated with 10.5 mM H2O2...&quot;
+# NOT FOUND: &quot;5&quot; only occurs inside &quot;10.5&quot;
+</code></pre>
+<p>Each part of a quote split with <code>...</code> is held to the same rule.</p>
+<p>One allowance: when a quote ends in a letter, the reference word it ends on may
+carry trailing digits. Full-text extraction welds superscript citations onto the
+word before them, so <code>tumor suppressor&lt;sup&gt;12&lt;/sup&gt;</code> reads as <code>suppressor12</code>,
+and a quote of <code>PTEN is a tumor suppressor</code> must still match. A quote ending in
+a digit gets no allowance (<code>10</code> never matches <code>105</code>). The same allowance means a
+quote ending in <code>AKT</code> matches <code>AKT1</code>, as plain substring matching always did.</p>
+<p>Because a point or comma between digits stays part of the number, numbers must
+be quoted with the reference's own separators: <code>days 3, 5 and 7</code> does not match
+<code>days 3,5 and 7</code>, and <code>10 000</code> does not match <code>10,000</code>.</p>
 <p><strong>Empty excerpts are rejected:</strong></p>
 <p>An empty or whitespace-only excerpt is always an error, never a pass. The
 empty string is a substring of every document, so a blank excerpt would

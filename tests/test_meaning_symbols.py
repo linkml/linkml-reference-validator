@@ -50,6 +50,12 @@ def test_reversed_comparison_or_sign_fails(quote, content):
         ("stored at −80 °C", "samples were stored at -80 °C"),
         ("a mean of 5 ± 2 mM", "a mean of 5 +/- 2 mM"),
         ("5 ± 2 mM", "a mean of 5±2 mM"),
+        ("a mean of 5 ± 2 mM", "a mean of 5 +/− 2 mM"),
+        ("a mean of 5 ± 2 mM", "a mean of 5 +− 2 mM"),
+        ("mean ± SD", "values are mean +/-SD of three runs"),
+        ("mean ± SEM", "values are mean ±SEM of three runs"),
+        ("a change of -2.5", "a change of (−2.5) overall"),
+        ("x = -5", "solved for x=-5 here"),
     ],
 )
 def test_same_meaning_in_other_spellings_matches(quote, content):
@@ -96,3 +102,10 @@ def test_plus_minus_repair_still_needs_the_symbol_as_written():
     result = repairer.attempt_repair("Ca2+-dependent CO2 fixation", "PMID:1", reference)
     assert result.is_repaired
     assert result.repaired_text == "Ca2+-dependent CO₂ fixation"
+
+
+def test_titles_compare_meaning_symbols_too():
+    """Title validation compares normalize_text output, so a reversed comparison differs."""
+    normalize = SupportingTextValidator.normalize_text
+    assert normalize("Survival with dose < 5 mg") == normalize("Survival with dose <5 mg")
+    assert normalize("Survival with dose < 5 mg") != normalize("Survival with dose > 5 mg")

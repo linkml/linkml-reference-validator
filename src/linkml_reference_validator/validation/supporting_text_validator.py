@@ -730,8 +730,9 @@ class SupportingTextValidator:
         word. Symbols that carry meaning become words: ``<`` ``>`` ``≤`` ``≥``
         (and ``<=`` ``>=``) become ``lt`` ``gt`` ``le`` ``ge``, ``±`` and
         ``+/-`` become ``pm``, and a minus sign before a number stays on it as
-        ``neg``. Arrows such as ``->`` are punctuation. The same normalization applies to reference content and queries
-        (including split query parts).
+        ``neg``. Arrows such as ``->`` are punctuation. The same normalization
+        applies to reference content and queries (including split query
+        parts).
 
         IJ (Ĳ/ĳ) is folded because Unicode defines its compatibility decomposition
         as I + J. Distinct letters Æ/æ and Œ/œ are preserved: equating them with
@@ -818,8 +819,9 @@ class SupportingTextValidator:
         text = re.sub(r"<=|[≤⩽]", " le ", text)
         text = re.sub(r">=|[≥⩾]", " ge ", text)
         text = text.replace("<", " lt ").replace(">", " gt ")
-        # "+-" before a letter is a charge then a hyphen ("Ca2+-dependent").
-        text = re.sub(r"±|\+/?-(?![^\W\d_])", " pm ", text)
+        # A bare "+-" before a letter is a charge then a hyphen
+        # ("Ca2+-dependent"); "+/-" is plus-minus even before one ("+/-SD").
+        text = re.sub(r"±|\+/[-−]|\+[-−](?![^\W\d_])", " pm ", text)
         # A minus sign stays on its number, so "2.5" does not match "-2.5".
         # After a word, digit or prime it is a hyphen: IL-6, 3-5, 3'-5'.
         text = re.sub(r"(?<![\w.,'′’)\]])[-−](?=\d)", " neg", text)

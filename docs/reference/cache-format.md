@@ -117,7 +117,11 @@ assert header.model_dump()["database"] == "Orphanet"
 ```
 
 The checker derives the filename from the stored `reference_id` by replacing
-`:`, `/`, `?`, and `=` with `_` and appending `.md`. DOI filenames are compared
+`:`, `/`, `?`, and `=` with `_` and appending `.md`. A name that would exceed 200
+bytes of UTF-8 is cut on a character boundary and ends in `_` plus the first 16
+hex digits of the SHA-256 of the full `reference_id` (lowercased for a DOI), so
+a long `url:` reference fits common filesystems' 255-byte limit and two long IDs
+sharing a prefix still get different files. Shorter names are unchanged. DOI filenames are compared
 case-insensitively, matching the fetcher's existing behavior. Other filenames must
 match exactly. This uses the ID already stored in the file, without applying
 configured prefix aliases or requiring a currently registered reference source.

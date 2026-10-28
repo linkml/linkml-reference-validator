@@ -5,6 +5,7 @@ Unknown fields are preserved, so consumers can add metadata without a namespace.
 """
 
 from dataclasses import dataclass, field
+import hashlib
 from pathlib import Path
 import re
 
@@ -154,9 +155,39 @@ def legacy_cache_filename(reference_id: str) -> str:
     return _sanitized_filename(reference_id)
 
 
+#: The longest cache filename written, in UTF-8 bytes. Common filesystems allow
+#: 255; this leaves room for a ``.txt`` legacy probe and other tools' suffixes.
+MAX_CACHE_FILENAME_BYTES = 200
+
+#: Hex digits of the reference ID's SHA-256 kept in a capped filename.
+_FILENAME_HASH_CHARS = 16
+
+
 def _sanitized_filename(reference_id: str) -> str:
-    """Sanitize a reference ID into a filename, keeping everything else verbatim."""
-    return re.sub(r"[:/?=]", "_", reference_id) + ".md"
+    """Sanitize a reference ID into a filename, keeping everything else verbatim.
+
+    A name over ``MAX_CACHE_FILENAME_BYTES`` is cut on a character boundary and
+    ends in ``_`` plus a hash of the full ID, so it fits the filesystem and two
+    long IDs that share a prefix still get different files (#132). A DOI is
+    hashed case-insensitively, so case variants of one DOI still differ only in
+    case, as the fetcher's case-variant lookup and the checker expect.
+
+    >>> _sanitized_filename("PMID:1")
+    'PMID_1.md'
+    >>> name = _sanitized_filename("url:https://example.org/?q=" + "x" * 300)
+    >>> len(name.encode("utf-8")) <= MAX_CACHE_FILENAME_BYTES, name[-20:]
+    (True, '_8d32b36eb989401f.md')
+    """
+    name = re.sub(r"[:/?=]", "_", reference_id)
+    if len(name.encode("utf-8")) + len(".md") <= MAX_CACHE_FILENAME_BYTES:
+        return name + ".md"
+    digest_source = (
+        reference_id.casefold() if reference_id.upper().startswith("DOI:") else reference_id
+    )
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:_FILENAME_HASH_CHARS]
+    room = MAX_CACHE_FILENAME_BYTES - len(".md") - len("_") - len(digest)
+    prefix = name.encode("utf-8")[:room].decode("utf-8", errors="ignore")
+    return f"{prefix}_{digest}.md"
 
 
 def _same_reference_id(first: str, second: str) -> bool:

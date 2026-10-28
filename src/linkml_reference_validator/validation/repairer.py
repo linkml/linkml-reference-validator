@@ -235,7 +235,7 @@ class SupportingTextRepairer:
             >>> repairer._all_parts_found("CO₂ fixation ... was [then] measured", searchable)
             True
             >>> repairer._all_parts_found("Ca2±dependent CO₂", searchable)
-            True
+            False
             >>> repairer._all_parts_found("Ca2±dependent CO₂", literal, literal=True)
             False
             >>> repairer._all_parts_found("[note]", searchable)

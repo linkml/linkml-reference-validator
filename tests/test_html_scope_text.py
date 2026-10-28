@@ -188,3 +188,19 @@ def test_verified_stamp_tolerates_a_yaml_comment():
     assert ReferenceFetcher._is_verified_html_body(
         "---\nhtml_full_text_version: 1  # migrated\n---\nBody."
     )
+
+
+def test_classes_that_merely_mention_references_keep_their_text():
+    """Only whole bibliography class tokens on a container are dropped.
+
+    A substring match would delete an inline citation marker, or a wrapper
+    around the whole body, without a trace.
+    """
+    for markup, kept in (
+        ('<p>See <a class="xref-references">[1]</a> here.</p>', "[1]"),
+        ('<div class="body-with-references"><p>Whole body text.</p></div>', "Whole body text."),
+        ('<div class="pref-list"><p>Preference text.</p></div>', "Preference text."),
+        ('<span class="references">inline span text</span>', "inline span text"),
+    ):
+        text = HTMLExtractor().extract(f"<article>{markup}</article>".encode()) or ""
+        assert kept in text, markup

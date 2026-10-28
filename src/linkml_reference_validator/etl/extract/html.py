@@ -49,9 +49,16 @@ NON_CONTENT_TAGS = ("script", "style", "noscript", "template", "meta", "link", "
 #: Bibliography containers inside an article region. A cited paper's title is
 #: not evidence for the citing article, so their text is never extracted:
 #: PLOS ``ol.references``, PMC ``section.ref-list``, Springer
-#: ``ol.c-article-references``, and the DPUB-ARIA ``doc-bibliography`` role.
+#: ``ol.c-article-references``, Wiley ``section.article-section__references``,
+#: and the DPUB-ARIA ``doc-bibliography`` role. Whole class tokens on block
+#: containers only: a substring match would also delete an inline citation
+#: marker or a wrapper such as ``body-with-references`` around the whole
+#: body. A layout not listed here keeps its bibliography text; extend the list
+#: as publishers are seen, never with a substring.
 BIBLIOGRAPHY_SELECTOR = (
-    '[class*="ref-list" i], [class*="references" i], [class*="bibliograph" i], '
+    ":is(section, div, ol, ul, aside)"
+    ":is(.ref-list, .references, .c-article-references,"
+    " .article-section__references, .bibliography), "
     '[role="doc-bibliography"]'
 )
 

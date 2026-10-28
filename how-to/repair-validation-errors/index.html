@@ -2253,7 +2253,10 @@ decomposition into I and J; ordinary case normalization still applies.</p>
 Equating these letters would accept spelling changes beyond typographic repair.
 Validation uses an explicit ligature table instead of broad Unicode NFKC
 normalization so this change does not equate scientific notation such as <code>H₂O</code>
-with <code>H2O</code>, <code>10⁶</code> with <code>106</code>, or the micro sign <code>µ</code> with Greek <code>μ</code>.</p>
+with <code>H2O</code> or <code>10⁶</code> with <code>106</code>. The micro sign <code>µ</code> and Greek <code>μ</code> <em>are</em> treated
+as the same letter, since sources use them interchangeably (<code>5 µM</code> matches
+<code>5 μM</code>), as are the variant Greek forms <code>ϕ ϵ ϑ ϐ ϖ ϰ ϱ</code> and the ordinary
+letters they stand for.</p>
 <h3 id="unmapped-pdf-glyphs-do-not-match">Unmapped PDF glyphs do not match</h3>
 <p>Some PDFs draw a glyph without saying which character it is, so text extraction
 gets no character at all. This is common for <code>fi</code>/<code>fl</code> ligatures, and sometimes

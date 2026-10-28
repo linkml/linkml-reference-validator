@@ -727,7 +727,10 @@ class SupportingTextValidator:
         Folds Latin compatibility ligatures, spells out Greek letters, removes
         punctuation and extra whitespace, and lowercases. A point or comma
         between two digits is kept, so a number such as ``10.5`` stays one
-        word. The same normalization applies to reference content and queries
+        word. Symbols that carry meaning become words: ``<`` ``>`` ``≤`` ``≥``
+        (and ``<=`` ``>=``) become ``lt`` ``gt`` ``le`` ``ge``, ``±`` and
+        ``+/-`` become ``pm``, and a minus sign before a number stays on it as
+        ``neg``. Arrows such as ``->`` are punctuation. The same normalization applies to reference content and queries
         (including split query parts).
 
         IJ (Ĳ/ĳ) is folded because Unicode defines its compatibility decomposition
@@ -758,7 +761,11 @@ class SupportingTextValidator:
             >>> SupportingTextValidator.normalize_text("ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ Ĳ ĳ")
             'ff fi fl ffi ffl st st ij ij'
             >>> SupportingTextValidator.normalize_text("10.5 mM, 3,4-dihydroxy, p<0.05.")
-            '10.5 mm 3,4 dihydroxy p 0.05'
+            '10.5 mm 3,4 dihydroxy p lt 0.05'
+            >>> SupportingTextValidator.normalize_text("p<0.05, 5 ± 2, by −2.5 fold")
+            'p lt 0.05 5 pm 2 by neg2.5 fold'
+            >>> SupportingTextValidator.normalize_text("IL-6, Ca2+-dependent, A -> B")
+            'il 6 ca2 dependent a b'
             >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶ µ")
             'æ œ æ œ h₂o 10⁶ µ'
         """
@@ -802,6 +809,21 @@ class SupportingTextValidator:
             text = text.replace(greek, spelled)
 
         text = text.lower()
+
+        # Symbols that carry meaning become words before punctuation is
+        # stripped, so a quote that reverses a comparison or drops a sign
+        # fails (issue #125). Arrows go first, or "->" would read as ">"; a
+        # "<-" before a digit is "<" then a negative number, not an arrow.
+        text = re.sub(r"<[-=]+>|[-=]+>|<-+(?!\d)", " ", text)
+        text = re.sub(r"<=|[≤⩽]", " le ", text)
+        text = re.sub(r">=|[≥⩾]", " ge ", text)
+        text = text.replace("<", " lt ").replace(">", " gt ")
+        # "+-" before a letter is a charge then a hyphen ("Ca2+-dependent").
+        text = re.sub(r"±|\+/?-(?![^\W\d_])", " pm ", text)
+        # A minus sign stays on its number, so "2.5" does not match "-2.5".
+        # After a word, digit or prime it is a hyphen: IL-6, 3-5, 3'-5'.
+        text = re.sub(r"(?<![\w.,'′’)\]])[-−](?=\d)", " neg", text)
+
         # A point or comma between digits is part of the number: splitting
         # "10.5" into "10 5" would let a quote of "5 mM" match "10.5 mM".
         text = re.sub(r"(?!(?<=\d)[.,](?=\d))[^\w\s]", " ", text)

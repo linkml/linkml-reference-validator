@@ -15,6 +15,12 @@ Before matching, both the supporting text and reference content are normalized:
 - **Lowercased**: `"MUC1"` → `"muc1"`
 - **Punctuation removed**: `"c-Abl"` → `"c abl"` (a point or comma between
   digits is kept, so `"10.5"` stays one number)
+- **Meaning-bearing symbols kept as words**: `<` `>` `≤` `≥` become `lt` `gt`
+  `le` `ge`, `±` (or `+/-`) becomes `pm`, and a minus sign before a number stays
+  on it, so `"p < 0.05"` does not match `"p > 0.05"` and `"2.5 fold"` does not
+  match `"-2.5 fold"`. ASCII and Unicode spellings are equivalent (`<=` and `≤`,
+  `-` and `−`). A hyphen after a word or digit (`IL-6`, `3-5`) is still
+  punctuation.
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 

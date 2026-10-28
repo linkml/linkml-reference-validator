@@ -1481,7 +1481,21 @@ header = CacheFrontmatter.model_validate({
 assert header.model_dump()[&quot;database&quot;] == &quot;Orphanet&quot;
 </code></pre>
 <p>The checker derives the filename from the stored <code>reference_id</code> by replacing
-<code>:</code>, <code>/</code>, <code>?</code>, and <code>=</code> with <code>_</code> and appending <code>.md</code>. DOI filenames are compared
+<code>:</code>, <code>/</code>, <code>?</code>, and <code>=</code> with <code>_</code> and appending <code>.md</code>. A name that would exceed 200
+bytes of UTF-8 is cut on a character boundary and ends in <code>_</code> plus the first 16
+hex digits of the SHA-256 of the full <code>reference_id</code> (lowercased for a DOI), so
+a long <code>url:</code> reference fits common filesystems' 255-byte limit and two long IDs
+sharing a prefix still get different files. Shorter names are unchanged.</p>
+<p>Because the replacement is lossy, distinct references can sanitize to the same
+name, such as <code>url:https://ex.org/a?b=c</code> and <code>url:https://ex.org/a/b/c</code>. The
+first one written keeps that name. When the name is already held by a file whose
+<code>reference_id</code> is a different reference, the other one is written under the same
+name ending in <code>_</code> and the 16-hex-digit hash of its own ID instead, and the
+checker accepts that name for it. An entry is never served for a reference other
+than the one it records: a hand-written entry whose <code>reference_id</code> is a
+placeholder, or an alias spelling such as <code>pubmed:123</code> in <code>PMID_123.md</code>, is now
+treated as a miss and fetched afresh under the disambiguated name. DOI filenames
+are compared
 case-insensitively, matching the fetcher's existing behavior. Other filenames must
 match exactly. This uses the ID already stored in the file, without applying
 configured prefix aliases or requiring a currently registered reference source.</p>

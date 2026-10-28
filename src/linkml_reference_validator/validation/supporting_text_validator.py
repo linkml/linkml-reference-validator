@@ -738,7 +738,10 @@ class SupportingTextValidator:
         as I + J. Distinct letters Æ/æ and Œ/œ are preserved: equating them with
         AE/OE would broaden validation beyond typographic repair. An explicit
         table avoids broad NFKC normalization, which also changes scientific
-        notation such as superscripts, subscripts, and the micro sign.
+        notation such as superscripts and subscripts (``10⁶`` would read as
+        ``106``). The micro sign ``µ`` and the variant Greek forms (``ϕ ϵ ϑ ϐ
+        ϖ ϰ ϱ``) are spelled out like the ordinary letters they stand for, since
+        sources use them interchangeably: ``5 µM`` matches ``5 μM``.
 
         Args:
             text: Text to normalize
@@ -767,8 +770,10 @@ class SupportingTextValidator:
             'p lt 0.05 5 pm 2 by neg2.5 fold'
             >>> SupportingTextValidator.normalize_text("IL-6, Ca2+-dependent, A -> B")
             'il 6 ca2 dependent a b'
-            >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶ µ")
-            'æ œ æ œ h₂o 10⁶ µ'
+            >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶")
+            'æ œ æ œ h₂o 10⁶'
+            >>> SupportingTextValidator.normalize_text("5 µM") == SupportingTextValidator.normalize_text("5 μM")
+            True
         """
         # Only compatibility ligatures; do not apply general Unicode NFKC.
         ligature_map = {
@@ -777,29 +782,29 @@ class SupportingTextValidator:
         }
         text = text.translate({ord(ligature): expanded for ligature, expanded in ligature_map.items()})
 
-        # Greek letter mappings (both uppercase and lowercase)
+        # Greek letter mappings: both cases, the micro sign and variant forms
         greek_map = {
             'α': 'alpha', 'Α': 'alpha',
-            'β': 'beta', 'Β': 'beta',
+            'β': 'beta', 'Β': 'beta', 'ϐ': 'beta',
             'γ': 'gamma', 'Γ': 'gamma',
             'δ': 'delta', 'Δ': 'delta',
-            'ε': 'epsilon', 'Ε': 'epsilon',
+            'ε': 'epsilon', 'Ε': 'epsilon', 'ϵ': 'epsilon',
             'ζ': 'zeta', 'Ζ': 'zeta',
             'η': 'eta', 'Η': 'eta',
-            'θ': 'theta', 'Θ': 'theta',
+            'θ': 'theta', 'Θ': 'theta', 'ϑ': 'theta',
             'ι': 'iota', 'Ι': 'iota',
-            'κ': 'kappa', 'Κ': 'kappa',
+            'κ': 'kappa', 'Κ': 'kappa', 'ϰ': 'kappa',
             'λ': 'lambda', 'Λ': 'lambda',
-            'μ': 'mu', 'Μ': 'mu',
+            'μ': 'mu', 'Μ': 'mu', 'µ': 'mu',
             'ν': 'nu', 'Ν': 'nu',
             'ξ': 'xi', 'Ξ': 'xi',
             'ο': 'omicron', 'Ο': 'omicron',
-            'π': 'pi', 'Π': 'pi',
-            'ρ': 'rho', 'Ρ': 'rho',
+            'π': 'pi', 'Π': 'pi', 'ϖ': 'pi',
+            'ρ': 'rho', 'Ρ': 'rho', 'ϱ': 'rho',
             'σ': 'sigma', 'ς': 'sigma', 'Σ': 'sigma',
             'τ': 'tau', 'Τ': 'tau',
             'υ': 'upsilon', 'Υ': 'upsilon',
-            'φ': 'phi', 'Φ': 'phi',
+            'φ': 'phi', 'Φ': 'phi', 'ϕ': 'phi',
             'χ': 'chi', 'Χ': 'chi',
             'ψ': 'psi', 'Ψ': 'psi',
             'ω': 'omega', 'Ω': 'omega',

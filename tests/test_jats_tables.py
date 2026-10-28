@@ -7,6 +7,7 @@ import pytest
 from linkml_reference_validator.etl import rules
 from linkml_reference_validator.etl.extract.xml import XMLExtractor
 from linkml_reference_validator.etl.reference_fetcher import (
+    HTML_FULL_TEXT_CACHE_VERSION,
     XML_EXTRACTION_CACHE_VERSION,
     ReferenceFetcher,
 )
@@ -200,7 +201,10 @@ def test_warm_legacy_xml_refreshes_from_real_source(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     "kind,stamp",
-    [("full_text_pdf", ""), ("full_text_html", "html_full_text_version: 1\n")],
+    [
+        ("full_text_pdf", ""),
+        ("full_text_html", f"html_full_text_version: {HTML_FULL_TEXT_CACHE_VERSION}\n"),
+    ],
 )
 def test_xml_migration_does_not_refresh_other_formats(tmp_path, kind, stamp):
     """Current HTML and PDF caches remain usable without an XML version."""

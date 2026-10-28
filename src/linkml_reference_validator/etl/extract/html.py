@@ -46,6 +46,22 @@ ARTICLE_BODY_SELECTOR = ", ".join(ARTICLE_BODY_SELECTORS)
 #: are stripped they would remain only as empty tags.
 NON_CONTENT_TAGS = ("script", "style", "noscript", "template", "meta", "link", "base")
 
+#: Bibliography containers inside an article region. A cited paper's title is
+#: not evidence for the citing article, so their text is never extracted:
+#: PLOS ``ol.references``, PMC ``section.ref-list``, Springer
+#: ``ol.c-article-references``, Wiley ``section.article-section__references``,
+#: and the DPUB-ARIA ``doc-bibliography`` role. Whole class tokens on block
+#: containers only: a substring match would also delete an inline citation
+#: marker or a wrapper such as ``body-with-references`` around the whole
+#: body. A layout not listed here keeps its bibliography text; extend the list
+#: as publishers are seen, never with a substring.
+BIBLIOGRAPHY_SELECTOR = (
+    ":is(section, div, ol, ul, aside)"
+    ":is(.ref-list, .references, .c-article-references,"
+    " .article-section__references, .bibliography), "
+    '[role="doc-bibliography"]'
+)
+
 #: The only attributes that carry meaning for a quoted excerpt: table structure.
 KEPT_ATTRIBUTES = frozenset({"rowspan", "colspan", "scope"})
 
@@ -124,10 +140,10 @@ def html_to_text(content: str) -> str:
     a browser would render them. Entities are unescaped.
 
     Unlike :class:`HTMLExtractor`, which serves article text, nothing is
-    narrowed to ``<article>`` or ``<main>`` and no ``<p>``-only shortcut is
-    taken. Every text node of the sanitized markup appears, contiguous, in
-    the result, so a quote that matched the markup still matches, and a quote
-    through a link or bold text now matches too.
+    narrowed to ``<article>`` or ``<main>``. Every text node of the sanitized
+    markup appears, contiguous, in the result, so a quote that matched the
+    markup still matches, and a quote through a link or bold text now matches
+    too.
 
     Examples:
         >>> html_to_text('<p>Produced by <a href="/x">the City of Flint</a>.</p>')
@@ -257,9 +273,10 @@ def _cell_text(cell: Tag) -> str:
 class HTMLExtractor(Extractor):
     """Extract readable text from HTML markup, as bytes or as a string.
 
-    Prefers an ``<article>`` or main content region; falls back to all paragraph
-    text, then to the whole document text. Callers holding an already-parsed
-    region of their own use :meth:`extract_scope` instead.
+    Prefers an ``<article>`` or main content region, else the whole document.
+    All of the region's text is kept, a line per block: paragraphs, headings,
+    list items, table rows and bare ``<div>`` text alike (#121). Callers holding
+    an already-parsed region of their own use :meth:`extract_scope` instead.
 
     Whitespace around inline markup is preserved, so text spanning italicised
     gene symbols survives extraction intact.
@@ -426,38 +443,18 @@ class HTMLExtractor(Extractor):
         # Dropped here rather than in extract(), because the PMC paths enter
         # through this method and a JSON-LD blob or stylesheet landing in
         # cached article text would corrupt every snippet checked against it.
-        # bs4's get_text() also skips Script/Stylesheet strings by default,
-        # but that is a library default to rely on, not a guarantee this
-        # extractor makes.
-        for tag in scope.find_all(["script", "style"]):
-            tag.decompose()
+        # Required, not defensive: _lines reads a <script>'s or <noscript>'s
+        # text like any other string. A bibliography goes too: before #121 its
+        # entries were dropped only by accident, as non-<p> text.
+        for tag in [*scope.find_all(NON_CONTENT_TAGS), *scope.select(BIBLIOGRAPHY_SELECTOR)]:
+            if not tag.decomposed:  # already gone with an enclosing tag
+                tag.decompose()
 
-        # Before either branch, so both agree: <br> carries no text of its own,
-        # so bare get_text() would weld the lines it separates into
-        # "Line oneLine two" - the same welding this extractor exists to avoid.
-        for line_break in scope.find_all("br"):
-            line_break.replace_with("\n")
-
-        paragraphs = scope.find_all("p")
-        if paragraphs:
-            # get_text() with no arguments, deliberately: strip=True would trim
-            # every markup-delimited run before joining them, welding words to
-            # their neighbours across inline tags. "(<i>GUSB</i>, <i>GRN</i>,
-            # and <i>NEU1</i>)" became "(GUSB,GRN, andNEU1)", breaking every
-            # curated snippet that spans an italicised gene symbol. Trimming
-            # the finished paragraph instead keeps the source's own spacing.
-            texts = (p.get_text().strip() for p in paragraphs)
-            text = "\n\n".join(t for t in texts if t)
-            if text:
-                return text
-
-        # Same hazard as the paragraph branch, one level down: a blanket
-        # separator lands between *every* pair of markup-delimited runs, so
-        # "(<i>GUSB</i>, <i>GRN</i>)" would come out as "(\nGUSB\n,\nGRN\n)".
-        # Marking block boundaries first means get_text() can then run bare,
-        # keeping the source's own spacing inside each block.
-        for block in scope.find_all(BLOCK_LEVEL_TAGS):
-            block.insert_after("\n")
-
-        text = scope.get_text().strip()
+        # The same block-aware walk html_to_text uses: every text node of the
+        # scope appears once, each block on a line of its own, and inline
+        # markup is unwrapped in place so "(<i>GUSB</i>, <i>GRN</i>)" keeps
+        # the source's own spacing. Lists, tables, headings and bare <div>
+        # text are kept: a scope's <p> text alone dropped them, and a nested
+        # or unclosed <p> repeated and welded its children (#121).
+        text = "\n".join(_lines(scope))
         return text if text else None

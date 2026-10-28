@@ -40,6 +40,7 @@ from unittest.mock import patch
 import pytest
 
 from linkml_reference_validator.etl.reference_fetcher import (
+    HTML_FULL_TEXT_CACHE_VERSION,
     XML_EXTRACTION_CACHE_VERSION,
     ReferenceFetcher,
 )
@@ -67,7 +68,7 @@ def _write_cache(cache_dir, reference_id, content_type, body, stamped=False):
         if content_type == "full_text_xml":
             stamp += f"xml_extraction_version: {XML_EXTRACTION_CACHE_VERSION}\n"
         elif content_type == "full_text_html":
-            stamp += "html_full_text_version: 1\n"
+            stamp += f"html_full_text_version: {HTML_FULL_TEXT_CACHE_VERSION}\n"
     path = cache_dir / f"{reference_id.replace(':', '_')}.md"
     path.write_text(
         f"---\nreference_id: {reference_id}\n{stamp}"

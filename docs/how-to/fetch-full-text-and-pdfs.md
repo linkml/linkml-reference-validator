@@ -405,14 +405,18 @@ fetcher does not crawl repository download links. If every provider completes
 without usable text or an error, the reference retains its original abstract
 and records `full_text_attempted: true`.
 
-New `full_text_html` cache entries carry `html_full_text_version: 1`. Older
-Markdown HTML full-text entries without this stamp are refreshed on their next
-validation read. This migration covers all providers because cached plain text
+New `full_text_html` cache entries carry `html_full_text_version: 2`. Entries
+with an older stamp, or none, are refreshed on their next validation read.
+Version 2 keeps all of an article region's text rather than only its `<p>`
+text, so lists, tables, headings and bare `<div>` text can be quoted. This migration covers all providers because cached plain text
 cannot establish which HTML body structure was present. It does not invalidate
 current PDF, XML, or abstract caches.
 
-If refreshing an old HTML entry fails, validation does **not** fall back to that
-entry: its text may be repository metadata rather than article evidence. The
+If refreshing an entry stamped `html_full_text_version: 1` or later fails,
+validation falls back to it with a warning, as for other content types: it is a
+checked article body, though it may lack list and table text. If refreshing an
+entry with no stamp fails, validation does **not** fall back to that entry: its
+text may be repository metadata rather than article evidence. The
 file remains untouched for inventory/export, and the next validation run retries
 recovery. Once the source is available, normal fetching replaces it with a
 verified article or the available metadata/abstract. Other content types retain

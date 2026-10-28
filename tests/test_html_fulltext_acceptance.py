@@ -9,7 +9,10 @@ import pytest
 from bs4 import BeautifulSoup
 
 from linkml_reference_validator.etl.extract.html import HTMLExtractor
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    HTML_FULL_TEXT_CACHE_VERSION,
+    ReferenceFetcher,
+)
 from linkml_reference_validator.models import (
     FullTextLocation,
     ReferenceContent,
@@ -403,7 +406,7 @@ def test_preextracted_html_body_is_a_trusted_provider_contract(tmp_path):
         ref, FullTextLocation(text=text, format_hint="html"), "custom"
     )
     assert ref.content == text
-    assert ref.metadata["html_full_text_version"] == 1
+    assert ref.metadata["html_full_text_version"] == HTML_FULL_TEXT_CACHE_VERSION
 
 
 def test_explicit_body_with_unfamiliar_heading_is_accepted(tmp_path, html_server):

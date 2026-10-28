@@ -53,13 +53,17 @@ def test_real_excerpt_with_ligatures(tmp_path: Path, ligature_side: str, split: 
 @pytest.mark.parametrize(
     "original,distinct",
     [("æ", "ae"), ("Æ", "AE"), ("œ", "oe"), ("Œ", "OE"),
-     ("10⁶", "106"), ("H₂O", "H2O"), ("①", "1"), ("µ", "μ"), ("α", "β")],
+     ("10⁶", "106"), ("H₂O", "H2O"), ("①", "1"), ("α", "β")],
 )
 @pytest.mark.parametrize("reverse", [False, True])
 def test_distinct_letters_and_scientific_symbols(
     tmp_path: Path, original: str, distinct: str, reverse: bool,
 ) -> None:
-    """Ligature repair must not introduce NFKC or AE/OE gate equivalences."""
+    """Ligature repair must not introduce NFKC or AE/OE gate equivalences.
+
+    The micro sign and Greek mu are equivalent on purpose (issue #126; see
+    tests/test_greek_variants.py), so they are not in this list.
+    """
     if reverse:
         original, distinct = distinct, original
     validator = SupportingTextValidator(ReferenceValidationConfig(cache_dir=tmp_path))

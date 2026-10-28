@@ -26,7 +26,10 @@ The distinct letters `Æ/æ` and `Œ/œ` remain distinct from `AE/ae` and `OE/oe
 Equating these letters would accept spelling changes beyond typographic repair.
 Validation uses an explicit ligature table instead of broad Unicode NFKC
 normalization so this change does not equate scientific notation such as `H₂O`
-with `H2O`, `10⁶` with `106`, or the micro sign `µ` with Greek `μ`.
+with `H2O` or `10⁶` with `106`. The micro sign `µ` and Greek `μ` *are* treated
+as the same letter, since sources use them interchangeably (`5 µM` matches
+`5 μM`), as are the variant Greek forms `ϕ ϵ ϑ ϐ ϖ ϰ ϱ` and the ordinary
+letters they stand for.
 
 ### Unmapped PDF glyphs do not match
 

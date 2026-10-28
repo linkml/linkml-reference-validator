@@ -17,6 +17,7 @@ from linkml_reference_validator.models import (
     ReferenceValidationConfig,
 )
 from linkml_reference_validator.etl.fulltext.base import FullTextProvider
+from linkml_reference_validator.etl.identifiers import doi_url_path
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +90,12 @@ class JSONAPIFullTextProvider(FullTextProvider):
 
     def _build_url(self, ids: ReferenceIdentifiers) -> Optional[str]:
         template = self._config.url_template
-        values = {"doi": ids.doi, "pmid": ids.pmid, "pmcid": ids.pmcid}
+        # The DOI is percent-encoded: a raw "#" or "?" in it would end the path.
+        values = {
+            "doi": doi_url_path(ids.doi) if ids.doi else None,
+            "pmid": ids.pmid,
+            "pmcid": ids.pmcid,
+        }
         for key, value in values.items():
             placeholder = "{" + key + "}"
             if placeholder in template:

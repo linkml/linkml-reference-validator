@@ -12,6 +12,7 @@ from typing import Optional
 
 import requests  # type: ignore
 
+from linkml_reference_validator.etl.identifiers import doi_url_path
 from linkml_reference_validator.models import (
     FullTextLocation,
     ReferenceIdentifiers,
@@ -56,7 +57,7 @@ class OpenAlexProvider(FullTextProvider):
             return None
 
         time.sleep(config.rate_limit_delay)
-        url = f"https://api.openalex.org/works/doi:{ids.doi}"
+        url = f"https://api.openalex.org/works/doi:{doi_url_path(ids.doi)}"
         response = requests.get(url, params={"mailto": config.email}, timeout=30)
         if response.status_code != 200:
             logger.debug(f"OpenAlex returned {response.status_code} for DOI:{ids.doi}")

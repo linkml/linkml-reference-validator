@@ -162,9 +162,9 @@ def test_both_spellings_on_disk_resolve_deterministically(fetcher, tmp_path):
     """
     upper = tmp_path / "DOI_10.1016_S0002-9440(10)63332-9.md"
     lower = tmp_path / "doi_10.1016_s0002-9440(10)63332-9.md"
-    for path, who in ((upper, "upper"), (lower, "lower")):
+    for path, who, doi in ((upper, "upper", UPPER), (lower, "lower", LOWER)):
         try:
-            path.write_text(f"---\nreference_id: x\n---\n\n## Content\n\n{who}\n")
+            path.write_text(f"---\nreference_id: {doi}\n---\n\n## Content\n\n{who}\n")
         except OSError:  # pragma: no cover - case-insensitive filesystem
             pytest.skip("filesystem cannot hold both spellings")
     if not (upper.exists() and lower.exists()) or upper.read_text() == lower.read_text():
@@ -251,7 +251,7 @@ def test_a_file_written_by_another_process_is_found_after_a_reset(fetcher, tmp_p
     fetcher.get_cache_path(UPPER)  # builds the index while the file is absent
 
     outsider = tmp_path / "DOI_10.1016_S0002-9440(10)63332-9.md"
-    outsider.write_text("---\nreference_id: x\n---\n\n## Content\n\nB.\n")
+    outsider.write_text(f"---\nreference_id: {UPPER}\n---\n\n## Content\n\nB.\n")
 
     # The index is stale here by design (per-process); not asserted, so that a
     # future self-invalidating index is an improvement rather than a failure.

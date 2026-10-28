@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from ruamel.yaml import YAML  # type: ignore
+from ruamel.yaml.error import YAMLError  # type: ignore
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString
 
 from linkml_reference_validator.cache import (
@@ -26,6 +27,7 @@ from linkml_reference_validator.cache import (
     CacheSupplementaryFile,
     cache_filename,
     cache_key,
+    disambiguated_cache_filename,
     legacy_cache_filename,
 )
 
@@ -277,6 +279,54 @@ class FetchOutcome:
 
     content: Optional[ReferenceContent]
     served_stale: bool = False
+
+
+#: One safe loader for the frontmatter reads on every cache-path lookup, rather
+#: than building a new one per call.
+_SAFE_YAML = YAML(typ="safe")
+
+
+def _read_stored_reference_id(cache_path: Path) -> Optional[str]:
+    """The ``reference_id`` recorded in a cache file's frontmatter, if any.
+
+    The frontmatter is parsed as YAML, since the writer quotes or escapes an
+    ID that needs it (``'url:https://ex.org/a b: c'``); read as raw text such
+    an ID would name a different reference. Only lines up to the closing
+    delimiter are read, so a large body costs nothing. Read with
+    ``errors="replace"``: an entry too mangled to decode is the one that most
+    needs overwriting. A missing file, or frontmatter that is not a YAML
+    mapping, gives None, so a damaged entry is treated as unknown rather than
+    raising.
+
+    Examples:
+        >>> import tempfile
+        >>> path = Path(tempfile.mkdtemp()) / "x.md"
+        >>> _ = path.write_text("---\\nreference_id: 'url:https://ex.org/a b: c'\\n---\\nBody")
+        >>> _read_stored_reference_id(path)
+        'url:https://ex.org/a b: c'
+        >>> _read_stored_reference_id(path.with_name("missing.md")) is None
+        True
+    """
+    lines: list[str] = []
+    try:
+        with cache_path.open(encoding="utf-8", errors="replace") as handle:
+            for position, line in enumerate(handle):
+                if position == 0:
+                    if not _FRONTMATTER_DELIMITER.match(line.rstrip("\r\n")):
+                        return None
+                    continue
+                if _FRONTMATTER_DELIMITER.match(line.rstrip("\r\n")):
+                    break
+                lines.append(line)
+    except OSError:  # no existing entry, or unreadable
+        return None
+    try:
+        metadata = _SAFE_YAML.load("".join(lines))
+    except YAMLError:  # damaged frontmatter: unknown, not another reference
+        return None
+    if not isinstance(metadata, dict) or metadata.get("reference_id") is None:
+        return None
+    return str(metadata["reference_id"])
 
 
 class ReferenceFetcher:
@@ -1246,7 +1296,36 @@ class ReferenceFetcher:
         return legacy if legacy.exists() else path
 
     def _cache_path(self, reference_id: str, cache_dir: Path) -> Path:
-        """Return a cache path, canonicalizing ClinicalTrials IDs in either cache."""
+        """Return a cache path, canonicalizing ClinicalTrials IDs in either cache.
+
+        A file at the usual name that records a *different* reference -- the two
+        IDs sanitize alike -- keeps that name, and this reference is given its
+        disambiguated name instead, so neither is served the other's text and no
+        existing entry is renamed (#131). A reference already written under its
+        disambiguated name stays there, even once the usual name is free again,
+        so deleting the other entry does not orphan it.
+        """
+        reference_id = self._canonical_cache_id(reference_id)
+        disambiguated = cache_dir / disambiguated_cache_filename(reference_id)
+        if disambiguated.exists():
+            return disambiguated
+        path = cache_dir / cache_filename(reference_id)
+        if reference_id.upper().startswith("DOI:"):
+            path = self._existing_case_variant(path)
+        if self._names_other_reference(path, reference_id):
+            return disambiguated
+        return path
+
+    def _canonical_cache_id(self, reference_id: str) -> str:
+        """The form of a reference ID its cache filename is built from.
+
+        Examples:
+            >>> fetcher = ReferenceFetcher(ReferenceValidationConfig())
+            >>> fetcher._canonical_cache_id("ClinicalTrials:NCT00000001")
+            'clinicaltrials:NCT00000001'
+            >>> fetcher._canonical_cache_id("url:https://ex.org/r.pdf#page=2")
+            'url:https://ex.org/r.pdf'
+        """
         prefix, identifier = self._parse_reference_id(
             reference_id, apply_prefix_map=False
         )
@@ -1256,10 +1335,18 @@ class ReferenceFetcher:
             reference_id = f"file:{FileSource.resolve_path(identifier, self.config)}"
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
         # prefix maps here could follow a second alias and change the cache key.
-        path = cache_dir / cache_filename(reference_id)
-        if prefix.upper() == "DOI":
-            return self._existing_case_variant(path)
-        return path
+        return cache_key(reference_id)
+
+    def _names_other_reference(self, path: Path, canonical_id: str) -> bool:
+        """Whether the entry at ``path`` records a reference other than ``canonical_id``.
+
+        False when there is no entry, or no ``reference_id`` to compare, so a
+        legacy or unreadable file keeps being treated as this reference's own.
+        """
+        stored = _read_stored_reference_id(path)
+        if stored is None:
+            return False
+        return not _same_reference_id(self._canonical_cache_id(stored), canonical_id)
 
     @staticmethod
     def _stored_reference_id(cache_path: Path, reference: ReferenceContent) -> str:
@@ -1267,36 +1354,17 @@ class ReferenceFetcher:
 
         Applied to DOI references only, since that is what the argument covers:
         a DOI in two capitalizations is one reference, so the spelling first
-        written should stand. Sanitization also collapses ``:`` ``/`` ``?`` and
-        ``=`` to ``_``, so two *distinct* ``url:`` references can share a
-        filename; that collision predates this change and cementing the first
-        writer's id there would change how it is handled, for an identifier
-        type the argument does not cover.
-
-        Read with ``errors="replace"``: an entry too mangled to decode is the one
-        that most needs overwriting, and a ``UnicodeDecodeError`` here would be
-        the one thing that stops it. Only the ``reference_id:`` line is read, so
-        replacement characters elsewhere cost nothing.
+        written should stand. Distinct references whose filenames collide never
+        reach here with each other's path: :meth:`_cache_path` gives the second
+        one its own (#131).
         """
         if not reference.reference_id.upper().startswith("DOI:"):
             # A url: entry is shared by every fragment, so it names none (#114).
             return cache_key(reference.reference_id)
-        try:
-            with cache_path.open(encoding="utf-8", errors="replace") as handle:
-                for position, line in enumerate(handle):
-                    if line.startswith("reference_id:"):
-                        stored = line.split(":", 1)[1].strip()
-                        # A sanitized filename can also collide for distinct
-                        # DOIs. Preserve case only when it is the same DOI.
-                        if _same_reference_id(stored, reference.reference_id):
-                            return stored
-                        return reference.reference_id
-                    # The opening delimiter is the first line; the closing one
-                    # ends the frontmatter and with it anywhere the id can be.
-                    if position and line.strip() == "---":
-                        break
-        except OSError:  # no existing entry, or unreadable
-            pass
+        stored = _read_stored_reference_id(cache_path)
+        # Preserve case only when it is the same DOI.
+        if stored is not None and _same_reference_id(stored, reference.reference_id):
+            return stored
         return reference.reference_id
 
     def _existing_case_variant(self, path: Path) -> Path:
@@ -1721,6 +1789,21 @@ class ReferenceFetcher:
             )
             return None
         reference = self._load_markdown_format(content_text, reference_id)
+        if reference is not None and not _same_reference_id(
+            self._canonical_cache_id(reference.reference_id),
+            self._canonical_cache_id(reference_id),
+        ):
+            # The file records another reference whose ID sanitizes to the same
+            # name, written before such references were kept apart (#131).
+            # Serving it would validate quotes against the wrong text.
+            logger.warning(
+                "Ignoring cache entry %s for %s: it records %s, a different "
+                "reference. It will be fetched and written separately.",
+                cache_path.name,
+                reference_id,
+                reference.reference_id,
+            )
+            return None
         if reference is not None and reference.reference_id != reference_id and (
             cache_key(reference.reference_id) == cache_key(reference_id)
         ):

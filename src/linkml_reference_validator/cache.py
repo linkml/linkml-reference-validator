@@ -5,6 +5,7 @@ Unknown fields are preserved, so consumers can add metadata without a namespace.
 """
 
 from dataclasses import dataclass, field
+import hashlib
 from pathlib import Path
 import re
 
@@ -154,9 +155,64 @@ def legacy_cache_filename(reference_id: str) -> str:
     return _sanitized_filename(reference_id)
 
 
+#: The longest cache filename written, in UTF-8 bytes. Common filesystems allow
+#: 255; this leaves room for a ``.txt`` legacy probe and other tools' suffixes.
+MAX_CACHE_FILENAME_BYTES = 200
+
+#: Hex digits of the reference ID's SHA-256 kept in a capped filename.
+_FILENAME_HASH_CHARS = 16
+
+
 def _sanitized_filename(reference_id: str) -> str:
-    """Sanitize a reference ID into a filename, keeping everything else verbatim."""
-    return re.sub(r"[:/?=]", "_", reference_id) + ".md"
+    """Sanitize a reference ID into a filename, keeping everything else verbatim.
+
+    A name over ``MAX_CACHE_FILENAME_BYTES`` is cut on a character boundary and
+    ends in ``_`` plus a hash of the full ID, so it fits the filesystem and two
+    long IDs that share a prefix still get different files (#132). A DOI is
+    hashed case-insensitively, so case variants of one DOI still differ only in
+    case, as the fetcher's case-variant lookup and the checker expect.
+
+    >>> _sanitized_filename("PMID:1")
+    'PMID_1.md'
+    >>> name = _sanitized_filename("url:https://example.org/?q=" + "x" * 300)
+    >>> len(name.encode("utf-8")) <= MAX_CACHE_FILENAME_BYTES, name[-20:]
+    (True, '_8d32b36eb989401f.md')
+    """
+    name = re.sub(r"[:/?=]", "_", reference_id)
+    if len(name.encode("utf-8")) + len(".md") <= MAX_CACHE_FILENAME_BYTES:
+        return name + ".md"
+    return _hashed_filename(name, reference_id)
+
+
+def disambiguated_cache_filename(reference_id: str) -> str:
+    """Return the filename for a reference whose usual name another one holds.
+
+    Sanitizing maps ``:`` ``/`` ``?`` and ``=`` to ``_``, so distinct
+    references can share :func:`cache_filename`: ``url:https://ex.org/a?b=c``
+    and ``url:https://ex.org/a/b/c``. The first writer keeps the shared name;
+    the other is written here, under the same name ending in a hash of its own
+    ID, so no existing entry is renamed (#131).
+
+    >>> disambiguated_cache_filename("url:https://ex.org/a/b/c")
+    'url_https___ex.org_a_b_c_5acbea067cb82733.md'
+    """
+    key = cache_key(reference_id)
+    return _hashed_filename(re.sub(r"[:/?=]", "_", key), key)
+
+
+def _hashed_filename(name: str, reference_id: str) -> str:
+    """``name``, cut to fit, ending in ``_`` and a hash of ``reference_id``.
+
+    A DOI is hashed case-insensitively, so case variants of one DOI still
+    differ only in case.
+    """
+    digest_source = (
+        reference_id.casefold() if reference_id.upper().startswith("DOI:") else reference_id
+    )
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:_FILENAME_HASH_CHARS]
+    room = MAX_CACHE_FILENAME_BYTES - len(".md") - len("_") - len(digest)
+    prefix = name.encode("utf-8")[:room].decode("utf-8", errors="ignore")
+    return f"{prefix}_{digest}.md"
 
 
 def _same_reference_id(first: str, second: str) -> bool:
@@ -257,11 +313,13 @@ def _validate_cache_file(
 
     reference_id = result.frontmatter.reference_id
     expected = cache_filename(reference_id)
-    # A fragment-keyed name from before #114 is still read, so still valid.
-    accepted = {expected, legacy_cache_filename(reference_id)}
+    # A fragment-keyed name from before #114 is still read, so still valid, as
+    # is the name a reference gets when another holds its usual one (#131).
+    disambiguated = disambiguated_cache_filename(reference_id)
+    accepted = {expected, legacy_cache_filename(reference_id), disambiguated}
     matches = path.name in accepted
     if reference_id.upper().startswith("DOI:"):
-        matches = path.name.casefold() == expected.casefold()
+        matches = path.name.casefold() in {expected.casefold(), disambiguated.casefold()}
     if not matches:
         result.findings.append(
             CacheFinding(

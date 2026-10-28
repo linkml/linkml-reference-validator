@@ -23,6 +23,7 @@ from linkml_reference_validator.models import (
     ReferenceValidationConfig,
     SupplementaryFile,
 )
+from linkml_reference_validator.etl.identifiers import doi_url_path
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
@@ -100,7 +101,7 @@ class DOISource(ReferenceSource):
         Returns:
             ReferenceContent if successful, None otherwise
         """
-        url = f"https://api.crossref.org/works/{doi}"
+        url = f"https://api.crossref.org/works/{doi_url_path(doi)}"
         headers = {
             "User-Agent": f"linkml-reference-validator/1.0 (mailto:{config.email})",
         }
@@ -202,7 +203,7 @@ class DOISource(ReferenceSource):
         Returns:
             ReferenceContent if successful, None otherwise
         """
-        url = f"https://api.datacite.org/dois/{doi}"
+        url = f"https://api.datacite.org/dois/{doi_url_path(doi)}"
         headers = {
             "User-Agent": f"linkml-reference-validator/1.0 (mailto:{config.email})",
             "Accept": "application/json",

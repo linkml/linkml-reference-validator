@@ -8,6 +8,7 @@ lazily inside the PMC provider, so it is not performed here.
 import logging
 import re
 from typing import Optional
+from urllib.parse import quote
 
 from linkml_reference_validator.models import ReferenceContent, ReferenceIdentifiers
 
@@ -31,6 +32,28 @@ def normalize_doi(value: Optional[str]) -> Optional[str]:
     normalized = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", normalized)
     normalized = re.sub(r"^doi\s*:\s*", "", normalized)
     return normalized or None
+
+
+def doi_url_path(doi: str) -> str:
+    """Percent-encode a DOI for use as a URL path segment.
+
+    A DOI may contain ``#``, ``?`` and other characters that end a URL path:
+    SICI-style Wiley DOIs use ``#`` as a check character, and interpolated raw,
+    ``...CO;2-#`` would be requested as ``...CO;2-`` (#137). The ``/`` between
+    prefix and suffix is kept, which Crossref, DataCite, OpenAlex and Unpaywall
+    all accept, as they accept the percent-encoded rest. A ``%`` is encoded too,
+    since a DOI may legitimately contain one, so a DOI given already
+    percent-encoded is encoded twice: give DOIs as registered, not URL-escaped.
+
+    Examples:
+        >>> doi_url_path("10.1000/xyz123")
+        '10.1000/xyz123'
+        >>> doi_url_path("10.1002/(SICI)1097-4636(199706)35:4<461::AID-JBM6>3.0.CO;2-#")
+        '10.1002/%28SICI%291097-4636%28199706%2935%3A4%3C461%3A%3AAID-JBM6%3E3.0.CO%3B2-%23'
+        >>> doi_url_path("10.1234/a?b=c")
+        '10.1234/a%3Fb%3Dc'
+    """
+    return quote(doi, safe="/")
 
 
 def _split_reference_id(reference_id: str) -> tuple[Optional[str], Optional[str]]:

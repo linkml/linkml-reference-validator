@@ -1882,6 +1882,12 @@ class ReferenceFetcher:
     def _is_verified_html_body(cls, content_text: str) -> bool:
         """Whether an HTML entry's stamp shows it passed landing-page rejection.
 
+        Such an entry is served when a refresh fails, whatever made it stale
+        (an HTML, extractor or URL version bump): the refusal exists only for
+        the landing-page risk, which this stamp rules out. The stamp is read
+        with a regex, as ``_is_stale_cache_entry`` reads ``extractor_version``,
+        so damaged frontmatter elsewhere in the header cannot make this raise.
+
         Args:
             content_text: The cache file's contents, including frontmatter
 
@@ -1899,7 +1905,9 @@ class ReferenceFetcher:
         split = cls._split_frontmatter(content_text)
         if split is None:
             return False
-        match = re.search(r"^html_full_text_version:\s*(\d+)\s*$", split[0], re.MULTILINE)
+        match = re.search(
+            r"^html_full_text_version:\s*(\d+)\s*(?:#.*)?$", split[0], re.MULTILINE
+        )
         return match is not None and int(match.group(1)) >= HTML_VERIFIED_BODY_VERSION
 
     @classmethod

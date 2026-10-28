@@ -412,11 +412,11 @@ text, so lists, tables, headings and bare `<div>` text can be quoted. This migra
 cannot establish which HTML body structure was present. It does not invalidate
 current PDF, XML, or abstract caches.
 
-If refreshing an entry stamped `html_full_text_version: 1` fails, validation
-falls back to it with a warning, as for other content types: it is a checked
-article body, though it may lack list and table text. If refreshing an entry with
-no stamp fails, validation does **not** fall back to that
-entry: its text may be repository metadata rather than article evidence. The
+If refreshing an entry stamped `html_full_text_version: 1` or later fails,
+validation falls back to it with a warning, as for other content types: it is a
+checked article body, though it may lack list and table text. If refreshing an
+entry with no stamp fails, validation does **not** fall back to that entry: its
+text may be repository metadata rather than article evidence. The
 file remains untouched for inventory/export, and the next validation run retries
 recovery. Once the source is available, normal fetching replaces it with a
 verified article or the available metadata/abstract. Other content types retain

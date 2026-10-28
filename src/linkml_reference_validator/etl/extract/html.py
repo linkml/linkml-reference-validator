@@ -46,6 +46,15 @@ ARTICLE_BODY_SELECTOR = ", ".join(ARTICLE_BODY_SELECTORS)
 #: are stripped they would remain only as empty tags.
 NON_CONTENT_TAGS = ("script", "style", "noscript", "template", "meta", "link", "base")
 
+#: Bibliography containers inside an article region. A cited paper's title is
+#: not evidence for the citing article, so their text is never extracted:
+#: PLOS ``ol.references``, PMC ``section.ref-list``, Springer
+#: ``ol.c-article-references``, and the DPUB-ARIA ``doc-bibliography`` role.
+BIBLIOGRAPHY_SELECTOR = (
+    '[class*="ref-list" i], [class*="references" i], [class*="bibliograph" i], '
+    '[role="doc-bibliography"]'
+)
+
 #: The only attributes that carry meaning for a quoted excerpt: table structure.
 KEPT_ATTRIBUTES = frozenset({"rowspan", "colspan", "scope"})
 
@@ -427,10 +436,12 @@ class HTMLExtractor(Extractor):
         # Dropped here rather than in extract(), because the PMC paths enter
         # through this method and a JSON-LD blob or stylesheet landing in
         # cached article text would corrupt every snippet checked against it.
-        # Required, not defensive: _lines reads a <script>'s text like any
-        # other string.
-        for tag in scope.find_all(["script", "style"]):
-            tag.decompose()
+        # Required, not defensive: _lines reads a <script>'s or <noscript>'s
+        # text like any other string. A bibliography goes too: before #121 its
+        # entries were dropped only by accident, as non-<p> text.
+        for tag in [*scope.find_all(NON_CONTENT_TAGS), *scope.select(BIBLIOGRAPHY_SELECTOR)]:
+            if not tag.decomposed:  # already gone with an enclosing tag
+                tag.decompose()
 
         # The same block-aware walk html_to_text uses: every text node of the
         # scope appears once, each block on a line of its own, and inline

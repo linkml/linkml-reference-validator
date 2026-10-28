@@ -136,3 +136,55 @@ def test_verified_html_from_an_older_extractor_is_served_when_refresh_fails(tmp_
 def test_unverified_html_is_still_withheld_when_refresh_fails(tmp_path):
     """An unstamped entry may be a landing page, so it is still not served."""
     assert _fetch_with_source_down(tmp_path, "") is None
+
+
+CITED_TITLE = "Aspirin cures every known headache"
+
+
+def _article_with(bibliography: str) -> bytes:
+    return (
+        "<article><h2>Results</h2><p>Our own finding about PTEN.</p>"
+        f"{bibliography}</article>"
+    ).encode()
+
+
+def test_reference_list_entries_are_not_article_text():
+    """A cited paper's title is not evidence for the citing article.
+
+    The old ``<p>``-only shortcut dropped reference-list ``<li>`` entries by
+    accident; keeping all text must not start matching quotes against them.
+    """
+    for bibliography in (
+        f'<ol class="references"><li>Smith J. {CITED_TITLE}. 2001.</li></ol>',
+        f'<section class="ref-list"><ul><li>{CITED_TITLE}</li></ul></section>',
+        f'<div role="doc-bibliography"><p>{CITED_TITLE}</p></div>',
+        f'<ol class="c-article-references"><li>{CITED_TITLE}</li></ol>',
+    ):
+        text = HTMLExtractor().extract(_article_with(bibliography)) or ""
+        assert "Our own finding about PTEN." in text
+        assert CITED_TITLE not in text, bibliography
+
+
+def test_pmc_path_drops_reference_list_and_noscript():
+    """extract_scope, the PMC path, applies the same exclusions as extract."""
+    from bs4 import BeautifulSoup
+
+    soup = BeautifulSoup(
+        '<section class="body main-article-body"><p>Body text.</p>'
+        "<ul><li>A list finding.</li></ul>"
+        "<noscript>Please enable JavaScript</noscript>"
+        f'<section class="ref-list"><ul><li>{CITED_TITLE}</li></ul></section>'
+        "</section>",
+        "html.parser",
+    )
+    text = HTMLExtractor().extract_scope(soup.section) or ""
+    assert "Body text." in text and "A list finding." in text
+    assert "enable JavaScript" not in text
+    assert CITED_TITLE not in text
+
+
+def test_verified_stamp_tolerates_a_yaml_comment():
+    """The stamp is read the same whether or not a comment follows it."""
+    assert ReferenceFetcher._is_verified_html_body(
+        "---\nhtml_full_text_version: 1  # migrated\n---\nBody."
+    )

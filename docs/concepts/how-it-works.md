@@ -13,7 +13,8 @@ linkml-reference-validator validates that quoted text (supporting text) actually
 Before matching, both the supporting text and reference content are normalized:
 
 - **Lowercased**: `"MUC1"` → `"muc1"`
-- **Punctuation removed**: `"c-Abl"` → `"c abl"`
+- **Punctuation removed**: `"c-Abl"` → `"c abl"` (a point or comma between
+  digits is kept, so `"10.5"` stays one number)
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 
@@ -35,6 +36,34 @@ supporting_text = "MUC1 oncoprotein"
 reference_content = "...The MUC1 oncoprotein blocks nuclear..."
 # Match: "muc1 oncoprotein" found in normalized reference
 ```
+
+**Matches start and end on whole words:**
+
+A quote may not begin or end inside a word of the reference. Otherwise a quote
+stating the opposite of the paper would pass:
+
+```python
+supporting_text = "activates AKT signaling"
+reference_content = "...Loss of PTEN inactivates AKT signaling..."
+# NOT FOUND: "activates" only occurs inside "inactivates"
+
+supporting_text = "5 mM H2O2"
+reference_content = "...treated with 10.5 mM H2O2..."
+# NOT FOUND: "5" only occurs inside "10.5"
+```
+
+Each part of a quote split with `...` is held to the same rule.
+
+One allowance: when a quote ends in a letter, the reference word it ends on may
+carry trailing digits. Full-text extraction welds superscript citations onto the
+word before them, so `tumor suppressor<sup>12</sup>` reads as `suppressor12`,
+and a quote of `PTEN is a tumor suppressor` must still match. A quote ending in
+a digit gets no allowance (`10` never matches `105`). The same allowance means a
+quote ending in `AKT` matches `AKT1`, as plain substring matching always did.
+
+Because a point or comma between digits stays part of the number, numbers must
+be quoted with the reference's own separators: `days 3, 5 and 7` does not match
+`days 3,5 and 7`, and `10 000` does not match `10,000`.
 
 **Empty excerpts are rejected:**
 

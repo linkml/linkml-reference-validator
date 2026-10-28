@@ -241,10 +241,19 @@ class SupportingTextRepairer:
             >>> repairer._all_parts_found("[note]", searchable)
             False
         """
-        normalize = normalize_whitespace if literal else SupportingTextValidator.normalize_text
         parts = self.validator._split_query(text)
+        if literal:
+            # Punctuation is kept here, so spaces do not mark word boundaries;
+            # the normalized check that follows a literal one enforces them.
+            return bool(parts) and all(
+                any(normalize_whitespace(part) in candidate for candidate in searchable)
+                for part in parts
+            )
+        normalize = SupportingTextValidator.normalize_text
+        contains_words = SupportingTextValidator.contains_words
         return bool(parts) and all(
-            any(normalize(part) in candidate for candidate in searchable) for part in parts
+            any(contains_words(normalize(part), candidate) for candidate in searchable)
+            for part in parts
         )
 
     def try_ellipsis_insertion(

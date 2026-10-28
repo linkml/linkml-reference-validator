@@ -560,7 +560,7 @@ class SupportingTextValidator:
         for part in query_parts:
             normalized_part = self.normalize_text(part)
 
-            if not any(normalized_part in text for text in normalized_texts):
+            if not any(self.contains_words(normalized_part, text) for text in normalized_texts):
                 # Generate fuzzy suggestion for the failed part, from one text
                 # at a time: a suggestion spanning two would fail again.
                 query_for_suggestion = original_query if original_query else part
@@ -570,7 +570,15 @@ class SupportingTextValidator:
                 )
 
                 error_message = f"Text part not found as substring: '{part}'"
-                if len(normalized_texts) > 1 and normalized_part in " ".join(normalized_texts):
+                if any(normalized_part in text for text in normalized_texts):
+                    error_message = (
+                        f"Text part occurs only inside longer words: '{part}'. "
+                        "A match must start and end on whole words, so a quote "
+                        "of 'activates' does not match 'inactivates'"
+                    )
+                elif len(normalized_texts) > 1 and self.contains_words(
+                    normalized_part, " ".join(normalized_texts)
+                ):
                     error_message = (
                         f"Text part is not within any one figure label: '{part}'. "
                         "It matches only labels joined in document order, so it "
@@ -592,6 +600,62 @@ class SupportingTextValidator:
             similarity_score=1.0,
             matched_text=" ... ".join(matched_parts),
         )
+
+    @staticmethod
+    def contains_words(part: str, text: str) -> bool:
+        """Whether normalized ``part`` occurs in normalized ``text`` as whole words.
+
+        A bare substring test lets a quote begin or end inside a word, so
+        "activates" would match "inactivates" and a quote stating the
+        opposite of the reference would pass. Both arguments must already be
+        normalized with :meth:`normalize_text`, which collapses whitespace
+        to single spaces, so padding each with one space anchors the part
+        on word boundaries at both ends.
+
+        One allowance: when the part ends in a letter, the reference word it
+        ends on may carry trailing digits. Extraction welds superscript
+        citations onto the word before them (JATS ``suppressor<sup>12</sup>``,
+        PMC HTML and PDF text all give ``suppressor12``), and a quote of that
+        sentence must not fail on its last word. A part ending in a digit gets
+        no allowance, so ``10`` never matches ``105``.
+
+        An empty part (one that was all punctuation) is found, as with a
+        plain substring test; a quote with no quoted text at all is
+        rejected before matching.
+
+        Args:
+            part: Normalized query part
+            text: Normalized text to search
+
+        Returns:
+            True if ``part`` starts and ends on word boundaries within ``text``
+
+        Examples:
+            >>> SupportingTextValidator.contains_words("activates akt", "pten activates akt")
+            True
+            >>> SupportingTextValidator.contains_words("activates akt", "pten inactivates akt")
+            False
+            >>> SupportingTextValidator.contains_words("pten is not", "pten is nothing")
+            False
+            >>> SupportingTextValidator.contains_words("pten", "pten")
+            True
+            >>> SupportingTextValidator.contains_words("tumor suppressor", "a tumor suppressor12 in")
+            True
+            >>> SupportingTextValidator.contains_words("tumor suppressor", "a tumor suppressor1,2")
+            True
+            >>> SupportingTextValidator.contains_words("a dose of 10", "a dose of 105 mg")
+            False
+            >>> SupportingTextValidator.contains_words("", "anything")
+            True
+        """
+        if not part:
+            return True
+        if f" {part} " in f" {text} ":
+            return True
+        if not part[-1].isalpha():
+            return False
+        citation = rf"(?:^| ){re.escape(part)}\d[\d,]*(?: |$)"
+        return re.search(citation, text) is not None
 
     def generate_suggested_fix(
         self,
@@ -661,8 +725,10 @@ class SupportingTextValidator:
         """Normalize text for comparison.
 
         Folds Latin compatibility ligatures, spells out Greek letters, removes
-        punctuation and extra whitespace, and lowercases. The same normalization
-        applies to reference content and queries (including split query parts).
+        punctuation and extra whitespace, and lowercases. A point or comma
+        between two digits is kept, so a number such as ``10.5`` stays one
+        word. The same normalization applies to reference content and queries
+        (including split query parts).
 
         IJ (Ĳ/ĳ) is folded because Unicode defines its compatibility decomposition
         as I + J. Distinct letters Æ/æ and Œ/œ are preserved: equating them with
@@ -691,6 +757,8 @@ class SupportingTextValidator:
             'amyloid fibrils'
             >>> SupportingTextValidator.normalize_text("ﬀ ﬁ ﬂ ﬃ ﬄ ﬅ ﬆ Ĳ ĳ")
             'ff fi fl ffi ffl st st ij ij'
+            >>> SupportingTextValidator.normalize_text("10.5 mM, 3,4-dihydroxy, p<0.05.")
+            '10.5 mm 3,4 dihydroxy p 0.05'
             >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶ µ")
             'æ œ æ œ h₂o 10⁶ µ'
         """
@@ -734,6 +802,8 @@ class SupportingTextValidator:
             text = text.replace(greek, spelled)
 
         text = text.lower()
-        text = re.sub(r"[^\w\s]", " ", text)
+        # A point or comma between digits is part of the number: splitting
+        # "10.5" into "10 5" would let a quote of "5 mM" match "10.5 mM".
+        text = re.sub(r"(?!(?<=\d)[.,](?=\d))[^\w\s]", " ", text)
         text = re.sub(r"\s+", " ", text)
         return text.strip()

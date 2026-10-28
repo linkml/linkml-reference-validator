@@ -743,6 +743,22 @@ is listed. With several, give each listed object its own `title`.
 Before this, a list was silently ignored: its excerpts were never compared and a
 fabricated quote passed with exit code 0.
 
+### Several excerpts, or evidence in a keyed mapping
+
+An excerpt slot may also be `multivalued: true`. Each listed excerpt is checked
+on its own against the reference, and reported at its own path, such as
+`supporting_text[1]`: a true excerpt beside a fabricated one does not carry it.
+A blank item, or one that is not text, is an error at its index. Before this,
+a list of excerpts crashed `validate data` with `TypeError: expected string or
+bytes-like object, got 'list'`.
+
+Evidence objects in a multivalued slot written as a mapping from identifier to
+object (`inlined_as_list: false`) are each validated, at a path such as
+`has_evidence[E1].supporting_text`; the key is used as the object's identifier
+when the object omits it. Before this, the objects in such a mapping were never
+visited, and a fabricated quote passed with exit code 0. The list form of the
+same slot was, and is, validated the same way.
+
 ### "Reference at '...' has no usable identifier"
 
 **Cause:**

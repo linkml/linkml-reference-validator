@@ -9,7 +9,10 @@ import typer
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
-from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+from linkml_reference_validator.etl.reference_fetcher import (
+    ReferenceFetcher,
+    markdown_body_lines,
+)
 from linkml_reference_validator.models import ReferenceContent
 from .shared import (
     CacheDirOption,
@@ -128,22 +131,8 @@ def _format_as_markdown(reference: ReferenceContent, fetcher: ReferenceFetcher) 
     yaml_obj.dump(frontmatter, stream)
 
     lines = ["---", stream.getvalue().rstrip(), "---", ""]
-    if reference.title:
-        lines.append(f"# {reference.title}")
-        if reference.authors:
-            lines.append(f"**Authors:** {', '.join(reference.authors)}")
-        if reference.journal:
-            journal_info = reference.journal
-            if reference.year:
-                journal_info += f" ({reference.year})"
-            lines.append(f"**Journal:** {journal_info}")
-        if reference.doi:
-            lines.append(f"**DOI:** [{reference.doi}](https://doi.org/{reference.doi})")
-        lines.append("")
-        lines.append("## Content")
-        lines.append("")
-    if reference.content:
-        lines.append(reference.content)
+    # The same body the cache writer emits, so the output reads back as saved.
+    lines.extend(markdown_body_lines(reference))
     return "\n".join(lines)
 
 

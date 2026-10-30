@@ -186,3 +186,50 @@ def test_a_legacy_titled_file_still_drops_its_header(fetcher):
     loaded = fetcher._load_from_disk("PMID:4", allow_stale=True)
     assert loaded is not None
     assert loaded.content == "The abstract."
+
+
+def test_is_stale_cache_entry_treats_an_empty_header_as_stale():
+    """Stale at the version check today; pinned in case that check ever moves."""
+    assert ReferenceFetcher._is_stale_cache_entry(BAD_HEADERS["empty"]) is True
+
+
+def test_iter_cached_references_skips_an_undecodable_file_with_a_warning(
+    fetcher, tmp_path, caplog
+):
+    """A file that is not UTF-8 is skipped too, not only a bad header."""
+    (tmp_path / "A_bad.md").write_bytes(b"---\nreference_id: PMID:9\n---\n\n\xff\xfe broken")
+    fetcher._save_to_disk(
+        ReferenceContent(reference_id="PMID:2", content="Good text.", title="Good")
+    )
+
+    with caplog.at_level(logging.WARNING):
+        references = list(fetcher.iter_cached_references())
+
+    assert [r.reference_id for r in references] == ["PMID:2"]
+    assert "A_bad" in caplog.text
+
+
+def test_the_walk_does_not_promise_a_re_fetch(fetcher, tmp_path, caplog):
+    """Skipping a file during the walk does not rewrite it, so the warning says only that."""
+    (tmp_path / "A_bad.md").write_text(BAD_HEADERS["empty"], encoding="utf-8")
+    with caplog.at_level(logging.WARNING):
+        list(fetcher.iter_cached_references())
+    assert "A_bad" in caplog.text
+    assert "re-fetch" not in caplog.text
+
+
+@pytest.mark.parametrize("title", [None, "Line one\nline two"])
+def test_lookup_markdown_without_a_cache_file_reads_back_as_saved(fetcher, title):
+    """``lookup``'s fallback output follows the cache format, marker and one-line title."""
+    from linkml_reference_validator.cli.lookup import _format_as_markdown
+
+    content = "Intro paragraph.\n\n## Contents of the kit\n\nBuffer A."
+    reference = ReferenceContent(reference_id=UNTITLED_ID, title=title, content=content)
+    assert not fetcher.find_cache_file(UNTITLED_ID).exists()
+
+    markdown = _format_as_markdown(reference, fetcher)
+
+    fetcher.get_cache_path(UNTITLED_ID).write_text(markdown, encoding="utf-8")
+    loaded = fetcher._load_from_disk(UNTITLED_ID, allow_stale=True)
+    assert loaded is not None
+    assert loaded.content == content

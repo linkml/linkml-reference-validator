@@ -289,6 +289,43 @@ CONTENT_MARKER = "## Content"
 _SAFE_YAML = YAML(typ="safe")
 
 
+def markdown_body_lines(reference: ReferenceContent) -> list[str]:
+    """The lines of a cache file's body: the header, the marker, the content.
+
+    A titled reference gets a ``# title`` line, on one line so a line break in
+    the title cannot reach the content, then any authors, journal and DOI
+    lines. Every reference then gets the ``## Content`` marker, so the reader
+    can tell the header from text that merely holds a ``## Content...``
+    heading (#136).
+
+    Examples:
+        >>> markdown_body_lines(ReferenceContent(reference_id="X:1", content="Text."))
+        ['## Content', '', 'Text.']
+        >>> markdown_body_lines(
+        ...     ReferenceContent(reference_id="X:1", title="A\\nB", content="Text.")
+        ... )
+        ['# A B', '', '## Content', '', 'Text.']
+    """
+    lines: list[str] = []
+    if reference.title:
+        lines.append(f"# {' '.join(reference.title.split())}")
+        if reference.authors:
+            lines.append(f"**Authors:** {', '.join(reference.authors)}")
+        if reference.journal:
+            journal_info = reference.journal
+            if reference.year:
+                journal_info += f" ({reference.year})"
+            lines.append(f"**Journal:** {journal_info}")
+        if reference.doi:
+            lines.append(f"**DOI:** [{reference.doi}](https://doi.org/{reference.doi})")
+        lines.append("")
+    lines.append(CONTENT_MARKER)
+    lines.append("")
+    if reference.content:
+        lines.append(reference.content)
+    return lines
+
+
 def _load_frontmatter_mapping(header: str) -> Optional[dict]:
     """A cache header parsed as YAML, or None unless it is a mapping.
 
@@ -1004,11 +1041,16 @@ class ReferenceFetcher:
     def iter_cached_references(self) -> Iterator[ReferenceContent]:
         """Yield modern Markdown cache entries in deterministic path order.
 
-        A file whose header does not load is skipped with a warning, so one
-        damaged entry does not stop the walk (#133).
+        A file that cannot be read, is not UTF-8, or whose header does not load
+        is skipped with a warning, so one damaged entry does not stop the walk
+        (#133). The walk only reads: a skipped file is left as it is.
         """
         for cache_path in sorted(self.config.get_cache_dir().glob("*.md")):
-            content_text = cache_path.read_text(encoding="utf-8")
+            try:
+                content_text = cache_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError) as exc:  # damaged on-disk data
+                logger.warning("Skipping unreadable cache file %s: %s", cache_path, exc)
+                continue
             reference = self._load_markdown_format(content_text, cache_path.stem)
             if reference is not None:
                 yield reference
@@ -1644,28 +1686,7 @@ class ReferenceFetcher:
         frontmatter = self._preserve_cache_extensions(cache_path, frontmatter)
         lines = ["---", self._dump_frontmatter(frontmatter).rstrip("\n"), "---", ""]
 
-        if reference.title:
-            # One line, so a line break in the title cannot reach the content.
-            lines.append(f"# {' '.join(reference.title.split())}")
-            if reference.authors:
-                lines.append(f"**Authors:** {', '.join(reference.authors)}")
-            if reference.journal:
-                journal_info = reference.journal
-                if reference.year:
-                    journal_info += f" ({reference.year})"
-                lines.append(f"**Journal:** {journal_info}")
-            if reference.doi:
-                lines.append(
-                    f"**DOI:** [{reference.doi}](https://doi.org/{reference.doi})"
-                )
-            lines.append("")
-        # Always written, so the reader can tell the header from text that
-        # merely holds a "## Content..." heading (#136).
-        lines.append(CONTENT_MARKER)
-        lines.append("")
-
-        if reference.content:
-            lines.append(reference.content)
+        lines.extend(markdown_body_lines(reference))
 
         cache_path.write_text("\n".join(lines), encoding="utf-8")
         self._remember_cache_file(cache_path)
@@ -2127,7 +2148,7 @@ class ReferenceFetcher:
         if frontmatter is None:
             logger.warning(
                 "Ignoring cache entry for %s: its header is empty, not valid YAML "
-                "or not a mapping; it will be re-fetched and rewritten",
+                "or not a mapping",
                 reference_id,
             )
             return None

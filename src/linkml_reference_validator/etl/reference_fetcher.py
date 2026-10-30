@@ -281,9 +281,37 @@ class FetchOutcome:
     served_stale: bool = False
 
 
+#: The line that ends the header of a cache file's body; the content follows it.
+CONTENT_MARKER = "## Content"
+
 #: One safe loader for the frontmatter reads on every cache-path lookup, rather
 #: than building a new one per call.
 _SAFE_YAML = YAML(typ="safe")
+
+
+def _load_frontmatter_mapping(header: str) -> Optional[dict]:
+    """A cache header parsed as YAML, or None unless it is a mapping.
+
+    Cache files are on-disk data that may be damaged or hand-edited, so a
+    header that is empty, not valid YAML, or a scalar or list reads as no
+    header at all (#133). Callers then treat the entry as absent, and a fresh
+    fetch can replace it.
+
+    Examples:
+        >>> _load_frontmatter_mapping("reference_id: PMID:1")
+        {'reference_id': 'PMID:1'}
+        >>> _load_frontmatter_mapping("") is None
+        True
+        >>> _load_frontmatter_mapping("title: Gene X: a review") is None
+        True
+        >>> _load_frontmatter_mapping("- PMID:1") is None
+        True
+    """
+    try:
+        metadata = _SAFE_YAML.load(header)
+    except YAMLError:  # damaged on-disk data, not a programming error
+        return None
+    return metadata if isinstance(metadata, dict) else None
 
 
 def _read_stored_reference_id(cache_path: Path) -> Optional[str]:
@@ -320,11 +348,8 @@ def _read_stored_reference_id(cache_path: Path) -> Optional[str]:
                 lines.append(line)
     except OSError:  # no existing entry, or unreadable
         return None
-    try:
-        metadata = _SAFE_YAML.load("".join(lines))
-    except YAMLError:  # damaged frontmatter: unknown, not another reference
-        return None
-    if not isinstance(metadata, dict) or metadata.get("reference_id") is None:
+    metadata = _load_frontmatter_mapping("".join(lines))
+    if metadata is None or metadata.get("reference_id") is None:
         return None
     return str(metadata["reference_id"])
 
@@ -977,7 +1002,11 @@ class ReferenceFetcher:
         return applied
 
     def iter_cached_references(self) -> Iterator[ReferenceContent]:
-        """Yield modern Markdown cache entries in deterministic path order."""
+        """Yield modern Markdown cache entries in deterministic path order.
+
+        A file whose header does not load is skipped with a warning, so one
+        damaged entry does not stop the walk (#133).
+        """
         for cache_path in sorted(self.config.get_cache_dir().glob("*.md")):
             content_text = cache_path.read_text(encoding="utf-8")
             reference = self._load_markdown_format(content_text, cache_path.stem)
@@ -1616,7 +1645,8 @@ class ReferenceFetcher:
         lines = ["---", self._dump_frontmatter(frontmatter).rstrip("\n"), "---", ""]
 
         if reference.title:
-            lines.append(f"# {reference.title}")
+            # One line, so a line break in the title cannot reach the content.
+            lines.append(f"# {' '.join(reference.title.split())}")
             if reference.authors:
                 lines.append(f"**Authors:** {', '.join(reference.authors)}")
             if reference.journal:
@@ -1629,8 +1659,10 @@ class ReferenceFetcher:
                     f"**DOI:** [{reference.doi}](https://doi.org/{reference.doi})"
                 )
             lines.append("")
-            lines.append("## Content")
-            lines.append("")
+        # Always written, so the reader can tell the header from text that
+        # merely holds a "## Content..." heading (#136).
+        lines.append(CONTENT_MARKER)
+        lines.append("")
 
         if reference.content:
             lines.append(reference.content)
@@ -2027,8 +2059,11 @@ class ReferenceFetcher:
         if not match or int(match.group(1)) < EXTRACTOR_CACHE_VERSION:
             return True
 
-        metadata = YAML(typ="safe").load(split[0])
-        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_html":
+        metadata = _load_frontmatter_mapping(split[0])
+        if metadata is None:
+            # Damaged past the version stamp: re-fetch and rewrite it (#133).
+            return True
+        if metadata.get("content_type") == "full_text_html":
             html_version = metadata.get("html_full_text_version")
             if (
                 not isinstance(html_version, int)
@@ -2036,21 +2071,17 @@ class ReferenceFetcher:
             ):
                 return True
 
-        if isinstance(metadata, dict) and metadata.get("content_type") == "full_text_xml":
+        if metadata.get("content_type") == "full_text_xml":
             xml_version = metadata.get("xml_extraction_version")
             if type(xml_version) is not int or xml_version < XML_EXTRACTION_CACHE_VERSION:
                 return True
 
-        if isinstance(metadata, dict) and str(metadata.get("reference_id", "")).startswith(
-            "url:"
-        ):
+        if str(metadata.get("reference_id", "")).startswith("url:"):
             url_version = metadata.get("url_source_version")
             if type(url_version) is not int or url_version < URL_SOURCE_CACHE_VERSION:
                 return True
 
-        if isinstance(metadata, dict) and cls._is_figure_file_reference(
-            str(metadata.get("reference_id", ""))
-        ):
+        if cls._is_figure_file_reference(str(metadata.get("reference_id", ""))):
             svg_version = metadata.get("svg_extraction_version")
             if type(svg_version) is not int or svg_version < SVG_EXTRACTION_CACHE_VERSION:
                 return True
@@ -2063,7 +2094,7 @@ class ReferenceFetcher:
         # entries have nothing to do with a missing abstract, so it would cost a
         # re-fetch of all of them. A deployment using that setting should clear
         # its affected entries by hand.
-        if isinstance(metadata, dict) and metadata.get("content_type") == "unavailable":
+        if metadata.get("content_type") == "unavailable":
             absent_version = metadata.get("absent_content_version")
             if (
                 type(absent_version) is not int
@@ -2092,13 +2123,20 @@ class ReferenceFetcher:
             logger.warning(f"Invalid markdown format for {reference_id}")
             return None
 
-        yaml_parser = YAML(typ="safe")
-        frontmatter = yaml_parser.load(split[0])
-        if isinstance(frontmatter, dict):
-            frontmatter = _recover_legacy_scalars(frontmatter)
+        frontmatter = _load_frontmatter_mapping(split[0])
+        if frontmatter is None:
+            logger.warning(
+                "Ignoring cache entry for %s: its header is empty, not valid YAML "
+                "or not a mapping; it will be re-fetched and rewritten",
+                reference_id,
+            )
+            return None
+        frontmatter = _recover_legacy_scalars(frontmatter)
         body = split[1].strip()
 
-        content = self._extract_content_from_markdown(body)
+        content = self._extract_content_from_markdown(
+            body, titled=bool(frontmatter.get("title"))
+        )
 
         authors = self._parse_cached_authors(frontmatter.get("authors"), reference_id)
         keywords = self._as_optional_list(frontmatter.get("keywords"))
@@ -2149,30 +2187,47 @@ class ReferenceFetcher:
             full_text_declined=frontmatter.get("full_text_declined"),
         )
 
-    def _extract_content_from_markdown(self, body: str) -> str:
+    @staticmethod
+    def _extract_content_from_markdown(body: str, titled: bool) -> str:
         """Extract the actual content from markdown body.
 
-        Removes the title, authors, journal, and DOI headers to get just the content.
+        Removes the header the writer emits: a ``# title`` line with authors,
+        journal and DOI lines when there is a title, then the exact
+        ``## Content`` marker. The header ends at the first exact marker, so a
+        heading in the text such as ``## Contents of the kit`` is never taken
+        for it (#136). A body that does not open with that header (an untitled
+        file written before the marker was always emitted) is returned whole.
 
         Args:
-            body: Markdown body text
+            body: Markdown body text, stripped
+            titled: Whether the frontmatter records a title, so a ``# title``
+                header line may open the body
 
         Returns:
             Extracted content
+
+        Examples:
+            >>> extract = ReferenceFetcher._extract_content_from_markdown
+            >>> extract("## Content\\n\\nIntro.\\n\\n## Contents of the kit", titled=False)
+            'Intro.\\n\\n## Contents of the kit'
+            >>> extract("Intro.\\n\\n## Content\\n\\nMore.", titled=False)
+            'Intro.\\n\\n## Content\\n\\nMore.'
+            >>> extract("# A paper\\n**Authors:** Doe J\\n\\n## Content\\n\\nText.", titled=True)
+            'Text.'
         """
         lines = body.split("\n")
-        content_start = 0
+        if not lines or not (
+            lines[0].strip() == CONTENT_MARKER
+            or (titled and lines[0].startswith("# "))
+        ):
+            return body
 
         for i, line in enumerate(lines):
-            if line.strip().startswith("## Content"):
-                content_start = i + 1
-                break
-
-        if content_start > 0:
-            content_lines = lines[content_start:]
-            while content_lines and not content_lines[0].strip():
-                content_lines.pop(0)
-            return "\n".join(content_lines)
+            if line.strip() == CONTENT_MARKER:
+                content_lines = lines[i + 1:]
+                while content_lines and not content_lines[0].strip():
+                    content_lines.pop(0)
+                return "\n".join(content_lines)
 
         return body
 

@@ -112,7 +112,10 @@ class DOISource(ReferenceSource):
             logger.debug(f"Crossref API error for DOI:{doi}, will try DataCite")
             return None
 
-        message = data.get("message", {})
+        message = data.get("message")
+        if not isinstance(message, dict):
+            logger.debug(f"Crossref returned no record for DOI:{doi}, will try DataCite")
+            return None
 
         title_list = message.get("title", [])
         title = title_list[0] if title_list else ""
@@ -211,7 +214,11 @@ class DOISource(ReferenceSource):
             logger.warning(f"Failed to fetch DOI:{doi} from both Crossref and DataCite")
             return None
 
-        attributes = data.get("data", {}).get("attributes", {})
+        record = data.get("data")
+        attributes = record.get("attributes") if isinstance(record, dict) else None
+        if not isinstance(attributes, dict):
+            logger.warning(f"Failed to fetch DOI:{doi} from both Crossref and DataCite")
+            return None
 
         # Extract title
         titles = attributes.get("titles", [])

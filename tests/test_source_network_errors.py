@@ -93,6 +93,25 @@ def test_a_crossref_failure_still_tries_datacite(config):
 
 
 @pytest.mark.parametrize(
+    "crossref,datacite",
+    [
+        (b'{"status": "ok", "message": null}', b'{"data": null}'),
+        (b'{"status": "ok", "message": []}', b'{"data": {"attributes": null}}'),
+    ],
+    ids=["null", "wrong_type"],
+)
+def test_a_doi_response_with_the_wrong_shape_inside_is_a_miss(config, crossref, datacite):
+    """A well-formed JSON body whose nested record is null or a list is not a crash."""
+
+    def get(url, *args, **kwargs):
+        body = crossref if "crossref" in url else datacite
+        return _response(200, body, "application/json")
+
+    with patch(GET, side_effect=get):
+        assert DOISource().fetch(DOI, config) is None
+
+
+@pytest.mark.parametrize(
     "get", [_offline, lambda *a, **k: MAINTENANCE_PAGE], ids=["connection_error", "non_json_200"]
 )
 def test_a_zenodo_files_failure_keeps_the_doi_metadata(config, get):
@@ -150,18 +169,55 @@ def test_pdf_extractor_returns_none_for_a_damaged_pdf(data, caplog):
     assert "https://x.example/a.pdf" in caplog.text
 
 
-def test_a_truncated_pdf_behind_a_url_is_unavailable(config):
-    """The fetch succeeds as a record with no text, not an exception."""
-    url = "https://x.example/a.pdf"
-    with patch(
-        "linkml_reference_validator.etl.sources.url.ContentAcquirer.fetch_bytes",
-        return_value=(TRUNCATED_PDF, "application/pdf"),
-    ):
-        reference = URLSource().fetch(url, config)
+PDF_URL = "https://x.example/a.pdf"
+FETCH_BYTES = "linkml_reference_validator.etl.sources.url.ContentAcquirer.fetch_bytes"
+
+
+def test_a_truncated_pdf_behind_a_url_is_a_failed_fetch(config, caplog):
+    """No exception, and no record either: a truncated download may be transient.
+
+    Returning None, as for a bot-challenge page (#117), lets the fetcher serve
+    a cached copy and write nothing, so the next run downloads it again. A
+    record of ``unavailable`` would be cached as a permanent absence.
+    """
+    with patch(FETCH_BYTES, return_value=(TRUNCATED_PDF, "application/pdf")), \
+            caplog.at_level(logging.WARNING):
+        assert URLSource().fetch(PDF_URL, config) is None
+    assert PDF_URL in caplog.text
+
+
+def test_a_truncated_pdf_with_nothing_cached_writes_nothing(config):
+    fetcher = ReferenceFetcher(config)
+    with patch(FETCH_BYTES, return_value=(TRUNCATED_PDF, "application/pdf")):
+        assert fetcher.fetch(f"url:{PDF_URL}") is None
+    assert not fetcher.get_cache_path(f"url:{PDF_URL}").exists()
+
+
+def test_a_truncated_pdf_refresh_keeps_and_serves_the_cached_copy(config):
+    fetcher = ReferenceFetcher(config)
+    path = fetcher.get_cache_path(f"url:{PDF_URL}")
+    cached = (
+        f"---\nreference_id: url:{PDF_URL}\ntitle: A paper\ncontent_type: full_text_pdf\n"
+        "---\n\n## Content\n\nCached article text.\n"
+    )
+    path.write_text(cached, encoding="utf-8")
+
+    with patch(FETCH_BYTES, return_value=(TRUNCATED_PDF, "application/pdf")):
+        outcome = fetcher.fetch_with_provenance(f"url:{PDF_URL}")
+
+    assert outcome.content is not None
+    assert outcome.content.content == "Cached article text."
+    assert outcome.served_stale is True
+    assert path.read_text(encoding="utf-8") == cached
+
+
+def test_a_readable_pdf_without_text_is_still_unavailable(config):
+    """A PDF that parses but has no text layer is a real absence, cached as such."""
+    with patch(FETCH_BYTES, return_value=(_minimal_pdf(""), "application/pdf")):
+        reference = URLSource().fetch(PDF_URL, config)
     assert reference is not None
     assert reference.content_type == "unavailable"
-    assert reference.content is None
-    assert reference.title == url
+    assert reference.title == PDF_URL
 
 
 def _minimal_pdf(text: str) -> bytes:
@@ -212,6 +268,27 @@ def test_damaged_pdfs_never_raise():
         for _ in range(rng.randint(1, 8)):
             mutated[rng.randrange(len(mutated))] = rng.randrange(256)
         corpus.append(bytes(mutated))
+
+    # Pin the claim above: the corpus reaches past PyPdfError, so a narrower
+    # catch would fail this test.
+    from io import BytesIO
+
+    from pypdf import PdfReader
+    from pypdf.errors import PyPdfError
+
+    raised = set()
+    logging.disable(logging.CRITICAL)
+    try:
+        for case in corpus:
+            try:
+                "".join(p.extract_text() or "" for p in PdfReader(BytesIO(case)).pages)
+            except PyPdfError:
+                pass
+            except Exception as e:
+                raised.add(type(e).__name__)
+    finally:
+        logging.disable(logging.NOTSET)
+    assert raised, "the corpus no longer exercises the broad catch"
 
     extractor = PDFExtractor()
     logging.disable(logging.CRITICAL)

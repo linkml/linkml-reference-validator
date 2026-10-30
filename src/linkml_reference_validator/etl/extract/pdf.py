@@ -84,7 +84,7 @@ class PypdfBackend:
             metadata = PdfReader(io.BytesIO(data)).metadata
             title = metadata.title if metadata is not None else None
         except Exception as e:
-            logger.debug(f"Could not read PDF metadata: {e}")
+            logger.debug(f"Could not read PDF metadata: {type(e).__name__}: {e}")
             return None
         # pypdf returns /Title as whatever object it holds; only text is a title.
         return str(title) if isinstance(title, str) else None

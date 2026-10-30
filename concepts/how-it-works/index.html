@@ -2335,6 +2335,14 @@ content_type: abstract_only
 
 The MUC1 oncoprotein blocks nuclear targeting...
 </code></pre>
+<p>An entry with no title has no <code># title</code>, authors or journal lines, but it still
+gets the <code>## Content</code> marker. The content is everything after the first exact
+<code>## Content</code> line of that header, so a heading in the text such as
+<code>## Contents of the kit</code> stays part of the content. A file written before untitled
+entries got the marker is read whole.</p>
+<p>A cache file whose frontmatter is empty, isn't valid YAML, or isn't a mapping is
+treated as missing. Validation re-fetches the reference and rewrites the file,
+and tools that walk the cache skip the file with a warning.</p>
 <h3 id="cache-benefits">Cache Benefits</h3>
 <ul>
 <li><strong>Offline usage</strong>: Work without network after initial fetch</li>

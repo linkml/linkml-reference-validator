@@ -263,7 +263,7 @@ def test_fetch_url_pdf_extracts_text(tmp_path):
     with _patch("linkml_reference_validator.etl.sources.url.ContentAcquirer") as MockAcquirer, \
          _patch("linkml_reference_validator.etl.sources.url.PDFExtractor") as MockPDF:
         MockAcquirer.return_value.fetch_bytes.return_value = (b"%PDF-1.4 fake bytes", "application/pdf")
-        MockPDF.return_value.extract.return_value = "extracted pdf text"
+        MockPDF.return_value.read_text.return_value = "extracted pdf text"
         result = source.fetch("https://x/y.pdf", config)
 
     assert result is not None

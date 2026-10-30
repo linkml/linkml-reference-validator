@@ -5,7 +5,9 @@ user-configured extra fields from raw API responses.
 """
 
 import logging
+from typing import Any, Optional
 
+import requests  # type: ignore
 from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
 
@@ -104,3 +106,44 @@ def format_extra_fields_for_content(extra: dict[str, str]) -> str:
     if not extra:
         return ""
     return "\n\n".join(f"### {k}\n\n{v}" for k, v in extra.items())
+
+
+def get_json(
+    url: str,
+    label: str,
+    headers: Optional[dict[str, str]] = None,
+    level: int = logging.WARNING,
+) -> Optional[Any]:
+    """GET ``url`` and return its JSON body, or None if it cannot be had.
+
+    A network error, a timeout, a status other than 200, or a body that is not
+    JSON (a maintenance page served on a 200) all give None, so the caller's
+    "no result" path runs and the fetcher can fall back to a cached copy
+    (#134). Each failure is logged at ``level``, naming ``label``.
+
+    Args:
+        url: The URL to fetch.
+        label: What is being fetched, such as ``"DOI:10.1/x from Crossref"``.
+        headers: Request headers.
+        level: Log level for a failure; DEBUG where another source is tried next.
+
+    Returns:
+        The parsed JSON body, or None.
+
+    Examples:
+        >>> get_json("not a url", "a test record") is None  # no request is sent
+        True
+    """
+    try:  # external system boundary: offline, DNS failure, timeout
+        response = requests.get(url, headers=headers, timeout=30)
+    except requests.RequestException as exc:
+        logger.log(level, f"Failed to fetch {label}: {exc}")
+        return None
+    if response.status_code != 200:
+        logger.log(level, f"Failed to fetch {label}: HTTP {response.status_code}")
+        return None
+    try:  # external data: a 200 can still carry an HTML error page
+        return response.json()
+    except ValueError as exc:
+        logger.log(level, f"Failed to fetch {label}: the response is not JSON ({exc})")
+        return None

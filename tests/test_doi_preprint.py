@@ -26,7 +26,7 @@ def _crossref_response(message):
     return mock_response
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_posted_content_preprint_is_marked(mock_get, source, config):
     mock_get.return_value = _crossref_response(
         {
@@ -46,7 +46,7 @@ def test_posted_content_preprint_is_marked(mock_get, source, config):
     assert result.peer_review_status == "preprint"
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_posted_content_without_subtype_is_marked(mock_get, source, config):
     # Some posted-content records omit the explicit "preprint" subtype.
     mock_get.return_value = _crossref_response(
@@ -65,7 +65,7 @@ def test_posted_content_without_subtype_is_marked(mock_get, source, config):
     assert result.peer_review_status == "preprint"
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_journal_article_is_marked_not_preprint(mock_get, source, config):
     mock_get.return_value = _crossref_response(
         {
@@ -87,7 +87,7 @@ def test_journal_article_is_marked_not_preprint(mock_get, source, config):
     assert result.peer_review_status is None
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_typeless_crossref_record_leaves_preprint_unknown(mock_get, source, config):
     mock_get.return_value = _crossref_response(
         {

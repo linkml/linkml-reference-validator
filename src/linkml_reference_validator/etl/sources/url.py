@@ -21,7 +21,7 @@ from linkml_reference_validator.models import ReferenceContent, ReferenceValidat
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
 from linkml_reference_validator.etl.acquire import ContentAcquirer, sniff_format
 from linkml_reference_validator.etl.extract.html import html_to_text
-from linkml_reference_validator.etl.extract.pdf import PDFExtractor
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor, UnreadablePDFError
 from linkml_reference_validator.etl.rules import (
     LANDING_PAGE_RULES,
     is_bot_challenge_title,
@@ -101,9 +101,15 @@ class URLSource(ReferenceSource):
         is_pdf = data[:5] == b"%PDF-" or "application/pdf" in content_type_header
 
         if is_pdf:
-            text = PDFExtractor(backend=config.pdf_backend).extract(
-                data, content_type="application/pdf", source=url
-            )
+            try:
+                text = PDFExtractor(backend=config.pdf_backend).read_text(data, source=url)
+            except UnreadablePDFError as e:
+                # A truncated download may be transient, so it is a failed fetch,
+                # as for a bot-challenge page below: a cached copy is served,
+                # nothing is written, and the next run downloads it again.
+                # "unavailable" would be cached as a permanent absence (#122).
+                logger.warning(f"Failed to fetch {url}: the PDF cannot be read ({e})")
+                return None
             return ReferenceContent(
                 reference_id=f"url:{url}",
                 title=self._recover_pdf_title(url, data, config),

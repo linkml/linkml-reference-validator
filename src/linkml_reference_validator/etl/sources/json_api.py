@@ -25,7 +25,6 @@ import re
 import time
 from typing import Optional
 
-import requests
 from jsonpath_ng import parse as jsonpath_parse
 from jsonpath_ng.exceptions import JsonPathParserError
 
@@ -33,6 +32,7 @@ from linkml_reference_validator.etl.sources.base import (
     ReferenceSource,
     ReferenceSourceRegistry,
 )
+from linkml_reference_validator.etl.sources.utils import get_json
 from linkml_reference_validator.models import (
     JSONAPISourceConfig,
     ReferenceContent,
@@ -175,14 +175,9 @@ class JSONAPISource(ReferenceSource):
         if "Accept" not in headers:
             headers["Accept"] = "application/json"
 
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code != 200:
-            logger.warning(
-                f"Failed to fetch {self._prefix}:{identifier} - status {response.status_code}"
-            )
+        data = get_json(url, f"{self._prefix}:{identifier}", headers)
+        if data is None:
             return None
-
-        data = response.json()
 
         # Extract fields using JSONPath
         extracted = self._extract_fields(data)

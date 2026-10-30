@@ -109,7 +109,7 @@ class TestJSONAPISource:
         assert source.can_handle("MGYA123456")  # Another pattern
         assert not source.can_handle("XYZ123456")
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_fetch_success(self, mock_get, source, config):
         """Should fetch and extract fields from JSON response."""
         mock_response = MagicMock()
@@ -129,7 +129,7 @@ class TestJSONAPISource:
         assert result.content_type == "abstract_only"
         mock_get.assert_called_once()
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_fetch_nested_fields(self, mock_get, config):
         """Should extract nested fields using JSONPath."""
         source_config = JSONAPISourceConfig(
@@ -161,7 +161,7 @@ class TestJSONAPISource:
         assert result.title == "Nested Title"
         assert result.content == "Nested description here."
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_fetch_with_raw_response(self, mock_get, config):
         """Should store raw response when configured."""
         source_config = JSONAPISourceConfig(
@@ -183,7 +183,7 @@ class TestJSONAPISource:
         assert "raw_response" in result.metadata
         assert result.metadata["raw_response"]["extra"] == "data"
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_fetch_404_returns_none(self, mock_get, source, config):
         """Should return None for 404 responses."""
         mock_response = MagicMock()
@@ -194,7 +194,7 @@ class TestJSONAPISource:
 
         assert result is None
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_fetch_missing_field_returns_none(self, mock_get, source, config):
         """Should return None for missing fields."""
         mock_response = MagicMock()
@@ -444,7 +444,7 @@ class TestMGnifyExample:
         assert source.can_handle("MGYS00000596")  # Bare ID
         assert not source.can_handle("DOI:10.1234/test")
 
-    @patch("linkml_reference_validator.etl.sources.json_api.requests.get")
+    @patch("linkml_reference_validator.etl.sources.utils.requests.get")
     def test_mgnify_fetch_extracts_fields(self, mock_get, mgnify_config, tmp_path):
         """Should extract title and abstract from MGnify response."""
         config = ReferenceValidationConfig(

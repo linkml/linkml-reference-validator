@@ -16,7 +16,6 @@ import time
 from typing import Optional
 
 from bs4 import BeautifulSoup  # type: ignore
-import requests  # type: ignore
 
 from linkml_reference_validator.models import (
     ReferenceContent,
@@ -28,6 +27,7 @@ from linkml_reference_validator.etl.sources.base import ReferenceSource, Referen
 from linkml_reference_validator.etl.sources.utils import (
     extract_extra_fields,
     format_extra_fields_for_content,
+    get_json,
 )
 
 logger = logging.getLogger(__name__)
@@ -106,17 +106,16 @@ class DOISource(ReferenceSource):
             "User-Agent": f"linkml-reference-validator/1.0 (mailto:{config.email})",
         }
 
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code != 200:
-            logger.debug(f"Crossref returned {response.status_code} for DOI:{doi}, will try DataCite")
-            return None
-
-        data = response.json()
-        if data.get("status") != "ok":
+        # DEBUG: DataCite is tried next, and a miss there is a warning.
+        data = get_json(url, f"DOI:{doi} from Crossref", headers, level=logging.DEBUG)
+        if not isinstance(data, dict) or data.get("status") != "ok":
             logger.debug(f"Crossref API error for DOI:{doi}, will try DataCite")
             return None
 
-        message = data.get("message", {})
+        message = data.get("message")
+        if not isinstance(message, dict):
+            logger.debug(f"Crossref returned no record for DOI:{doi}, will try DataCite")
+            return None
 
         title_list = message.get("title", [])
         title = title_list[0] if title_list else ""
@@ -209,13 +208,18 @@ class DOISource(ReferenceSource):
             "Accept": "application/json",
         }
 
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code != 200:
+        # DEBUG: the reason; the one warning is the miss from both, below.
+        data = get_json(url, f"DOI:{doi} from DataCite", headers, level=logging.DEBUG)
+        if not isinstance(data, dict):
             logger.warning(f"Failed to fetch DOI:{doi} from both Crossref and DataCite")
             return None
 
-        data = response.json()
-        attributes = data.get("data", {}).get("attributes", {})
+        record = data.get("data")
+        attributes = record.get("attributes") if isinstance(record, dict) else None
+        if not isinstance(attributes, dict):
+            logger.debug(f"DataCite returned no data.attributes for DOI:{doi}")
+            logger.warning(f"Failed to fetch DOI:{doi} from both Crossref and DataCite")
+            return None
 
         # Extract title
         titles = attributes.get("titles", [])
@@ -347,12 +351,13 @@ class DOISource(ReferenceSource):
             "Accept": "application/json",
         }
 
-        response = requests.get(url, headers=headers, timeout=30)
-        if response.status_code != 200:
-            logger.debug(f"Failed to fetch Zenodo files for record {record_id}")
+        # DEBUG: the file list is enrichment; the record is kept without it.
+        data = get_json(
+            url, f"Zenodo files for record {record_id}", headers, level=logging.DEBUG
+        )
+        if not isinstance(data, dict):
             return None
 
-        data = response.json()
         files_data = data.get("files", [])
 
         if not files_data:

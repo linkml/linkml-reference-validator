@@ -1161,9 +1161,9 @@ class ReferenceFetcher:
             elif fmt == "pdf":
                 # Deliberately not extractor.extract(...): only the PDF extractor
                 # takes source=, which names the URL when it warns about lost glyphs.
-                text = self._pdf_extractor.extract(
-                    data, content_type=content_type, source=location.url
-                )
+                # read_text raises for an unreadable download, so it is flagged
+                # below as a transient error and retried on a later run.
+                text = self._pdf_extractor.read_text(data, source=location.url)
             else:
                 text = extractor.extract(data, content_type=content_type)
         except Exception as exc:

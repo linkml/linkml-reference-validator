@@ -404,7 +404,7 @@ def test_full_chain_doi_falls_through_to_pdf(tmp_path):
     with patch.object(fetcher, "_load_from_disk", return_value=None), \
          patch("linkml_reference_validator.etl.reference_fetcher.ReferenceSourceRegistry.get_source") as mock_get_source, \
          patch.object(fetcher._acquirer, "fetch_bytes", return_value=(b"%PDF-bytes", "application/pdf")), \
-         patch.object(fetcher._pdf_extractor, "extract", return_value="full text body " * 60):
+         patch.object(fetcher._pdf_extractor, "read_text", return_value="full text body " * 60):
         mock_source_class = mock_get_source.return_value
         mock_source_class.return_value.fetch.return_value = metadata
 

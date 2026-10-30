@@ -50,7 +50,7 @@ def test_doi_url_path_keeps_the_slash_and_encodes_the_rest():
 def test_crossref_and_datacite_request_the_whole_doi(doi):
     config = ReferenceValidationConfig(rate_limit_delay=0)
     urls = _requested_urls(
-        "linkml_reference_validator.etl.sources.doi", lambda: DOISource().fetch(doi, config)
+        "linkml_reference_validator.etl.sources.utils", lambda: DOISource().fetch(doi, config)
     )
     assert [u.split("/")[2] for u in urls] == ["api.crossref.org", "api.datacite.org"]
     assert all(_keeps_whole_doi(u, doi) for u in urls)

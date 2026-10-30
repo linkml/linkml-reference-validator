@@ -462,7 +462,7 @@ def test_fetch_unsupported_type(fetcher):
     assert result is None
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_doi_via_fetch_method(mock_get, fetcher):
     """Test that fetch() correctly routes DOI requests to DOISource."""
     mock_response = MagicMock()
@@ -486,7 +486,7 @@ def test_fetch_doi_via_fetch_method(mock_get, fetcher):
     assert result.title == "DOI Article via fetch()"
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_save_and_load_doi_from_disk(mock_get, fetcher, tmp_path):
     """Test saving and loading DOI reference from disk cache."""
     mock_response = MagicMock()
@@ -664,7 +664,7 @@ def test_fetch_bare_https_url(MockAcquirer, fetcher):
     assert result.reference_id == "url:https://example.com/page"
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_zenodo_doi_via_datacite(mock_get, fetcher):
     """Test that Zenodo DOIs are fetched via DataCite when Crossref returns 404.
 
@@ -720,7 +720,7 @@ def test_fetch_zenodo_doi_via_datacite(mock_get, fetcher):
     assert "AI skills" in result.content or "Workshop" in result.content
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_doi_crossref_success_no_datacite_call(mock_get, fetcher):
     """Test that when Crossref succeeds, DataCite is not called."""
     mock_response = MagicMock()
@@ -745,7 +745,7 @@ def test_fetch_doi_crossref_success_no_datacite_call(mock_get, fetcher):
     assert "crossref.org" in mock_get.call_args[0][0]
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_doi_both_fail(mock_get, fetcher):
     """Test that when both Crossref and DataCite fail, None is returned."""
     crossref_response = MagicMock()
@@ -766,7 +766,7 @@ def test_fetch_doi_both_fail(mock_get, fetcher):
 # === Supplementary Files Tests ===
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_zenodo_doi_with_supplementary_files(mock_get, fetcher):
     """Test that Zenodo DOIs include supplementary file metadata.
 
@@ -844,7 +844,7 @@ def test_fetch_zenodo_doi_with_supplementary_files(mock_get, fetcher):
     assert csv_file.size_bytes == 12345
 
 
-@patch("linkml_reference_validator.etl.sources.doi.requests.get")
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
 def test_fetch_non_zenodo_doi_no_supplementary_files(mock_get, fetcher):
     """Test that non-Zenodo DOIs (regular Crossref) don't have supplementary files."""
     mock_response = MagicMock()
@@ -1075,9 +1075,9 @@ def test_enrich_downloads_and_extracts_pdf(tmp_path):
     )
 
     # The fetcher builds (and reuses) a single PDFExtractor at init; patch its
-    # extract so we exercise the download/sniff/enrich path without real pypdf.
+    # read_text so we exercise the download/sniff/enrich path without real pypdf.
     with patch.object(fetcher._acquirer, "fetch_bytes", return_value=(b"%PDF-fake", "application/pdf")), \
-         patch.object(fetcher._pdf_extractor, "extract", return_value="extracted pdf text " * 50):
+         patch.object(fetcher._pdf_extractor, "read_text", return_value="extracted pdf text " * 50):
         enriched = fetcher._enrich_with_full_text(content)
 
     assert enriched.content_type == "full_text_pdf"

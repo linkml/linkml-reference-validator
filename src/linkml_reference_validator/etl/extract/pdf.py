@@ -14,15 +14,28 @@ from linkml_reference_validator.etl.rules import PDF_PLACEHOLDER_TITLE
 logger = logging.getLogger(__name__)
 
 
+class UnreadablePDFError(ValueError):
+    """The bytes are not a PDF a backend can read: truncated, corrupt or empty."""
+
+
 class PDFTextBackend(Protocol):
-    """Protocol for a PDF-to-text backend."""
+    """Protocol for a PDF-to-text backend.
+
+    PDF bytes come from the network, so they may be truncated or corrupt. A
+    backend raises :class:`UnreadablePDFError` for those, whatever its parser
+    raises, and never returns a title it could not read.
+    """
 
     def extract_text(self, data: bytes) -> str:
-        """Return extracted plain text for the given PDF bytes."""
+        """Return extracted plain text for the given PDF bytes.
+
+        Raises:
+            UnreadablePDFError: The bytes cannot be read as a PDF.
+        """
         ...
 
     def extract_title(self, data: bytes) -> Optional[str]:
-        """Return the embedded document title, or None if there is none."""
+        """Return the embedded document title, or None if there is none or it cannot be read."""
         ...
 
 
@@ -35,10 +48,26 @@ class PypdfBackend:
     """
 
     def extract_text(self, data: bytes) -> str:
+        """Extract the text of every page.
+
+        Examples:
+            >>> try:
+            ...     PypdfBackend().extract_text(b"%PDF-1.7 truncated")
+            ... except UnreadablePDFError:
+            ...     print("unreadable")
+            unreadable
+        """
         from pypdf import PdfReader
 
-        reader = PdfReader(io.BytesIO(data))
-        return "\n\n".join(page.extract_text() or "" for page in reader.pages)
+        # External data. Damaged input raises PyPdfError, but also KeyError,
+        # AttributeError, ValueError, TypeError or IndexError from deep inside
+        # the parser (seen on a fuzzed corpus, pinned in the tests), so every
+        # failure is caught here, as the fetcher's full-text path does (#122).
+        try:
+            reader = PdfReader(io.BytesIO(data))
+            return "\n\n".join(page.extract_text() or "" for page in reader.pages)
+        except Exception as e:
+            raise UnreadablePDFError(f"{type(e).__name__}: {e}") from e
 
     def extract_title(self, data: bytes) -> Optional[str]:
         """Read ``/Title`` from the document information dictionary.
@@ -48,17 +77,16 @@ class PypdfBackend:
             True
         """
         from pypdf import PdfReader
-        from pypdf.errors import PyPdfError
 
-        try:  # external data: a PDF can carry text yet have a broken trailer
+        # External data: a PDF can carry text yet have a broken trailer, and,
+        # as for the text, pypdf raises more than PyPdfError on damaged input.
+        try:
             metadata = PdfReader(io.BytesIO(data)).metadata
-        except PyPdfError as e:
+            title = metadata.title if metadata is not None else None
+        except Exception as e:
             logger.debug(f"Could not read PDF metadata: {e}")
             return None
-        if metadata is None:
-            return None
         # pypdf returns /Title as whatever object it holds; only text is a title.
-        title = metadata.title
         return str(title) if isinstance(title, str) else None
 
 
@@ -144,7 +172,41 @@ class PDFExtractor(Extractor):
         content_type: Optional[str] = None,
         source: Optional[str] = None,
     ) -> Optional[str]:
-        """Extract text from PDF bytes; ``source`` (e.g. a URL) names it in logs."""
+        """Extract text from PDF bytes; ``source`` (e.g. a URL) names it in logs.
+
+        Returns None for a PDF with no text, and for bytes that cannot be read
+        as one (a truncated download, a corrupt or empty file), with a warning:
+        callers then record the reference as unavailable (#122). A caller that
+        must tell those two apart uses :meth:`read_text`.
+
+        Examples:
+            >>> PDFExtractor().extract(b"%PDF-1.7 truncated") is None
+            True
+        """
+        try:
+            return self.read_text(data, source=source)
+        except UnreadablePDFError as e:
+            origin = f" from {source}" if source else ""
+            logger.warning(f"Could not read PDF{origin}: {e}")
+            return None
+
+    def read_text(self, data: Union[bytes, str], *, source: Optional[str] = None) -> Optional[str]:
+        """Like :meth:`extract`, but raise for bytes that cannot be read as a PDF.
+
+        The full-text chain treats an unreadable download as a transient error
+        worth retrying, not as "this article has no text", so it needs the
+        difference.
+
+        Raises:
+            UnreadablePDFError: The bytes cannot be read as a PDF.
+
+        Examples:
+            >>> try:
+            ...     PDFExtractor().read_text(b"")
+            ... except UnreadablePDFError:
+            ...     print("unreadable")
+            unreadable
+        """
         # The base accepts str for text formats, but a PDF is binary: decoded
         # text cannot be reparsed as one, so say so rather than failing deep
         # inside the backend.

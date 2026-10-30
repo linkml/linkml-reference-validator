@@ -217,6 +217,7 @@ class DOISource(ReferenceSource):
         record = data.get("data")
         attributes = record.get("attributes") if isinstance(record, dict) else None
         if not isinstance(attributes, dict):
+            logger.debug(f"DataCite returned no data.attributes for DOI:{doi}")
             logger.warning(f"Failed to fetch DOI:{doi} from both Crossref and DataCite")
             return None
 

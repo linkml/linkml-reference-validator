@@ -174,10 +174,11 @@ class PDFExtractor(Extractor):
     ) -> Optional[str]:
         """Extract text from PDF bytes; ``source`` (e.g. a URL) names it in logs.
 
-        Returns None for a PDF with no text, and for bytes that cannot be read
-        as one (a truncated download, a corrupt or empty file), with a warning:
-        callers then record the reference as unavailable (#122). A caller that
-        must tell those two apart uses :meth:`read_text`.
+        Returns None for a PDF with no text, and, with a warning, for bytes
+        that cannot be read as one (a truncated download, a corrupt or empty
+        file), so a generic :class:`Extractor` caller sees no text either way
+        (#122). A caller that must tell those two apart, such as one that
+        retries a damaged download, uses :meth:`read_text`.
 
         Examples:
             >>> PDFExtractor().extract(b"%PDF-1.7 truncated") is None

@@ -56,6 +56,7 @@ def test_a_property_of_a_reference_is_not_a_reference(uri):
         "ex:primaryReference",
         "dcterms:references",
         "linkml:authoritative_reference",
+        "http://example.org/reference/",
     ],
 )
 def test_a_uri_naming_a_reference_still_matches(uri):
@@ -70,6 +71,13 @@ def test_a_uri_naming_a_reference_still_matches(uri):
         "ex:supporting_text_length",
         "ex:exactness",
         "http://www.w3.org/ns/oa#exactMatch",
+        # An identifier of an excerpt is not the excerpt.
+        "ex:excerpt_id",
+        "ex:supportingTextUri",
+        "ex:excerpt_curie",
+        # oa:exact anchored, not any URI that happens to end in those letters.
+        "http://example.org/noa#exact",
+        "ex:foa:exact",
     ],
 )
 def test_a_property_of_an_excerpt_is_not_an_excerpt(uri):
@@ -87,6 +95,8 @@ def test_a_property_of_an_excerpt_is_not_an_excerpt(uri):
         "supporting_text",
         "ex:supportingText",
         "ex:excerpts",
+        "https://www.w3.org/ns/oa#exact",
+        "http://example.org/excerpt/",
     ],
 )
 def test_a_uri_naming_an_excerpt_still_matches(uri):

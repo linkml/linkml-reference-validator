@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 
 
 def _words(text: str) -> list[str]:
-    """Split a URI/CURIE into lowercased words, in order.
+    """Split text into lowercased words, in order.
 
     Splits on camelCase boundaries and any run of non-alphanumeric characters,
     so a generic term can be matched as a whole word rather than as a bare
@@ -55,35 +55,41 @@ def _words(text: str) -> list[str]:
     return [tok.lower() for tok in re.split(r"[^A-Za-z0-9]+", spaced) if tok]
 
 
-#: Generic suffixes that name a field rather than qualify the term before them:
-#: ``myReferenceField`` and ``reference_id`` name a reference, ``referenceType``
-#: names a property of one.
-_GENERIC_SUFFIXES: frozenset[str] = frozenset(
-    {"field", "slot", "value", "id", "ids", "uri", "uris", "iri", "curie"}
-)
+#: Suffixes that name a field rather than qualify the term before them:
+#: ``myExcerptField`` names an excerpt, ``excerpt_location`` a property of one.
+_FIELD_SUFFIXES: frozenset[str] = frozenset({"field", "slot", "value"})
+
+#: For references, an identifier suffix also names the reference itself:
+#: ``reference_id`` holds the reference, where ``excerpt_id`` only names one.
+_REFERENCE_SUFFIXES: frozenset[str] = _FIELD_SUFFIXES | {
+    "id", "ids", "uri", "uris", "iri", "curie",
+}
 
 
-def _local_name_ends_with(uri: str, *terms: tuple[str, ...]) -> bool:
+def _local_name_ends_with(
+    uri: str, terms: tuple[tuple[str, ...], ...], suffixes: frozenset[str]
+) -> bool:
     """Whether the URI's local name ends in one of ``terms``, as whole words.
 
-    The local name is what follows the last ``:``, ``/`` or ``#``. One generic
-    suffix such as ``Field`` or ``Id`` may follow the term. Matching the end,
-    not any word, keeps a slot that describes a reference (``referenceType``,
-    ``excerpt_location``) from being taken for one (#142).
+    The local name is what follows the last ``:``, ``/`` or ``#``, ignoring a
+    trailing ``/`` or ``#``. One of ``suffixes`` may follow the term. Matching
+    the end, not any word, keeps a slot that describes a reference
+    (``referenceType``, ``excerpt_location``) from being taken for one (#142).
 
     Examples:
-        >>> _local_name_ends_with("ex:cross_reference", ("reference",))
+        >>> ref = ((("reference",),), _REFERENCE_SUFFIXES)
+        >>> _local_name_ends_with("ex:cross_reference", *ref)
         True
-        >>> _local_name_ends_with("http://example.org/myReferenceField", ("reference",))
+        >>> _local_name_ends_with("http://example.org/myReferenceField", *ref)
         True
-        >>> _local_name_ends_with("ex:referenceType", ("reference",))
+        >>> _local_name_ends_with("ex:referenceType", *ref)
         False
-        >>> _local_name_ends_with("ex:supportingText", ("supporting", "text"))
-        True
+        >>> _local_name_ends_with("ex:excerpt_id", (("excerpt",),), _FIELD_SUFFIXES)
+        False
     """
-    words = _words(re.split(r"[:/#]", uri)[-1])
+    words = _words(re.split(r"[:/#]", uri.rstrip("/#"))[-1])
     candidates = [words]
-    if len(words) > 1 and words[-1] in _GENERIC_SUFFIXES:
+    if len(words) > 1 and words[-1] in suffixes:
         candidates.append(words[:-1])
     return any(
         len(cand) >= len(term) and tuple(cand[-len(term):]) == term
@@ -120,8 +126,12 @@ class ExcerptURIs:
     LEGACY_LINKML: str = "https://w3id.org/linkml/excerpt"
     LEGACY_LINKML_PREFIXED: str = "linkml:excerpt"
 
-    # Web Annotation's exact selector, matched as the whole local name.
-    EXACT_SUFFIXES: tuple[str, ...] = ("oa:exact", "oa#exact")
+    # Web Annotation's exact selector, matched as the whole CURIE or IRI.
+    EXACT_URIS: frozenset[str] = frozenset({
+        "oa:exact",
+        "http://www.w3.org/ns/oa#exact",
+        "https://www.w3.org/ns/oa#exact",
+    })
 
     # Generic terms the local name must end in, as words (#142).
     TERMS: tuple[tuple[str, ...], ...] = (
@@ -154,10 +164,9 @@ class ExcerptURIs:
             >>> ExcerptURIs.is_excerpt_uri("ex:excerpt_location")
             False
         """
-        uri_lower = uri.lower()
-        if uri_lower.endswith(cls.EXACT_SUFFIXES):
+        if uri.lower() in cls.EXACT_URIS:
             return True
-        return _local_name_ends_with(uri, *cls.TERMS)
+        return _local_name_ends_with(uri, cls.TERMS, _FIELD_SUFFIXES)
 
 
 @dataclass(frozen=True)
@@ -246,7 +255,9 @@ class ReferenceURIs:
         uri_lower = uri.lower()
         if any(pattern in uri_lower for pattern in cls.MATCH_PATTERNS):
             return True
-        return _local_name_ends_with(uri, *((term,) for term in cls.TOKEN_TERMS))
+        return _local_name_ends_with(
+            uri, tuple((term,) for term in cls.TOKEN_TERMS), _REFERENCE_SUFFIXES
+        )
 
 
 @dataclass(frozen=True)

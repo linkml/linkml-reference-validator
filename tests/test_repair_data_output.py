@@ -232,3 +232,36 @@ def test_the_inlined_reference_object_is_not_itself_an_evidence_item():
                           "supporting_text": "x"}]}
     items = _extract_evidence_items(data, None, Path("unused.yaml"))
     assert [i[1] for i in items] == ["PMID:1"]
+
+
+def test_extract_falls_back_to_a_sibling_reference_id():
+    """A reference object with no id does not hide a usable reference_id beside it."""
+    data = {"evidence": [{"reference": {"title": "T"}, "reference_id": "PMID:3",
+                          "supporting_text": "x"}]}
+    assert _extract_evidence_items(data, None, Path("unused.yaml")) == [
+        ("x", "PMID:3", "evidence[0].supporting_text")
+    ]
+
+
+def test_fixes_that_cannot_be_placed_leave_the_input_alone(
+    tmp_path, schema, cache_dir, monkeypatch
+):
+    """If no counted fix lands in the data, nothing is rewritten and -o gets a copy.
+
+    Extraction and write-back share their paths, so no real data reaches this
+    branch; the write-back is stubbed to report that nothing landed.
+    """
+    import linkml_reference_validator.cli.repair as repair_module
+
+    monkeypatch.setattr(repair_module, "_apply_repairs_to_data", lambda *a: False)
+    data = tmp_path / "data.yaml"
+    data.write_text(FIXABLE)
+    out = tmp_path / "out.yaml"
+
+    result = _repair(data, schema, cache_dir, "--no-dry-run", "--output", str(out))
+
+    assert result.exit_code == 0, result.output
+    assert "could not be placed back" in result.output
+    assert data.read_text() == FIXABLE
+    assert out.read_bytes() == data.read_bytes()
+    assert not (tmp_path / "data.yaml.bak").exists()

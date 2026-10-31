@@ -543,7 +543,7 @@ linkml-reference-validator repair data [OPTIONS] DATA_FILE
 - `--target-class TEXT, -t TEXT` - Target class to validate
 - `--dry-run / --no-dry-run, -n / -N` - Show changes without applying (default: dry-run)
 - `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
-- `--output PATH, -o PATH` - Output file path (default: overwrite the input, keeping a `.bak` backup). With `--no-dry-run` it is always written, as an unchanged copy of the input when there is nothing to fix. The input itself is not touched, and no backup is made
+- `--output PATH, -o PATH` - Output file path (default: overwrite the input, keeping a `.bak` backup). When given with `--no-dry-run`, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made
 - `--config PATH` - Path to configuration file (.yaml)
 - `--cache-dir PATH, -c PATH` - Directory for caching references
 - `--verbose, -v` - Verbose output with detailed logging

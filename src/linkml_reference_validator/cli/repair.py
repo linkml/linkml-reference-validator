@@ -278,6 +278,8 @@ def text_command(
 def _same_file(a: Path, b: Path) -> bool:
     """Whether two paths name the same file, existing or not.
 
+    Symlinks are followed, so an output that links to the input is the input.
+
     Examples:
         >>> _same_file(Path("a.yaml"), Path("./a.yaml"))
         True
@@ -410,7 +412,11 @@ def _extract_evidence_items(
             # Direct evidence item pattern. The reference may be an inlined
             # object, read as the validation plugin reads it (#138).
             ref_value = d.get("reference") or d.get("reference_id")
-            ref = extract_reference_id(ref_value)
+            # Each key in turn, so a reference object with no id does not hide
+            # a usable reference_id beside it.
+            ref = extract_reference_id(d.get("reference")) or extract_reference_id(
+                d.get("reference_id")
+            )
             if ref is None and ref_value and _excerpt_keys(d):
                 # A list of references, or an object with no text id: a
                 # repair needs the one reference the quote came from.

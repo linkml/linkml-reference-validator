@@ -467,7 +467,7 @@ linkml-reference-validator repair text [OPTIONS] TEXT REFERENCE_ID
 - `--cache-dir PATH, -c PATH` - Directory for caching references
 - `--config PATH` - Path to configuration file (.yaml)
 - `--verbose, -v` - Verbose output with detailed logging
-- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: the config file's `auto_fix_threshold`, else 0.95)
 - `--help` - Show help message
 
 ### Examples
@@ -542,7 +542,7 @@ linkml-reference-validator repair data [OPTIONS] DATA_FILE
 - `--schema PATH, -s PATH` (required) - Path to LinkML schema file
 - `--target-class TEXT, -t TEXT` - Target class to validate
 - `--dry-run / --no-dry-run, -n / -N` - Show changes without applying (default: dry-run)
-- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--auto-fix-threshold FLOAT, -a FLOAT` - Minimum similarity for auto-fixes (default: the config file's `auto_fix_threshold`, else 0.95)
 - `--output PATH, -o PATH` - Output file path (default: overwrite the input, keeping a `.bak` backup). When given with `--no-dry-run`, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made
 - `--config PATH` - Path to configuration file (.yaml)
 - `--cache-dir PATH, -c PATH` - Directory for caching references

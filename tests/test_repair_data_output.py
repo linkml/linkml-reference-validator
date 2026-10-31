@@ -253,7 +253,7 @@ def test_fixes_that_cannot_be_placed_leave_the_input_alone(
     """
     import linkml_reference_validator.cli.repair as repair_module
 
-    monkeypatch.setattr(repair_module, "_apply_repairs_to_data", lambda *a: False)
+    monkeypatch.setattr(repair_module, "_apply_repairs_to_data", lambda *a: 0)
     data = tmp_path / "data.yaml"
     data.write_text(FIXABLE)
     out = tmp_path / "out.yaml"
@@ -265,3 +265,51 @@ def test_fixes_that_cannot_be_placed_leave_the_input_alone(
     assert data.read_text() == FIXABLE
     assert out.read_bytes() == data.read_bytes()
     assert not (tmp_path / "data.yaml.bak").exists()
+
+
+TWO_FIXABLE = """\
+text: "Test statement"
+evidence:
+  - reference: "PMID:TEST001"
+    supporting_text: "CO2 levels were measured"
+  - reference: "PMID:TEST001"
+    supporting_text: "Protein X functions in cell cycle regulaton"
+"""
+
+
+def test_the_applied_count_is_what_was_placed(tmp_path, schema, cache_dir, monkeypatch):
+    """When only some counted fixes land, the message says how many, not the count."""
+    import linkml_reference_validator.cli.repair as repair_module
+
+    real = repair_module._apply_repairs_to_data
+
+    def place_only_the_first(data, report, target_class):
+        import copy
+
+        first_only = copy.copy(report)
+        first_only.results = report.results[:1]
+        return real(data, first_only, target_class)
+
+    monkeypatch.setattr(repair_module, "_apply_repairs_to_data", place_only_the_first)
+    data = tmp_path / "data.yaml"
+    data.write_text(TWO_FIXABLE)
+    out = tmp_path / "out.yaml"
+
+    result = _repair(data, schema, cache_dir, "--no-dry-run", "--output", str(out))
+
+    assert result.exit_code == 0, result.output
+    assert "Applied 1 auto-fix(es)" in result.output
+    assert "1 of 2 auto-fix(es) could not be placed back" in result.output
+    assert "CO₂ levels were measured" in out.read_text()
+
+
+def test_every_placed_fix_is_counted(tmp_path, schema, cache_dir):
+    data = tmp_path / "data.yaml"
+    data.write_text(TWO_FIXABLE)
+    out = tmp_path / "out.yaml"
+
+    result = _repair(data, schema, cache_dir, "--no-dry-run", "--output", str(out))
+
+    assert result.exit_code == 0, result.output
+    assert "Applied 2 auto-fix(es)" in result.output
+    assert "could not be placed" not in result.output

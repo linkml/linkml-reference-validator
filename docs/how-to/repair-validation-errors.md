@@ -94,8 +94,10 @@ The score ranges are the defaults. A fuzzy match is graded by the repair
 config's `auto_fix_threshold`, `suggest_threshold` and `removal_threshold`, so
 raising `auto_fix_threshold` (or passing `--auto-fix-threshold`) turns
 borderline auto-fixes into suggestions, and lowering it does the reverse. The
-three must be in order, `removal <= suggest <= auto_fix`. When
-`--auto-fix-threshold` is set below the other two, they are lowered with it.
+three must be in order, `removal <= suggest <= auto_fix`. A lower threshold
+you leave unset follows one you set below it (`auto_fix_threshold: 0.75` alone
+also lowers `suggest_threshold` to 0.75), and `--auto-fix-threshold` lowers the
+other two with it. Thresholds you set out of order are an error.
 The flag overrides the config file only when it is given. Character
 normalization and ellipsis repairs are not scored, so the thresholds do not
 apply to them.

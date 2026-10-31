@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -351,6 +351,33 @@ class RepairConfig(BaseModel):
         },
         description="Character substitution mappings for normalization",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _lower_thresholds_follow(cls, data: Any) -> Any:
+        """Lower an unset threshold to one set below its default.
+
+        A config that sets only ``auto_fix_threshold: 0.75`` means "auto-fix
+        from 0.75", not an error against the 0.80 suggest default; it loaded
+        before the thresholds were checked for order, and still does. Only
+        thresholds left unset move: ones set out of order are still rejected.
+
+        Examples:
+            >>> config = RepairConfig(auto_fix_threshold=0.75)
+            >>> (config.suggest_threshold, config.removal_threshold)
+            (0.75, 0.5)
+        """
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        fields = cls.model_fields
+        if "auto_fix_threshold" in data and "suggest_threshold" not in data:
+            default = fields["suggest_threshold"].default
+            data["suggest_threshold"] = min(default, data["auto_fix_threshold"])
+        if "suggest_threshold" in data and "removal_threshold" not in data:
+            default = fields["removal_threshold"].default
+            data["removal_threshold"] = min(default, data["suggest_threshold"])
+        return data
 
     @model_validator(mode="after")
     def _thresholds_in_order(self) -> "RepairConfig":

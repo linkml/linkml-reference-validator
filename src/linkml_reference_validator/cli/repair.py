@@ -53,8 +53,8 @@ AutoFixThresholdOption = Annotated[
         "--auto-fix-threshold",
         "-a",
         help=(
-            "Minimum similarity for automatic fixes (0.0-1.0). Overrides the "
-            "config file; default 0.95"
+            "Minimum similarity for automatic fixes (0.0-1.0). Default: the "
+            "config file's auto_fix_threshold, else 0.95"
         ),
     ),
 ]
@@ -339,8 +339,14 @@ def _repair_config_with(
             "removal_threshold": min(repair_config.removal_threshold, suggest),
         })
     except ValidationError as e:
-        typer.echo(f"Error: invalid --auto-fix-threshold: {e}", err=True)
+        typer.echo(f"Error: invalid --auto-fix-threshold: {_first_error(e)}", err=True)
         raise typer.Exit(1)
+
+
+def _first_error(error: ValidationError) -> str:
+    """The first problem pydantic found, without its help URL."""
+    first = error.errors()[0]
+    return first["msg"].removeprefix("Value error, ")
 
 
 def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
@@ -379,14 +385,23 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     if "repair" in config_data:
         repair_data = config_data.get("repair")
         if isinstance(repair_data, dict):
-            return RepairConfig(**repair_data)
+            return _repair_config_from(repair_data, config_file)
         return RepairConfig()
 
     repair_keys = set(RepairConfig.model_fields.keys())
     if repair_keys.intersection(config_data.keys()):
-        return RepairConfig(**config_data)
+        return _repair_config_from(config_data, config_file)
 
     return RepairConfig()
+
+
+def _repair_config_from(data: dict, config_file: Path) -> RepairConfig:
+    """Build the repair config from a file's settings, or exit with a clean error."""
+    try:  # user input: a bad value is reported, not a traceback
+        return RepairConfig(**data)
+    except ValidationError as e:
+        typer.echo(f"Error: invalid repair config in {config_file}: {_first_error(e)}", err=True)
+        raise typer.Exit(1)
 
 
 def _excerpt_keys(d: dict) -> list[str]:

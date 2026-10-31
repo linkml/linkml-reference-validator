@@ -190,3 +190,39 @@ def test_an_out_of_range_flag_is_an_error_not_a_traceback(cache_dir):
     result = _repair_text(cache_dir, "--auto-fix-threshold", "1.5")
     assert result.exit_code == 1
     assert "invalid --auto-fix-threshold" in result.output
+
+
+@pytest.mark.parametrize(
+    "thresholds,expected",
+    [
+        ({"auto_fix_threshold": 0.75}, (0.75, 0.75, 0.5)),
+        ({"auto_fix_threshold": 0.4}, (0.4, 0.4, 0.4)),
+        ({"suggest_threshold": 0.3}, (0.95, 0.3, 0.3)),
+    ],
+    ids=["auto_fix_below_default_suggest", "auto_fix_below_both", "suggest_below_removal"],
+)
+def test_unset_lower_thresholds_follow_a_lowered_upper_one(thresholds, expected):
+    """A file that set only auto_fix_threshold: 0.75 loaded before #127; it still does."""
+    config = RepairConfig(**thresholds)
+    assert (
+        config.auto_fix_threshold, config.suggest_threshold, config.removal_threshold
+    ) == expected
+
+
+def test_a_config_file_with_only_a_lowered_threshold_loads(tmp_path, cache_dir):
+    config = tmp_path / "config.yaml"
+    config.write_text("repair:\n  auto_fix_threshold: 0.75\n")
+    result = _repair_text(cache_dir, "--config", str(config))
+    assert result.exit_code == 0, result.output
+    assert "Repaired successfully" in result.output
+
+
+def test_an_inverted_config_file_is_an_error_not_a_traceback(tmp_path, cache_dir):
+    """Thresholds set out of order on purpose are still rejected, cleanly."""
+    config = tmp_path / "config.yaml"
+    config.write_text("repair:\n  auto_fix_threshold: 0.8\n  suggest_threshold: 0.9\n")
+    result = _repair_text(cache_dir, "--config", str(config))
+    assert result.exit_code == 1
+    assert "invalid repair config" in result.output
+    assert "suggest_threshold (0.9) must not exceed auto_fix_threshold (0.8)" in result.output
+    assert "errors.pydantic.dev" not in result.output

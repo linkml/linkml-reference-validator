@@ -400,17 +400,24 @@ class SupportingTextRepairer:
 
         # Convert similarity from 0-100 to 0-1 scale
         similarity_normalized = similarity / 100.0
-        confidence = RepairConfidence.from_score(similarity_normalized)
+        # Graded by the configured thresholds, so --auto-fix-threshold decides
+        # what is auto-fixed and what is only suggested (#127). Character
+        # normalization and ellipsis repairs are not scored, so their fixed
+        # confidence is not governed by these thresholds.
+        config = self.repair_config
+        confidence = RepairConfidence.from_score(
+            similarity_normalized,
+            auto_fix=config.auto_fix_threshold,
+            suggest=config.suggest_threshold,
+            low=config.removal_threshold,
+        )
 
-        # Determine action type based on similarity
-        if similarity >= 95:
-            action_type = RepairActionType.FUZZY_CORRECTION
+        action_type = RepairActionType.FUZZY_CORRECTION
+        if confidence == RepairConfidence.HIGH:
             description = f"Very close match ({similarity:.0f}%)"
-        elif similarity >= 80:
-            action_type = RepairActionType.FUZZY_CORRECTION
+        elif confidence == RepairConfidence.MEDIUM:
             description = f"Close match ({similarity:.0f}%)"
         else:
-            action_type = RepairActionType.FUZZY_CORRECTION
             description = f"Partial match ({similarity:.0f}%)"
 
         return RepairAction(

@@ -90,6 +90,16 @@ The repair command uses confidence thresholds to determine how to handle each er
 | **LOW** | 0.50-0.80 | Flag for manual review |
 | **VERY_LOW** | 0.00-0.50 | Recommend removal |
 
+The score ranges are the defaults. A fuzzy match is graded by the repair
+config's `auto_fix_threshold`, `suggest_threshold` and `removal_threshold`, so
+raising `auto_fix_threshold` (or passing `--auto-fix-threshold`) turns
+borderline auto-fixes into suggestions, and lowering it does the reverse. The
+three must be in order, `removal <= suggest <= auto_fix`. When
+`--auto-fix-threshold` is set below the other two, they are lowered with it.
+The flag overrides the config file only when it is given. Character
+normalization and ellipsis repairs are not scored, so the thresholds do not
+apply to them.
+
 ## Repair Strategies
 
 ### 1. Character Normalization (High Confidence)
@@ -267,7 +277,7 @@ linkml-reference-validator repair data <DATA_FILE> --schema <SCHEMA> [OPTIONS]
 - `--schema PATH` - Path to LinkML schema (required)
 - `--target-class CLASS` - Target class to validate
 - `--dry-run / --no-dry-run` - Show changes without applying (default: dry-run)
-- `--auto-fix-threshold FLOAT` - Minimum similarity for auto-fixes (default: 0.95)
+- `--auto-fix-threshold FLOAT` - Minimum similarity for auto-fixes (default: the config file's `auto_fix_threshold`, else 0.95)
 - `--output PATH` - Output file path (default: overwrite the input, keeping a `.bak` backup). When given with `--no-dry-run`, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made
 - `--config PATH` - Path to repair configuration file
 - `--cache-dir PATH` - Directory for caching references

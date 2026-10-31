@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class ValidationSeverity(str, Enum):
@@ -51,17 +51,30 @@ class RepairConfidence(str, Enum):
         True
     """
 
+    # The ranges are RepairConfig's default thresholds, which are configurable.
     HIGH = "HIGH"  # 0.95-1.00 - Auto-fix safe
     MEDIUM = "MEDIUM"  # 0.80-0.95 - Suggest fix
     LOW = "LOW"  # 0.50-0.80 - Flag for review
     VERY_LOW = "VERY_LOW"  # 0.00-0.50 - Recommend removal
 
     @classmethod
-    def from_score(cls, score: float) -> "RepairConfidence":
+    def from_score(
+        cls,
+        score: float,
+        auto_fix: float = 0.95,
+        suggest: float = 0.80,
+        low: float = 0.50,
+    ) -> "RepairConfidence":
         """Determine confidence level from similarity score.
+
+        The cutoffs default to :class:`RepairConfig`'s defaults; the repairer
+        passes the configured thresholds (#127).
 
         Args:
             score: Similarity score between 0.0 and 1.0
+            auto_fix: Lowest score that is HIGH, and so auto-fixed
+            suggest: Lowest score that is MEDIUM, and so suggested
+            low: Lowest score that is LOW rather than VERY_LOW
 
         Returns:
             Appropriate confidence level
@@ -77,12 +90,16 @@ class RepairConfidence(str, Enum):
             True
             >>> RepairConfidence.from_score(0.40) == RepairConfidence.VERY_LOW
             True
+            >>> RepairConfidence.from_score(0.97, auto_fix=1.0).value
+            'MEDIUM'
+            >>> RepairConfidence.from_score(0.70, auto_fix=0.65, suggest=0.6).value
+            'HIGH'
         """
-        if score >= 0.95:
+        if score >= auto_fix:
             return cls.HIGH
-        elif score >= 0.80:
+        elif score >= suggest:
             return cls.MEDIUM
-        elif score >= 0.50:
+        elif score >= low:
             return cls.LOW
         else:
             return cls.VERY_LOW
@@ -300,19 +317,19 @@ class RepairConfig(BaseModel):
         default=0.95,
         ge=0.0,
         le=1.0,
-        description="Minimum similarity score for automatic fixes (0.95-1.00)",
+        description="Minimum similarity score for an automatic fuzzy fix",
     )
     suggest_threshold: float = Field(
         default=0.80,
         ge=0.0,
         le=1.0,
-        description="Minimum similarity score for suggestions (0.80-0.95)",
+        description="Minimum similarity score for a suggested fuzzy fix",
     )
     removal_threshold: float = Field(
         default=0.50,
         ge=0.0,
         le=1.0,
-        description="Below this threshold, recommend removal (0.00-0.50)",
+        description="Below this similarity score, recommend removal",
     )
     dry_run: bool = Field(
         default=True,
@@ -334,6 +351,31 @@ class RepairConfig(BaseModel):
         },
         description="Character substitution mappings for normalization",
     )
+
+    @model_validator(mode="after")
+    def _thresholds_in_order(self) -> "RepairConfig":
+        """Require removal <= suggest <= auto-fix, or the tiers overlap.
+
+        Examples:
+            >>> RepairConfig(auto_fix_threshold=0.9, suggest_threshold=0.7).suggest_threshold
+            0.7
+            >>> RepairConfig(auto_fix_threshold=0.8, suggest_threshold=0.9)
+            Traceback (most recent call last):
+            ...
+            pydantic_core._pydantic_core.ValidationError: 1 validation error for RepairConfig
+              Value error, suggest_threshold (0.9) must not exceed auto_fix_threshold (0.8) ...
+        """
+        if self.suggest_threshold > self.auto_fix_threshold:
+            raise ValueError(
+                f"suggest_threshold ({self.suggest_threshold}) must not exceed "
+                f"auto_fix_threshold ({self.auto_fix_threshold})"
+            )
+        if self.removal_threshold > self.suggest_threshold:
+            raise ValueError(
+                f"removal_threshold ({self.removal_threshold}) must not exceed "
+                f"suggest_threshold ({self.suggest_threshold})"
+            )
+        return self
 
     @field_validator("character_mappings")
     @classmethod

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -352,46 +352,34 @@ class RepairConfig(BaseModel):
         description="Character substitution mappings for normalization",
     )
 
-    @model_validator(mode="before")
-    @classmethod
-    def _lower_thresholds_follow(cls, data: Any) -> Any:
-        """Lower an unset threshold to one set below its default.
-
-        A config that sets only ``auto_fix_threshold: 0.75`` means "auto-fix
-        from 0.75", not an error against the 0.80 suggest default; it loaded
-        before the thresholds were checked for order, and still does. Only
-        thresholds left unset move: ones set out of order are still rejected.
-
-        Examples:
-            >>> config = RepairConfig(auto_fix_threshold=0.75)
-            >>> (config.suggest_threshold, config.removal_threshold)
-            (0.75, 0.5)
-        """
-        if not isinstance(data, dict):
-            return data
-        data = dict(data)
-        fields = cls.model_fields
-        if "auto_fix_threshold" in data and "suggest_threshold" not in data:
-            default = fields["suggest_threshold"].default
-            data["suggest_threshold"] = min(default, data["auto_fix_threshold"])
-        if "suggest_threshold" in data and "removal_threshold" not in data:
-            default = fields["removal_threshold"].default
-            data["removal_threshold"] = min(default, data["suggest_threshold"])
-        return data
-
     @model_validator(mode="after")
     def _thresholds_in_order(self) -> "RepairConfig":
         """Require removal <= suggest <= auto-fix, or the tiers overlap.
 
+        First, a threshold left unset is lowered to one set below its
+        default. A config that sets only ``auto_fix_threshold: 0.75`` means
+        "auto-fix from 0.75", not an error against the 0.80 suggest default;
+        it loaded before the thresholds were checked for order, and still
+        does. This runs after field validation, on values already coerced to
+        floats. Only unset thresholds move: ones set out of order are rejected.
+
         Examples:
             >>> RepairConfig(auto_fix_threshold=0.9, suggest_threshold=0.7).suggest_threshold
             0.7
+            >>> config = RepairConfig(auto_fix_threshold=0.75)
+            >>> (config.suggest_threshold, config.removal_threshold)
+            (0.75, 0.5)
             >>> RepairConfig(auto_fix_threshold=0.8, suggest_threshold=0.9)
             Traceback (most recent call last):
             ...
             pydantic_core._pydantic_core.ValidationError: 1 validation error for RepairConfig
               Value error, suggest_threshold (0.9) must not exceed auto_fix_threshold (0.8) ...
         """
+        unset = {"suggest_threshold", "removal_threshold"} - self.model_fields_set
+        if "suggest_threshold" in unset:
+            self.suggest_threshold = min(self.suggest_threshold, self.auto_fix_threshold)
+        if "removal_threshold" in unset:
+            self.removal_threshold = min(self.removal_threshold, self.suggest_threshold)
         if self.suggest_threshold > self.auto_fix_threshold:
             raise ValueError(
                 f"suggest_threshold ({self.suggest_threshold}) must not exceed "

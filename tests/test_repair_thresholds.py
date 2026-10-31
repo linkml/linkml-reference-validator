@@ -226,3 +226,18 @@ def test_an_inverted_config_file_is_an_error_not_a_traceback(tmp_path, cache_dir
     assert "invalid repair config" in result.output
     assert "suggest_threshold (0.9) must not exceed auto_fix_threshold (0.8)" in result.output
     assert "errors.pydantic.dev" not in result.output
+
+
+def test_a_quoted_threshold_still_loads_and_lowers_the_rest():
+    """YAML 'auto_fix_threshold: "0.75"' is coerced, as before, not a TypeError."""
+    config = RepairConfig(auto_fix_threshold="0.75")
+    assert (config.auto_fix_threshold, config.suggest_threshold) == (0.75, 0.75)
+
+
+def test_a_null_threshold_in_the_config_file_is_a_clean_error(tmp_path, cache_dir):
+    config = tmp_path / "config.yaml"
+    config.write_text("repair:\n  auto_fix_threshold: null\n")
+    result = _repair_text(cache_dir, "--config", str(config))
+    assert result.exit_code == 1
+    assert "invalid repair config" in result.output
+    assert "Traceback" not in result.output

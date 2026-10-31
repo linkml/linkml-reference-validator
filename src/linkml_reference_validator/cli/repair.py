@@ -410,10 +410,12 @@ def _extract_evidence_items(
         # Look for evidence patterns
         if isinstance(d, dict):
             # Direct evidence item pattern. The reference may be an inlined
-            # object, read as the validation plugin reads it (#138).
+            # object, whose id is read with the validation plugin's own
+            # extract_reference_id (#138). Unlike validation, a repair needs
+            # exactly one source, so a list of references is skipped below, and
+            # each key is tried in turn, so a reference object with no id does
+            # not hide a usable reference_id beside it.
             ref_value = d.get("reference") or d.get("reference_id")
-            # Each key in turn, so a reference object with no id does not hide
-            # a usable reference_id beside it.
             ref = extract_reference_id(d.get("reference")) or extract_reference_id(
                 d.get("reference_id")
             )

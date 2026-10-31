@@ -306,8 +306,11 @@ class SupportingTextValidator:
                 )
         else:
             message = f"Supporting text validated successfully in {reference_id}"
-            if expected_title:
+            # Claim a title check only when one was made (#130).
+            if expected_title and reference.title:
                 message += ", title validated"
+            elif expected_title:
+                message += "; title not checked: the reference has no title"
 
         return ValidationResult(
             is_valid=is_valid,

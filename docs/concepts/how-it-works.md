@@ -299,6 +299,12 @@ The plugin discovers fields via:
 - `slot_uri` attribute (e.g., `slot_uri: dcterms:title`)
 - Fallback slot names (`reference`, `supporting_text`, `title`)
 
+Besides the URIs above, a URI of your own counts as a reference or excerpt
+field when its local name *ends* in the word: `ex:reference`, `ex:cross_reference`
+and `ex:myReferenceField` (one generic suffix such as `Field` or `Id` is
+allowed) are reference fields. `ex:referenceType` and `ex:excerpt_location`
+describe a reference or excerpt, so they are not.
+
 ## Editorial Conventions
 
 ### Square Brackets `[...]`

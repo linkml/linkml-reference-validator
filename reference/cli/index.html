@@ -3615,7 +3615,7 @@ Result:
 <li><code>--target-class TEXT, -t TEXT</code> - Target class to validate</li>
 <li><code>--dry-run / --no-dry-run, -n / -N</code> - Show changes without applying (default: dry-run)</li>
 <li><code>--auto-fix-threshold FLOAT, -a FLOAT</code> - Minimum similarity for auto-fixes (default: 0.95)</li>
-<li><code>--output PATH, -o PATH</code> - Output file path (default: overwrite with backup)</li>
+<li><code>--output PATH, -o PATH</code> - Output file path (default: overwrite the input, keeping a <code>.bak</code> backup). When given with <code>--no-dry-run</code>, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made</li>
 <li><code>--config PATH</code> - Path to configuration file (.yaml)</li>
 <li><code>--cache-dir PATH, -c PATH</code> - Directory for caching references</li>
 <li><code>--verbose, -v</code> - Verbose output with detailed logging</li>

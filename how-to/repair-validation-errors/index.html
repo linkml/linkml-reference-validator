@@ -2454,7 +2454,7 @@ linkml-reference-validator repair text &quot;text&quot; PMID:123 --auto-fix-thre
 - <code>--target-class CLASS</code> - Target class to validate
 - <code>--dry-run / --no-dry-run</code> - Show changes without applying (default: dry-run)
 - <code>--auto-fix-threshold FLOAT</code> - Minimum similarity for auto-fixes (default: 0.95)
-- <code>--output PATH</code> - Output file path (default: overwrite with backup)
+- <code>--output PATH</code> - Output file path (default: overwrite the input, keeping a <code>.bak</code> backup). When given with <code>--no-dry-run</code>, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made
 - <code>--config PATH</code> - Path to repair configuration file
 - <code>--cache-dir PATH</code> - Directory for caching references
 - <code>--verbose</code> - Show detailed output</p>

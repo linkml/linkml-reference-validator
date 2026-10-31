@@ -37,8 +37,8 @@ if TYPE_CHECKING:
     from curies import Converter
 
 
-def _uri_tokens(uri: str) -> set[str]:
-    """Split a URI/CURIE into lowercased word tokens.
+def _words(text: str) -> list[str]:
+    """Split text into lowercased words, in order.
 
     Splits on camelCase boundaries and any run of non-alphanumeric characters,
     so a generic term can be matched as a whole word rather than as a bare
@@ -46,15 +46,56 @@ def _uri_tokens(uri: str) -> set[str]:
     containing "reference").
 
     Examples:
-        >>> sorted(_uri_tokens("http://example.org/myReferenceField"))
-        ['example', 'field', 'http', 'my', 'org', 'reference']
-        >>> sorted(_uri_tokens("test:user_preference"))
-        ['preference', 'test', 'user']
-        >>> sorted(_uri_tokens("dcterms:references"))
-        ['dcterms', 'references']
+        >>> _words("http://example.org/myReferenceField")
+        ['http', 'example', 'org', 'my', 'reference', 'field']
+        >>> _words("test:user_preference")
+        ['test', 'user', 'preference']
     """
-    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", uri)
-    return {tok.lower() for tok in re.split(r"[^A-Za-z0-9]+", spaced) if tok}
+    spaced = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", text)
+    return [tok.lower() for tok in re.split(r"[^A-Za-z0-9]+", spaced) if tok]
+
+
+#: Suffixes that name a field rather than qualify the term before them:
+#: ``myExcerptField`` names an excerpt, ``excerpt_location`` a property of one.
+_FIELD_SUFFIXES: frozenset[str] = frozenset({"field", "slot", "value"})
+
+#: For references, an identifier suffix also names the reference itself:
+#: ``reference_id`` holds the reference, where ``excerpt_id`` only names one.
+_REFERENCE_SUFFIXES: frozenset[str] = _FIELD_SUFFIXES | {
+    "id", "ids", "uri", "uris", "iri", "curie",
+}
+
+
+def _local_name_ends_with(
+    uri: str, terms: tuple[tuple[str, ...], ...], suffixes: frozenset[str]
+) -> bool:
+    """Whether the URI's local name ends in one of ``terms``, as whole words.
+
+    The local name is what follows the last ``:``, ``/`` or ``#``, ignoring a
+    trailing ``/`` or ``#``. One of ``suffixes`` may follow the term. Matching
+    the end, not any word, keeps a slot that describes a reference
+    (``referenceType``, ``excerpt_location``) from being taken for one (#142).
+
+    Examples:
+        >>> ref = ((("reference",),), _REFERENCE_SUFFIXES)
+        >>> _local_name_ends_with("ex:cross_reference", *ref)
+        True
+        >>> _local_name_ends_with("http://example.org/myReferenceField", *ref)
+        True
+        >>> _local_name_ends_with("ex:referenceType", *ref)
+        False
+        >>> _local_name_ends_with("ex:excerpt_id", (("excerpt",),), _FIELD_SUFFIXES)
+        False
+    """
+    words = _words(re.split(r"[:/#]", uri.rstrip("/#"))[-1])
+    candidates = [words]
+    if len(words) > 1 and words[-1] in suffixes:
+        candidates.append(words[:-1])
+    return any(
+        len(cand) >= len(term) and tuple(cand[-len(term):]) == term
+        for cand in candidates
+        for term in terms
+    )
 
 
 # =============================================================================
@@ -85,12 +126,18 @@ class ExcerptURIs:
     LEGACY_LINKML: str = "https://w3id.org/linkml/excerpt"
     LEGACY_LINKML_PREFIXED: str = "linkml:excerpt"
 
-    # Additional patterns to match (substrings)
-    MATCH_PATTERNS: tuple[str, ...] = (
+    # Web Annotation's exact selector, matched as the whole CURIE or IRI.
+    EXACT_URIS: frozenset[str] = frozenset({
         "oa:exact",
-        "oa#exact",
-        "excerpt",
-        "supporting_text",
+        "http://www.w3.org/ns/oa#exact",
+        "https://www.w3.org/ns/oa#exact",
+    })
+
+    # Generic terms the local name must end in, as words (#142).
+    TERMS: tuple[tuple[str, ...], ...] = (
+        ("excerpt",),
+        ("excerpts",),
+        ("supporting", "text"),
     )
 
     @classmethod
@@ -114,9 +161,12 @@ class ExcerptURIs:
             True
             >>> ExcerptURIs.is_excerpt_uri("dcterms:title")
             False
+            >>> ExcerptURIs.is_excerpt_uri("ex:excerpt_location")
+            False
         """
-        uri_lower = uri.lower()
-        return any(pattern in uri_lower for pattern in cls.MATCH_PATTERNS)
+        if uri.lower() in cls.EXACT_URIS:
+            return True
+        return _local_name_ends_with(uri, cls.TERMS, _FIELD_SUFFIXES)
 
 
 @dataclass(frozen=True)
@@ -157,8 +207,9 @@ class ReferenceURIs:
         "authoritative_reference",
     )
 
-    # Generic terms matched as whole word tokens, NOT bare substrings, so that
-    # "user_preference" / "dereference" are not mistaken for references.
+    # Generic terms the local name must end in, as whole words: not bare
+    # substrings ("user_preference", "dereference"), and not a word followed by
+    # a qualifier ("referenceType", #142).
     TOKEN_TERMS: tuple[str, ...] = (
         "reference",
         "references",
@@ -169,9 +220,11 @@ class ReferenceURIs:
         """Check if a URI identifies a reference field.
 
         Specific Dublin Core / legacy URIs are matched as substrings. The
-        generic word "reference(s)" is matched only as a whole token, so URIs
-        that merely contain those letters (``user_preference``, ``dereference``)
-        are not misclassified.
+        generic word "reference(s)" must end the URI's local name, as a whole
+        word, perhaps followed by a generic suffix such as ``Field`` or ``Id``.
+        So URIs that merely contain those letters (``user_preference``,
+        ``dereference``), or that name a property of a reference
+        (``referenceType``), are not misclassified.
 
         Args:
             uri: URI string to check (can be full or prefixed)
@@ -196,11 +249,15 @@ class ReferenceURIs:
             False
             >>> ReferenceURIs.is_reference_uri("ex:dereference")
             False
+            >>> ReferenceURIs.is_reference_uri("ex:referenceType")
+            False
         """
         uri_lower = uri.lower()
         if any(pattern in uri_lower for pattern in cls.MATCH_PATTERNS):
             return True
-        return bool(_uri_tokens(uri) & set(cls.TOKEN_TERMS))
+        return _local_name_ends_with(
+            uri, tuple((term,) for term in cls.TOKEN_TERMS), _REFERENCE_SUFFIXES
+        )
 
 
 @dataclass(frozen=True)

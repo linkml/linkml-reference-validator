@@ -279,7 +279,9 @@ class SupportingTextValidator:
         # Validate title if provided
         title_valid = True
         title_message = ""
-        if expected_title and reference.title:
+        # The message and title_checked report this, so they agree with it (#130).
+        title_compared = bool(expected_title and reference.title)
+        if expected_title and reference.title:  # spelled out for type narrowing
             if self.normalize_text(expected_title) != self.normalize_text(reference.title):
                 title_valid = False
                 title_message = (
@@ -306,8 +308,11 @@ class SupportingTextValidator:
                 )
         else:
             message = f"Supporting text validated successfully in {reference_id}"
-            if expected_title:
+            # Claim a title check only when one was made (#130).
+            if title_compared:
                 message += ", title validated"
+            elif expected_title:
+                message += "; title not checked: the reference has no title"
 
         return ValidationResult(
             is_valid=is_valid,
@@ -316,7 +321,7 @@ class SupportingTextValidator:
             severity=ValidationSeverity.INFO if is_valid else ValidationSeverity.ERROR,
             message=message,
             match_result=match,
-            title_checked=bool(expected_title and reference.title),
+            title_checked=title_compared,
             path=path,
         )
 

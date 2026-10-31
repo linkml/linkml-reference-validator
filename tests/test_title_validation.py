@@ -371,6 +371,7 @@ class TestPluginTitleValidation:
         # Setup schema view - only reference and title, no excerpt
         mock_slot_ref = mocker.MagicMock()
         mock_slot_ref.implements = ["linkml:authoritative_reference"]
+        mock_slot_ref.slot_uri = None
         mock_slot_ref.range = None
 
         mock_slot_title = mocker.MagicMock()

@@ -695,7 +695,7 @@ def test_repair_writes_back_to_the_key_it_read_from():
 
     changed = _apply_repairs_to_data(data, report, None)
 
-    assert changed is True
+    assert changed == 1
     assert data["evidence"][0]["snippet"] == "CO₂ levels"
     assert data["evidence"][0]["supporting_text"] == ""
 
@@ -789,6 +789,6 @@ def test_repair_writes_back_to_each_excerpt_key_independently():
     )
     report.add_result(_repaired("evidence[0].snippet", "H2O content", "H₂O content"))
 
-    assert _apply_repairs_to_data(data, report, None) is True
+    assert _apply_repairs_to_data(data, report, None) == 2
     assert data["evidence"][0]["supporting_text"] == "CO₂ levels"
     assert data["evidence"][0]["snippet"] == "H₂O content"

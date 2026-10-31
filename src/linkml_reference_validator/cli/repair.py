@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from pydantic import ValidationError
 from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
@@ -47,11 +48,14 @@ DryRunOption = Annotated[
 ]
 
 AutoFixThresholdOption = Annotated[
-    float,
+    Optional[float],
     typer.Option(
         "--auto-fix-threshold",
         "-a",
-        help="Minimum similarity for automatic fixes (0.0-1.0, default: 0.95)",
+        help=(
+            "Minimum similarity for automatic fixes (0.0-1.0). Default: the "
+            "config file's auto_fix_threshold, else 0.95"
+        ),
     ),
 ]
 
@@ -77,7 +81,7 @@ def data_command(
         typer.Option("--target-class", "-t", help="Target class to validate"),
     ] = None,
     dry_run: DryRunOption = True,
-    auto_fix_threshold: AutoFixThresholdOption = 0.95,
+    auto_fix_threshold: AutoFixThresholdOption = None,
     output: OutputOption = None,
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
@@ -115,8 +119,7 @@ def data_command(
         raise typer.Exit(1)
 
     # Load repair config from file if provided
-    repair_config = _load_repair_config(config_file)
-    repair_config.auto_fix_threshold = auto_fix_threshold
+    repair_config = _repair_config_with(config_file, auto_fix_threshold)
     repair_config.dry_run = dry_run
 
     # Set up validation config
@@ -135,7 +138,7 @@ def data_command(
     else:
         typer.echo(f"Repairing {data_file}")
     typer.echo(f"  Schema: {schema_file}")
-    typer.echo(f"  Auto-fix threshold: {auto_fix_threshold}")
+    typer.echo(f"  Auto-fix threshold: {repair_config.auto_fix_threshold}")
     typer.echo(f"  Cache directory: {val_config.cache_dir}")
     typer.echo("")
 
@@ -164,10 +167,18 @@ def data_command(
 
     # Apply repairs if not dry run
     if not dry_run:
-        changes_made = report.auto_fixed_count > 0 and _apply_repairs_to_data(
-            data, report, target_class
+        placed = (
+            _apply_repairs_to_data(data, report, target_class)
+            if report.auto_fixed_count > 0
+            else 0
         )
-        if changes_made:
+        unplaced = report.auto_fixed_count - placed
+        if unplaced > 0:
+            typer.echo(
+                f"\n! {unplaced} of {report.auto_fixed_count} auto-fix(es) could "
+                "not be placed back in the data"
+            )
+        if placed:
             output_path = output or data_file
             # A backup only matters when the input itself is overwritten.
             if repair_config.create_backup and _same_file(output_path, data_file):
@@ -177,13 +188,8 @@ def data_command(
             with open(output_path, 'w') as f:
                 yaml.dump(data, f)
             typer.echo(f"\n✓ Wrote {output_path}")
-            typer.echo(f"  Applied {report.auto_fixed_count} auto-fix(es)")
+            typer.echo(f"  Applied {placed} auto-fix(es)")
         else:
-            if report.auto_fixed_count > 0:
-                typer.echo(
-                    f"\n! {report.auto_fixed_count} auto-fix(es) could not be "
-                    "placed back in the data"
-                )
             _copy_unchanged(data_file, output)
 
     # Exit with appropriate code
@@ -207,7 +213,7 @@ def text_command(
     reference_id: Annotated[str, typer.Argument(help="Reference ID (e.g., PMID:12345678 or DOI:10.1234/example)")],
     cache_dir: CacheDirOption = None,
     verbose: VerboseOption = False,
-    auto_fix_threshold: AutoFixThresholdOption = 0.95,
+    auto_fix_threshold: AutoFixThresholdOption = None,
     config_file: ConfigFileOption = None,
 ):
     """Attempt to repair a single supporting text quote.
@@ -229,7 +235,7 @@ def text_command(
     if cache_dir:
         val_config.cache_dir = cache_dir
 
-    repair_config = RepairConfig(auto_fix_threshold=auto_fix_threshold)
+    repair_config = _repair_config_with(config_file, auto_fix_threshold)
     repairer = SupportingTextRepairer(
         validation_config=val_config,
         repair_config=repair_config,
@@ -304,6 +310,45 @@ def _copy_unchanged(data_file: Path, output: Optional[Path]) -> None:
     typer.echo(f"\nWrote {output} (no changes)")
 
 
+def _repair_config_with(
+    config_file: Optional[Path], auto_fix_threshold: Optional[float]
+) -> RepairConfig:
+    """The repair config from the file, with ``--auto-fix-threshold`` on top.
+
+    The flag overrides the file only when given, so a threshold set in the
+    config file is not replaced by the flag's default (#127). There is no flag
+    for the lower thresholds, so a flag below them lowers them with it: every
+    match at or above it is auto-fixed, rather than the flag being an error.
+
+    Examples:
+        >>> _repair_config_with(None, None).auto_fix_threshold
+        0.95
+        >>> config = _repair_config_with(None, 0.7)
+        >>> (config.auto_fix_threshold, config.suggest_threshold, config.removal_threshold)
+        (0.7, 0.7, 0.5)
+    """
+    repair_config = _load_repair_config(config_file)
+    if auto_fix_threshold is None:
+        return repair_config
+    suggest = min(repair_config.suggest_threshold, auto_fix_threshold)
+    try:  # user input: report an out-of-range value, not a traceback
+        return RepairConfig.model_validate({
+            **repair_config.model_dump(),
+            "auto_fix_threshold": auto_fix_threshold,
+            "suggest_threshold": suggest,
+            "removal_threshold": min(repair_config.removal_threshold, suggest),
+        })
+    except ValidationError as e:
+        typer.echo(f"Error: invalid --auto-fix-threshold: {_first_error(e)}", err=True)
+        raise typer.Exit(1)
+
+
+def _first_error(error: ValidationError) -> str:
+    """The first problem pydantic found, without its help URL."""
+    first = error.errors()[0]
+    return first["msg"].removeprefix("Value error, ")
+
+
 def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     """Load repair configuration from file.
 
@@ -340,14 +385,23 @@ def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
     if "repair" in config_data:
         repair_data = config_data.get("repair")
         if isinstance(repair_data, dict):
-            return RepairConfig(**repair_data)
+            return _repair_config_from(repair_data, config_file)
         return RepairConfig()
 
     repair_keys = set(RepairConfig.model_fields.keys())
     if repair_keys.intersection(config_data.keys()):
-        return RepairConfig(**config_data)
+        return _repair_config_from(config_data, config_file)
 
     return RepairConfig()
+
+
+def _repair_config_from(data: dict, config_file: Path) -> RepairConfig:
+    """Build the repair config from a file's settings, or exit with a clean error."""
+    try:  # user input: a bad value is reported, not a traceback
+        return RepairConfig(**data)
+    except ValidationError as e:
+        typer.echo(f"Error: invalid repair config in {config_file}: {_first_error(e)}", err=True)
+        raise typer.Exit(1)
 
 
 def _excerpt_keys(d: dict) -> list[str]:
@@ -463,7 +517,7 @@ def _apply_repairs_to_data(
     data: dict,
     report,
     target_class: Optional[str],
-) -> bool:
+) -> int:
     """Apply auto-fixes from repair report to data.
 
     Args:
@@ -472,9 +526,9 @@ def _apply_repairs_to_data(
         target_class: Target class (for future use)
 
     Returns:
-        True if any changes were made
+        How many fixes were placed, so the caller can report any that were not
     """
-    changes_made = False
+    placed: set[str] = set()
 
     # Build a map of paths to repairs
     repairs_by_path = {}
@@ -486,8 +540,6 @@ def _apply_repairs_to_data(
                     break
 
     def _apply_to_dict(d: dict, path: str = ""):
-        nonlocal changes_made
-
         if isinstance(d, dict):
             # Check if this item needs repair
             # Keyed by the same path extraction reported, which names the
@@ -498,7 +550,7 @@ def _apply_repairs_to_data(
                 key_path = f"{path}.{text_key}" if path else text_key
                 if key_path in repairs_by_path:
                     d[text_key] = repairs_by_path[key_path]
-                    changes_made = True
+                    placed.add(key_path)
 
             # Recurse
             for key in ["evidence", "supporting_evidence", "annotations"]:
@@ -523,4 +575,4 @@ def _apply_repairs_to_data(
     elif isinstance(data, dict):
         _apply_to_dict(data)
 
-    return changes_made
+    return len(placed)

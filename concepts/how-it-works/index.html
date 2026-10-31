@@ -2367,6 +2367,14 @@ and tools that walk the cache skip the file with a warning.</p>
 - <code>implements</code> attribute (e.g., <code>implements: [dcterms:title]</code>)
 - <code>slot_uri</code> attribute (e.g., <code>slot_uri: dcterms:title</code>)
 - Fallback slot names (<code>reference</code>, <code>supporting_text</code>, <code>title</code>)</p>
+<p>Besides the URIs above, a URI of your own counts as a reference or excerpt
+field when its local name <em>ends</em> in the word. One <code>Field</code>, <code>Slot</code> or <code>Value</code>
+suffix may follow it, and for references also an identifier suffix such as
+<code>Id</code> or <code>Uri</code>. So <code>ex:reference</code>, <code>ex:cross_reference</code>, <code>ex:myReferenceField</code>
+and <code>ex:reference_id</code> are reference fields, and <code>ex:myExcerptField</code> is an
+excerpt field. <code>ex:referenceType</code>, <code>ex:excerpt_location</code> and <code>ex:excerpt_id</code>
+describe a reference or excerpt, so they are not. If a field of yours is missed
+(say <code>ex:excerpt_text</code>), declare it with <code>implements</code> or one of the URIs above.</p>
 <h2 id="editorial-conventions">Editorial Conventions</h2>
 <h3 id="square-brackets">Square Brackets <code>[...]</code></h3>
 <p>Used for editorial clarifications inserted into quotes:</p>

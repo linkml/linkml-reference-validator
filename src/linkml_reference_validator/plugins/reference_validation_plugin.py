@@ -37,6 +37,35 @@ class ResolvedReference(NamedTuple):
     path: str
 
 
+def extract_reference_id(reference_value: Any) -> Optional[str]:
+    """The identifier a single reference value names, or None.
+
+    A string is the identifier; a reference object carries it as ``id`` (or
+    ``reference_id``). Anything else, including a list of references or an
+    identifier that is not text, names no single reference. Defined outside
+    the plugin so code that runs without LinkML, such as ``repair data``,
+    reads references the same way (#138).
+
+    Examples:
+        >>> extract_reference_id("PMID:12345678")
+        'PMID:12345678'
+        >>> extract_reference_id({"id": "PMID:12345678", "title": "T"})
+        'PMID:12345678'
+        >>> extract_reference_id({"reference_id": "PMID:1"})
+        'PMID:1'
+        >>> extract_reference_id({"id": 123}) is None
+        True
+        >>> extract_reference_id(["PMID:1", "PMID:2"]) is None
+        True
+    """
+    if isinstance(reference_value, dict):
+        reference_value = reference_value.get("id") or reference_value.get("reference_id")
+    # Only text can be an identifier; {"id": 123} would crash parsing.
+    if isinstance(reference_value, str) and reference_value:
+        return reference_value
+    return None
+
+
 if _LINKML_AVAILABLE:
     # NOTE: `linkml` is optional. We only import LinkML modules when available.
     # Ruff's E402 doesn't like imports in blocks, so we silence it per-import.
@@ -755,14 +784,7 @@ if _LINKML_AVAILABLE:
                 >>> plugin._extract_reference_id({"id": 123}) is None
                 True
             """
-            if isinstance(reference_value, dict):
-                reference_value = reference_value.get("id") or reference_value.get(
-                    "reference_id"
-                )
-            # Only text can be an identifier; {"id": 123} would crash parsing.
-            if isinstance(reference_value, str) and reference_value:
-                return reference_value
-            return None
+            return extract_reference_id(reference_value)
 
         def _extract_title(self, reference_value: Any) -> Optional[str]:
             """Extract title from reference value.

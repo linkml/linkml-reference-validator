@@ -14,6 +14,9 @@ from ruamel.yaml import YAML
 from typing_extensions import Annotated
 
 from linkml_reference_validator.models import RepairActionType, RepairConfig
+from linkml_reference_validator.plugins.reference_validation_plugin import (
+    extract_reference_id,
+)
 from linkml_reference_validator.validation.repairer import SupportingTextRepairer
 
 from .shared import (
@@ -147,6 +150,8 @@ def data_command(
 
     if not items_to_repair:
         typer.echo("No evidence items found to repair.")
+        if not dry_run:
+            _copy_unchanged(data_file, output)
         raise typer.Exit(0)
 
     typer.echo(f"Found {len(items_to_repair)} evidence item(s) to process\n")
@@ -158,24 +163,28 @@ def data_command(
     typer.echo(repairer.format_report(report, verbose=verbose))
 
     # Apply repairs if not dry run
-    if not dry_run and report.auto_fixed_count > 0:
-        # Create backup
-        if repair_config.create_backup:
-            backup_path = data_file.with_suffix(f"{data_file.suffix}.bak")
-            shutil.copy2(data_file, backup_path)
-            typer.echo(f"\nBackup created: {backup_path}")
-
-        # Apply auto-fixes to data
-        changes_made = _apply_repairs_to_data(data, report, target_class)
-
-        # Write output
-        output_path = output or data_file
-        with open(output_path, 'w') as f:
-            yaml.dump(data, f)
-
-        typer.echo(f"\n{'✓' if changes_made else '!'} Wrote {output_path}")
+    if not dry_run:
+        changes_made = report.auto_fixed_count > 0 and _apply_repairs_to_data(
+            data, report, target_class
+        )
         if changes_made:
+            output_path = output or data_file
+            # A backup only matters when the input itself is overwritten.
+            if repair_config.create_backup and _same_file(output_path, data_file):
+                backup_path = data_file.with_suffix(f"{data_file.suffix}.bak")
+                shutil.copy2(data_file, backup_path)
+                typer.echo(f"\nBackup created: {backup_path}")
+            with open(output_path, 'w') as f:
+                yaml.dump(data, f)
+            typer.echo(f"\n✓ Wrote {output_path}")
             typer.echo(f"  Applied {report.auto_fixed_count} auto-fix(es)")
+        else:
+            if report.auto_fixed_count > 0:
+                typer.echo(
+                    f"\n! {report.auto_fixed_count} auto-fix(es) could not be "
+                    "placed back in the data"
+                )
+            _copy_unchanged(data_file, output)
 
     # Exit with appropriate code
     if (
@@ -264,6 +273,35 @@ def text_command(
         raise typer.Exit(0)
     else:
         raise typer.Exit(1)
+
+
+def _same_file(a: Path, b: Path) -> bool:
+    """Whether two paths name the same file, existing or not.
+
+    Symlinks are followed, so an output that links to the input is the input.
+
+    Examples:
+        >>> _same_file(Path("a.yaml"), Path("./a.yaml"))
+        True
+        >>> _same_file(Path("a.yaml"), Path("b.yaml"))
+        False
+    """
+    return a.resolve() == b.resolve()
+
+
+def _copy_unchanged(data_file: Path, output: Optional[Path]) -> None:
+    """Write the input, byte for byte, to ``--output`` when nothing was fixed.
+
+    A pipeline that reads the output next must find it, and find this run's
+    data rather than a stale file from an earlier one (#143). Copying, rather
+    than dumping the parsed YAML, keeps the file identical to the input.
+    Without ``--output``, or with it naming the input, there is nothing to
+    write.
+    """
+    if output is None or _same_file(output, data_file):
+        return
+    shutil.copyfile(data_file, output)
+    typer.echo(f"\nWrote {output} (no changes)")
 
 
 def _load_repair_config(config_file: Optional[Path]) -> RepairConfig:
@@ -371,9 +409,25 @@ def _extract_evidence_items(
     def _extract_from_dict(d: dict, path: str = ""):
         # Look for evidence patterns
         if isinstance(d, dict):
-            # Direct evidence item pattern
-            ref = d.get("reference") or d.get("reference_id")
-            if ref:
+            # Direct evidence item pattern. The reference may be an inlined
+            # object, whose id is read with the validation plugin's own
+            # extract_reference_id (#138). Unlike validation, a repair needs
+            # exactly one source, so a list of references is skipped below, and
+            # each key is tried in turn, so a reference object with no id does
+            # not hide a usable reference_id beside it.
+            ref_value = d.get("reference") or d.get("reference_id")
+            ref = extract_reference_id(d.get("reference")) or extract_reference_id(
+                d.get("reference_id")
+            )
+            if ref is None and ref_value and _excerpt_keys(d):
+                # A list of references, or an object with no text id: a
+                # repair needs the one reference the quote came from.
+                logger.warning(
+                    "Skipping evidence item at %s: its reference names no single "
+                    "identifier, so its excerpt cannot be repaired",
+                    path or "the top level",
+                )
+            if ref is not None:
                 for text_key in _excerpt_keys(d):
                     key_path = f"{path}.{text_key}" if path else text_key
                     items.append((d[text_key], ref, key_path))

@@ -2323,6 +2323,17 @@ the damaged word still matches, so <code>ammation of the gut</code> matches
 </tr>
 </tbody>
 </table>
+<p>The score ranges are the defaults. A fuzzy match is graded by the repair
+config's <code>auto_fix_threshold</code>, <code>suggest_threshold</code> and <code>removal_threshold</code>, so
+raising <code>auto_fix_threshold</code> (or passing <code>--auto-fix-threshold</code>) turns
+borderline auto-fixes into suggestions, and lowering it does the reverse. The
+three must be in order, <code>removal &lt;= suggest &lt;= auto_fix</code>. A lower threshold
+you leave unset follows one you set below it (<code>auto_fix_threshold: 0.75</code> alone
+also lowers <code>suggest_threshold</code> to 0.75), and <code>--auto-fix-threshold</code> lowers the
+other two with it. Thresholds you set out of order are an error.
+The flag overrides the config file only when it is given. Character
+normalization and ellipsis repairs are not scored, so the thresholds do not
+apply to them.</p>
 <h2 id="repair-strategies">Repair Strategies</h2>
 <h3 id="1-character-normalization-high-confidence">1. Character Normalization (High Confidence)</h3>
 <p>Fixes common Unicode/ASCII differences automatically:</p>
@@ -2453,7 +2464,7 @@ linkml-reference-validator repair text &quot;text&quot; PMID:123 --auto-fix-thre
 - <code>--schema PATH</code> - Path to LinkML schema (required)
 - <code>--target-class CLASS</code> - Target class to validate
 - <code>--dry-run / --no-dry-run</code> - Show changes without applying (default: dry-run)
-- <code>--auto-fix-threshold FLOAT</code> - Minimum similarity for auto-fixes (default: 0.95)
+- <code>--auto-fix-threshold FLOAT</code> - Minimum similarity for auto-fixes (default: the config file's <code>auto_fix_threshold</code>, else 0.95)
 - <code>--output PATH</code> - Output file path (default: overwrite the input, keeping a <code>.bak</code> backup). When given with <code>--no-dry-run</code>, it is always written, as an unchanged copy of the input when there is nothing to fix, and the input itself is not touched, so no backup is made
 - <code>--config PATH</code> - Path to repair configuration file
 - <code>--cache-dir PATH</code> - Directory for caching references

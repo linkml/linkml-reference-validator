@@ -119,6 +119,10 @@ BLOCK_ELEMENTS = frozenset(
 )
 
 
+#: Dashes that can join the numbers of a citation range ("1-3", "1–3").
+_DASHES = "-\u2010\u2011\u2012\u2013\u2014\u2015\u2212"
+
+
 def _is_citation_marker(tag: Tag) -> bool:
     """Whether ``tag`` is a bibliographic citation marker.
 
@@ -144,7 +148,7 @@ def _is_citation_marker(tag: Tag) -> bool:
     loose = "".join(
         str(child) for child in tag.children if type(child) in (NavigableString, CData)
     )
-    return re.fullmatch(r"[\s,;\-\u2010-\u2015\u2212]*", loose) is not None
+    return re.fullmatch(rf"[\s,;{re.escape(_DASHES)}]*", loose) is not None
 
 
 def _welded_to_next_word(tag: Tag) -> bool:
@@ -192,9 +196,10 @@ def _block_text(node: Tag) -> str:
                     # No space before a dash that follows: "[1</xref>-3]" is
                     # a range, and " -3" would read as a minus sign.
                     following = child.next_sibling
-                    dash_next = isinstance(following, NavigableString) and str(
-                        following
-                    )[:1] in "-\u2010\u2011\u2012\u2013\u2014\u2212"
+                    dash_next = (
+                        isinstance(following, NavigableString)
+                        and str(following)[:1] in _DASHES
+                    )
                     value = " " + value + ("" if dash_next else " ")
                 elif lead_in:
                     # A paragraph's bold lead-in label ("<bold>R 2.6</bold>We

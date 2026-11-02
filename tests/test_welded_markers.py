@@ -181,3 +181,4 @@ def test_citation_range_with_its_first_number_linked_keeps_its_dash(body, quote)
     """A dash after a padded marker must not become a minus sign."""
     text = extract(body)
     assert found(quote, text), text
+    assert "neg" not in SupportingTextValidator.normalize_text(text), text

@@ -57,9 +57,12 @@ def _set_off_welded_headings(text: str) -> str:
 
     Only a listed heading, at the start of the text or right after a sentence
     ends, and directly followed by a capital letter, so "The Results were"
-    and "Methodsical" are left alone. Title-case headings only, on purpose:
-    all-caps welds ("RESULTSThe") and welds after a bracket
-    ("exposures)Conclusions") are left as they are.
+    and "Methodsical" are left alone. A heading right after ": " also counts,
+    which splits chained headings ("AbstractBackgroundIt" becomes "Abstract:
+    Background: It") and a welded heading after any earlier label ("Aim:
+    MethodsWe"). Title-case headings only, on purpose: all-caps welds
+    ("RESULTSThe") and welds after a bracket ("exposures)Conclusions") are
+    left as they are.
 
     Examples:
         >>> _set_off_welded_headings("IntroductionThe spider. ResultsA total.")

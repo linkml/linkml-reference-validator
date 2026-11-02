@@ -124,3 +124,4 @@ def test_bold_after_a_full_stop_but_not_welded_is_not_a_label():
 def test_chained_welded_headings_are_all_split():
     text = render("<Abstract><AbstractText>AbstractBackgroundIt began.</AbstractText></Abstract>")
     assert found("It began", text), text
+    assert text == "Abstract: Background: It began."

@@ -714,6 +714,34 @@
   
   
     <li class="md-nav__item">
+      <a href="../validate-wikipedia/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validating Wikipedia Articles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../validate-titles/" class="md-nav__link">
         
   
@@ -2111,6 +2139,9 @@ sources:
 - <code>PMID:12345</code> - Uses built-in PubMed source
 - <code>MGNIFY:MGYS00000596</code> - Uses your custom MGnify source
 - <code>SRA:SRP123456</code> - Skipped (returns valid with INFO message)</p>
+<p>A source you define with the same prefix as a built-in one (such as
+<code>WIKIPEDIA</code>) takes precedence over the built-in source for that prefix. Its
+<code>id_patterns</code> are still tried only after every other built-in source.</p>
 <h3 id="finding-the-right-jsonpath">Finding the Right JSONPath</h3>
 <p>To figure out the correct JSONPath for a new API:</p>
 <ol>

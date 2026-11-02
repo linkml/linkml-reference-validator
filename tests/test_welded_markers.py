@@ -168,3 +168,16 @@ def test_leading_bold_that_is_not_welded_is_left_alone(body, quote):
 def test_crossref_html_breaks_and_divs_separate_paragraphs():
     text = DOISource()._clean_abstract("<div>First part.</div><div>Second part.</div>a<br/>b")
     assert text.split("\n\n") == ["First part.", "Second part.", "a", "b"]
+
+
+@pytest.mark.parametrize(
+    "body,quote",
+    [
+        ("<p>shown (<xref ref-type=\"bibr\" rid=\"B1\">1</xref>-3) before.</p>", "shown (1-3) before"),
+        ('<p>small ears<sup><xref ref-type="bibr" rid="B1">1</xref>–3</sup> in all.</p>', "small ears"),
+    ],
+)
+def test_citation_range_with_its_first_number_linked_keeps_its_dash(body, quote):
+    """A dash after a padded marker must not become a minus sign."""
+    text = extract(body)
+    assert found(quote, text), text

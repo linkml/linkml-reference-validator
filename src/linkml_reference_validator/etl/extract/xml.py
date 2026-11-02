@@ -186,8 +186,16 @@ def _block_text(node: Tag) -> str:
                     and not "".join(parts).strip()
                     and _welded_to_next_word(child)
                 )
-                if child.name in BLOCK_ELEMENTS or _is_citation_marker(child):
+                if child.name in BLOCK_ELEMENTS:
                     value = " " + value + " "
+                elif _is_citation_marker(child):
+                    # No space before a dash that follows: "[1</xref>-3]" is
+                    # a range, and " -3" would read as a minus sign.
+                    following = child.next_sibling
+                    dash_next = isinstance(following, NavigableString) and str(
+                        following
+                    )[:1] in "-\u2010\u2011\u2012\u2013\u2014\u2212"
+                    value = " " + value + ("" if dash_next else " ")
                 elif lead_in:
                     # A paragraph's bold lead-in label ("<bold>R 2.6</bold>We
                     # recommend") is not part of the sentence after it.

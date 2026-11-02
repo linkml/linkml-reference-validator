@@ -48,7 +48,7 @@ _ABSTRACT_HEADINGS = (
     "Conclusions?|Conclusions and Relevance|Significance|Limitations"
 )
 _WELDED_HEADING = re.compile(
-    rf"(?:^|(?<=[.!?]))[ \t]*({_ABSTRACT_HEADINGS})(?=[A-Z])"
+    rf"(?:^|(?<=[.!?])|(?<=: ))[ \t]*({_ABSTRACT_HEADINGS})(?=[A-Z])"
 )
 
 
@@ -69,9 +69,17 @@ def _set_off_welded_headings(text: str) -> str:
     """
 
     def label(match: re.Match[str]) -> str:
-        return ("" if match.start() == 0 else "\n\n") + match.group(1) + ": "
+        after_label = text[: match.start()].endswith(": ")
+        lead = "" if match.start() == 0 or after_label else "\n\n"
+        return lead + match.group(1) + ": "
 
-    return _WELDED_HEADING.sub(label, text)
+    # Repeat for chained headings: "AbstractBackgroundIt began." only exposes
+    # "Background" once "Abstract" has been split off.
+    while True:
+        updated = _WELDED_HEADING.sub(label, text)
+        if updated == text:
+            return text
+        text = updated
 
 
 @ReferenceSourceRegistry.register
@@ -273,6 +281,7 @@ class PMIDSource(ReferenceSource):
         """
         sections = []
         for node in element.find_all("AbstractText"):
+            # Edits the parsed node in place; nothing reads it again.
             PMIDSource._set_off_inline_headings(node)
             text = _set_off_welded_headings(node.get_text().strip())
             if not text:

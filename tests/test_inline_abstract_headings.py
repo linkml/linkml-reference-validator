@@ -119,3 +119,8 @@ def test_bold_after_a_full_stop_but_not_welded_is_not_a_label():
     text = render(xml)
     assert "Importantly:" not in text and "BRCA2:" not in text
     assert found("observed. Importantly, the effect held", text)
+
+
+def test_chained_welded_headings_are_all_split():
+    text = render("<Abstract><AbstractText>AbstractBackgroundIt began.</AbstractText></Abstract>")
+    assert found("It began", text), text

@@ -2148,8 +2148,17 @@
   <code>le</code> <code>ge</code>, <code>±</code> (or <code>+/-</code>) becomes <code>pm</code>, and a minus sign before a number stays
   on it, so <code>"p &lt; 0.05"</code> does not match <code>"p &gt; 0.05"</code> and <code>"2.5 fold"</code> does not
   match <code>"-2.5 fold"</code>. ASCII and Unicode spellings are equivalent (<code>&lt;=</code> and <code>≤</code>,
-  <code>-</code> and <code>−</code>). A hyphen after a word or digit (<code>IL-6</code>, <code>3-5</code>) is still
-  punctuation.</li>
+  <code>-</code> and <code>−</code>). Publisher spellings count too: MEDLINE's <code>&gt;/=</code> and <code>&lt;/=</code> for
+  <code>≥</code> and <code>≤</code>, a middle-dot decimal (<code>57·4</code> is <code>57.4</code>), and an en dash or
+  Unicode hyphen printed as a minus sign (<code>z score, –1.98</code>) or inside <code>+/–</code>.
+  A <code>−</code> set off from its number by a space (<code>from − 2.92</code>) is still a sign,
+  unless a number comes before it (<code>10 − 2</code> is a subtraction). A hyphen or en
+  dash after a word or digit (<code>IL-6</code>, <code>3-5</code>, <code>1–12</code>) is still punctuation. A
+  dash after a space and before a digit is a sign, so a range spaced on one
+  side only (<code>18 –65</code>) reads as <code>18</code> and <code>-65</code>; quote it as the source
+  prints it. A middle dot after a letter-joined number is not a decimal
+  point, so <code>MgCl2·6H2O</code> keeps its hydrate dot (and <code>pH7·4</code> does not read as
+  <code>pH7.4</code>; <code>pH 7·4</code> does).</li>
 <li><strong>Whitespace collapsed</strong>: Multiple spaces become single space</li>
 <li><strong>Editorial notes removed</strong>: <code>"[mucin 1]"</code> → <code>""</code></li>
 </ul>

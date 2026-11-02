@@ -854,7 +854,8 @@ class SupportingTextValidator:
         # A bare "+-" before a letter is a charge then a hyphen
         # ("Ca2+-dependent"); "+/-" is plus-minus even before one ("+/-SD").
         # "+/–" with any minus spelling is "+/-".
-        dash = MINUS_SIGN_SPELLINGS
+        # Escaped, so no reordering of the string can make "-" a range.
+        dash = re.escape(MINUS_SIGN_SPELLINGS)
         text = re.sub(rf"±|\+/[{dash}]|\+[{dash}](?![^\W\d_])", " pm ", text)
         # A minus sign stays on its number, so "2.5" does not match "-2.5".
         # It is a sign only at the start, after a space, an opening bracket or

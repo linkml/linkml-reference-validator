@@ -27,7 +27,9 @@ Before matching, both the supporting text and reference content are normalized:
   dash after a word or digit (`IL-6`, `3-5`, `1–12`) is still punctuation. A
   dash after a space and before a digit is a sign, so a range spaced on one
   side only (`18 –65`) reads as `18` and `-65`; quote it as the source
-  prints it. A middle dot in a formula (`MgCl2·6H2O`) is not a decimal point.
+  prints it. A middle dot after a letter-joined number is not a decimal
+  point, so `MgCl2·6H2O` keeps its hydrate dot (and `pH7·4` does not read as
+  `pH7.4`; `pH 7·4` does).
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 

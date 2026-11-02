@@ -109,6 +109,22 @@ def test_unevenly_spaced_en_dash_before_a_digit_is_a_sign():
     assert SupportingTextValidator.normalize_text("ages 18 -65") == "ages 18 neg65"
 
 
+def test_each_minus_spelling_is_a_sign_and_nothing_else_is():
+    """Every listed spelling is a minus; a character between two is not.
+
+    Guards the character class built from MINUS_SIGN_SPELLINGS: unescaped, a
+    "-" anywhere but first would make a range and admit other characters.
+    """
+    from linkml_reference_validator.validation.supporting_text_validator import (
+        MINUS_SIGN_SPELLINGS,
+    )
+
+    n = SupportingTextValidator.normalize_text
+    for spelling in MINUS_SIGN_SPELLINGS:
+        assert n(f"by {spelling}2.5 fold") == "by neg2.5 fold", repr(spelling)
+    assert n("by .2.5 fold") == "by 2.5 fold"
+
+
 def test_normalize_text_spellings():
     """The variants normalize to the same words as their ASCII forms."""
     n = SupportingTextValidator.normalize_text

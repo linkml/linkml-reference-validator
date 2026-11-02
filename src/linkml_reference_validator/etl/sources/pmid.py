@@ -37,6 +37,41 @@ from linkml_reference_validator.etl.sources.utils import (
 logger = logging.getLogger(__name__)
 
 
+#: Section headings of structured abstracts. PubMed sometimes stores them
+#: welded onto the next sentence with no markup at all ("IntroductionThe black
+#: widow spider..."), which no tag can mark.
+_ABSTRACT_HEADINGS = (
+    "Abstract|Background|Introduction|Objectives?|Aims?|Purpose|Importance|"
+    "Context|Design|Setting|Participants|Patients|Methods|Materials and Methods|"
+    "Interventions?|Measurements|Main Outcome Measures|Results|Findings|"
+    "Observations|Case Report|Case Presentation|Discussion|Interpretation|"
+    "Conclusions?|Conclusions and Relevance|Significance|Limitations"
+)
+_WELDED_HEADING = re.compile(
+    rf"(?:^|(?<=[.!?]))[ \t]*({_ABSTRACT_HEADINGS})(?=[A-Z])"
+)
+
+
+def _set_off_welded_headings(text: str) -> str:
+    """Split a heading welded onto its sentence into a ``"Heading: "`` label.
+
+    Only a listed heading, at the start of the text or right after a sentence
+    ends, and directly followed by a capital letter, so "The Results were"
+    and "Methodsical" are left alone.
+
+    Examples:
+        >>> _set_off_welded_headings("IntroductionThe spider. ResultsA total.")
+        'Introduction: The spider.\\n\\nResults: A total.'
+        >>> _set_off_welded_headings("The Results were striking.")
+        'The Results were striking.'
+    """
+
+    def label(match: re.Match[str]) -> str:
+        return ("" if match.start() == 0 else "\n\n") + match.group(1) + ": "
+
+    return _WELDED_HEADING.sub(label, text)
+
+
 @ReferenceSourceRegistry.register
 class PMIDSource(ReferenceSource):
     """Fetch references from PubMed using PMID.
@@ -237,7 +272,7 @@ class PMIDSource(ReferenceSource):
         sections = []
         for node in element.find_all("AbstractText"):
             PMIDSource._set_off_inline_headings(node)
-            text = node.get_text().strip()
+            text = _set_off_welded_headings(node.get_text().strip())
             if not text:
                 continue
             label = node.get("Label")

@@ -73,3 +73,33 @@ def test_labelled_abstract_text_is_unchanged():
         '<AbstractText Label="RESULTS">It worked.</AbstractText></Abstract>'
     )
     assert render(xml) == "METHODS: We ran a trial.\n\nRESULTS: It worked."
+
+
+# PubMed itself sometimes stores the headings welded with no markup at all
+# (PMID:39670790): "IntroductionThe black widow spider ... exposures.Conclusions
+# Poison center data ...".
+WELDED_PLAIN = (
+    "<Abstract><AbstractText>IntroductionThe black widow spider is common. "
+    "ResultsA total of 15,000 exposures were reported in 3.4% (n=521) of exposures."
+    "ConclusionsPoison center data indicate that most exposures are minor."
+    "</AbstractText></Abstract>"
+)
+
+
+def test_plain_welded_headings_are_set_off():
+    text = render(WELDED_PLAIN)
+    assert text.startswith("Introduction: The black widow spider")
+    assert "of exposures.\n\nConclusions: Poison center data" in text
+    assert found("The black widow spider is common", text)
+    assert found("Poison center data indicate that most exposures are minor", text)
+    assert found("A total of 15,000 exposures", text)
+
+
+def test_heading_words_inside_sentences_are_left_alone():
+    xml = (
+        "<Abstract><AbstractText>The Results were striking. Methodsical work "
+        "followed.</AbstractText></Abstract>"
+    )
+    text = render(xml)
+    assert "The Results were striking." in text
+    assert "Methodsical work" in text

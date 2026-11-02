@@ -46,7 +46,8 @@ def canonical_title(title: str) -> str:
     MediaWiki treats a title's spaces and underscores alike, collapses runs of
     them, decodes percent-encoding and upper-cases the first letter, so
     ``saanen goat`` and ``Saanen%20goat`` are both the article ``Saanen_goat``.
-    This spells every one of them as the article's URL does.
+    This spells every one of them as the article's URL does. A ``#Section``
+    anchor is dropped: the citation is to the article.
 
     Args:
         title: An article title as cited.
@@ -63,8 +64,11 @@ def canonical_title(title: str) -> str:
         'Star_Trek:_Voyager'
         >>> canonical_title("Café")
         'Café'
+        >>> canonical_title("Saanen_goat#History")
+        'Saanen_goat'
     """
-    words = unquote(title).replace("_", " ").split()
+    # A URL's #Section anchor names part of the article; "#" is never in a title.
+    words = unquote(title).partition("#")[0].replace("_", " ").split()
     joined = "_".join(words)
     first = joined[:1].upper()
     # A letter whose upper case is two letters (such as "ß") is left as written.
@@ -169,16 +173,16 @@ class WikipediaSource(ReferenceSource):
                 f"(https://github.com/linkml/linkml-reference-validator; mailto:{config.email})"
             ),
         }
-        data = get_json(api_query_url(title), f"{self.prefix()}:{identifier}", headers)
+        data = get_json(api_query_url(title), f"{self.prefix()}:{title}", headers)
         if not isinstance(data, dict):
             return None
-        return self._parse_response(identifier, data)
+        return self._parse_response(title, data)
 
     def _parse_response(self, identifier: str, data: dict[str, Any]) -> Optional[ReferenceContent]:
         """Turn a ``formatversion=2`` query response into ReferenceContent.
 
         Args:
-            identifier: The identifier as cited, kept in the reference ID.
+            identifier: The canonical article title, used in the reference ID.
             data: The decoded API response.
 
         Returns:

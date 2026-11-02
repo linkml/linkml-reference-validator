@@ -48,7 +48,8 @@ wikipedia:Saanen_goat        # the prefix is case-insensitive
 
 Every spelling normalizes to the one the article's URL uses, as MediaWiki
 reads titles: spaces become underscores, percent-encoding is decoded and the
-first letter is upper-cased. So `WIKIPEDIA:saanen goat` is `WIKIPEDIA:Saanen_goat`,
+first letter is upper-cased, and a `#Section` anchor is dropped (the citation
+is to the whole article). So `WIKIPEDIA:saanen goat` is `WIKIPEDIA:Saanen_goat`,
 and all of them share the cache file `WIKIPEDIA_Saanen_goat.md`. A project
 that defines its own `WIKIPEDIA` source keeps its IDs as written.
 

@@ -350,3 +350,21 @@ def test_a_projects_own_wikipedia_source_keeps_its_ids(config, restore_registry)
     )
     fetcher = ReferenceFetcher(config)
     assert fetcher.normalize_reference_id("WIKIPEDIA:Saanen goat") == "WIKIPEDIA:Saanen goat"
+
+
+def test_a_direct_fetch_returns_the_canonical_id(config, wiki_server):
+    """The source gives one ID for an article however it is called, not only via the fetcher."""
+    reference = WikipediaSource().fetch("saanen goat", config)
+    assert reference is not None
+    assert reference.reference_id == "WIKIPEDIA:Saanen_goat"
+
+
+def test_a_section_anchor_cites_the_whole_article(config, wiki_server):
+    """A title copied from a URL with #Section is the article; '#' cannot be in a title."""
+    seen, _ = wiki_server
+    fetcher = ReferenceFetcher(config)
+    assert fetcher.normalize_reference_id("WIKIPEDIA:Saanen_goat#History") == "WIKIPEDIA:Saanen_goat"
+    reference = fetcher.fetch("WIKIPEDIA:Saanen_goat#History")
+    assert reference is not None
+    assert reference.reference_id == "WIKIPEDIA:Saanen_goat"
+    assert seen[0]["params"]["titles"] == "Saanen_goat"

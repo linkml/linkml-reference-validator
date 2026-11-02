@@ -19,8 +19,12 @@ Before matching, both the supporting text and reference content are normalized:
   `le` `ge`, `±` (or `+/-`) becomes `pm`, and a minus sign before a number stays
   on it, so `"p < 0.05"` does not match `"p > 0.05"` and `"2.5 fold"` does not
   match `"-2.5 fold"`. ASCII and Unicode spellings are equivalent (`<=` and `≤`,
-  `-` and `−`). A hyphen after a word or digit (`IL-6`, `3-5`) is still
-  punctuation.
+  `-` and `−`). Publisher spellings count too: MEDLINE's `>/=` and `</=` for
+  `≥` and `≤`, a middle-dot decimal (`57·4` is `57.4`), and an en dash or
+  Unicode hyphen printed as a minus sign (`z score, –1.98`) or inside `+/–`.
+  A `−` set off from its number by a space (`from − 2.92`) is still a sign,
+  unless a number comes before it (`10 − 2` is a subtraction). A hyphen or en
+  dash after a word or digit (`IL-6`, `3-5`, `1–12`) is still punctuation.
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 

@@ -735,7 +735,10 @@ class SupportingTextValidator:
         word. Symbols that carry meaning become words: ``<`` ``>`` ``≤`` ``≥``
         (and ``<=`` ``>=``) become ``lt`` ``gt`` ``le`` ``ge``, ``±`` and
         ``+/-`` become ``pm``, and a minus sign before a number stays on it as
-        ``neg``. Arrows such as ``->`` are punctuation. The same normalization
+        ``neg``. Publisher spellings of these count the same: ``>/=`` and
+        ``</=`` (MEDLINE's ASCII for ``≥`` ``≤``), a middle-dot decimal
+        (``57·4``), and an en dash or Unicode hyphen printed as a minus sign
+        or inside ``+/–``. Arrows such as ``->`` are punctuation. The same normalization
         applies to reference content and queries (including split query
         parts).
 
@@ -773,6 +776,8 @@ class SupportingTextValidator:
             '10.5 mm 3,4 dihydroxy p lt 0.05'
             >>> SupportingTextValidator.normalize_text("p<0.05, 5 ± 2, by −2.5 fold")
             'p lt 0.05 5 pm 2 by neg2.5 fold'
+            >>> SupportingTextValidator.normalize_text("57·4, ≥ 4 or >/= 4, (z score, –1.98), Wdr26+/–")
+            '57.4 ge 4 or ge 4 z score neg1.98 wdr26 pm'
             >>> SupportingTextValidator.normalize_text("IL-6, Ca2+-dependent, A -> B")
             'il 6 ca2 dependent a b'
             >>> SupportingTextValidator.normalize_text("Æ Œ æ œ H₂O 10⁶")
@@ -821,24 +826,40 @@ class SupportingTextValidator:
 
         text = text.lower()
 
+        # A middle dot between digits is a decimal point (the Lancet journals
+        # print 57·4 for 57.4), so it is spelled as one before the decimal rule
+        # below keeps a point between digits.
+        text = re.sub(r"(?<=\d)[·∙⋅](?=\d)", ".", text)
+
         # Symbols that carry meaning become words before punctuation is
         # stripped, so a quote that reverses a comparison or drops a sign
         # fails (issue #125). Arrows go first, or "->" would read as ">"; a
         # "<-" before a digit is "<" then a negative number, not an arrow.
         text = re.sub(r"<[-=]+>|[-=]+>|<-+(?!\d)", " ", text)
-        text = re.sub(r"<=|[≤⩽]", " le ", text)
-        text = re.sub(r">=|[≥⩾]", " ge ", text)
+        # MEDLINE abstracts transliterate ≤ and ≥ as "</=" and ">/=".
+        text = re.sub(r"</?=|[≤⩽]", " le ", text)
+        text = re.sub(r">/?=|[≥⩾]", " ge ", text)
         text = text.replace("<", " lt ").replace(">", " gt ")
         # A bare "+-" before a letter is a charge then a hyphen
         # ("Ca2+-dependent"); "+/-" is plus-minus even before one ("+/-SD").
-        text = re.sub(r"±|\+/[-−]|\+[-−](?![^\W\d_])", " pm ", text)
+        # A dash here is any character typesetters print for a minus sign:
+        # "-", the Unicode hyphens U+2010 and U+2011, the en dash, "−" and
+        # the small and fullwidth hyphen-minus. "+/–" is "+/-".
+        dash = "-‐‑–−﹣－"
+        text = re.sub(rf"±|\+/[{dash}]|\+[{dash}](?![^\W\d_])", " pm ", text)
         # A minus sign stays on its number, so "2.5" does not match "-2.5".
         # It is a sign only at the start, after a space, an opening bracket or
         # curly quote, "=", ":", "~", "≈" or an exponent's "^" (10^-5 is not
         # 10^5); anywhere else it is a hyphen or a range dash: IL-6, 3-5,
         # 3'-5', 10%-20%, 5°-10°. Straight quotes are left out because they
-        # double as primes and inch marks (5"-10").
-        text = re.sub(r"(?:^|(?<=[\s(\[{=:~≈^“‘«]))[-−](?=\d)", "neg", text)
+        # double as primes and inch marks (5"-10"). Any dash above counts,
+        # since an en dash in sign position ("z score, –1.98") is a minus.
+        sign_position = r"(?:^|(?<=[\s(\[{=:~≈^“‘«]))"
+        text = re.sub(rf"{sign_position}[{dash}](?=\d)", "neg", text)
+        # "−" (U+2212) is never a range dash, so it is a sign even when set
+        # off from its number by a space ("from − 2.92") -- unless a number
+        # comes before it, where it is a subtraction ("10 − 2").
+        text = re.sub(rf"{sign_position}(?<![\d)\]%]\s)−\s+(?=\d)", "neg", text)
 
         # A point or comma between digits is part of the number: splitting
         # "10.5" into "10 5" would let a quote of "5 mM" match "10.5 mM".

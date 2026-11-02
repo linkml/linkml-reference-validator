@@ -236,6 +236,7 @@ class PMIDSource(ReferenceSource):
         """
         sections = []
         for node in element.find_all("AbstractText"):
+            PMIDSource._set_off_inline_headings(node)
             text = node.get_text().strip()
             if not text:
                 continue
@@ -244,6 +245,43 @@ class PMIDSource(ReferenceSource):
 
         joined = "\n\n".join(sections)
         return joined if joined else None
+
+    @staticmethod
+    def _set_off_inline_headings(node: Any) -> None:
+        """Turn inline bold section headings into ``"Heading: "`` labels, in place.
+
+        Some publishers supply a structured abstract as one ``AbstractText``
+        whose headings are inline ``<b>``, with no space after them
+        (``<b>Background</b>Neuroblastoma can arise...``), so ``get_text()``
+        welds each heading onto the next word and a quote beginning at that
+        word fails whole-word matching. A ``<b>`` or ``<strong>`` counts as a
+        heading only at the start of the text or right after a sentence ends;
+        bold inside a sentence is left as it is.
+
+        Args:
+            node: An ``AbstractText`` element, modified in place
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = ("<AbstractText><b>Background</b>It began."
+            ...        "<b>Results</b>It worked.</AbstractText>")
+            >>> node = BeautifulSoup(xml, "xml").find("AbstractText")
+            >>> PMIDSource._set_off_inline_headings(node)
+            >>> node.get_text()
+            'Background: It began.\\n\\nResults: It worked.'
+        """
+        for bold in node.find_all(["b", "strong"]):
+            before = "".join(
+                str(sibling.get_text() if hasattr(sibling, "get_text") else sibling)
+                for sibling in reversed(list(bold.previous_siblings))
+            ).rstrip()
+            if before and not before.endswith((".", "!", "?")):
+                continue
+            heading = bold.get_text().strip()
+            if not heading:
+                continue
+            label = heading if heading.endswith(":") else f"{heading}:"
+            bold.replace_with(f"{chr(10) * 2 if before else ''}{label} ")
 
     def _parse_abstract(self, soup: BeautifulSoup) -> Optional[str]:
         """Parse the abstract from a PubMed article XML document.

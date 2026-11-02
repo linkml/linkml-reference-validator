@@ -427,6 +427,22 @@ reference:
 See the [full-text guide](docs/how-to/fetch-full-text-and-pdfs.md#preprints) for
 details and coverage caveats.
 
+#### Wikipedia articles
+
+```yaml
+reference:
+  id: WIKIPEDIA:Saanen_goat
+  supporting_text: "The Saanen originates in the historic region of Saanen"
+```
+
+**Fetches:**
+- The English Wikipedia article as plain text, from the MediaWiki API, so a
+  quote through a link or bold text still matches
+- The revision read, its timestamp and canonical URL, recorded in the cache
+  (Wikipedia text is CC BY-SA 4.0 and changes over time)
+
+See [Validating Wikipedia Articles](docs/how-to/validate-wikipedia.md).
+
 ---
 
 ## Schema Requirements

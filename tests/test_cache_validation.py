@@ -202,6 +202,9 @@ def test_every_emitted_field_is_owned_by_the_public_model(tmp_path, content_type
         local_pdf_path="/tmp/paper.pdf",
         full_text_access_type="open",
         full_text_source_item_id="123",
+        source_url="https://en.wikipedia.org/wiki/Goat",
+        source_revision="1250000001",
+        source_revision_timestamp="2026-09-01T12:00:00Z",
         metadata={
             "html_full_text_version": 1,
             "xml_extraction_version": 1,
@@ -234,6 +237,9 @@ def test_every_emitted_field_is_owned_by_the_public_model(tmp_path, content_type
     loaded = fetcher._load_markdown_format(path.read_text(), reference.reference_id)
     assert loaded.authors == reference.authors
     assert loaded.content == reference.content
+    assert loaded.source_url == reference.source_url
+    assert loaded.source_revision == reference.source_revision
+    assert loaded.source_revision_timestamp == reference.source_revision_timestamp
 
 
 def test_committed_cache_fixtures_remain_valid(fixtures_dir):

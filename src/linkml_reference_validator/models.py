@@ -939,6 +939,12 @@ class ReferenceContent:
     full_text_declined: Optional[str] = None
     full_text_access_type: Optional[str] = None
     full_text_source_item_id: Optional[str] = None
+    # Which version of a source that changes over time was read, so a committed
+    # cache shows what a quote was checked against: for WIKIPEDIA, the article's
+    # canonical URL, revision ID and that revision's timestamp.
+    source_url: Optional[str] = None
+    source_revision: Optional[str] = None
+    source_revision_timestamp: Optional[str] = None
     # Preprint / peer-review status, surfaced so downstream KBs can apply policies
     # such as "a preprint may not be the sole support for a claim". Left as None
     # when the publication type is unknown; only asserted when positively detected

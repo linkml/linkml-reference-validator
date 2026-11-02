@@ -301,6 +301,7 @@ linkml-reference-validator validate text \
 
 ## See Also
 
+- [Validating Wikipedia Articles](validate-wikipedia.md) - Prefer `WIKIPEDIA:Title` to a Wikipedia URL
 - [Using Local Files and URLs](use-local-files-and-urls.md) - Quick reference for file and URL sources
 - [Validating DOIs](validate-dois.md) - For journal articles with DOIs
 - [Validating OBO Files](validate-obo-files.md) - For ontology-specific validation

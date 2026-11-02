@@ -53,6 +53,8 @@ All other known fields are optional and may be null:
 - Full-text metadata: `full_text_attempted`, `full_text_declined`,
   `full_text_provider`, `full_text_url`, `oa_status`, `license`, `local_pdf_path`,
   `full_text_access_type`, and `full_text_source_item_id`.
+- Source version, for sources that change over time (such as `WIKIPEDIA`):
+  `source_url`, `source_revision`, and `source_revision_timestamp`.
 - Captured fields and attachments: `extra_fields_captured` and
   `supplementary_files`.
 

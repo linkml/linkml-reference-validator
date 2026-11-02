@@ -8,6 +8,7 @@ When fetching references, the validator tracks what type of content was retrieve
 |-------|-----------|-------------|
 | `full_text_xml` | PMID (via PMC) | Full text retrieved from PubMed Central as XML |
 | `full_text_html` | PMID (via PMC) | Full text retrieved from PubMed Central as HTML (fallback) |
+| `full_text` | WIKIPEDIA | The whole article as plain text |
 | `abstract_only` | PMID, DOI | Only the abstract was available |
 | `summary` | GEO, BioProject, BioSample, ClinicalTrials | Database summary/description field |
 | `local_file` | file: | Content read from local filesystem |

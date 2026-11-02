@@ -368,5 +368,7 @@ def register_json_api_source(source_config: JSONAPISourceConfig) -> type[Referen
     DynamicJSONAPISource.__name__ = class_name
     DynamicJSONAPISource.__qualname__ = class_name
 
-    ReferenceSourceRegistry.register(DynamicJSONAPISource)
+    # A project's own definition of a prefix the validator also ships (such as
+    # WIKIPEDIA) is what the project asked for, so it goes ahead of the built-in.
+    ReferenceSourceRegistry.register_override(DynamicJSONAPISource)
     return DynamicJSONAPISource

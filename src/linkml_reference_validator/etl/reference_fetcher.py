@@ -40,6 +40,7 @@ from linkml_reference_validator.models import (
 from linkml_reference_validator.etl.sources import ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.clinicaltrials import NCT_ID_PATTERN
 from linkml_reference_validator.etl.sources.file import FileSource
+from linkml_reference_validator.etl.sources.wikipedia import WikipediaSource, canonical_title
 from linkml_reference_validator.etl.acquire import ContentAcquirer, resolve_format, sniff_format
 from linkml_reference_validator.etl.identifiers import build_identifiers
 from linkml_reference_validator.etl.fulltext.base import PUBLISHER_FREE_ACCESS
@@ -1289,7 +1290,26 @@ class ReferenceFetcher:
             return reference_id.strip()
         if prefix == "file":
             return f"file:{FileSource.resolve_path(identifier, self.config)}"
-        return f"{prefix}:{identifier}"
+        return self._canonical_wikipedia_id(f"{prefix}:{identifier}")
+
+    @staticmethod
+    def _canonical_wikipedia_id(reference_id: str) -> str:
+        """Spell a WIKIPEDIA title as its article URL does, when the built-in source reads it.
+
+        Every spelling of one article then shares one cache entry. A project's
+        own WIKIPEDIA source keeps its IDs as written.
+
+        Examples:
+            >>> ReferenceFetcher._canonical_wikipedia_id("WIKIPEDIA:saanen goat")
+            'WIKIPEDIA:Saanen_goat'
+            >>> ReferenceFetcher._canonical_wikipedia_id("PMID:123")
+            'PMID:123'
+        """
+        if not reference_id.startswith("WIKIPEDIA:"):
+            return reference_id
+        if ReferenceSourceRegistry.get_source(reference_id) is not WikipediaSource:
+            return reference_id
+        return f"WIKIPEDIA:{canonical_title(reference_id.partition(':')[2])}"
 
     def _normalize_prefix(self, prefix: str) -> str:
         """Normalize prefix casing to match the reference sources."""
@@ -1400,10 +1420,11 @@ class ReferenceFetcher:
         prefix, identifier = self._parse_reference_id(
             reference_id, apply_prefix_map=False
         )
-        if prefix == "clinicaltrials":
+        if prefix in ("clinicaltrials", "WIKIPEDIA"):
             reference_id = f"{prefix}:{identifier}"
         if prefix == "file":
             reference_id = f"file:{FileSource.resolve_path(identifier, self.config)}"
+        reference_id = self._canonical_wikipedia_id(reference_id)
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
         # prefix maps here could follow a second alias and change the cache key.
         return cache_key(reference_id)
@@ -1674,6 +1695,9 @@ class ReferenceFetcher:
             local_pdf_path=reference.local_pdf_path or None,
             full_text_access_type=reference.full_text_access_type or None,
             full_text_source_item_id=reference.full_text_source_item_id or None,
+            source_url=reference.source_url or None,
+            source_revision=reference.source_revision or None,
+            source_revision_timestamp=reference.source_revision_timestamp or None,
             extra_fields_captured=captured,
             supplementary_files=[
                 CacheSupplementaryFile.model_validate({
@@ -2202,6 +2226,9 @@ class ReferenceFetcher:
             local_pdf_path=frontmatter.get("local_pdf_path"),
             full_text_access_type=frontmatter.get("full_text_access_type"),
             full_text_source_item_id=frontmatter.get("full_text_source_item_id"),
+            source_url=frontmatter.get("source_url"),
+            source_revision=frontmatter.get("source_revision"),
+            source_revision_timestamp=frontmatter.get("source_revision_timestamp"),
             is_preprint=frontmatter.get("is_preprint"),
             peer_review_status=frontmatter.get("peer_review_status"),
             full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),

@@ -37,6 +37,54 @@ from linkml_reference_validator.etl.sources.utils import (
 logger = logging.getLogger(__name__)
 
 
+#: Section headings of structured abstracts. PubMed sometimes stores them
+#: welded onto the next sentence with no markup at all ("IntroductionThe black
+#: widow spider..."), which no tag can mark.
+_ABSTRACT_HEADINGS = (
+    "Abstract|Background|Introduction|Objectives?|Aims?|Purpose|Importance|"
+    "Context|Design|Setting|Participants|Patients|Methods|Materials and Methods|"
+    "Interventions?|Measurements|Main Outcome Measures|Results|Findings|"
+    "Observations|Case Report|Case Presentation|Discussion|Interpretation|"
+    "Conclusions?|Conclusions and Relevance|Significance|Limitations"
+)
+_WELDED_HEADING = re.compile(
+    rf"(?:^|(?<=[.!?])|(?<=: ))[ \t]*({_ABSTRACT_HEADINGS})(?=[A-Z])"
+)
+
+
+def _set_off_welded_headings(text: str) -> str:
+    """Split a heading welded onto its sentence into a ``"Heading: "`` label.
+
+    Only a listed heading, at the start of the text or right after a sentence
+    ends, and directly followed by a capital letter, so "The Results were"
+    and "Methodsical" are left alone. A heading right after ": " also counts,
+    which splits chained headings ("AbstractBackgroundIt" becomes "Abstract:
+    Background: It") and a welded heading after any earlier label ("Aim:
+    MethodsWe"). Title-case headings only, on purpose: all-caps welds
+    ("RESULTSThe") and welds after a bracket ("exposures)Conclusions") are
+    left as they are.
+
+    Examples:
+        >>> _set_off_welded_headings("IntroductionThe spider. ResultsA total.")
+        'Introduction: The spider.\\n\\nResults: A total.'
+        >>> _set_off_welded_headings("The Results were striking.")
+        'The Results were striking.'
+    """
+
+    def label(match: re.Match[str]) -> str:
+        after_label = text[: match.start()].endswith(": ")
+        lead = "" if match.start() == 0 or after_label else "\n\n"
+        return lead + match.group(1) + ": "
+
+    # Repeat for chained headings: "AbstractBackgroundIt began." only exposes
+    # "Background" once "Abstract" has been split off.
+    while True:
+        updated = _WELDED_HEADING.sub(label, text)
+        if updated == text:
+            return text
+        text = updated
+
+
 @ReferenceSourceRegistry.register
 class PMIDSource(ReferenceSource):
     """Fetch references from PubMed using PMID.
@@ -236,7 +284,9 @@ class PMIDSource(ReferenceSource):
         """
         sections = []
         for node in element.find_all("AbstractText"):
-            text = node.get_text().strip()
+            # Edits the parsed node in place; nothing reads it again.
+            PMIDSource._set_off_inline_headings(node)
+            text = _set_off_welded_headings(node.get_text().strip())
             if not text:
                 continue
             label = node.get("Label")
@@ -244,6 +294,49 @@ class PMIDSource(ReferenceSource):
 
         joined = "\n\n".join(sections)
         return joined if joined else None
+
+    @staticmethod
+    def _set_off_inline_headings(node: Any) -> None:
+        """Turn inline bold section headings into ``"Heading: "`` labels, in place.
+
+        Some publishers supply a structured abstract as one ``AbstractText``
+        whose headings are inline ``<b>``, with no space after them
+        (``<b>Background</b>Neuroblastoma can arise...``), so ``get_text()``
+        welds each heading onto the next word and a quote beginning at that
+        word fails whole-word matching. A ``<b>`` or ``<strong>`` counts as a
+        heading only at the start of the text or right after a sentence ends,
+        and only when the text after it starts with a letter; bold inside a
+        sentence, or not welded to the next word, is left as it is.
+
+        Args:
+            node: An ``AbstractText`` element, modified in place
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = ("<AbstractText><b>Background</b>It began."
+            ...        "<b>Results</b>It worked.</AbstractText>")
+            >>> node = BeautifulSoup(xml, "xml").find("AbstractText")
+            >>> PMIDSource._set_off_inline_headings(node)
+            >>> node.get_text()
+            'Background: It began.\\n\\nResults: It worked.'
+        """
+        for bold in node.find_all(["b", "strong"]):
+            before = "".join(
+                str(sibling.get_text() if hasattr(sibling, "get_text") else sibling)
+                for sibling in reversed(list(bold.previous_siblings))
+            ).rstrip()
+            if before and not before.endswith((".", "!", "?")):
+                continue
+            # Only a real weld: the next text starts with a letter, no space.
+            # "<b>IL</b>-6" and "<b>Importantly</b>," are not headings.
+            following = bold.next_sibling
+            if not (isinstance(following, str) and following[:1].isalpha()):
+                continue
+            heading = bold.get_text().strip()
+            if not heading:
+                continue
+            label = heading if heading.endswith(":") else f"{heading}:"
+            bold.replace_with(f"{chr(10) * 2 if before else ''}{label} ")
 
     def _parse_abstract(self, soup: BeautifulSoup) -> Optional[str]:
         """Parse the abstract from a PubMed article XML document.

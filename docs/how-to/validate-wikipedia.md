@@ -46,9 +46,11 @@ WIKIPEDIA:Caf%C3%A9          # percent-encoded, as copied from a URL
 wikipedia:Saanen_goat        # the prefix is case-insensitive
 ```
 
-The prefix normalizes to `WIKIPEDIA`. The title is kept as written, so
-`Saanen_goat` and `Saanen goat` are two cache entries for the same article:
-pick one spelling (the URL's) and use it throughout.
+Every spelling normalizes to the one the article's URL uses, as MediaWiki
+reads titles: spaces become underscores, percent-encoding is decoded and the
+first letter is upper-cased. So `WIKIPEDIA:saanen goat` is `WIKIPEDIA:Saanen_goat`,
+and all of them share the cache file `WIKIPEDIA_Saanen_goat.md`. A project
+that defines its own `WIKIPEDIA` source keeps its IDs as written.
 
 A redirect is followed: `WIKIPEDIA:Saanen` reads the article *Saanen goat*, and
 the cached title says so. A title with no article, or an invalid one, is not found.

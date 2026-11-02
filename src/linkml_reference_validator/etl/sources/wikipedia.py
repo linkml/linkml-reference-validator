@@ -40,6 +40,37 @@ WIKIPEDIA_LICENSE = "CC BY-SA 4.0"
 _HEADING = re.compile(r"^(={2,6})\s*(.*?)\s*\1\s*$", re.MULTILINE)
 
 
+def canonical_title(title: str) -> str:
+    """Return the one spelling of an article title that a cache key is built from.
+
+    MediaWiki treats a title's spaces and underscores alike, collapses runs of
+    them, decodes percent-encoding and upper-cases the first letter, so
+    ``saanen goat`` and ``Saanen%20goat`` are both the article ``Saanen_goat``.
+    This spells every one of them as the article's URL does.
+
+    Args:
+        title: An article title as cited.
+
+    Returns:
+        The title as it appears in the article's URL.
+
+    Examples:
+        >>> canonical_title("saanen goat")
+        'Saanen_goat'
+        >>> canonical_title("Saanen%20goat")
+        'Saanen_goat'
+        >>> canonical_title("Star Trek: Voyager")
+        'Star_Trek:_Voyager'
+        >>> canonical_title("Café")
+        'Café'
+    """
+    words = unquote(title).replace("_", " ").split()
+    joined = "_".join(words)
+    first = joined[:1].upper()
+    # A letter whose upper case is two letters (such as "ß") is left as written.
+    return (first if len(first) == 1 else joined[:1]) + joined[1:]
+
+
 def plain_headings(text: str) -> str:
     """Turn ``== Heading ==`` lines in a plain-text extract into bare heading lines.
 
@@ -129,7 +160,7 @@ class WikipediaSource(ReferenceSource):
             ReferenceContent with the article's plain text, or None.
         """
         time.sleep(config.rate_limit_delay)
-        title = unquote(identifier.strip())
+        title = canonical_title(identifier)
         headers = {
             "Accept": "application/json",
             # Wikimedia's User-Agent policy asks for a way to reach the operator.
@@ -180,6 +211,7 @@ class WikipediaSource(ReferenceSource):
         extract = page.get("extract")
         content = plain_headings(extract).strip() if extract else None
 
+        # A page with no revisions listed still has its text; record no revision.
         revisions = page.get("revisions") or [{}]
         revision_id = revisions[0].get("revid")
 

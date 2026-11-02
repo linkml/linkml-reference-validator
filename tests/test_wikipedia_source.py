@@ -15,7 +15,7 @@ import pytest
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.etl.sources.base import ReferenceSourceRegistry
 from linkml_reference_validator.etl.sources.json_api import register_json_api_source
-from linkml_reference_validator.etl.sources.wikipedia import WikipediaSource
+from linkml_reference_validator.etl.sources.wikipedia import WikipediaSource, canonical_title
 from linkml_reference_validator.models import (
     JSONAPISourceConfig,
     ReferenceValidationConfig,
@@ -295,3 +295,58 @@ def test_a_custom_source_for_a_new_prefix_is_still_tried_last(restore_registry):
         JSONAPISourceConfig(prefix="MYDB", url_template="https://example.org/{id}", fields={})
     )
     assert ReferenceSourceRegistry.list_sources()[-1] is custom
+
+
+SPELLINGS = [
+    "WIKIPEDIA:Saanen_goat",
+    "WIKIPEDIA:Saanen goat",
+    "WIKIPEDIA:Saanen%20goat",
+    "WIKIPEDIA:saanen_goat",
+    "wikipedia: Saanen  goat ",
+]
+
+
+@pytest.mark.parametrize("reference_id", SPELLINGS)
+def test_every_spelling_of_a_title_normalizes_to_one_id(config, reference_id):
+    """Wikipedia treats these as one article, so the cache must too (review of #165)."""
+    fetcher = ReferenceFetcher(config)
+    assert fetcher.normalize_reference_id(reference_id) == "WIKIPEDIA:Saanen_goat"
+    assert fetcher.get_cache_path(reference_id).name == "WIKIPEDIA_Saanen_goat.md"
+
+
+def test_every_spelling_shares_one_fetch_and_one_cache_file(config, wiki_server):
+    seen, _ = wiki_server
+    fetcher = ReferenceFetcher(config)
+    for reference_id in SPELLINGS:
+        reference = fetcher.fetch(reference_id)
+        assert reference is not None
+        assert reference.reference_id == "WIKIPEDIA:Saanen_goat"
+    assert len(seen) == 1
+    assert [p.name for p in config.cache_dir.iterdir()] == ["WIKIPEDIA_Saanen_goat.md"]
+
+
+@pytest.mark.parametrize(
+    "title, canonical",
+    [
+        ("Saanen goat", "Saanen_goat"),
+        ("Caf%C3%A9", "Café"),
+        ("iPhone", "IPhone"),  # MediaWiki upper-cases the first letter of every title
+        ("Star Trek: Voyager", "Star_Trek:_Voyager"),
+        ("__Saanen___goat_", "Saanen_goat"),
+    ],
+)
+def test_canonical_title(title, canonical):
+    assert canonical_title(title) == canonical
+
+
+def test_a_projects_own_wikipedia_source_keeps_its_ids(config, restore_registry):
+    """Canonical titles are the built-in source's rule; a project's own source keeps its IDs."""
+    register_json_api_source(
+        JSONAPISourceConfig(
+            prefix="WIKIPEDIA",
+            url_template="https://example.org/{id}",
+            fields={"title": "$.title"},
+        )
+    )
+    fetcher = ReferenceFetcher(config)
+    assert fetcher.normalize_reference_id("WIKIPEDIA:Saanen goat") == "WIKIPEDIA:Saanen goat"

@@ -119,6 +119,34 @@ BLOCK_ELEMENTS = frozenset(
 )
 
 
+def _is_citation_marker(tag: Tag) -> bool:
+    """Whether ``tag`` is a bibliographic citation marker.
+
+    A JATS ``<xref ref-type="bibr">``, or a ``<sup>`` holding only such xrefs
+    and the commas and dashes between them. Inline markup is otherwise kept
+    contiguous (``H<sub>2</sub>O``), but a citation glued to the word before it
+    (``FOXL2<sup>8</sup>``) reads as another word, and one after a full stop
+    (``PGE2.<sup>41</sup>``) as a decimal number.
+
+    Examples:
+        >>> soup = BeautifulSoup('<p>A<sup><xref ref-type="bibr">8</xref></sup>'
+        ...     '10<sup>6</sup></p>', "xml")
+        >>> [_is_citation_marker(sup) for sup in soup.find_all("sup")]
+        [True, False]
+    """
+    if tag.name == "xref":
+        return tag.get("ref-type") == "bibr"
+    if tag.name != "sup":
+        return False
+    xrefs = tag.find_all("xref")
+    if not xrefs or any(xref.get("ref-type") != "bibr" for xref in xrefs):
+        return False
+    loose = "".join(
+        str(child) for child in tag.children if type(child) in (NavigableString, CData)
+    )
+    return re.fullmatch(r"[\s,;\-\u2010-\u2015\u2212]*", loose) is not None
+
+
 def _block_text(node: Tag) -> str:
     """Keep inline text contiguous, separating blocks and excluding nested tables.
 
@@ -137,8 +165,15 @@ def _block_text(node: Tag) -> str:
                 parts.append(str(child))
             elif isinstance(child, Tag) and child.name not in {"table", "table-wrap"}:
                 value = walk(child)
-                if child.name in BLOCK_ELEMENTS:
+                lead_in = (
+                    tag.name == "p" and child.name == "bold" and not "".join(parts).strip()
+                )
+                if child.name in BLOCK_ELEMENTS or _is_citation_marker(child):
                     value = " " + value + " "
+                elif lead_in:
+                    # A paragraph's bold lead-in label ("<bold>R 2.6</bold>We
+                    # recommend") is not part of the sentence after it.
+                    value = value + " "
                 parts.append(value)
         return "".join(parts)
 

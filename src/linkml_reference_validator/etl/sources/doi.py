@@ -12,6 +12,7 @@ Examples:
 """
 
 import logging
+import re
 import time
 from typing import Optional
 
@@ -31,6 +32,13 @@ from linkml_reference_validator.etl.sources.utils import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+#: JATS elements that end a run of text in a Crossref abstract. Their local
+#: names, so ``jats:p`` and a bare ``p`` both count.
+_JATS_ABSTRACT_BLOCKS = frozenset(
+    {"title", "p", "sec", "list", "list-item", "label", "caption", "def-item", "disp-quote"}
+)
 
 
 @ReferenceSourceRegistry.register
@@ -521,12 +529,30 @@ class DOISource(ReferenceSource):
         Returns:
             Clean abstract text
 
+        Block elements (titles, paragraphs, sections, list items) become
+        paragraphs separated by a blank line. Crossref nests a structured
+        abstract's sections as ``<jats:title>`` and ``<jats:p>`` with no text
+        between them, so stripping the tags alone welded each heading onto the
+        next sentence ("AbstractDisease overviewAcute myeloid..."), and a quote
+        beginning at that sentence failed whole-word matching. Whitespace
+        inside a paragraph is collapsed; inline markup stays contiguous.
+
         Examples:
             >>> source = DOISource()
             >>> source._clean_abstract("<jats:p>Test abstract.</jats:p>")
             'Test abstract.'
+            >>> source._clean_abstract(
+            ...     "<jats:title>Abstract</jats:title><jats:sec><jats:title>Aim"
+            ...     "</jats:title><jats:p>To test <jats:italic>it</jats:italic>.</jats:p>"
+            ...     "</jats:sec>")
+            'Abstract\\n\\nAim\\n\\nTo test it.'
         """
         if not abstract:
             return ""
         soup = BeautifulSoup(abstract, "html.parser")
-        return soup.get_text().strip()
+        for tag in soup.find_all(True):
+            if tag.name.rpartition(":")[2] in _JATS_ABSTRACT_BLOCKS:
+                tag.insert_before("\n\n")
+                tag.insert_after("\n\n")
+        paragraphs = (" ".join(chunk.split()) for chunk in re.split(r"\n\s*\n", soup.get_text()))
+        return "\n\n".join(paragraph for paragraph in paragraphs if paragraph)

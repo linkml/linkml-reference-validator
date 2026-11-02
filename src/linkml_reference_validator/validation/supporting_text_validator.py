@@ -62,6 +62,10 @@ def is_blank_text(value: object) -> bool:
     return isinstance(value, str) and not value.strip()
 
 
+#: Digits a citation marker welded onto a word can carry: decimal digits and
+#: the superscript digits that text printing the marker itself uses (``ears¹``).
+_CITATION_DIGITS = r"\d¹²³⁴⁵⁶⁷⁸⁹⁰"
+
 #: Characters typesetters print for a minus sign: "-", the Unicode hyphens
 #: U+2010 and U+2011, the figure dash U+2012, the en dash, "−" (U+2212) and the
 #: small and fullwidth hyphen-minus. The em dash is left out: it is a
@@ -627,8 +631,9 @@ class SupportingTextValidator:
         One allowance: when the part ends in a letter, the reference word it
         ends on may carry trailing digits. Extraction welds superscript
         citations onto the word before them (JATS ``suppressor<sup>12</sup>``,
-        PMC HTML and PDF text all give ``suppressor12``), and a quote of that
-        sentence must not fail on its last word. A part ending in a digit gets
+        PMC HTML and PDF text all give ``suppressor12``, and text that prints
+        the citation itself as superscript gives ``ears¹``), and a quote of
+        that sentence must not fail on its last word. A part ending in a digit gets
         no allowance, so ``10`` never matches ``105``.
 
         An empty part (one that was all punctuation) is found, as with a
@@ -657,6 +662,8 @@ class SupportingTextValidator:
             True
             >>> SupportingTextValidator.contains_words("a dose of 10", "a dose of 105 mg")
             False
+            >>> SupportingTextValidator.contains_words("small ears", "small ears¹ ³ both")
+            True
             >>> SupportingTextValidator.contains_words("", "anything")
             True
         """
@@ -666,7 +673,7 @@ class SupportingTextValidator:
             return True
         if not part[-1].isalpha():
             return False
-        citation = rf"(?:^| ){re.escape(part)}\d[\d,]*(?: |$)"
+        citation = rf"(?:^| ){re.escape(part)}[{_CITATION_DIGITS}][{_CITATION_DIGITS},]*(?: |$)"
         return re.search(citation, text) is not None
 
     def generate_suggested_fix(

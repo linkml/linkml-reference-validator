@@ -150,3 +150,21 @@ def test_superscript_citation_after_a_word_is_allowed(quote, content):
 def test_superscript_does_not_extend_a_number():
     """The allowance stays letter-only: a quote ending in a digit gets none."""
     assert not found("a dose of 10", "a dose of 10⁶ cells")
+
+
+@pytest.mark.parametrize(
+    "body,quote",
+    [
+        ("<p><bold>IL</bold>-6 levels were raised.</p>", "IL-6 levels were raised"),
+        ("<p><bold>BRCA1</bold> mutations were found.</p>", "BRCA1 mutations were found"),
+    ],
+)
+def test_leading_bold_that_is_not_welded_is_left_alone(body, quote):
+    """Only a bold followed directly by a letter is a welded label (IL-6 is not)."""
+    text = extract(body)
+    assert found(quote, text), text
+
+
+def test_crossref_html_breaks_and_divs_separate_paragraphs():
+    text = DOISource()._clean_abstract("<div>First part.</div><div>Second part.</div>a<br/>b")
+    assert text.split("\n\n") == ["First part.", "Second part.", "a", "b"]

@@ -37,7 +37,10 @@ logger = logging.getLogger(__name__)
 #: JATS elements that end a run of text in a Crossref abstract. Their local
 #: names, so ``jats:p`` and a bare ``p`` both count.
 _JATS_ABSTRACT_BLOCKS = frozenset(
-    {"title", "p", "sec", "list", "list-item", "label", "caption", "def-item", "disp-quote"}
+    {
+        "title", "p", "sec", "list", "list-item", "label", "caption", "def-item",
+        "disp-quote", "div", "br",
+    }
 )
 
 
@@ -523,19 +526,20 @@ class DOISource(ReferenceSource):
     def _clean_abstract(self, abstract: str) -> str:
         """Clean JATS/XML markup from abstract text.
 
+        Block elements (titles, paragraphs, sections, list items, and HTML
+        ``div`` and ``br``) become paragraphs separated by a blank line.
+        Crossref nests a structured abstract's sections as ``<jats:title>`` and
+        ``<jats:p>`` with no text between them, so stripping the tags alone
+        welded each heading onto the next sentence ("AbstractDisease
+        overviewAcute myeloid..."), and a quote beginning at that sentence
+        failed whole-word matching. Whitespace inside a paragraph is
+        collapsed; inline markup stays contiguous.
+
         Args:
             abstract: Abstract text potentially containing JATS markup
 
         Returns:
             Clean abstract text
-
-        Block elements (titles, paragraphs, sections, list items) become
-        paragraphs separated by a blank line. Crossref nests a structured
-        abstract's sections as ``<jats:title>`` and ``<jats:p>`` with no text
-        between them, so stripping the tags alone welded each heading onto the
-        next sentence ("AbstractDisease overviewAcute myeloid..."), and a quote
-        beginning at that sentence failed whole-word matching. Whitespace
-        inside a paragraph is collapsed; inline markup stays contiguous.
 
         Examples:
             >>> source = DOISource()

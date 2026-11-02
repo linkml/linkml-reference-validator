@@ -147,6 +147,21 @@ def _is_citation_marker(tag: Tag) -> bool:
     return re.fullmatch(r"[\s,;\-\u2010-\u2015\u2212]*", loose) is not None
 
 
+def _welded_to_next_word(tag: Tag) -> bool:
+    """Whether the text right after ``tag`` starts with a letter, with no space.
+
+    That is what makes a bold lead-in a welded label (``R 2.6</bold>We``)
+    rather than part of a word (``IL</bold>-6``) or already spaced.
+
+    Examples:
+        >>> soup = BeautifulSoup("<x><p><bold>R 2.6</bold>We</p><p><bold>IL</bold>-6</p></x>", "xml")
+        >>> [_welded_to_next_word(b) for b in soup.find_all("bold")]
+        [True, False]
+    """
+    following = tag.next_sibling
+    return isinstance(following, NavigableString) and str(following)[:1].isalpha()
+
+
 def _block_text(node: Tag) -> str:
     """Keep inline text contiguous, separating blocks and excluding nested tables.
 
@@ -166,7 +181,10 @@ def _block_text(node: Tag) -> str:
             elif isinstance(child, Tag) and child.name not in {"table", "table-wrap"}:
                 value = walk(child)
                 lead_in = (
-                    tag.name == "p" and child.name == "bold" and not "".join(parts).strip()
+                    tag.name == "p"
+                    and child.name == "bold"
+                    and not "".join(parts).strip()
+                    and _welded_to_next_word(child)
                 )
                 if child.name in BLOCK_ELEMENTS or _is_citation_marker(child):
                     value = " " + value + " "

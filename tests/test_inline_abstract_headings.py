@@ -103,3 +103,19 @@ def test_heading_words_inside_sentences_are_left_alone():
     text = render(xml)
     assert "The Results were striking." in text
     assert "Methodsical work" in text
+
+
+def test_leading_bold_followed_by_a_hyphen_is_not_a_label():
+    text = render("<Abstract><AbstractText><b>IL</b>-6 levels were raised.</AbstractText></Abstract>")
+    assert found("IL-6 levels were raised", text), text
+    assert "IL:" not in text
+
+
+def test_bold_after_a_full_stop_but_not_welded_is_not_a_label():
+    xml = (
+        "<Abstract><AbstractText>It was observed. <b>Importantly</b>, the effect held, "
+        "vs. <b>BRCA2</b> carriers.</AbstractText></Abstract>"
+    )
+    text = render(xml)
+    assert "Importantly:" not in text and "BRCA2:" not in text
+    assert found("observed. Importantly, the effect held", text)

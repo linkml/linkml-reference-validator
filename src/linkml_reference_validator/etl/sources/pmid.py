@@ -57,7 +57,9 @@ def _set_off_welded_headings(text: str) -> str:
 
     Only a listed heading, at the start of the text or right after a sentence
     ends, and directly followed by a capital letter, so "The Results were"
-    and "Methodsical" are left alone.
+    and "Methodsical" are left alone. Title-case headings only, on purpose:
+    all-caps welds ("RESULTSThe") and welds after a bracket
+    ("exposures)Conclusions") are left as they are.
 
     Examples:
         >>> _set_off_welded_headings("IntroductionThe spider. ResultsA total.")
@@ -290,8 +292,9 @@ class PMIDSource(ReferenceSource):
         (``<b>Background</b>Neuroblastoma can arise...``), so ``get_text()``
         welds each heading onto the next word and a quote beginning at that
         word fails whole-word matching. A ``<b>`` or ``<strong>`` counts as a
-        heading only at the start of the text or right after a sentence ends;
-        bold inside a sentence is left as it is.
+        heading only at the start of the text or right after a sentence ends,
+        and only when the text after it starts with a letter; bold inside a
+        sentence, or not welded to the next word, is left as it is.
 
         Args:
             node: An ``AbstractText`` element, modified in place
@@ -311,6 +314,11 @@ class PMIDSource(ReferenceSource):
                 for sibling in reversed(list(bold.previous_siblings))
             ).rstrip()
             if before and not before.endswith((".", "!", "?")):
+                continue
+            # Only a real weld: the next text starts with a letter, no space.
+            # "<b>IL</b>-6" and "<b>Importantly</b>," are not headings.
+            following = bold.next_sibling
+            if not (isinstance(following, str) and following[:1].isalpha()):
                 continue
             heading = bold.get_text().strip()
             if not heading:

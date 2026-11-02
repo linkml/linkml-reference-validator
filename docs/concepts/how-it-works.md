@@ -24,7 +24,10 @@ Before matching, both the supporting text and reference content are normalized:
   Unicode hyphen printed as a minus sign (`z score, –1.98`) or inside `+/–`.
   A `−` set off from its number by a space (`from − 2.92`) is still a sign,
   unless a number comes before it (`10 − 2` is a subtraction). A hyphen or en
-  dash after a word or digit (`IL-6`, `3-5`, `1–12`) is still punctuation.
+  dash after a word or digit (`IL-6`, `3-5`, `1–12`) is still punctuation. A
+  dash after a space and before a digit is a sign, so a range spaced on one
+  side only (`18 –65`) reads as `18` and `-65`; quote it as the source
+  prints it. A middle dot in a formula (`MgCl2·6H2O`) is not a decimal point.
 - **Whitespace collapsed**: Multiple spaces become single space
 - **Editorial notes removed**: `"[mucin 1]"` → `""`
 

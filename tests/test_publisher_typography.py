@@ -88,11 +88,25 @@ def test_typographic_variants_keep_their_meaning(quote, content):
         ("scores of 10 20", "scores of 10 – 20"),
         # "−" after a number is a subtraction, not the sign of the next one
         ("gives 10 - 2 = 8", "which gives 10 − 2 = 8 in all"),
+        ("gives 10 - 2 = 8", "which gives 10  − 2 = 8 in all"),
+        ("gives 10 - 2 = 8", "which gives 10\n − 2 = 8 in all"),
+        # A middle dot in a formula is not a decimal point
+        ("with MgCl2 6H2O added", "buffer with MgCl2·6H2O added"),
     ],
 )
 def test_range_dashes_are_still_punctuation(quote, content):
     """Dashes that are not minus signs still read as punctuation."""
     assert found(quote, content)
+
+
+def test_unevenly_spaced_en_dash_before_a_digit_is_a_sign():
+    """A known limitation, shared with ASCII "-": "18 –65" reads as 18 and -65.
+
+    A dash after a space and before a digit is in sign position, so a range
+    printed with a space on one side only is read as a negative number.
+    """
+    assert SupportingTextValidator.normalize_text("ages 18 –65") == "ages 18 neg65"
+    assert SupportingTextValidator.normalize_text("ages 18 -65") == "ages 18 neg65"
 
 
 def test_normalize_text_spellings():
@@ -104,4 +118,5 @@ def test_normalize_text_spellings():
     assert n("(z score, –1.98)") == n("(z score, -1.98)")
     assert n("from − 2.92") == n("from -2.92") == "from neg2.92"
     assert n("< ‐2.5") == n("< -2.5") == "lt neg2.5"
+    assert n("(z score, \u20121.98)") == n("(z score, -1.98)")
     assert n("Wdr26+/– mice") == n("Wdr26+/- mice") == "wdr26 pm mice"

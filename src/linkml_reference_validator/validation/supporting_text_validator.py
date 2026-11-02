@@ -62,6 +62,13 @@ def is_blank_text(value: object) -> bool:
     return isinstance(value, str) and not value.strip()
 
 
+#: Characters typesetters print for a minus sign: "-", the Unicode hyphens
+#: U+2010 and U+2011, the figure dash U+2012, the en dash, "−" (U+2212) and the
+#: small and fullwidth hyphen-minus. The em dash is left out: it is a
+#: parenthetical dash, not a minus.
+MINUS_SIGN_SPELLINGS = "-‐‑‒–−﹣－"
+
+
 class SupportingTextValidator:
     """Validate that supporting text quotes are found in references.
 
@@ -825,11 +832,15 @@ class SupportingTextValidator:
             text = text.replace(greek, spelled)
 
         text = text.lower()
+        # Collapse whitespace first, so the rules below that look one
+        # character back see a single space however the source spaced it.
+        text = re.sub(r"\s+", " ", text)
 
         # A middle dot between digits is a decimal point (the Lancet journals
         # print 57·4 for 57.4), so it is spelled as one before the decimal rule
-        # below keeps a point between digits.
-        text = re.sub(r"(?<=\d)[·∙⋅](?=\d)", ".", text)
+        # below keeps a point between digits. Only after a whole number: in a
+        # formula such as MgCl2·6H2O the dot joins a hydrate, not a decimal.
+        text = re.sub(r"(?<![^\W_])(\d+)[·∙⋅](?=\d)", r"\1.", text)
 
         # Symbols that carry meaning become words before punctuation is
         # stripped, so a quote that reverses a comparison or drops a sign
@@ -842,10 +853,8 @@ class SupportingTextValidator:
         text = text.replace("<", " lt ").replace(">", " gt ")
         # A bare "+-" before a letter is a charge then a hyphen
         # ("Ca2+-dependent"); "+/-" is plus-minus even before one ("+/-SD").
-        # A dash here is any character typesetters print for a minus sign:
-        # "-", the Unicode hyphens U+2010 and U+2011, the en dash, "−" and
-        # the small and fullwidth hyphen-minus. "+/–" is "+/-".
-        dash = "-‐‑–−﹣－"
+        # "+/–" with any minus spelling is "+/-".
+        dash = MINUS_SIGN_SPELLINGS
         text = re.sub(rf"±|\+/[{dash}]|\+[{dash}](?![^\W\d_])", " pm ", text)
         # A minus sign stays on its number, so "2.5" does not match "-2.5".
         # It is a sign only at the start, after a space, an opening bracket or

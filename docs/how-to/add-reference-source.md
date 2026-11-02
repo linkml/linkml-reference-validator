@@ -240,6 +240,10 @@ With this setup:
 - `MGNIFY:MGYS00000596` - Uses your custom MGnify source
 - `SRA:SRP123456` - Skipped (returns valid with INFO message)
 
+A source you define with the same prefix as a built-in one (such as
+`WIKIPEDIA`) takes precedence over the built-in source for that prefix. Its
+`id_patterns` are still tried only after every other built-in source.
+
 ### Finding the Right JSONPath
 
 To figure out the correct JSONPath for a new API:

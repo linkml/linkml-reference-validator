@@ -80,6 +80,9 @@ class CacheFrontmatter(BaseModel):
     local_pdf_path: str | None = None
     full_text_access_type: str | None = None
     full_text_source_item_id: str | None = None
+    source_url: str | None = None
+    source_revision: str | None = None
+    source_revision_timestamp: str | None = None
     extra_fields_captured: list[str] | None = None
     supplementary_files: list[CacheSupplementaryFile] | None = None
 

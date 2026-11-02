@@ -1674,6 +1674,9 @@ class ReferenceFetcher:
             local_pdf_path=reference.local_pdf_path or None,
             full_text_access_type=reference.full_text_access_type or None,
             full_text_source_item_id=reference.full_text_source_item_id or None,
+            source_url=reference.source_url or None,
+            source_revision=reference.source_revision or None,
+            source_revision_timestamp=reference.source_revision_timestamp or None,
             extra_fields_captured=captured,
             supplementary_files=[
                 CacheSupplementaryFile.model_validate({
@@ -2202,6 +2205,9 @@ class ReferenceFetcher:
             local_pdf_path=frontmatter.get("local_pdf_path"),
             full_text_access_type=frontmatter.get("full_text_access_type"),
             full_text_source_item_id=frontmatter.get("full_text_source_item_id"),
+            source_url=frontmatter.get("source_url"),
+            source_revision=frontmatter.get("source_revision"),
+            source_revision_timestamp=frontmatter.get("source_revision_timestamp"),
             is_preprint=frontmatter.get("is_preprint"),
             peer_review_status=frontmatter.get("peer_review_status"),
             full_text_attempted=bool(frontmatter.get("full_text_attempted", False)),

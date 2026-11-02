@@ -1,7 +1,8 @@
 """Reference source plugins.
 
 This package provides pluggable reference sources for fetching content
-from various origins (PubMed, Crossref, local files, URLs, ClinicalTrials.gov).
+from various origins (PubMed, Crossref, local files, URLs, ClinicalTrials.gov,
+Wikipedia).
 
 Custom sources can be defined via YAML configuration using JSONAPISource.
 
@@ -33,6 +34,7 @@ from linkml_reference_validator.etl.sources.entrez import (
     BioSampleSource,
 )
 from linkml_reference_validator.etl.sources.clinicaltrials import ClinicalTrialsSource
+from linkml_reference_validator.etl.sources.wikipedia import WikipediaSource
 
 # Import JSON API source for programmatic use
 from linkml_reference_validator.etl.sources.json_api import (
@@ -58,6 +60,7 @@ __all__ = [
     "BioProjectSource",
     "BioSampleSource",
     "ClinicalTrialsSource",
+    "WikipediaSource",
     "JSONAPISource",
     "register_json_api_source",
     "load_custom_sources",

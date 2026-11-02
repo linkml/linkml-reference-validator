@@ -139,6 +139,48 @@ class ReferenceSourceRegistry:
         return source_class
 
     @classmethod
+    def register_override(cls, source_class: type[ReferenceSource]) -> type[ReferenceSource]:
+        """Register a source that takes precedence over one already registered for its prefix.
+
+        The source is placed just ahead of the first registered source with the
+        same prefix (compared case-insensitively), and nowhere earlier, so any
+        bare-ID patterns it carries cannot displace the sources ahead of that
+        one. With no source for its prefix it is appended, as by ``register``.
+        This is how a project's own source definition replaces a built-in one.
+
+        Args:
+            source_class: The source class to register
+
+        Returns:
+            The source class
+
+        Examples:
+            >>> from linkml_reference_validator.etl.sources.base import (
+            ...     ReferenceSource, ReferenceSourceRegistry
+            ... )
+            >>> saved = ReferenceSourceRegistry.list_sources()
+            >>> class OwnPMID(ReferenceSource):
+            ...     @classmethod
+            ...     def prefix(cls) -> str:
+            ...         return "pmid"
+            ...     def fetch(self, identifier, config):
+            ...         return None
+            >>> _ = ReferenceSourceRegistry.register_override(OwnPMID)
+            >>> ReferenceSourceRegistry.get_source("PMID:1") is OwnPMID
+            True
+            >>> ReferenceSourceRegistry._sources = saved
+        """
+        if source_class in cls._sources:
+            return source_class
+        prefix = source_class.prefix().lower()
+        for index, existing in enumerate(cls._sources):
+            if existing.prefix().lower() == prefix:
+                cls._sources.insert(index, source_class)
+                logger.info(f"Source {source_class.prefix()} overrides the built-in source")
+                return source_class
+        return cls.register(source_class)
+
+    @classmethod
     def get_source(cls, reference_id: str) -> Optional[type[ReferenceSource]]:
         """Find a source that can handle the given reference ID.
 

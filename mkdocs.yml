@@ -39,6 +39,7 @@ nav:
       - Validating Clinical Trials: how-to/validate-clinical-trials.md
       - Validating DOIs: how-to/validate-dois.md
       - Validating URLs: how-to/validate-urls.md
+      - Validating Wikipedia Articles: how-to/validate-wikipedia.md
       - Validating Reference Titles: how-to/validate-titles.md
       - Using Local Files and URLs: how-to/use-local-files-and-urls.md
       - Fetching Full Text and PDFs: how-to/fetch-full-text-and-pdfs.md

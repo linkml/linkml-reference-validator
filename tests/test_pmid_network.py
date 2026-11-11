@@ -30,6 +30,19 @@ SUMMARY = b"""<?xml version="1.0"?>
 <Item Name="AuthorList" Type="List"><Item Name="Author" Type="String">Smith J</Item></Item>
 </DocSum></eSummaryResult>"""
 ARTICLE = b"<PubmedArticleSet><PubmedArticle><Abstract><AbstractText>The patient recovered.</AbstractText></Abstract></PubmedArticle></PubmedArticleSet>"
+# A whole Bookshelf book, shaped like PMID:23304742 (AHRQ CER 86): the summary
+# Title is empty, and the article XML names the book in Book/BookTitle.
+BOOK_SUMMARY = b"""<?xml version="1.0"?>
+<!DOCTYPE eSummaryResult PUBLIC "-//NLM//DTD esummary v1 20041029//EN" "https://eutils.ncbi.nlm.nih.gov/eutils/dtd/20041029/esummary-v1.dtd">
+<eSummaryResult><DocSum><Id>123</Id><Item Name="Title" Type="String"></Item>
+<Item Name="AuthorList" Type="List"><Item Name="Author" Type="String">Wilt TJ</Item></Item>
+</DocSum></eSummaryResult>"""
+BOOK_ARTICLE = b"""<PubmedArticleSet><PubmedBookArticle><BookDocument>
+<ArticleIdList><ArticleId IdType="bookaccession">NBK115385</ArticleId></ArticleIdList>
+<Book><BookTitle book="cer86">Treatment for Restless Legs Syndrome</BookTitle></Book>
+<Abstract><AbstractText>Dopamine agonists improved symptoms.</AbstractText></Abstract>
+<Sections><Section><SectionTitle book="cer86" part="results">Results</SectionTitle></Section></Sections>
+</BookDocument></PubmedBookArticle></PubmedArticleSet>"""
 
 
 @pytest.fixture
@@ -64,6 +77,8 @@ def ncbi(monkeypatch):
                 self.send_error(action)
                 return
             payload = SUMMARY if endpoint == "esummary.fcgi" else ARTICLE
+            if action == "book":
+                payload = BOOK_SUMMARY if endpoint == "esummary.fcgi" else BOOK_ARTICLE
             if action == "empty":
                 payload = b""
             if action == "invalid":
@@ -263,6 +278,17 @@ def test_complete_record_without_abstract_remains_unavailable(ncbi, config):
     assert ref.content_type == "unavailable"
     assert ref.content is None
     assert counts["efetch.fcgi"] == 1
+
+
+def test_whole_book_record_takes_its_title_from_book_title(ncbi, config):
+    """A whole-book record's empty summary Title falls back to its BookTitle."""
+    failures, _, _, _ = ncbi
+    failures["esummary.fcgi"] = ["book"]
+    failures["efetch.fcgi"] = ["book"]
+    ref = PMIDSource().fetch("123", config)
+    assert ref is not None
+    assert ref.title == "Treatment for Restless Legs Syndrome"
+    assert ref.content == "Dopamine agonists improved symptoms."
 
 
 @pytest.mark.parametrize("endpoint", ["esummary.fcgi", "efetch.fcgi"])

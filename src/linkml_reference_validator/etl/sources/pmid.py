@@ -203,6 +203,10 @@ class PMIDSource(ReferenceSource):
             # A failed refresh must not overwrite useful cached text with just
             # summary metadata. None also enables ReferenceFetcher's stale fallback.
             return None
+        if not title.strip() and article_xml:
+            # A whole-book record (an AHRQ evidence report, say) has an empty
+            # summary Title; its title is the BookDocument's BookTitle.
+            title = self._parse_book_title(article_xml) or ""
         abstract = self._parse_abstract(article_xml) if article_xml else None
         keywords = self._parse_mesh_terms(article_xml) if article_xml else None
         publication_types = (
@@ -486,6 +490,44 @@ class PMIDSource(ReferenceSource):
         # it. BeautifulSoup honours the declaration for bytes and fixes it up
         # for str.
         return BeautifulSoup(xml_content, "xml")
+
+    @staticmethod
+    def _parse_book_title(soup: BeautifulSoup) -> Optional[str]:
+        """Return the title of a Bookshelf record from its PubMed XML.
+
+        PubMed's summary leaves ``Title`` empty for a record that is a whole
+        book rather than a chapter. The article XML still names it: a chapter
+        by its ``ArticleTitle``, a whole book by ``Book/BookTitle``.
+
+        Args:
+            soup: Parsed PubMed article XML
+
+        Returns:
+            The record's title, or None if this is not a Bookshelf record
+
+        Examples:
+            >>> from bs4 import BeautifulSoup
+            >>> xml = '''<PubmedBookArticle><BookDocument>
+            ...   <Book><BookTitle book="cer86">Treatment for Restless Legs Syndrome</BookTitle></Book>
+            ... </BookDocument></PubmedBookArticle>'''
+            >>> PMIDSource._parse_book_title(BeautifulSoup(xml, "xml"))
+            'Treatment for Restless Legs Syndrome'
+            >>> xml = '''<PubmedBookArticle><BookDocument>
+            ...   <Book><BookTitle book="gene">GeneReviews</BookTitle></Book>
+            ...   <ArticleTitle book="gene" part="men1">Multiple Endocrine Neoplasia Type 1</ArticleTitle>
+            ... </BookDocument></PubmedBookArticle>'''
+            >>> PMIDSource._parse_book_title(BeautifulSoup(xml, "xml"))
+            'Multiple Endocrine Neoplasia Type 1'
+            >>> PMIDSource._parse_book_title(BeautifulSoup("<PubmedArticle/>", "xml")) is None
+            True
+        """
+        document = soup.find("BookDocument")
+        if document is None:
+            return None
+        for element in (document.find("ArticleTitle"), document.find("BookTitle")):
+            if element is not None and element.get_text().strip():
+                return element.get_text().strip()
+        return None
 
     @staticmethod
     def _parse_bookshelf_chapter(soup: BeautifulSoup) -> Optional[tuple[str, str]]:

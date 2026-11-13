@@ -11,6 +11,7 @@ Examples:
     True
 """
 
+import html
 import logging
 import re
 import time
@@ -41,6 +42,27 @@ _JATS_ABSTRACT_BLOCKS = frozenset(
         "title", "p", "sec", "list", "list-item", "label", "caption", "def-item",
         "disp-quote", "div", "br",
     }
+)
+
+
+# Inline formatting tags that Crossref and DataCite leave in titles: HTML
+# (``<i>``, ``<sub>``...), JATS without a prefix (``<italic>``, ``<sc>``...) and
+# any namespaced tag (``<jats:italic>``, ``<mml:mi>``). Only these are stripped,
+# so a bare comparison such as ``x<y`` or a title about ``<canvas>`` survives.
+# Attributes must be ``name="value"`` pairs, so ``A<B and C>D`` is not a tag.
+_INLINE_TAG_NAMES = (
+    "i|b|u|em|strong|sub|sup|sc|scp|small|span|tt|code|br|"
+    "italic|bold|underline|monospace|inline-formula|styled-content"
+)
+_INLINE_TAG = re.compile(
+    r"</?(?:[A-Za-z][\w.-]*:[A-Za-z][\w.-]*|(?:" + _INLINE_TAG_NAMES + r"))"
+    r"""(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*/?>"""
+)
+# The whitespace Crossref leaves between a closing tag and the punctuation
+# after it (``</b>\n :``). Spacing away from a tag is left as written.
+_SPACE_AFTER_CLOSING_TAG = re.compile(
+    r"(</(?:[A-Za-z][\w.-]*:[A-Za-z][\w.-]*|(?:" + _INLINE_TAG_NAMES + r"))\s*>)"
+    r"\s+(?=[:;,.!?])"
 )
 
 
@@ -129,7 +151,7 @@ class DOISource(ReferenceSource):
             return None
 
         title_list = message.get("title", [])
-        title = title_list[0] if title_list else ""
+        title = self._clean_title(title_list[0] if title_list else "")
 
         authors = self._parse_crossref_authors(message.get("author", []))
 
@@ -234,7 +256,7 @@ class DOISource(ReferenceSource):
 
         # Extract title
         titles = attributes.get("titles", [])
-        title = titles[0].get("title", "") if titles else ""
+        title = self._clean_title(titles[0].get("title", "") if titles else "")
 
         # Extract authors
         authors = self._parse_datacite_creators(attributes.get("creators", []))
@@ -522,6 +544,71 @@ class DOISource(ReferenceSource):
             if date_parts and date_parts[0]:
                 return str(date_parts[0][0])
         return ""
+
+    def _clean_title(self, title: str) -> str:
+        """Reduce a Crossref or DataCite title to plain, single-spaced text.
+
+        Crossref keeps inline HTML/JATS markup (``<i>``, ``<b>``, ``<sub>``,
+        ``<scp>``, ``<jats:italic>``...) in some titles and wraps them across
+        lines with indentation. Left in, the tag names survive
+        ``normalize_text`` as stray words, so a correct curated title fails
+        ``validate_title``, and the wrapping shows up as a spurious cache diff.
+
+        Only known inline formatting tags are stripped (``<br>`` becomes a
+        space), then entities are unescaped. This repeats, up to three times,
+        so escaped and double-escaped markup (``&lt;i&gt;``,
+        ``&amp;lt;i&amp;gt;``) goes too. Anything else that looks like a tag
+        stays as text: a bare ``x<y`` is not markup, and a title about the
+        ``<canvas>`` element keeps it. Known trade-off: a title about one of
+        the stripped tags themselves (e.g. ``<i>``) loses that tag name.
+
+        Whitespace is collapsed, and the space a closing tag leaves before
+        punctuation is removed. Spacing away from any tag, such as French
+        ``Titre : sous-titre``, is kept as written.
+
+        Args:
+            title: Title as returned by Crossref or DataCite
+
+        Returns:
+            Plain-text title
+
+        Examples:
+            >>> source = DOISource()
+            >>> source._clean_title(
+            ...     "Novel variants in\\n                    <i>COL2A1</i>\\n"
+            ...     "                    causing rare spondyloepiphyseal dysplasia congenita")
+            'Novel variants in COL2A1 causing rare spondyloepiphyseal dysplasia congenita'
+            >>> source._clean_title(
+            ...     "<b>httk</b>\\n                    :\\n                    <i>R</i>\\n"
+            ...     "                    Package for High-Throughput Toxicokinetics")
+            'httk: R Package for High-Throughput Toxicokinetics'
+            >>> source._clean_title("<i>BRCA1, BRCA2</i>\\n , and PALB2")
+            'BRCA1, BRCA2, and PALB2'
+            >>> source._clean_title("Uptake of H<sub>2</sub>O")
+            'Uptake of H2O'
+            >>> source._clean_title("&amp;lt;i&amp;gt;R&amp;lt;/i&amp;gt; Package")
+            'R Package'
+            >>> source._clean_title("Proof that x<y holds when p &lt; 0.05")
+            'Proof that x<y holds when p < 0.05'
+            >>> source._clean_title("The &lt;canvas&gt; element")
+            'The <canvas> element'
+            >>> source._clean_title("Titre : sous-titre")
+            'Titre : sous-titre'
+            >>> source._clean_title("")
+            ''
+        """
+        text = title
+        for _ in range(3):
+            stripped = _SPACE_AFTER_CLOSING_TAG.sub(r"\1", text)
+            stripped = _INLINE_TAG.sub(
+                lambda m: " " if m.group(0).lstrip("</").startswith("br") else "",
+                stripped,
+            )
+            unescaped = html.unescape(stripped)
+            if unescaped == text:
+                break
+            text = unescaped
+        return " ".join(text.split())
 
     def _clean_abstract(self, abstract: str) -> str:
         """Clean JATS/XML markup from abstract text.

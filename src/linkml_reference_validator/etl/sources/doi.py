@@ -129,7 +129,7 @@ class DOISource(ReferenceSource):
             return None
 
         title_list = message.get("title", [])
-        title = title_list[0] if title_list else ""
+        title = self._clean_title(title_list[0] if title_list else "")
 
         authors = self._parse_crossref_authors(message.get("author", []))
 
@@ -234,7 +234,7 @@ class DOISource(ReferenceSource):
 
         # Extract title
         titles = attributes.get("titles", [])
-        title = titles[0].get("title", "") if titles else ""
+        title = self._clean_title(titles[0].get("title", "") if titles else "")
 
         # Extract authors
         authors = self._parse_datacite_creators(attributes.get("creators", []))
@@ -522,6 +522,32 @@ class DOISource(ReferenceSource):
             if date_parts and date_parts[0]:
                 return str(date_parts[0][0])
         return ""
+
+    def _clean_title(self, title: str) -> str:
+        """Collapse runs of whitespace in a title to single spaces.
+
+        Crossref wraps some titles that carry inline markup across lines with
+        indentation, so the raw string differs from the single-spaced title
+        earlier cache files held. Inline tags such as ``<i>`` are kept.
+
+        Args:
+            title: Title as returned by Crossref or DataCite
+
+        Returns:
+            Title with whitespace collapsed and ends trimmed
+
+        Examples:
+            >>> source = DOISource()
+            >>> source._clean_title(
+            ...     "Novel variants in\\n                    <i>COL2A1</i>\\n"
+            ...     "                    causing rare spondyloepiphyseal dysplasia congenita")
+            'Novel variants in <i>COL2A1</i> causing rare spondyloepiphyseal dysplasia congenita'
+            >>> source._clean_title("<i>BRCA1, BRCA2</i>\\n , and PALB2")
+            '<i>BRCA1, BRCA2</i> , and PALB2'
+            >>> source._clean_title("")
+            ''
+        """
+        return " ".join(title.split())
 
     def _clean_abstract(self, abstract: str) -> str:
         """Clean JATS/XML markup from abstract text.

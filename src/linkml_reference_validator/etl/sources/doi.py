@@ -11,6 +11,7 @@ Examples:
     True
 """
 
+import html
 import logging
 import re
 import time
@@ -44,9 +45,25 @@ _JATS_ABSTRACT_BLOCKS = frozenset(
 )
 
 
-# An HTML/JATS tag, either literal or entity-escaped, as left in a title after
-# one round of parsing. Used by DOISource._clean_title.
-_TAG_SHAPE = re.compile(r"(?:<|&lt;)/?[A-Za-z][\w:.-]*\s*/?(?:>|&gt;)")
+# Inline formatting tags that Crossref and DataCite leave in titles: HTML
+# (``<i>``, ``<sub>``...), JATS without a prefix (``<italic>``, ``<sc>``...) and
+# any namespaced tag (``<jats:italic>``, ``<mml:mi>``). Only these are stripped,
+# so a bare comparison such as ``x<y`` or a title about ``<canvas>`` survives.
+# Attributes must be ``name="value"`` pairs, so ``A<B and C>D`` is not a tag.
+_INLINE_TAG_NAMES = (
+    "i|b|u|em|strong|sub|sup|sc|scp|small|span|tt|code|br|"
+    "italic|bold|underline|monospace|inline-formula|styled-content"
+)
+_INLINE_TAG = re.compile(
+    r"</?(?:[A-Za-z][\w.-]*:[A-Za-z][\w.-]*|(?:" + _INLINE_TAG_NAMES + r"))"
+    r"""(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*/?>"""
+)
+# The whitespace Crossref leaves between a closing tag and the punctuation
+# after it (``</b>\n :``). Spacing away from a tag is left as written.
+_SPACE_AFTER_CLOSING_TAG = re.compile(
+    r"(</(?:[A-Za-z][\w.-]*:[A-Za-z][\w.-]*|(?:" + _INLINE_TAG_NAMES + r"))\s*>)"
+    r"\s+(?=[:;,.!?])"
+)
 
 
 @ReferenceSourceRegistry.register
@@ -537,12 +554,17 @@ class DOISource(ReferenceSource):
         ``normalize_text`` as stray words, so a correct curated title fails
         ``validate_title``, and the wrapping shows up as a spurious cache diff.
 
-        Tags are stripped and entities unescaped. Markup that arrives escaped
-        (``&lt;i&gt;``, or double-escaped ``&amp;lt;i&amp;gt;``) is stripped
-        too, while a lone ``&lt;`` in the text is kept as ``<``. Whitespace is
-        collapsed, and the space a closing tag leaves before ``:``, ``;`` or
-        ``,`` is removed. ``.``, ``?`` and ``!`` are left alone, since a space
-        before them can be intended (``by .5``, French ``Pourquoi ?``).
+        Only known inline formatting tags are stripped (``<br>`` becomes a
+        space), then entities are unescaped. This repeats, up to three times,
+        so escaped and double-escaped markup (``&lt;i&gt;``,
+        ``&amp;lt;i&amp;gt;``) goes too. Anything else that looks like a tag
+        stays as text: a bare ``x<y`` is not markup, and a title about the
+        ``<canvas>`` element keeps it. Known trade-off: a title about one of
+        the stripped tags themselves (e.g. ``<i>``) loses that tag name.
+
+        Whitespace is collapsed, and the space a closing tag leaves before
+        punctuation is removed. Spacing away from any tag, such as French
+        ``Titre : sous-titre``, is kept as written.
 
         Args:
             title: Title as returned by Crossref or DataCite
@@ -566,21 +588,27 @@ class DOISource(ReferenceSource):
             'Uptake of H2O'
             >>> source._clean_title("&amp;lt;i&amp;gt;R&amp;lt;/i&amp;gt; Package")
             'R Package'
-            >>> source._clean_title("Mortality when p &lt; 0.05")
-            'Mortality when p < 0.05'
+            >>> source._clean_title("Proof that x<y holds when p &lt; 0.05")
+            'Proof that x<y holds when p < 0.05'
+            >>> source._clean_title("The &lt;canvas&gt; element")
+            'The <canvas> element'
+            >>> source._clean_title("Titre : sous-titre")
+            'Titre : sous-titre'
             >>> source._clean_title("")
             ''
         """
         text = title
-        # Each parse strips one level: literal tags go, and escaped tags
-        # decode to literal ones for the next pass. Three passes cover
-        # double-escaped markup; stop early once no tag shape is left.
         for _ in range(3):
-            text = BeautifulSoup(text, "html.parser").get_text()
-            if not _TAG_SHAPE.search(text):
+            stripped = _SPACE_AFTER_CLOSING_TAG.sub(r"\1", text)
+            stripped = _INLINE_TAG.sub(
+                lambda m: " " if m.group(0).lstrip("</").startswith("br") else "",
+                stripped,
+            )
+            unescaped = html.unescape(stripped)
+            if unescaped == text:
                 break
-        text = " ".join(text.split())
-        return re.sub(r"\s+([:;,])", r"\1", text)
+            text = unescaped
+        return " ".join(text.split())
 
     def _clean_abstract(self, abstract: str) -> str:
         """Clean JATS/XML markup from abstract text.

@@ -66,6 +66,8 @@ def test_crossref_title_is_cached_and_reloaded_single_spaced(mock_get, config):
     fetcher = ReferenceFetcher(config)
     fetcher._save_to_disk(result)
     cache_text = fetcher.get_cache_path("DOI:10.1002/mgg3.1139").read_text()
+    # The frontmatter carries no escaped newline; the reload check below also
+    # catches a YAML folded scalar.
     assert "\\n" not in cache_text.split("---")[1]
     reloaded = fetcher._load_from_disk("DOI:10.1002/mgg3.1139")
     assert reloaded is not None
@@ -120,11 +122,24 @@ def _crossref(title):
             "<jats:italic>BRCA1, BRCA2</jats:italic>\n , and PALB2 &amp; more",
             "BRCA1, BRCA2, and PALB2 & more",
         ),
-        ("<scp>MRI</scp> findings ; a review", "MRI findings; a review"),
+        ("<scp>MRI</scp>\n ; a review", "MRI; a review"),
+        # Spacing not next to a tag is the title's own and is kept.
+        ("<scp>MRI</scp> findings ; a review", "MRI findings ; a review"),
         # Double-escaped markup, as some Crossref records carry it.
         ("&amp;lt;i&amp;gt;R&amp;lt;/i&amp;gt; Package", "R Package"),
         # A literal "<" in the text is not markup and survives.
         ("Mortality when p &lt; 0.05", "Mortality when p < 0.05"),
+        # A bare "<" before a letter must not swallow the rest (PR #169 review).
+        ("Proof that x<y holds", "Proof that x<y holds"),
+        ("Sets A<B and C>D", "Sets A<B and C>D"),
+        # A title about a tag keeps the tag name.
+        ("The &lt;canvas&gt; element in HTML5", "The <canvas> element in HTML5"),
+        ("The <code>&lt;video&gt;</code> tag", "The <video> tag"),
+        # French spacing away from any tag is left as written.
+        ("Titre : sous-titre ; essai", "Titre : sous-titre ; essai"),
+        ("Title<br/>Subtitle", "Title Subtitle"),
+        ("PALB2 &amp;amp; more", "PALB2 & more"),
+        ("<mml:math><mml:mi>x</mml:mi></mml:math>-ray study", "x-ray study"),
     ],
 )
 @patch("linkml_reference_validator.etl.sources.utils.requests.get")

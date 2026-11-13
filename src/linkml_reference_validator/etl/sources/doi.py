@@ -44,6 +44,11 @@ _JATS_ABSTRACT_BLOCKS = frozenset(
 )
 
 
+# An HTML/JATS tag, either literal or entity-escaped, as left in a title after
+# one round of parsing. Used by DOISource._clean_title.
+_TAG_SHAPE = re.compile(r"(?:<|&lt;)/?[A-Za-z][\w:.-]*\s*/?(?:>|&gt;)")
+
+
 @ReferenceSourceRegistry.register
 class DOISource(ReferenceSource):
     """Fetch references from Crossref using DOI, with DataCite fallback.
@@ -524,30 +529,58 @@ class DOISource(ReferenceSource):
         return ""
 
     def _clean_title(self, title: str) -> str:
-        """Collapse runs of whitespace in a title to single spaces.
+        """Reduce a Crossref or DataCite title to plain, single-spaced text.
 
-        Crossref wraps some titles that carry inline markup across lines with
-        indentation, so the raw string differs from the single-spaced title
-        earlier cache files held. Inline tags such as ``<i>`` are kept.
+        Crossref keeps inline HTML/JATS markup (``<i>``, ``<b>``, ``<sub>``,
+        ``<scp>``, ``<jats:italic>``...) in some titles and wraps them across
+        lines with indentation. Left in, the tag names survive
+        ``normalize_text`` as stray words, so a correct curated title fails
+        ``validate_title``, and the wrapping shows up as a spurious cache diff.
+
+        Tags are stripped and entities unescaped. Markup that arrives escaped
+        (``&lt;i&gt;``, or double-escaped ``&amp;lt;i&amp;gt;``) is stripped
+        too, while a lone ``&lt;`` in the text is kept as ``<``. Whitespace is
+        collapsed, and the space a closing tag leaves before ``:``, ``;`` or
+        ``,`` is removed. ``.``, ``?`` and ``!`` are left alone, since a space
+        before them can be intended (``by .5``, French ``Pourquoi ?``).
 
         Args:
             title: Title as returned by Crossref or DataCite
 
         Returns:
-            Title with whitespace collapsed and ends trimmed
+            Plain-text title
 
         Examples:
             >>> source = DOISource()
             >>> source._clean_title(
             ...     "Novel variants in\\n                    <i>COL2A1</i>\\n"
             ...     "                    causing rare spondyloepiphyseal dysplasia congenita")
-            'Novel variants in <i>COL2A1</i> causing rare spondyloepiphyseal dysplasia congenita'
+            'Novel variants in COL2A1 causing rare spondyloepiphyseal dysplasia congenita'
+            >>> source._clean_title(
+            ...     "<b>httk</b>\\n                    :\\n                    <i>R</i>\\n"
+            ...     "                    Package for High-Throughput Toxicokinetics")
+            'httk: R Package for High-Throughput Toxicokinetics'
             >>> source._clean_title("<i>BRCA1, BRCA2</i>\\n , and PALB2")
-            '<i>BRCA1, BRCA2</i> , and PALB2'
+            'BRCA1, BRCA2, and PALB2'
+            >>> source._clean_title("Uptake of H<sub>2</sub>O")
+            'Uptake of H2O'
+            >>> source._clean_title("&amp;lt;i&amp;gt;R&amp;lt;/i&amp;gt; Package")
+            'R Package'
+            >>> source._clean_title("Mortality when p &lt; 0.05")
+            'Mortality when p < 0.05'
             >>> source._clean_title("")
             ''
         """
-        return " ".join(title.split())
+        text = title
+        # Each parse strips one level: literal tags go, and escaped tags
+        # decode to literal ones for the next pass. Three passes cover
+        # double-escaped markup; stop early once no tag shape is left.
+        for _ in range(3):
+            text = BeautifulSoup(text, "html.parser").get_text()
+            if not _TAG_SHAPE.search(text):
+                break
+        text = " ".join(text.split())
+        return re.sub(r"\s+([:;,])", r"\1", text)
 
     def _clean_abstract(self, abstract: str) -> str:
         """Clean JATS/XML markup from abstract text.

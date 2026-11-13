@@ -1,9 +1,9 @@
-"""DOI titles are cached single-spaced even when the registry returns them wrapped.
+"""DOI titles are cached as plain, single-spaced text.
 
 Crossref returns some titles with literal newlines and indentation around inline
-markup (issue #166), e.g. ``10.1002/mgg3.1139``. The cached title must match the
-single-spaced form earlier cache files held, or a forced re-fetch shows a title
-change that isn't one.
+markup (issue #166), e.g. ``10.1002/mgg3.1139``, and keeps the HTML/JATS tags
+themselves in the title (issue #168), e.g. ``10.18637/jss.v079.i04``. Both made a
+correct curated title fail ``validate_title`` or show a spurious cache diff.
 """
 
 from unittest.mock import MagicMock, patch
@@ -13,12 +13,15 @@ import pytest
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.etl.sources.doi import DOISource
 from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml_reference_validator.validation.supporting_text_validator import (
+    SupportingTextValidator,
+)
 
 WRAPPED = (
     "Novel variants in\n                    <i>COL2A1</i>\n"
     "                    causing rare spondyloepiphyseal dysplasia congenita"
 )
-CLEAN = "Novel variants in <i>COL2A1</i> causing rare spondyloepiphyseal dysplasia congenita"
+CLEAN = "Novel variants in COL2A1 causing rare spondyloepiphyseal dysplasia congenita"
 
 
 @pytest.fixture
@@ -26,6 +29,13 @@ def config(tmp_path):
     return ReferenceValidationConfig(
         cache_dir=tmp_path / "cache", rate_limit_delay=0.0, email="me@example.org"
     )
+
+
+HTTK_RAW = (
+    "<b>httk</b>\n                    :\n                    <i>R</i>\n"
+    "                    Package for High-Throughput Toxicokinetics"
+)
+HTTK = "httk: R Package for High-Throughput Toxicokinetics"
 
 
 def _response(payload):
@@ -85,3 +95,55 @@ def test_datacite_title_is_single_spaced(mock_get, config):
     result = DOISource().fetch("10.5281/zenodo.1234567", config)
     assert result is not None
     assert result.title == "A dataset of things"
+
+
+def _crossref(title):
+    return _response(
+        {
+            "status": "ok",
+            "message": {
+                "type": "journal-article",
+                "title": [title],
+                "container-title": ["J Stat Softw"],
+                "published-print": {"date-parts": [[2017]]},
+            },
+        }
+    )
+
+
+@pytest.mark.parametrize(
+    "raw, expected",
+    [
+        (HTTK_RAW, HTTK),
+        ("Uptake of H<sub>2</sub>O and CO<sup>2+</sup>", "Uptake of H2O and CO2+"),
+        (
+            "<jats:italic>BRCA1, BRCA2</jats:italic>\n , and PALB2 &amp; more",
+            "BRCA1, BRCA2, and PALB2 & more",
+        ),
+        ("<scp>MRI</scp> findings ; a review", "MRI findings; a review"),
+        # Double-escaped markup, as some Crossref records carry it.
+        ("&amp;lt;i&amp;gt;R&amp;lt;/i&amp;gt; Package", "R Package"),
+        # A literal "<" in the text is not markup and survives.
+        ("Mortality when p &lt; 0.05", "Mortality when p < 0.05"),
+    ],
+)
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
+def test_crossref_title_markup_is_stripped(mock_get, config, raw, expected):
+    mock_get.return_value = _crossref(raw)
+    result = DOISource().fetch("10.18637/jss.v079.i04", config)
+    assert result is not None
+    assert result.title == expected
+
+
+@patch("linkml_reference_validator.etl.sources.utils.requests.get")
+def test_published_title_validates_against_cached_crossref_title(mock_get, config):
+    """The published httk title matches what a fresh fetch caches (#168)."""
+    mock_get.return_value = _crossref(HTTK_RAW)
+    result = DOISource().fetch("10.18637/jss.v079.i04", config)
+    assert result is not None
+
+    validator = SupportingTextValidator(config)
+    validator.fetcher._save_to_disk(result)
+
+    outcome = validator.validate_title("DOI:10.18637/jss.v079.i04", HTTK)
+    assert outcome.is_valid, outcome.message

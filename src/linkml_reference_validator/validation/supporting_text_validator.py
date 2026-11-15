@@ -3,8 +3,17 @@
 import logging
 import re
 from functools import lru_cache
-from typing import Optional
+from pathlib import Path
+from typing import Any, Optional
 
+from ruamel.yaml import YAML  # type: ignore
+from ruamel.yaml.error import YAMLError  # type: ignore
+
+from linkml_reference_validator.cache import (
+    _same_reference_id,
+    cache_filename,
+    disambiguated_cache_filename,
+)
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.matching import (
     FIGURE_CONTENT_TYPES,
@@ -113,6 +122,15 @@ class SupportingTextValidator:
         self._literal_bracket_regexes = [
             re.compile(pattern) for pattern in config.literal_bracket_patterns
         ]
+        # Track distinct excerpts quoted per normalized reference ID so cumulative
+        # fair-use caps (max_total_chars_per_reference and max_reference_fraction)
+        # can be enforced across a validation run.
+        self._quoted_by_reference: dict[str, dict[str, int]] = {}
+        self._signed_excerpts_cache: dict[str, Optional[dict[str, Any]]] = {}
+
+    def reset_fair_use_tracking(self) -> None:
+        """Reset cumulative per-reference excerpt character counts."""
+        self._quoted_by_reference.clear()
 
     def validate_title(
         self,
@@ -264,8 +282,10 @@ class SupportingTextValidator:
             )
 
         reference = self.fetcher.fetch(reference_id)
+        signed_record = self._load_signed_excerpts(reference_id)
+        signed_match = self._match_signed_excerpt(supporting_text, signed_record)
 
-        if not reference:
+        if not reference and not signed_match:
             return ValidationResult(
                 is_valid=False,
                 reference_id=reference_id,
@@ -276,7 +296,7 @@ class SupportingTextValidator:
                 path=path,
             )
 
-        if not reference.content:
+        if (not reference or not reference.content) and not signed_match:
             return ValidationResult(
                 is_valid=False,
                 reference_id=reference_id,
@@ -290,35 +310,61 @@ class SupportingTextValidator:
         # Validate title if provided
         title_valid = True
         title_message = ""
+        actual_title = (reference.title if reference and reference.title else None) or (
+            str(signed_record["title"])
+            if signed_record and isinstance(signed_record.get("title"), str) and signed_record.get("title")
+            else None
+        )
         # The message and title_checked report this, so they agree with it (#130).
-        title_compared = bool(expected_title and reference.title)
-        if expected_title and reference.title:  # spelled out for type narrowing
-            if self.normalize_text(expected_title) != self.normalize_text(reference.title):
+        title_compared = bool(expected_title and actual_title)
+        if expected_title and actual_title:  # spelled out for type narrowing
+            if self.normalize_text(expected_title) != self.normalize_text(actual_title):
                 title_valid = False
                 title_message = (
                     f"Title mismatch: expected '{expected_title}' "
-                    f"but got '{reference.title}'"
+                    f"but got '{actual_title}'"
                 )
 
-        match = self.find_text_in_reference(supporting_text, reference)
+        if reference and reference.content:
+            match = self.find_text_in_reference(supporting_text, reference)
+            if not match.found and signed_match is not None:
+                match = signed_match
+        elif signed_match is not None:
+            match = signed_match
+        else:
+            match = SupportingTextMatch(
+                found=False,
+                error_message="Reference has no content",
+            )
 
-        is_valid = match.found and title_valid
+        fair_use_problem: Optional[str] = None
+        if match.found and title_valid:
+            fair_use_problem = self._check_and_record_reference_budget(
+                supporting_text, reference_id, reference, signed_record
+            )
+
+        is_valid = match.found and title_valid and fair_use_problem is None
 
         if not is_valid:
             if not title_valid:
                 message = title_message
+            elif fair_use_problem:
+                message = fair_use_problem
             elif match.error_message:
                 message = match.error_message
             else:
                 message = f"Supporting text not found in reference {reference_id}"
             # Add context when validation fails and only abstract was available
-            if not match.found and reference.content_type == "abstract_only":
+            if not match.found and reference and reference.content_type == "abstract_only":
                 message += (
                     f" (note: only abstract available for {reference_id}, "
                     "full text may contain this excerpt)"
                 )
         else:
-            message = f"Supporting text validated successfully in {reference_id}"
+            if match.match_location == "signed_excerpts":
+                message = f"Supporting text verified via signed excerpt in {reference_id}"
+            else:
+                message = f"Supporting text validated successfully in {reference_id}"
             # Claim a title check only when one was made (#130).
             if title_compared:
                 message += ", title validated"
@@ -496,6 +542,14 @@ class SupportingTextValidator:
             >>> validator = SupportingTextValidator(strict)
             >>> "too short" in validator.check_excerpt_content("the gene")
             True
+            >>> fair_use = ReferenceValidationConfig(max_excerpt_length=25, max_excerpt_part_length=15)
+            >>> validator = SupportingTextValidator(fair_use)
+            >>> validator.check_excerpt_content("Protein X ... binds Y") is None
+            True
+            >>> "contiguous part" in validator.check_excerpt_content("Protein X binds directly to Y")
+            True
+            >>> "too long" in validator.check_excerpt_content("Protein X binds ... directly to Y ... in the nucleus")
+            True
         """
         if is_blank_text(supporting_text):
             return EMPTY_SUPPORTING_TEXT_MESSAGE
@@ -507,16 +561,163 @@ class SupportingTextValidator:
         if length == 0:
             return NO_QUOTED_TEXT_MESSAGE
 
-        if self.config.min_excerpt_length <= 0:
-            return None
-
-        if length < self.config.min_excerpt_length:
+        if self.config.min_excerpt_length > 0 and length < self.config.min_excerpt_length:
             return (
                 f"Supporting text is too short: {length} non-whitespace "
                 f"characters of quoted text, minimum is "
                 f"{self.config.min_excerpt_length} (min_excerpt_length)"
             )
 
+        if self.config.max_excerpt_part_length > 0:
+            for part in self._split_query(supporting_text):
+                part_len = len(re.sub(r"\s", "", part))
+                if part_len > self.config.max_excerpt_part_length:
+                    return (
+                        f"Supporting text contiguous part is too long for fair use: "
+                        f"{part_len} non-whitespace characters in '{part[:40]}...', "
+                        f"maximum per part is {self.config.max_excerpt_part_length} "
+                        f"(max_excerpt_part_length; use '...' to omit non-essential words)"
+                    )
+
+        if self.config.max_excerpt_length > 0 and length > self.config.max_excerpt_length:
+            return (
+                f"Supporting text is too long for fair use: {length} non-whitespace "
+                f"characters of quoted text, maximum is "
+                f"{self.config.max_excerpt_length} (max_excerpt_length)"
+            )
+
+        return None
+
+    def _load_signed_excerpts(self, reference_id: str) -> Optional[dict[str, Any]]:
+        """Load the signed excerpts YAML file for ``reference_id`` if configured and present."""
+        if not self.config.signed_excerpts_dir:
+            return None
+        normalized_id = self.fetcher.normalize_reference_id(reference_id)
+        if normalized_id in self._signed_excerpts_cache:
+            return self._signed_excerpts_cache[normalized_id]
+
+        signed_dir = Path(self.config.signed_excerpts_dir)
+        if not signed_dir.is_dir():
+            self._signed_excerpts_cache[normalized_id] = None
+            return None
+
+        stem = Path(cache_filename(normalized_id)).stem
+        disambig_stem = Path(disambiguated_cache_filename(normalized_id)).stem
+        candidates = [
+            signed_dir / f"{stem}.yaml",
+            signed_dir / f"{stem}.yml",
+            signed_dir / f"{disambig_stem}.yaml",
+            signed_dir / f"{disambig_stem}.yml",
+        ]
+        yaml = YAML(typ="safe")
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            try:
+                data = yaml.load(candidate.read_text(encoding="utf-8"))
+            except (OSError, YAMLError, UnicodeError):
+                continue
+            if isinstance(data, dict):
+                stored_id = data.get("reference_id")
+                if stored_id is None or _same_reference_id(
+                    self.fetcher.normalize_reference_id(str(stored_id)), normalized_id
+                ):
+                    self._signed_excerpts_cache[normalized_id] = data
+                    return data
+
+        self._signed_excerpts_cache[normalized_id] = None
+        return None
+
+    @staticmethod
+    def _collapse_whitespace(text: str) -> str:
+        """Collapse whitespace runs to single spaces and strip ends."""
+        return re.sub(r"\s+", " ", text).strip()
+
+    def _match_signed_excerpt(
+        self, supporting_text: str, signed_record: Optional[dict[str, Any]]
+    ) -> Optional[SupportingTextMatch]:
+        """Return a match if ``supporting_text`` exact-matches an entry in ``signed_record``.
+
+        Exact match (after folding whitespace runs) is required so any deviation
+        from the verified excerpt in the private store is flagged.
+        """
+        if not signed_record:
+            return None
+        excerpts = signed_record.get("excerpts")
+        if not isinstance(excerpts, list):
+            return None
+        target = self._collapse_whitespace(supporting_text)
+        if not target:
+            return None
+
+        for item in excerpts:
+            if isinstance(item, str):
+                candidate = item
+            elif isinstance(item, dict):
+                raw = (
+                    item.get("text")
+                    or item.get("snippet")
+                    or item.get("supporting_text")
+                )
+                candidate = raw if isinstance(raw, str) else ""
+            else:
+                continue
+            if candidate and self._collapse_whitespace(candidate) == target:
+                return SupportingTextMatch(
+                    found=True,
+                    similarity_score=1.0,
+                    matched_text=candidate,
+                    match_location="signed_excerpts",
+                )
+        return None
+
+    def _check_and_record_reference_budget(
+        self,
+        supporting_text: str,
+        reference_id: str,
+        reference: Optional[ReferenceContent],
+        signed_record: Optional[dict[str, Any]],
+    ) -> Optional[str]:
+        """Check and update cumulative per-reference character and fraction caps."""
+        max_total = self.config.max_total_chars_per_reference
+        max_fraction = self.config.max_reference_fraction
+        if max_total <= 0 and max_fraction <= 0.0:
+            return None
+
+        normalized_id = self.fetcher.normalize_reference_id(reference_id)
+        excerpt_key = self._collapse_whitespace(supporting_text)
+        char_count = self.count_quoted_characters(supporting_text)
+
+        seen = self._quoted_by_reference.setdefault(normalized_id, {})
+        previous_total = sum(
+            count for key, count in seen.items() if key != excerpt_key
+        )
+        new_total = previous_total + char_count
+
+        if max_total > 0 and new_total > max_total:
+            return (
+                f"Cumulative quoted text for {reference_id} exceeds fair-use limit: "
+                f"{new_total} non-whitespace characters across {len(seen) + (0 if excerpt_key in seen else 1)} "
+                f"excerpt(s), maximum is {max_total} (max_total_chars_per_reference)"
+            )
+
+        if max_fraction > 0.0:
+            ref_chars: Optional[int] = None
+            if reference and reference.content:
+                ref_chars = len(re.sub(r"\s", "", reference.content))
+            elif signed_record and isinstance(signed_record.get("source_char_count"), int):
+                ref_chars = int(signed_record["source_char_count"])
+            if ref_chars and ref_chars > 0:
+                allowed_chars = int(ref_chars * max_fraction)
+                if new_total > allowed_chars:
+                    return (
+                        f"Cumulative quoted text for {reference_id} exceeds fair-use fraction: "
+                        f"{new_total} of {ref_chars} non-whitespace characters "
+                        f"({new_total / ref_chars:.1%}), maximum allowed is "
+                        f"{max_fraction:.1%} ({allowed_chars} characters, max_reference_fraction)"
+                    )
+
+        seen[excerpt_key] = char_count
         return None
 
     def _substring_match(

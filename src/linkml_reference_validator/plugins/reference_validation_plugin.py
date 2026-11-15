@@ -218,6 +218,8 @@ if _LINKML_AVAILABLE:
             instance: dict[str, Any],
             class_name: str,
             path: str,
+            inherited_references: Optional[list[ResolvedReference]] = None,
+            inherited_title: Optional[str] = None,
         ) -> Iterator[LinkMLValidationResult]:
             """Recursively validate an instance and nested objects.
 
@@ -225,6 +227,8 @@ if _LINKML_AVAILABLE:
                 instance: Instance data
                 class_name: Class name from schema
                 path: Current path in data structure
+                inherited_references: Optional parent-resolved references for nested excerpt items
+                inherited_title: Optional parent title when references are inherited
 
             Yields:
                 ValidationResult objects
@@ -238,6 +242,18 @@ if _LINKML_AVAILABLE:
             reference_fields = self._find_reference_fields(class_name)
             excerpt_fields = self._find_excerpt_fields(class_name)
             title_fields = self._find_title_fields(class_name)
+
+            # Resolve local references once so child excerpt objects without their
+            # own reference slot can inherit the enclosing reference context.
+            local_resolved, local_unusable = self._resolve_references(
+                instance, reference_fields, path
+            )
+            local_title_field = next((f for f in title_fields if instance.get(f)), None)
+            local_title = instance[local_title_field] if local_title_field is not None else None
+            effective_inherited_refs = local_resolved if local_resolved else inherited_references
+            effective_inherited_title = (
+                local_title if local_resolved else (local_title or inherited_title)
+            )
 
             # Whether any excerpt was checked or attempted: that check includes
             # the title, or reports why neither can be checked.
@@ -274,21 +290,25 @@ if _LINKML_AVAILABLE:
 
                 # A reference given but unusable must not let the excerpt pass
                 # unchecked: it is reported, by _resolve_references.
-                resolved, unusable = self._resolve_references(
-                    instance, reference_fields, path
-                )
+                resolved, unusable = local_resolved, local_unusable
                 for value, value_path in unusable:
                     yield self._unusable_reference(value, value_path, excerpt_path)
+                using_inherited = False
+                if not resolved and not unusable and inherited_references:
+                    resolved = inherited_references
+                    using_inherited = True
                 if not resolved:
                     continue
                 references = [(ref.reference_id, ref.title) for ref in resolved]
                 # A title field names the paper, so it replaces any title a
                 # reference object carries.
-                title_field = next((f for f in title_fields if instance.get(f)), None)
+                title_field = local_title_field
                 if len(references) == 1:
                     reference_id, expected_title = references[0]
                     if title_field is not None:
                         expected_title = instance[title_field]
+                    elif using_inherited and inherited_title is not None:
+                        expected_title = inherited_title
                     for excerpt, item_path in excerpts:
                         yield from self._validate_excerpt(
                             excerpt, reference_id, expected_title, item_path
@@ -346,11 +366,19 @@ if _LINKML_AVAILABLE:
                             # A keyed mapping (inlined_as_list: false), not one
                             # object: validate every object in it (#139).
                             yield from self._validate_keyed_objects(
-                                value, range_class, slot_path
+                                value,
+                                range_class,
+                                slot_path,
+                                effective_inherited_refs,
+                                effective_inherited_title,
                             )
                         else:
                             yield from self._validate_instance(
-                                value, range_class, slot_path
+                                value,
+                                range_class,
+                                slot_path,
+                                effective_inherited_refs,
+                                effective_inherited_title,
                             )
 
                 elif isinstance(value, list):
@@ -360,7 +388,11 @@ if _LINKML_AVAILABLE:
                             range_class = slot.range
                             if range_class and self.schema_view.get_class(range_class):
                                 yield from self._validate_instance(
-                                    item, range_class, item_path
+                                    item,
+                                    range_class,
+                                    item_path,
+                                    effective_inherited_refs,
+                                    effective_inherited_title,
                                 )
 
         def _resolve_references(
@@ -570,7 +602,12 @@ if _LINKML_AVAILABLE:
             return not any(key in slot_names for key in value)
 
         def _validate_keyed_objects(
-            self, mapping: dict[str, Any], class_name: str, path: str
+            self,
+            mapping: dict[str, Any],
+            class_name: str,
+            path: str,
+            inherited_references: Optional[list[ResolvedReference]] = None,
+            inherited_title: Optional[str] = None,
         ) -> Iterator[LinkMLValidationResult]:
             """Validate each object of a keyed mapping (``inlined_as_list: false``).
 
@@ -589,7 +626,13 @@ if _LINKML_AVAILABLE:
                     continue
                 if identifier is not None and identifier.name not in obj:
                     obj = {identifier.name: key, **obj}
-                yield from self._validate_instance(obj, class_name, f"{path}[{key}]")
+                yield from self._validate_instance(
+                    obj,
+                    class_name,
+                    f"{path}[{key}]",
+                    inherited_references,
+                    inherited_title,
+                )
 
         def _convert_severity(self, severity: Any) -> Severity:
             """Translate internal severities to LinkML Severity enum.

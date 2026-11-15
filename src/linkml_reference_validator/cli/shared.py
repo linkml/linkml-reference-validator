@@ -19,6 +19,14 @@ CacheDirOption = Annotated[
     ),
 ]
 
+SignedExcerptsDirOption = Annotated[
+    Optional[Path],
+    typer.Option(
+        "--signed-excerpts-dir",
+        help="Directory of pre-verified ('signed') excerpts for exact-match fallback",
+    ),
+]
+
 VerboseOption = Annotated[
     bool,
     typer.Option(

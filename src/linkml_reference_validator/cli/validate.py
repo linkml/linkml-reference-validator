@@ -18,6 +18,7 @@ from linkml_reference_validator.validation.supporting_text_validator import (
 
 from .shared import (
     CacheDirOption,
+    SignedExcerptsDirOption,
     VerboseOption,
     ConfigFileOption,
     FullTextOption,
@@ -48,6 +49,7 @@ def text_command(
     ] = None,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    signed_excerpts_dir: SignedExcerptsDirOption = None,
     full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
@@ -71,6 +73,8 @@ def text_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    if signed_excerpts_dir:
+        config.signed_excerpts_dir = signed_excerpts_dir
     config.fetch_full_text = full_text
 
     validator = SupportingTextValidator(config)
@@ -137,6 +141,7 @@ def text_file_command(
     ] = False,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    signed_excerpts_dir: SignedExcerptsDirOption = None,
     full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
@@ -167,6 +172,8 @@ def text_file_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    if signed_excerpts_dir:
+        config.signed_excerpts_dir = signed_excerpts_dir
     config.fetch_full_text = full_text
 
     typer.echo(f"Extracting text from {file_path}")
@@ -242,6 +249,7 @@ def data_command(
     ] = None,
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
+    signed_excerpts_dir: SignedExcerptsDirOption = None,
     full_text: FullTextOption = True,
     verbose: VerboseOption = False,
 ):
@@ -268,6 +276,8 @@ def data_command(
     config = load_validation_config(config_file)
     if cache_dir:
         config.cache_dir = cache_dir
+    if signed_excerpts_dir:
+        config.signed_excerpts_dir = signed_excerpts_dir
     config.fetch_full_text = full_text
 
     # NOTE: `linkml` is an optional dependency. Import it only when this command is invoked.

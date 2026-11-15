@@ -457,11 +457,24 @@ class ReferenceValidationConfig(BaseModel):
         0
         >>> ReferenceValidationConfig(min_excerpt_length=20).min_excerpt_length
         20
+        >>> ReferenceValidationConfig().max_excerpt_length
+        0
+        >>> ReferenceValidationConfig(max_excerpt_length=400).max_excerpt_length
+        400
     """
 
     cache_dir: Path = Field(
         default=Path("references_cache"),
         description="Directory for caching downloaded references",
+    )
+    signed_excerpts_dir: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Optional directory of pre-verified ('signed') excerpts synced from a "
+            "private full-text store (e.g. claimstore). An excerpt is trusted if "
+            "it EITHER substring-matches the reference cache OR exact-matches an "
+            "excerpt recorded for that reference in signed_excerpts_dir."
+        ),
     )
     private_cache_dir: Path = Field(
         default_factory=lambda: Path.home()
@@ -522,6 +535,45 @@ class ReferenceValidationConfig(BaseModel):
             "length. Whitespace is ignored so that PDF-to-text extraction "
             "artifacts do not change the count. Set to 0 to disable the check; "
             "empty and whitespace-only excerpts are always rejected regardless."
+        ),
+    )
+    max_excerpt_length: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Maximum number of non-whitespace characters of quoted text allowed "
+            "in a single excerpt (across all '...' parts) for fair-use compliance. "
+            "Set to 0 to disable the check."
+        ),
+    )
+    max_excerpt_part_length: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Maximum number of non-whitespace characters of quoted text allowed "
+            "in any single contiguous part between '...' separators. Encourages "
+            "concise, ellipsis-interspersed quotations under fair use. "
+            "Set to 0 to disable the check."
+        ),
+    )
+    max_total_chars_per_reference: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Maximum cumulative non-whitespace characters quoted across all distinct "
+            "excerpts citing the same reference within a validation run. "
+            "Set to 0 to disable the check."
+        ),
+    )
+    max_reference_fraction: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description=(
+            "Maximum fraction (0.0 to 1.0) of a reference's total non-whitespace "
+            "character length that may be cumulatively quoted across all distinct "
+            "excerpts citing that reference. Protects short works under fair use. "
+            "Set to 0.0 to disable the check."
         ),
     )
     reference_prefix_map: dict[str, str] = Field(

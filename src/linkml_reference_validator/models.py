@@ -419,6 +419,51 @@ class RepairConfig(BaseModel):
     )
 
 
+class SignedExcerptsSyncConfig(BaseModel):
+    """Settings for ``excerpts sync``, which copies signed excerpt bundles from a
+    private full-text store (e.g. claimstore) into a public repo's
+    ``signed_excerpts_dir``.
+
+    With no ``target_repo`` and no ``referenced_in`` every bundle is copied.
+    Otherwise a bundle is copied if it is tagged for ``target_repo`` OR its
+    ``reference_id`` is cited in a file matching ``referenced_in``.
+
+    Examples:
+        >>> SignedExcerptsSyncConfig().prune
+        False
+        >>> c = SignedExcerptsSyncConfig(target_repo="dismech", referenced_in=["kb/disorders/*.yaml"])
+        >>> c.target_repo, c.referenced_in
+        ('dismech', ['kb/disorders/*.yaml'])
+    """
+
+    source_dir: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Directory of signed excerpt bundles in a local checkout of the private "
+            "store (e.g. ../claimstore/signed_excerpts). Usually supplied per user "
+            "with --source or LRV_SIGNED_EXCERPTS_SOURCE instead."
+        ),
+    )
+    target_repo: Optional[str] = Field(
+        default=None,
+        description=(
+            "Select bundles with an excerpt whose target_repo entry is this name or "
+            "starts with '<name>:' (e.g. 'dismech' matches 'dismech:kb/disorders/X.yaml')."
+        ),
+    )
+    referenced_in: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Glob patterns (relative to the working directory) of data files; select "
+            "bundles whose reference_id is cited in any of them."
+        ),
+    )
+    prune: bool = Field(
+        default=False,
+        description="Remove bundles from the destination that are no longer selected.",
+    )
+
+
 class ReferenceValidationConfig(BaseModel):
     r"""Configuration for reference validation.
 
@@ -474,6 +519,13 @@ class ReferenceValidationConfig(BaseModel):
             "private full-text store (e.g. claimstore). An excerpt is trusted if "
             "it EITHER substring-matches the reference cache OR exact-matches an "
             "excerpt recorded for that reference in signed_excerpts_dir."
+        ),
+    )
+    signed_excerpts_sync: SignedExcerptsSyncConfig = Field(
+        default_factory=SignedExcerptsSyncConfig,
+        description=(
+            "How `excerpts sync` selects bundles from the private store to copy "
+            "into signed_excerpts_dir."
         ),
     )
     private_cache_dir: Path = Field(

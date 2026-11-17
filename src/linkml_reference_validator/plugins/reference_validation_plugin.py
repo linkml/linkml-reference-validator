@@ -238,6 +238,10 @@ if _LINKML_AVAILABLE:
             class_def = self.schema_view.get_class(class_name)
             if not class_def:
                 return
+            # A declared range (often abstract) may be narrowed by the object's
+            # type designator; resolving here covers the top-level target
+            # class and every recursion site, keyed mappings included (#170).
+            class_name = self._resolve_concrete_class(instance, class_name)
 
             reference_fields = self._find_reference_fields(class_name)
             excerpt_fields = self._find_excerpt_fields(class_name)
@@ -578,6 +582,85 @@ if _LINKML_AVAILABLE:
                 context=[path],
                 source="ReferenceValidationPlugin",
             )
+
+        def _resolve_concrete_class(self, instance: dict[str, Any], class_name: str) -> str:
+            """The class an instance names through its ``designates_type`` slot.
+
+            If ``class_name`` has a type designator slot (its own or inherited)
+            and the instance sets it, the value is matched against class names
+            and then against each class's URI, so a name, a CURIE or a full URI
+            all resolve. The named class is used only when it is
+            ``class_name`` or a descendant of it; anything else (an unknown
+            name, an unrelated class, a value that is not text) falls back to
+            ``class_name``, since the data cannot widen its declared range.
+
+            Examples:
+                >>> from linkml_runtime.utils.schemaview import SchemaView
+                >>> plugin = ReferenceValidationPlugin()
+                >>> plugin.schema_view = SchemaView('''
+                ... id: https://example.org/s
+                ... name: s
+                ... prefixes:
+                ...   ex: https://example.org/s/
+                ... default_prefix: ex
+                ... classes:
+                ...   Model:
+                ...     abstract: true
+                ...     attributes:
+                ...       type:
+                ...         designates_type: true
+                ...   Organoid:
+                ...     is_a: Model
+                ...   Other: {}
+                ... ''')
+                >>> plugin._resolve_concrete_class({"type": "Organoid"}, "Model")
+                'Organoid'
+                >>> plugin._resolve_concrete_class({"type": "ex:Organoid"}, "Model")
+                'Organoid'
+                >>> plugin._resolve_concrete_class(
+                ...     {"type": "https://example.org/s/Organoid"}, "Model")
+                'Organoid'
+                >>> plugin._resolve_concrete_class({"type": "Other"}, "Model")
+                'Model'
+                >>> plugin._resolve_concrete_class({}, "Model")
+                'Model'
+            """
+            if not self.schema_view:
+                return class_name
+            sv = self.schema_view
+            designator = next(
+                (
+                    slot
+                    for slot in sv.class_induced_slots(class_name)
+                    if slot.designates_type
+                ),
+                None,
+            )
+            if designator is None:
+                return class_name
+            value = instance.get(designator.name)
+            if value is None and designator.alias:
+                value = instance.get(designator.alias)
+            if not isinstance(value, str) or not value:
+                return class_name
+
+            candidates = [class_name, *sv.class_descendants(class_name, reflexive=False)]
+            if value in candidates:
+                return value
+            expanded = sv.expand_curie(value)
+            for candidate in candidates:
+                if expanded in (
+                    sv.get_uri(candidate, expand=True),
+                    sv.expand_curie(sv.get_uri(candidate)),
+                ):
+                    return candidate
+            logger.debug(
+                "Type designator %r on %s names no descendant; validating as %s",
+                value,
+                class_name,
+                class_name,
+            )
+            return class_name
 
         def _is_keyed_mapping(self, value: dict[str, Any], class_name: str) -> bool:
             """Whether a dict in a multivalued slot maps keys to objects of ``class_name``.

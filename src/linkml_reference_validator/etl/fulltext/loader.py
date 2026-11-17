@@ -1,9 +1,14 @@
 """Load and register declarative custom full-text providers from YAML.
 
-Search order mirrors sources/loader.py:
-1. Explicit providers_file
-2. Project-level: .linkml-reference-validator-fulltext.yaml
-3. User-level: ~/.config/linkml-reference-validator/fulltext/*.yaml
+Provider configs are read from three places. When the same provider name is
+defined in more than one, the most specific one wins:
+
+1. Explicit ``providers_file`` (highest precedence)
+2. Project-level: ``.linkml-reference-validator-fulltext.yaml`` in the cwd
+3. User-level: ``~/.config/linkml-reference-validator/fulltext/*.yaml``
+   (lowest precedence; files are read in sorted order, later names win)
+
+Names defined at only one level are always kept.
 """
 
 import logging
@@ -19,32 +24,60 @@ from linkml_reference_validator.etl.fulltext.json_api import JSONAPIFullTextProv
 logger = logging.getLogger(__name__)
 
 
+PROJECT_PROVIDERS_FILENAME = ".linkml-reference-validator-fulltext.yaml"
+
+
 def load_custom_full_text_providers(
     providers_file: Optional[Path] = None,
+    *,
+    project_dir: Optional[Path] = None,
+    user_config_dir: Optional[Path] = None,
 ) -> list[FullTextProviderConfig]:
     """Load custom provider configs from the standard locations.
+
+    Precedence when a name is defined more than once is
+    explicit ``providers_file`` > project file > user-level files.
+
+    Args:
+        providers_file: Optional explicit providers YAML file.
+        project_dir: Directory holding the project-level file
+            (default: the current working directory).
+        user_config_dir: User config root; providers are read from its
+            ``fulltext/`` subdirectory
+            (default: ``~/.config/linkml-reference-validator``).
+
+    Returns:
+        One config per provider name.
 
     Examples:
         >>> configs = load_custom_full_text_providers()
         >>> isinstance(configs, list)
         True
     """
+    if project_dir is None:
+        project_dir = Path(".")
+    if user_config_dir is None:
+        user_config_dir = Path.home() / ".config" / "linkml-reference-validator"
+
+    # Load lowest precedence first; later entries override earlier ones.
     configs: list[FullTextProviderConfig] = []
 
-    if providers_file and providers_file.exists():
-        configs.extend(_load_from_file(providers_file))
-
-    project_file = Path(".linkml-reference-validator-fulltext.yaml")
-    if project_file.exists():
-        configs.extend(_load_from_file(project_file))
-
-    user_dir = Path.home() / ".config" / "linkml-reference-validator" / "fulltext"
+    user_dir = user_config_dir / "fulltext"
     if user_dir.exists():
         for yaml_file in sorted(user_dir.glob("*.yaml")):
             configs.extend(_load_from_file(yaml_file))
 
+    project_file = project_dir / PROJECT_PROVIDERS_FILENAME
+    if project_file.exists():
+        configs.extend(_load_from_file(project_file))
+
+    if providers_file and providers_file.exists():
+        configs.extend(_load_from_file(providers_file))
+
     deduped: dict[str, FullTextProviderConfig] = {}
     for cfg in configs:
+        if cfg.name in deduped:
+            logger.debug(f"Overriding full-text provider config: {cfg.name}")
         deduped[cfg.name] = cfg
     return list(deduped.values())
 

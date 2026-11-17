@@ -44,11 +44,21 @@ linkml-reference-validator validate text \
 
 ### Configuration File Locations
 
-Sources are loaded from these locations (in order of priority):
+Sources are loaded from these locations. If the same prefix is defined in
+more than one place, the most specific definition wins (highest precedence
+first):
 
-1. `~/.config/linkml-reference-validator/sources/*.yaml` (user-level)
-2. `.linkml-reference-validator-sources.yaml` (project-level)
-3. `sources:` section in your main config file
+1. A dedicated sources file passed explicitly (`sources_file`)
+2. `sources:` section in your main config file
+3. `.linkml-reference-validator-sources.yaml` (or `.yml`) in the current
+   directory (project-level; if both exist, `.yaml` wins)
+4. `~/.config/linkml-reference-validator/sources/*.yaml` and `*.yml`
+   (user-level; files are read in alphabetical order and a later file
+   overrides an earlier one)
+
+So a project file overrides your personal defaults, and a file you pass
+explicitly overrides both. Prefixes defined in only one place are always
+available.
 
 ### Source Configuration Fields
 

@@ -218,7 +218,8 @@ def sign_command(
             typer.echo(f"  NOT signed ({failure.reference_id}): {failure.text}")
             typer.echo(f"    {failure.message}")
         else:
-            typer.echo(f"  NOT signed ({failure.reference_id}): {failure.message}")
+            label = f" ({failure.reference_id})" if failure.reference_id else ""
+            typer.echo(f"  NOT signed{label}: {failure.message}")
     typer.echo(
         f"{dest_dir}: {len(report.written)} {verb}, {len(report.unchanged)} unchanged, "
         f"{len(report.failures)} problem(s)"

@@ -27,6 +27,7 @@ from typing import Any, Callable, Iterable, Optional
 
 from ruamel.yaml import YAML  # type: ignore
 from ruamel.yaml.comments import CommentedMap  # type: ignore
+from ruamel.yaml.error import YAMLError  # type: ignore
 
 from linkml_reference_validator import __version__
 from linkml_reference_validator.cache import (
@@ -218,6 +219,9 @@ def _merge(
 
     excerpts = bundle.get("excerpts")
     if not isinstance(excerpts, list):
+        if not verified:
+            # Nothing to add or prune: do not invent an empty list.
+            return changed
         excerpts = []
         bundle["excerpts"] = excerpts
         changed = True
@@ -414,7 +418,13 @@ def sign_excerpts(
         # signed for them. Needs no local text, since nothing is verified.
         cited = set(quotes)
         for path in sorted(p for p in directory.glob("*") if p.suffix in BUNDLE_SUFFIXES):
-            stored = _stored_reference_id(path)
+            try:  # user-controlled files: one bad bundle must not stop the run
+                stored = _stored_reference_id(path)
+            except YAMLError as error:
+                report.failures.append(
+                    SignFailure("", "", f"{path.name} is not valid YAML, skipped: {error}")
+                )
+                continue
             if stored is None:
                 continue
             normalized = fetcher.normalize_reference_id(stored)
@@ -454,7 +464,14 @@ def _update_bundle(
     The caps are checked whether or not the merge changed anything, so
     ``--check`` reports a bundle that was over them already.
     """
-    path = _bundle_path(directory, reference_id, normalize)
+    try:  # user-controlled files: report a malformed bundle, do not crash
+        path = _bundle_path(directory, reference_id, normalize)
+        existing = yaml.load(path.read_text(encoding="utf-8")) if path and path.is_file() else None
+    except YAMLError as error:
+        report.failures.append(
+            SignFailure(reference_id, "", f"existing bundle is not valid YAML: {error}")
+        )
+        return
     if path is None:
         report.failures.append(
             SignFailure(
@@ -465,9 +482,7 @@ def _update_bundle(
             )
         )
         return
-    bundle = (
-        yaml.load(path.read_text(encoding="utf-8")) if path.is_file() else None
-    ) or CommentedMap(reference_id=reference_id)
+    bundle = existing or CommentedMap(reference_id=reference_id)
     changed = _merge(bundle, verified, verification, title, source_char_count, prune=prune)
     known_count = bundle.get("source_char_count")
     cap_problem = _bundle_cap_problem(

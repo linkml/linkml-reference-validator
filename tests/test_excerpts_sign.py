@@ -456,3 +456,34 @@ def test_prune_skips_bundles_validation_would_not_read(config, data_file):
     assert names == sorted([f"{STEM}.yaml", "PMID_6.yaml", "PMID_6.yml", "smith2020.yaml"])
     assert "PMID_5.yaml" not in report.written
     assert report.unchanged.count("PMID_6.yaml") == 1
+
+
+def test_prune_of_a_mixed_uncited_bundle_keeps_entries_from_elsewhere(config, data_file):
+    config.signed_excerpts_dir.mkdir()
+    mixed = config.signed_excerpts_dir / "PMID_7.yaml"
+    mixed.write_text(
+        "reference_id: PMID:7\nexcerpts:\n- text: From a store.\n- text: Signed here.\n"
+        "  verification:\n    method: local_full_text\n    source_sha256: ab\n",
+        encoding="utf-8",
+    )
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert "PMID_7.yaml" in report.written
+    assert YAML(typ="safe").load(mixed)["excerpts"] == [{"text": "From a store."}]
+
+
+def test_prune_reports_a_malformed_bundle_instead_of_crashing(config, data_file):
+    config.signed_excerpts_dir.mkdir()
+    (config.signed_excerpts_dir / "broken.yaml").write_text("a: [unclosed\n", encoding="utf-8")
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert f"{STEM}.yaml" in report.written
+    assert any("broken.yaml" in f.message for f in report.failures)
+
+
+def test_prune_does_not_add_an_empty_excerpt_list(config, data_file):
+    config.signed_excerpts_dir.mkdir()
+    bare = config.signed_excerpts_dir / "PMID_8.yaml"
+    bare.write_text("reference_id: PMID:8\ntitle: No excerpts yet\n", encoding="utf-8")
+    before = bare.read_bytes()
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert "PMID_8.yaml" not in report.written
+    assert bare.read_bytes() == before

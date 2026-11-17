@@ -140,6 +140,9 @@ Options:
   when there is no `.yaml`) are pruned; a hand-named file is left alone.
   A bundle whose excerpts from elsewhere are already over a cap is reported
   on every `--prune` run, because pruning never removes them; trim it by hand.
+  Keep only bundles in `signed_excerpts_dir`: `--prune` reads every YAML
+  file there, and one that is not a readable bundle is reported and makes the
+  command exit 1.
 - `--signed-excerpts-dir DIR` overrides the destination in the config.
 
 The fair-use caps are checked twice: on each run's quotes, as in validation,

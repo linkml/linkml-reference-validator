@@ -487,3 +487,22 @@ def test_prune_does_not_add_an_empty_excerpt_list(config, data_file):
     report = sign_excerpts([data_file], config, today=TODAY, prune=True)
     assert "PMID_8.yaml" not in report.written
     assert bare.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "name,content",
+    [
+        (f"{STEM}.yaml", b"- text: a list, not a mapping\n"),
+        ("PMID_9.yaml", b"reference_id: PMID:9\ntitle: caf\xe9\n"),
+        ("PMID_9.yml", b"a: [unclosed\n"),
+    ],
+)
+def test_unreadable_bundles_are_reported_not_raised(config, data_file, name, content):
+    config.signed_excerpts_dir.mkdir()
+    if name == "PMID_9.yml":
+        (config.signed_excerpts_dir / "PMID_9.yaml").write_text(
+            "reference_id: PMID:9\nexcerpts: []\n", encoding="utf-8"
+        )
+    (config.signed_excerpts_dir / name).write_bytes(content)
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert any(name in f.message for f in report.failures), report.failures

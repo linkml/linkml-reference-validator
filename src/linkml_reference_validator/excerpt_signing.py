@@ -161,10 +161,39 @@ def _bundle_path(
     return None
 
 
+class BundleReadError(ValueError):
+    """An existing file in the bundle directory could not be read as a bundle."""
+
+
+def _read_bundle(path: Path, yaml: Optional[YAML] = None) -> Any:
+    """Load a bundle file, raising :class:`BundleReadError` if it is not one.
+
+    Every read of an existing bundle goes through here, so a stray binary,
+    non-UTF-8, malformed or non-mapping file is reported by name instead of
+    stopping the run. An empty file reads as None.
+
+    Examples:
+        >>> import tempfile
+        >>> path = Path(tempfile.mkdtemp()) / "x.yaml"
+        >>> _ = path.write_text("- a list\\n")
+        >>> _read_bundle(path)
+        Traceback (most recent call last):
+        ...
+        linkml_reference_validator.excerpt_signing.BundleReadError: x.yaml is not a bundle: not a YAML mapping
+    """
+    try:  # user-controlled files: report a bad one, do not crash the run
+        data = (yaml or YAML(typ="safe")).load(path.read_text(encoding="utf-8"))
+    except (YAMLError, UnicodeDecodeError) as error:
+        raise BundleReadError(f"{path.name} is not a bundle: {error}") from error
+    if data is not None and not isinstance(data, dict):
+        raise BundleReadError(f"{path.name} is not a bundle: not a YAML mapping")
+    return data
+
+
 def _stored_reference_id(path: Path) -> Optional[str]:
     """The ``reference_id`` a bundle file records, if any."""
-    data = YAML(typ="safe").load(path.read_text(encoding="utf-8"))
-    stored = data.get("reference_id") if isinstance(data, dict) else None
+    data = _read_bundle(path)
+    stored = data.get("reference_id") if data else None
     return None if stored is None else str(stored)
 
 
@@ -418,22 +447,21 @@ def sign_excerpts(
         # signed for them. Needs no local text, since nothing is verified.
         cited = set(quotes)
         for path in sorted(p for p in directory.glob("*") if p.suffix in BUNDLE_SUFFIXES):
-            try:  # user-controlled files: one bad bundle must not stop the run
+            try:
                 stored = _stored_reference_id(path)
-            except YAMLError as error:
-                report.failures.append(
-                    SignFailure("", "", f"{path.name} is not valid YAML, skipped: {error}")
-                )
+                if stored is None:
+                    continue
+                normalized = fetcher.normalize_reference_id(stored)
+                if any(_same_reference_id(normalized, c) for c in cited):
+                    continue
+                # Only the file validation would read for this reference: a
+                # hand-named bundle, or the .yml twin of a .yaml, is skipped
+                # rather than mistaken for (and written as) another file.
+                resolved = _bundle_path(directory, normalized, fetcher.normalize_reference_id)
+            except BundleReadError as error:
+                report.failures.append(SignFailure("", "", f"skipped: {error}"))
                 continue
-            if stored is None:
-                continue
-            normalized = fetcher.normalize_reference_id(stored)
-            if any(_same_reference_id(normalized, c) for c in cited):
-                continue
-            # Only the file validation would read for this reference: a
-            # hand-named bundle, or the .yml twin of a .yaml, is skipped rather
-            # than mistaken for (and written as) another file.
-            if _bundle_path(directory, normalized, fetcher.normalize_reference_id) != path:
+            if resolved != path:
                 continue
             _update_bundle(
                 report, yaml, directory, normalized, fetcher.normalize_reference_id,
@@ -464,13 +492,11 @@ def _update_bundle(
     The caps are checked whether or not the merge changed anything, so
     ``--check`` reports a bundle that was over them already.
     """
-    try:  # user-controlled files: report a malformed bundle, do not crash
+    try:
         path = _bundle_path(directory, reference_id, normalize)
-        existing = yaml.load(path.read_text(encoding="utf-8")) if path and path.is_file() else None
-    except YAMLError as error:
-        report.failures.append(
-            SignFailure(reference_id, "", f"existing bundle is not valid YAML: {error}")
-        )
+        existing = _read_bundle(path, yaml) if path and path.is_file() else None
+    except BundleReadError as error:
+        report.failures.append(SignFailure(reference_id, "", f"nothing written: {error}"))
         return
     if path is None:
         report.failures.append(

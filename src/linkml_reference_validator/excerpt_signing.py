@@ -193,7 +193,7 @@ def _signed_here(item: Any) -> bool:
 def _merge(
     bundle: CommentedMap,
     verified: list[str],
-    verification: dict[str, str],
+    verification: Optional[dict[str, str]],
     title: Optional[str],
     source_char_count: Optional[int],
     prune: bool = False,
@@ -206,6 +206,7 @@ def _merge(
     are appended in sorted order so output does not depend on file order.
     With ``prune``, entries this command signed earlier that are not among
     ``verified`` are removed; entries from anywhere else are always kept.
+    ``verification`` may be None only when ``verified`` is empty.
     """
     changed = False
     if title and bundle.get("title") != title:
@@ -239,6 +240,8 @@ def _merge(
         if text is not None:
             by_text.setdefault(collapse_whitespace(text), index)
 
+    if verification is None:
+        return changed
     for quote in sorted(set(verified)):
         key = collapse_whitespace(quote)
         if key in by_text:
@@ -401,8 +404,9 @@ def sign_excerpts(
         }
         _update_bundle(
             report, yaml, directory, reference_id, fetcher.normalize_reference_id,
-            validator, verified, verification, reference.title, char_count,
-            prune_here, dry_run,
+            validator, verified=verified, verification=verification,
+            title=reference.title, source_char_count=char_count,
+            prune=prune_here, dry_run=dry_run,
         )
 
     if prune and not wanted:
@@ -416,9 +420,15 @@ def sign_excerpts(
             normalized = fetcher.normalize_reference_id(stored)
             if any(_same_reference_id(normalized, c) for c in cited):
                 continue
+            # Only the file validation would read for this reference: a
+            # hand-named bundle, or the .yml twin of a .yaml, is skipped rather
+            # than mistaken for (and written as) another file.
+            if _bundle_path(directory, normalized, fetcher.normalize_reference_id) != path:
+                continue
             _update_bundle(
                 report, yaml, directory, normalized, fetcher.normalize_reference_id,
-                validator, [], None, None, None, True, dry_run,
+                validator, verified=[], verification=None, title=None,
+                source_char_count=None, prune=True, dry_run=dry_run,
             )
 
     return report
@@ -431,6 +441,7 @@ def _update_bundle(
     reference_id: str,
     normalize: Callable[[str], str],
     validator: SupportingTextValidator,
+    *,
     verified: list[str],
     verification: Optional[dict[str, str]],
     title: Optional[str],
@@ -457,10 +468,7 @@ def _update_bundle(
     bundle = (
         yaml.load(path.read_text(encoding="utf-8")) if path.is_file() else None
     ) or CommentedMap(reference_id=reference_id)
-    changed = _merge(
-        bundle, verified, verification or {"source_sha256": ""}, title,
-        source_char_count, prune=prune,
-    )
+    changed = _merge(bundle, verified, verification, title, source_char_count, prune=prune)
     known_count = bundle.get("source_char_count")
     cap_problem = _bundle_cap_problem(
         bundle, validator, known_count if isinstance(known_count, int) else None

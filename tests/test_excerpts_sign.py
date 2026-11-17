@@ -435,3 +435,24 @@ def test_both_bundle_names_taken_by_other_references_is_a_failure(config, data_f
     report = sign_excerpts([data_file], config, today=TODAY)
     assert report.written == []
     assert any("another reference" in f.message for f in report.failures)
+
+
+def test_prune_skips_bundles_validation_would_not_read(config, data_file):
+    """A hand-named bundle, or the .yml twin of a .yaml, is not rewritten elsewhere."""
+    config.signed_excerpts_dir.mkdir()
+    odd = config.signed_excerpts_dir / "smith2020.yaml"
+    odd.write_text(
+        "reference_id: PMID:5\nexcerpts:\n- text: x\n  verification:\n"
+        "    method: local_full_text\n    source_sha256: ab\n",
+        encoding="utf-8",
+    )
+    twin = config.signed_excerpts_dir / "PMID_6.yml"
+    twin.write_text("reference_id: PMID:6\nexcerpts: []\n", encoding="utf-8")
+    (config.signed_excerpts_dir / "PMID_6.yaml").write_text(
+        "reference_id: PMID:6\nexcerpts: []\n", encoding="utf-8"
+    )
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    names = sorted(p.name for p in config.signed_excerpts_dir.iterdir())
+    assert names == sorted([f"{STEM}.yaml", "PMID_6.yaml", "PMID_6.yml", "smith2020.yaml"])
+    assert "PMID_5.yaml" not in report.written
+    assert report.unchanged.count("PMID_6.yaml") == 1

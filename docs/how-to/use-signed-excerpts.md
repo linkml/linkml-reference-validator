@@ -136,12 +136,16 @@ Options:
   (a preprint instead of the published paper, say) cannot delete good
   excerpts. With `--reference`, only the named references are pruned, and
   bundles for references the data no longer cites are left alone.
+  Only bundles named as validation reads them (`<REF_ID>.yaml`, or `.yml`
+  when there is no `.yaml`) are pruned; a hand-named file is left alone.
+  A bundle whose excerpts from elsewhere are already over a cap is reported
+  on every `--prune` run, because pruning never removes them; trim it by hand.
 - `--signed-excerpts-dir DIR` overrides the destination in the config.
 
 The fair-use caps are checked twice: on each run's quotes, as in validation,
 and on the merged bundle as a whole, because the bundle keeps every quote
-ever signed into it. This is checked for every bundle visited, including
-one that is otherwise unchanged, so `--check` reports a bundle that a lowered
+ever signed into it. This is checked for every bundle the command would
+write to, including one that is otherwise unchanged, so `--check` reports a bundle that a lowered
 cap or a hand edit has pushed over. A bundle that would go over
 `max_total_chars_per_reference` or `max_reference_fraction` is not written.
 The same is true if the source file changes while its quotes are being

@@ -2,8 +2,12 @@ name: Publish Python Package
 
 on:
   workflow_dispatch:
+  # `published`, not `created`: GitHub runs no workflow while a release is a
+  # draft, and publishing a draft later sends `published`, not `created`, so
+  # a `created` trigger never fires for a release that began as a draft.
+  # Each release sends `published` once, so this does not publish twice.
   release:
-    types: [created]
+    types: [published]
 
 jobs:
   build-n-publish:

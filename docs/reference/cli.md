@@ -18,6 +18,7 @@ linkml-reference-validator [OPTIONS] COMMAND [ARGS]...
 - `validate` - Validate supporting text against references
 - `repair` - Repair supporting text validation errors
 - `cache` - Manage reference cache
+- `excerpts` - Manage signed excerpts synced from a private full-text store
 
 ---
 
@@ -674,6 +675,41 @@ repair:
   trusted_low_similarity:
     - "PMID:98765432"
 ```
+
+---
+
+## excerpts sync
+
+Copy signed excerpt bundles from a local checkout of a private full-text store
+into `signed_excerpts_dir`. See
+[Using Signed Excerpts](../how-to/use-signed-excerpts.md).
+
+### Usage
+
+```bash
+linkml-reference-validator excerpts sync [OPTIONS]
+```
+
+### Options
+
+- `--source, -s PATH` - Bundle directory in the private store (env: `LRV_SIGNED_EXCERPTS_SOURCE`)
+- `--signed-excerpts-dir PATH` - Destination (default: `signed_excerpts_dir` from config)
+- `--target-repo NAME` - Select bundles tagged for this repo in `target_repo`
+- `--referenced-in GLOB` - Select bundles whose reference is cited in matching files (repeatable)
+- `--prune / --no-prune` - Remove destination bundles that are no longer selected
+- `--check` - Write nothing; exit 1 if the destination is out of date
+- `--config PATH` - Configuration file
+
+Defaults for `--target-repo`, `--referenced-in`, `--prune` and `--source` come from
+the `signed_excerpts_sync` section of the config.
+
+### Exit Codes
+
+- `0` - Synced (or, with `--check`, already up to date)
+- `1` - With `--check`, out of date
+- `2` - Configuration or input error: no source or destination, source directory
+  missing, a malformed bundle, a `--referenced-in` glob that is absolute or matches
+  no files, or `--prune` with nothing selected
 
 ---
 

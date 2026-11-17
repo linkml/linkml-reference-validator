@@ -4,6 +4,7 @@ import typer
 
 # Import subcommand modules
 from .cache import cache_app, reference_command
+from .excerpts import excerpts_app
 from .lookup import lookup_command
 from .repair import repair_app
 from .validate import data_command, text_command, validate_app
@@ -32,6 +33,12 @@ app.add_typer(
     cache_app,
     name="cache",
     help="Manage reference cache",
+)
+
+app.add_typer(
+    excerpts_app,
+    name="excerpts",
+    help="Manage signed excerpts synced from a private full-text store",
 )
 
 # Register top-level lookup command

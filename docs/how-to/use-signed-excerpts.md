@@ -80,8 +80,10 @@ validation:
   local_full_text_dir: ~/private-papers
 ```
 
-Relative paths resolve against `reference_base_dir`, or the working directory
-if that is unset. Keep the files out of the repository, or list them in
+Relative paths, including a relative `local_full_text_dir`, resolve against
+`reference_base_dir`, or the working directory if that is unset. Set
+`reference_base_dir` so the result does not depend on where you run the
+command. Keep the files out of the repository, or list them in
 `.gitignore`.
 
 While a mapped file exists, quotes citing that ID are matched against it, in
@@ -125,7 +127,17 @@ Options:
 - `--reference ID` (repeatable) signs only those references. A requested
   reference with no local text is reported and the command exits 1.
 - `--check` writes nothing and exits 1 if any bundle is out of date.
+- `--prune` removes excerpts this command signed earlier that the data no
+  longer cites, or that no longer verify. Excerpts from anywhere else, such
+  as a private store, are always kept.
 - `--signed-excerpts-dir DIR` overrides the destination in the config.
+
+The fair-use caps are checked twice: on each run's quotes, as in validation,
+and on the merged bundle as a whole, because the bundle keeps every quote
+ever signed into it. A bundle that would go over
+`max_total_chars_per_reference` or `max_reference_fraction` is not written.
+The same is true if the source file changes while its quotes are being
+checked, since the recorded hash would not match the text that was checked.
 
 Re-signing is deterministic. An existing bundle keeps its excerpts, their
 order and their other fields (such as `target_repo`). An excerpt already

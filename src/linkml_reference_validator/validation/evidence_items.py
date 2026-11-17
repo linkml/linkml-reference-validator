@@ -56,7 +56,7 @@ def _extract_evidence_items(
     target_class: Optional[str],
     schema_file: Optional[Path] = None,
 ) -> list[tuple[str, str, Optional[str]]]:
-    """Extract evidence items from data for repair.
+    """Extract (excerpt, reference, path) items from data, for repair and signing.
 
     This is a simplified extraction that looks for common patterns.
     For full schema-aware extraction, use the LinkML plugin.

@@ -46,7 +46,12 @@ To cache your own notes anyway, for the cache commands or export, set:
 ```yaml
 validation:
   cache_local_files: true
+  reference_base_dir: .
 ```
+
+Set `reference_base_dir` too. Without it, entries are named relative to the
+directory you happen to run from, and a file reached through `../` keeps its
+absolute path, including your home directory.
 
 Earlier versions (up to and including 0.6.0) wrote every `file:` reference to
 `cache_dir`. If you validated against a closed paper with one of them, check the committed

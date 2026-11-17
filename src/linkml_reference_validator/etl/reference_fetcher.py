@@ -534,7 +534,8 @@ class ReferenceFetcher:
         ``local_full_text`` is checked first (keys normalized like any reference
         ID, DOIs compared ignoring case), then ``local_full_text_dir`` for a file
         named by the reference's cache filename stem with a ``.md`` or ``.txt``
-        suffix. A mapped file that does not exist is ignored, which is the normal
+        suffix. Relative paths in both resolve like ``file:`` references, against
+        ``reference_base_dir`` or the working directory. A mapped file that does not exist is ignored, which is the normal
         case anywhere but the curator's machine.
 
         Examples:
@@ -552,10 +553,13 @@ class ReferenceFetcher:
         directory = self.config.local_full_text_dir
         if directory is None:
             return None
+        # Resolved like a local_full_text value, so a relative directory is
+        # taken from reference_base_dir and not from wherever the run started.
+        root = FileSource.resolve_path(str(Path(directory).expanduser()), self.config)
         for filename in (cache_filename(normalized), disambiguated_cache_filename(normalized)):
             stem = Path(filename).stem
             for suffix in LOCAL_FULL_TEXT_SUFFIXES:
-                candidate = Path(directory).expanduser() / f"{stem}{suffix}"
+                candidate = root / f"{stem}{suffix}"
                 if candidate.is_file():
                     return candidate
         return None

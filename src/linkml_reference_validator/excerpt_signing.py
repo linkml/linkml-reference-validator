@@ -29,7 +29,11 @@ from ruamel.yaml import YAML  # type: ignore
 from ruamel.yaml.comments import CommentedMap  # type: ignore
 
 from linkml_reference_validator import __version__
-from linkml_reference_validator.cache import _same_reference_id, cache_filename
+from linkml_reference_validator.cache import (
+    _same_reference_id,
+    cache_filename,
+    disambiguated_cache_filename,
+)
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.signed_excerpts import BUNDLE_SUFFIXES
 from linkml_reference_validator.validation.evidence_items import _extract_evidence_items
@@ -112,13 +116,40 @@ def _source_text_stats(path: Path, content: str) -> tuple[str, int]:
 
 
 def _bundle_path(directory: Path, normalized_id: str) -> Path:
-    """The existing bundle for ``normalized_id`` in ``directory``, else the default name."""
-    stem = Path(cache_filename(normalized_id)).stem
-    for suffix in BUNDLE_SUFFIXES:
-        candidate = directory / f"{stem}{suffix}"
-        if candidate.is_file():
-            return candidate
-    return directory / f"{stem}.yaml"
+    """The bundle file for ``normalized_id`` in ``directory``.
+
+    Tries the same names validation reads, in the same order: the usual cache
+    stem, then the disambiguated one, each as ``.yaml`` or ``.yml``. A file
+    that records a different ``reference_id`` belongs to the reference whose
+    name it shares and is skipped, so its quotes are never merged with ours
+    (#131). With no existing bundle, the usual name is used unless another
+    reference holds it.
+
+    Examples:
+        >>> import tempfile
+        >>> d = Path(tempfile.mkdtemp())
+        >>> _bundle_path(d, "PMID:1").name
+        'PMID_1.yaml'
+        >>> _ = (d / "PMID_1.yaml").write_text("reference_id: PMID:2\\n")
+        >>> _bundle_path(d, "PMID:1").name.startswith("PMID_1_")
+        True
+    """
+    stems = [
+        Path(cache_filename(normalized_id)).stem,
+        Path(disambiguated_cache_filename(normalized_id)).stem,
+    ]
+    taken = False
+    for stem in stems:
+        for suffix in BUNDLE_SUFFIXES:
+            candidate = directory / f"{stem}{suffix}"
+            if not candidate.is_file():
+                continue
+            data = YAML(typ="safe").load(candidate.read_text(encoding="utf-8"))
+            stored = data.get("reference_id") if isinstance(data, dict) else None
+            if stored is None or _same_reference_id(str(stored), normalized_id):
+                return candidate
+            taken = True
+    return directory / f"{stems[1 if taken else 0]}.yaml"
 
 
 def _round_trip_yaml() -> YAML:
@@ -130,12 +161,27 @@ def _round_trip_yaml() -> YAML:
     return yaml
 
 
+def _excerpt_text(item: Any) -> Optional[str]:
+    """The quoted text of a bundle entry, written as a string or a mapping."""
+    text = item if isinstance(item, str) else (
+        item.get("text") if isinstance(item, dict) else None
+    )
+    return text if isinstance(text, str) else None
+
+
+def _signed_here(item: Any) -> bool:
+    """Whether a bundle entry was written by :func:`sign_excerpts`."""
+    verification = item.get("verification") if isinstance(item, dict) else None
+    return isinstance(verification, dict) and verification.get("method") == SIGN_METHOD
+
+
 def _merge(
     bundle: CommentedMap,
     verified: list[str],
     verification: dict[str, str],
     title: Optional[str],
     source_char_count: int,
+    prune: bool = False,
 ) -> bool:
     """Merge verified quotes into ``bundle``; return True if it changed.
 
@@ -143,6 +189,8 @@ def _merge(
     verified quote gets a fresh ``verification`` unless it already records the
     same source hash, so re-signing unchanged text changes nothing. New quotes
     are appended in sorted order so output does not depend on file order.
+    With ``prune``, entries this command signed earlier that are not among
+    ``verified`` are removed; entries from anywhere else are always kept.
     """
     changed = False
     if title and bundle.get("title") != title:
@@ -158,12 +206,22 @@ def _merge(
         bundle["excerpts"] = excerpts
         changed = True
 
+    if prune:
+        keep = {collapse_whitespace(q) for q in verified}
+        stale = [
+            index
+            for index, item in enumerate(excerpts)
+            if _signed_here(item)
+            and collapse_whitespace(_excerpt_text(item) or "") not in keep
+        ]
+        for index in reversed(stale):
+            del excerpts[index]
+            changed = True
+
     by_text: dict[str, Any] = {}
     for index, item in enumerate(excerpts):
-        text = item if isinstance(item, str) else (
-            item.get("text") if isinstance(item, dict) else None
-        )
-        if isinstance(text, str):
+        text = _excerpt_text(item)
+        if text is not None:
             by_text.setdefault(collapse_whitespace(text), index)
 
     for quote in sorted(set(verified)):
@@ -189,6 +247,41 @@ def _merge(
     return changed
 
 
+def _bundle_cap_problem(
+    bundle: CommentedMap,
+    validator: SupportingTextValidator,
+    source_char_count: int,
+) -> Optional[str]:
+    """Why the merged bundle as a whole exceeds a fair-use cap, if it does.
+
+    Validation only counts the quotes cited in one run, but the committed
+    bundle keeps every quote ever signed into it. Checking the whole bundle
+    stops it from collecting more of a paper than either cap allows.
+    """
+    config = validator.config
+    total = sum(
+        validator.count_quoted_characters(text)
+        for text in (_excerpt_text(item) for item in bundle.get("excerpts") or [])
+        if text is not None
+    )
+    limit = config.max_total_chars_per_reference
+    if limit > 0 and total > limit:
+        return (
+            f"Bundle would hold {total} non-whitespace characters of quoted text, "
+            f"maximum is {limit} (max_total_chars_per_reference); not written"
+        )
+    fraction = config.max_reference_fraction
+    if fraction > 0.0 and source_char_count > 0:
+        allowed = int(source_char_count * fraction)
+        if total > allowed:
+            return (
+                f"Bundle would hold {total} of {source_char_count} non-whitespace "
+                f"characters ({total / source_char_count:.1%}), maximum is "
+                f"{fraction:.1%} (max_reference_fraction); not written"
+            )
+    return None
+
+
 def sign_excerpts(
     data_files: Iterable[Path],
     config: ReferenceValidationConfig,
@@ -196,6 +289,7 @@ def sign_excerpts(
     dest_dir: Optional[Path] = None,
     dry_run: bool = False,
     today: Optional[str] = None,
+    prune: bool = False,
 ) -> SignReport:
     """Verify quotes in ``data_files`` against local full text and write bundles.
 
@@ -215,6 +309,12 @@ def sign_excerpts(
         dest_dir: Bundle directory; default ``config.signed_excerpts_dir``
         dry_run: Write nothing; report what would change
         today: ``verified_at`` date (ISO); default today
+        prune: Remove excerpts this command signed earlier that are no longer
+            cited (or no longer verify); excerpts from elsewhere are kept
+
+    A bundle is not written if, after merging, its quotes as a whole exceed
+    ``max_total_chars_per_reference`` or ``max_reference_fraction``, nor if
+    the source file changed while its quotes were being checked.
 
     Raises:
         ValueError: if neither ``dest_dir`` nor ``signed_excerpts_dir`` is set.
@@ -259,7 +359,17 @@ def sign_excerpts(
                 verified.append(text)
             else:
                 report.failures.append(SignFailure(reference_id, text, result.message or ""))
-        if not verified:
+        if _source_text_stats(source, reference.content)[0] != sha:
+            report.failures.append(
+                SignFailure(
+                    reference_id,
+                    "",
+                    f"{source.name} changed while its quotes were being checked; "
+                    "nothing signed for this reference, run again",
+                )
+            )
+            continue
+        if not verified and not prune:
             continue
 
         path = _bundle_path(directory, reference_id)
@@ -272,8 +382,14 @@ def sign_excerpts(
             "validator_version": __version__,
             "verified_at": today or date.today().isoformat(),
         }
-        if not _merge(bundle, verified, verification, reference.title, char_count):
+        if not _merge(
+            bundle, verified, verification, reference.title, char_count, prune=prune
+        ):
             report.unchanged.append(path.name)
+            continue
+        cap_problem = _bundle_cap_problem(bundle, validator, char_count)
+        if cap_problem:
+            report.failures.append(SignFailure(reference_id, "", cap_problem))
             continue
         report.written.append(path.name)
         if dry_run:

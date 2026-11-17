@@ -160,3 +160,35 @@ def test_local_full_text_dir_expands_home(config, tmp_path, monkeypatch):
     (papers / f"{STEM}.md").write_text(BODY, encoding="utf-8")
     config.local_full_text_dir = "~/private_papers"
     assert SupportingTextValidator(config).validate(QUOTE, DOI).is_valid
+
+
+def test_relative_local_full_text_dir_resolves_against_base_dir(config, tmp_path, monkeypatch):
+    papers = config.reference_base_dir / "private_papers"
+    papers.mkdir()
+    (papers / f"{STEM}.md").write_text(BODY, encoding="utf-8")
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+    config.local_full_text_dir = "private_papers"
+    assert SupportingTextValidator(config).validate(QUOTE, DOI).is_valid
+
+
+def test_cache_reference_reports_the_cached_text_not_the_local_file(config, paper):
+    from typer.testing import CliRunner
+
+    from linkml_reference_validator.cli import app
+
+    cfg = config.reference_base_dir / "lrv.yaml"
+    cfg.write_text(
+        "validation:\n"
+        f"  cache_dir: {config.cache_dir}\n"
+        f"  reference_base_dir: {config.reference_base_dir}\n"
+        "  fetch_full_text: false\n"
+        "  local_full_text:\n"
+        f"    {DOI}: papers/ajodo.md\n",
+        encoding="utf-8",
+    )
+    result = CliRunner().invoke(app, ["cache", "reference", DOI, "--config", str(cfg)])
+    assert result.exit_code == 0, result.output
+    assert "Content type: unavailable" in result.output
+    assert "local_full_text" not in result.output

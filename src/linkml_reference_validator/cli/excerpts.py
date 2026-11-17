@@ -155,6 +155,16 @@ def sign_command(
             help="Write nothing; exit 1 if any bundle is out of date",
         ),
     ] = False,
+    prune: Annotated[
+        bool,
+        typer.Option(
+            "--prune",
+            help=(
+                "Remove excerpts this command signed earlier that the data no longer "
+                "cites; excerpts from elsewhere are kept"
+            ),
+        ),
+    ] = False,
     config_file: ConfigFileOption = None,
 ):
     """Verify quotes against local full text and write snippet-only bundles.
@@ -190,7 +200,12 @@ def sign_command(
         raise typer.Exit(2)
 
     report = sign_excerpts(
-        data_files, config, references=reference, dest_dir=dest_dir, dry_run=check
+        data_files,
+        config,
+        references=reference,
+        dest_dir=dest_dir,
+        dry_run=check,
+        prune=prune,
     )
 
     verb = "would be written" if check else "written"
@@ -199,11 +214,14 @@ def sign_command(
     for reference_id in report.no_local_text:
         typer.echo(f"  no local full text: {reference_id}", err=True)
     for failure in report.failures:
-        typer.echo(f"  NOT signed ({failure.reference_id}): {failure.text}")
-        typer.echo(f"    {failure.message}")
+        if failure.text:
+            typer.echo(f"  NOT signed ({failure.reference_id}): {failure.text}")
+            typer.echo(f"    {failure.message}")
+        else:
+            typer.echo(f"  NOT signed ({failure.reference_id}): {failure.message}")
     typer.echo(
         f"{dest_dir}: {len(report.written)} {verb}, {len(report.unchanged)} unchanged, "
-        f"{len(report.failures)} quote(s) failed to verify"
+        f"{len(report.failures)} problem(s)"
     )
     if report.failures or report.no_local_text or (check and report.changed):
         raise typer.Exit(1)

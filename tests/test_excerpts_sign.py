@@ -282,3 +282,85 @@ def test_cli_sign_needs_a_destination(config, data_file, tmp_path):
     cfg.write_text("validation:\n  fetch_full_text: false\n", encoding="utf-8")
     result = CliRunner().invoke(app, ["excerpts", "sign", str(data_file), "--config", str(cfg)])
     assert result.exit_code == 2
+
+
+# ---------------------------------------------------------------------------
+# Review follow-ups (#176)
+# ---------------------------------------------------------------------------
+
+
+def test_bundle_for_another_reference_is_not_merged_into(config, data_file):
+    """A file at the usual name that records a different reference is left alone."""
+    from linkml_reference_validator.cache import disambiguated_cache_filename
+
+    config.signed_excerpts_dir.mkdir()
+    other = config.signed_excerpts_dir / f"{STEM}.yaml"
+    other.write_text(
+        "reference_id: DOI:10.1016/j_ajodo.2025.11.017\nexcerpts:\n- text: Other.\n",
+        encoding="utf-8",
+    )
+    before = other.read_bytes()
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert other.read_bytes() == before
+    name = disambiguated_cache_filename(DOI).replace(".md", ".yaml")
+    assert report.written == [name]
+    ci = config.model_copy(update={"local_full_text": {}})
+    result = SupportingTextValidator(ci).validate(QUOTE, DOI)
+    assert result.is_valid, result.message
+
+
+def test_sign_refuses_a_bundle_over_the_cumulative_cap(config, data_file):
+    """Quotes kept from earlier runs count toward the cap CI will apply."""
+    config.signed_excerpts_dir.mkdir()
+    (config.signed_excerpts_dir / f"{STEM}.yaml").write_text(
+        f"reference_id: {DOI}\nexcerpts:\n- text: {'x' * 60}\n", encoding="utf-8"
+    )
+    config.max_total_chars_per_reference = 120
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert report.written == []
+    assert [f.reference_id for f in report.failures] == [DOI]
+    assert "max_total_chars_per_reference" in report.failures[0].message
+
+
+def test_sign_refuses_a_bundle_over_the_fraction_cap(config, data_file):
+    config.max_reference_fraction = 0.7  # 120 of 172; this run's quotes are 105
+    config.signed_excerpts_dir.mkdir()
+    (config.signed_excerpts_dir / f"{STEM}.yaml").write_text(
+        f"reference_id: {DOI}\nexcerpts:\n- text: {'x' * 60}\n", encoding="utf-8"
+    )
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert report.written == []
+    assert "max_reference_fraction" in report.failures[0].message
+
+
+def test_prune_drops_locally_signed_excerpts_no_longer_cited(config, data_file):
+    sign_excerpts([data_file], config, today=TODAY)
+    bundle = config.signed_excerpts_dir / f"{STEM}.yaml"
+    bundle.write_text(
+        bundle.read_text(encoding="utf-8")
+        + "- text: Verified elsewhere.\n  target_repo: dismech\n",
+        encoding="utf-8",
+    )
+    data_file.write_text(evidence_yaml(QUOTE), encoding="utf-8")
+    kept = sign_excerpts([data_file], config, today=TODAY)
+    assert kept.unchanged == [f"{STEM}.yaml"]
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert report.written == [f"{STEM}.yaml"]
+    texts = [e["text"] for e in load_bundle(config)["excerpts"]]
+    assert texts == [QUOTE, "Verified elsewhere."]
+
+
+def test_source_edited_mid_run_is_not_signed(config, data_file, monkeypatch):
+    """The recorded hash must be of the text the quotes were checked against."""
+    paper = config.reference_base_dir / "papers" / "ajodo.md"
+    original = SupportingTextValidator.validate
+
+    def validate_then_edit(self, *args, **kwargs):
+        result = original(self, *args, **kwargs)
+        paper.write_text(BODY + "\nEdited.\n", encoding="utf-8")
+        return result
+
+    monkeypatch.setattr(SupportingTextValidator, "validate", validate_then_edit)
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert report.written == []
+    assert "changed while" in report.failures[0].message

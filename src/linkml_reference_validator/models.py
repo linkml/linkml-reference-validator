@@ -573,7 +573,8 @@ class ReferenceValidationConfig(BaseModel):
         description=(
             "Directory of local full-text files named by cache filename stem, "
             "e.g. DOI_10.1016_j.x.2025.11.017.md (or .txt). Consulted after "
-            "local_full_text; same rules otherwise."
+            "local_full_text; same rules otherwise, including resolving a "
+            "relative directory against reference_base_dir."
         ),
     )
     cache_local_files: bool = Field(

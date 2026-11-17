@@ -731,12 +731,14 @@ linkml-reference-validator excerpts sign [OPTIONS] DATA_FILES...
 - `--reference, -r ID` - Only sign quotes citing this reference (repeatable)
 - `--signed-excerpts-dir PATH` - Destination (default: `signed_excerpts_dir` from config)
 - `--check` - Write nothing; exit 1 if any bundle is out of date
+- `--prune` - Remove excerpts this command signed earlier that are no longer cited
 - `--config PATH` - Configuration file
 
 ### Exit Codes
 
 - `0` - Signed (or, with `--check`, already up to date)
-- `1` - A quote failed to verify, a requested reference has no local text, or
+- `1` - A quote failed to verify, a bundle would exceed a fair-use cap, the
+  source changed during the run, a requested reference has no local text, or
   (with `--check`) a bundle is out of date
 - `2` - No destination configured, or a data file is missing
 

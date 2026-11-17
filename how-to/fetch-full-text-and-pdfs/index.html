@@ -2103,6 +2103,17 @@ full_text_providers:
   - unpaywall
   - openalex
 </code></pre>
+<p>Custom provider definitions are read from three places. If the same provider
+name is defined in more than one, the most specific definition wins (highest
+precedence first):</p>
+<ol>
+<li>The file named by <code>full_text_providers_file</code></li>
+<li><code>.linkml-reference-validator-fulltext.yaml</code> in the current directory
+   (project-level)</li>
+<li><code>~/.config/linkml-reference-validator/fulltext/*.yaml</code> (user-level; files
+   are read in alphabetical order and a later file overrides an earlier one)</li>
+</ol>
+<p>Names defined in only one place are always available.</p>
 <h2 id="provenance-fields">Provenance fields</h2>
 <p>When a reference is enriched with full text, the cached reference records where
 the text came from. These provenance fields are written alongside the content:</p>

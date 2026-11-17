@@ -9,6 +9,8 @@ reference, since a stale entry served during an outage is text this version was
 meant to replace.
 """
 
+from pathlib import Path
+
 import pytest
 from typer.testing import CliRunner
 
@@ -271,12 +273,27 @@ def test_a_preserved_entry_keeps_failing_until_forced(cache_dir, mocker):
     assert "Scraped page text" not in path.read_text(encoding="utf-8")
 
 
-def test_caching_a_file_reference_writes_a_current_entry(cache_dir, tmp_path):
-    """A file: reference is read live, yet the command still leaves an entry (#135)."""
+def test_a_file_reference_is_not_cached_by_default(cache_dir, tmp_path):
+    """The command says the file was read but not cached, and writes nothing (#173)."""
     notes = tmp_path / "notes.md"
     notes.write_text("# Notes\n\nversion one", encoding="utf-8")
 
     result = _run(cache_dir, f"file:{notes}")
+
+    assert result.exit_code == 0, result.output
+    assert "did not cache it" in result.output
+    assert "cache_local_files" in result.output
+    assert not list(Path(cache_dir).glob("*.md"))
+
+
+def test_caching_a_file_reference_writes_a_current_entry(cache_dir, tmp_path):
+    """With cache_local_files, a file: reference is read live and still leaves an entry (#135)."""
+    notes = tmp_path / "notes.md"
+    notes.write_text("# Notes\n\nversion one", encoding="utf-8")
+    config = tmp_path / "lrv.yaml"
+    config.write_text("validation:\n  cache_local_files: true\n", encoding="utf-8")
+
+    result = _run(cache_dir, f"file:{notes}", "--config", str(config))
 
     assert result.exit_code == 0, result.output
     assert "Successfully cached" in result.output
@@ -284,5 +301,5 @@ def test_caching_a_file_reference_writes_a_current_entry(cache_dir, tmp_path):
     assert "version one" in entry
 
     notes.write_text("# Notes\n\nversion two", encoding="utf-8")
-    assert _run(cache_dir, f"file:{notes}").exit_code == 0
+    assert _run(cache_dir, f"file:{notes}", "--config", str(config)).exit_code == 0
     assert "version two" in _fetcher(cache_dir).get_cache_path(f"file:{notes}").read_text()

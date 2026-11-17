@@ -1,0 +1,287 @@
+"""Sign excerpts: verify quotes against local full text and write snippet-only bundles.
+
+A curator who holds a closed paper's full text maps it with ``local_full_text``
+or ``local_full_text_dir`` and validates locally. :func:`sign_excerpts` then
+writes, for each such reference, a bundle in ``signed_excerpts_dir`` holding
+only the quotes that matched, so CI can validate the same ``DOI:`` citations
+through the signed-excerpt fallback without the file (#174). No other text from
+the paper is written.
+
+Each signed excerpt carries a ``verification`` record: the SHA-256 of the text
+it was matched against, the validator version, and the date. This is an
+*attestation*, not a cryptographic signature. It tells a reviewer which entries
+were produced by this command rather than typed by hand, but anyone able to
+edit the bundle can also edit the record. With
+``signed_excerpts_require_verification`` on, validation ignores entries that
+carry no record.
+"""
+
+import hashlib
+import logging
+import re
+from dataclasses import dataclass, field
+from datetime import date
+from io import StringIO
+from pathlib import Path
+from typing import Any, Iterable, Optional
+
+from ruamel.yaml import YAML  # type: ignore
+from ruamel.yaml.comments import CommentedMap  # type: ignore
+
+from linkml_reference_validator import __version__
+from linkml_reference_validator.cache import _same_reference_id, cache_filename
+from linkml_reference_validator.models import ReferenceValidationConfig
+from linkml_reference_validator.signed_excerpts import BUNDLE_SUFFIXES
+from linkml_reference_validator.validation.evidence_items import _extract_evidence_items
+from linkml_reference_validator.validation.supporting_text_validator import (
+    SupportingTextValidator,
+)
+
+logger = logging.getLogger(__name__)
+
+#: ``verification.method`` written by :func:`sign_excerpts`.
+SIGN_METHOD = "local_full_text"
+
+
+@dataclass
+class SignFailure:
+    """A quote that did not verify against the local full text, and why."""
+
+    reference_id: str
+    text: str
+    message: str
+
+
+@dataclass
+class SignReport:
+    """What a signing run did (or, with ``dry_run``, would do).
+
+    Examples:
+        >>> SignReport().changed
+        False
+        >>> SignReport(written=["PMID_1.yaml"]).changed
+        True
+    """
+
+    written: list[str] = field(default_factory=list)
+    unchanged: list[str] = field(default_factory=list)
+    failures: list[SignFailure] = field(default_factory=list)
+    no_local_text: list[str] = field(default_factory=list)
+
+    @property
+    def changed(self) -> bool:
+        """True if any bundle differs (or differed) from what signing produces."""
+        return bool(self.written)
+
+
+def collapse_whitespace(text: str) -> str:
+    """Fold whitespace runs, as signed-excerpt matching does.
+
+    Examples:
+        >>> collapse_whitespace("  a \\n b  ")
+        'a b'
+    """
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def collect_quotes(data_files: Iterable[Path]) -> list[tuple[str, str]]:
+    """Return (reference ID, quote) pairs found in YAML data files, in file order.
+
+    Examples:
+        >>> import tempfile
+        >>> d = Path(tempfile.mkdtemp())
+        >>> _ = (d / "a.yaml").write_text(
+        ...     "evidence:\\n- reference: PMID:1\\n  supporting_text: a quote\\n")
+        >>> collect_quotes([d / "a.yaml"])
+        [('PMID:1', 'a quote')]
+    """
+    pairs: list[tuple[str, str]] = []
+    yaml = YAML(typ="safe")
+    for path in data_files:
+        for document in yaml.load_all(path.read_text(encoding="utf-8")):
+            if isinstance(document, (dict, list)):
+                for text, reference_id, _ in _extract_evidence_items(document, None):
+                    pairs.append((reference_id, text))
+    return pairs
+
+
+def _source_text_stats(path: Path, content: str) -> tuple[str, int]:
+    """The SHA-256 of the file's bytes, and the non-whitespace length of its text."""
+    sha = hashlib.sha256(path.read_bytes()).hexdigest()
+    return sha, len(re.sub(r"\s", "", content))
+
+
+def _bundle_path(directory: Path, normalized_id: str) -> Path:
+    """The existing bundle for ``normalized_id`` in ``directory``, else the default name."""
+    stem = Path(cache_filename(normalized_id)).stem
+    for suffix in BUNDLE_SUFFIXES:
+        candidate = directory / f"{stem}{suffix}"
+        if candidate.is_file():
+            return candidate
+    return directory / f"{stem}.yaml"
+
+
+def _round_trip_yaml() -> YAML:
+    """A YAML instance that keeps an existing bundle's layout and comments."""
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    yaml.width = 4096
+    yaml.indent(mapping=2, sequence=2, offset=0)
+    return yaml
+
+
+def _merge(
+    bundle: CommentedMap,
+    verified: list[str],
+    verification: dict[str, str],
+    title: Optional[str],
+    source_char_count: int,
+) -> bool:
+    """Merge verified quotes into ``bundle``; return True if it changed.
+
+    Existing excerpts keep their place and every field. One whose text is a
+    verified quote gets a fresh ``verification`` unless it already records the
+    same source hash, so re-signing unchanged text changes nothing. New quotes
+    are appended in sorted order so output does not depend on file order.
+    """
+    changed = False
+    if title and bundle.get("title") != title:
+        bundle["title"] = title
+        changed = True
+    if bundle.get("source_char_count") != source_char_count:
+        bundle["source_char_count"] = source_char_count
+        changed = True
+
+    excerpts = bundle.get("excerpts")
+    if not isinstance(excerpts, list):
+        excerpts = []
+        bundle["excerpts"] = excerpts
+        changed = True
+
+    by_text: dict[str, Any] = {}
+    for index, item in enumerate(excerpts):
+        text = item if isinstance(item, str) else (
+            item.get("text") if isinstance(item, dict) else None
+        )
+        if isinstance(text, str):
+            by_text.setdefault(collapse_whitespace(text), index)
+
+    for quote in sorted(set(verified)):
+        key = collapse_whitespace(quote)
+        if key in by_text:
+            index = by_text[key]
+            item = excerpts[index]
+            if isinstance(item, str):
+                item = CommentedMap(text=item)
+                excerpts[index] = item
+            current = item.get("verification")
+            if (
+                isinstance(current, dict)
+                and current.get("source_sha256") == verification["source_sha256"]
+            ):
+                continue
+            item["verification"] = dict(verification)
+            changed = True
+        else:
+            excerpts.append(CommentedMap(text=quote, verification=dict(verification)))
+            by_text[key] = len(excerpts) - 1
+            changed = True
+    return changed
+
+
+def sign_excerpts(
+    data_files: Iterable[Path],
+    config: ReferenceValidationConfig,
+    references: Optional[Iterable[str]] = None,
+    dest_dir: Optional[Path] = None,
+    dry_run: bool = False,
+    today: Optional[str] = None,
+) -> SignReport:
+    """Verify quotes in ``data_files`` against local full text and write bundles.
+
+    Every quote citing a reference that ``local_full_text`` or
+    ``local_full_text_dir`` maps to an existing file is validated against that
+    file with the usual matcher and fair-use caps. Quotes that pass are merged
+    into ``<dest_dir>/<cache stem>.yaml``; quotes that fail are reported and
+    left out. Existing bundles are never consulted as evidence, so a hand-typed
+    entry cannot be re-signed.
+
+    Args:
+        data_files: YAML data files to scan for quotes
+        config: Validation config; supplies the mappings and the caps
+        references: Only sign these references. Each must have local text, or
+            it is listed in ``no_local_text``. Default: every cited reference
+            that has local text.
+        dest_dir: Bundle directory; default ``config.signed_excerpts_dir``
+        dry_run: Write nothing; report what would change
+        today: ``verified_at`` date (ISO); default today
+
+    Raises:
+        ValueError: if neither ``dest_dir`` nor ``signed_excerpts_dir`` is set.
+    """
+    directory = dest_dir or config.signed_excerpts_dir
+    if directory is None:
+        raise ValueError("No destination: set signed_excerpts_dir or pass dest_dir")
+    directory = Path(directory)
+
+    # Verify against the local text only: an existing bundle must not vouch
+    # for the quotes it is about to be extended with.
+    checking = config.model_copy(update={"signed_excerpts_dir": None})
+    validator = SupportingTextValidator(checking)
+    fetcher = validator.fetcher
+    report = SignReport()
+
+    wanted = [fetcher.normalize_reference_id(r) for r in references or []]
+    quotes: dict[str, list[str]] = {}
+    for reference_id, text in collect_quotes(data_files):
+        normalized = fetcher.normalize_reference_id(reference_id)
+        if wanted and not any(_same_reference_id(w, normalized) for w in wanted):
+            continue
+        quotes.setdefault(normalized, []).append(text)
+    for reference_id in wanted:
+        if fetcher.local_full_text_path(reference_id) is None:
+            report.no_local_text.append(reference_id)
+
+    yaml = _round_trip_yaml()
+    for reference_id, texts in quotes.items():
+        source = fetcher.local_full_text_path(reference_id)
+        if source is None:
+            continue
+        reference = fetcher.fetch(reference_id)
+        if reference is None or not reference.content:
+            continue
+        sha, char_count = _source_text_stats(source, reference.content)
+
+        verified: list[str] = []
+        for text in texts:
+            result = validator.validate(text, reference_id)
+            if result.is_valid:
+                verified.append(text)
+            else:
+                report.failures.append(SignFailure(reference_id, text, result.message or ""))
+        if not verified:
+            continue
+
+        path = _bundle_path(directory, reference_id)
+        bundle = (
+            yaml.load(path.read_text(encoding="utf-8")) if path.is_file() else None
+        ) or CommentedMap(reference_id=reference_id)
+        verification = {
+            "method": SIGN_METHOD,
+            "source_sha256": sha,
+            "validator_version": __version__,
+            "verified_at": today or date.today().isoformat(),
+        }
+        if not _merge(bundle, verified, verification, reference.title, char_count):
+            report.unchanged.append(path.name)
+            continue
+        report.written.append(path.name)
+        if dry_run:
+            continue
+        directory.mkdir(parents=True, exist_ok=True)
+        buffer = StringIO()
+        yaml.dump(bundle, buffer)
+        path.write_text(buffer.getvalue(), encoding="utf-8")
+        logger.info("Signed %d excerpt(s) for %s in %s", len(verified), reference_id, path)
+
+    return report

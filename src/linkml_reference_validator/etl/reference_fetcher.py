@@ -9,7 +9,7 @@ import logging
 import re
 from collections import Counter
 from collections.abc import Iterator
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from io import StringIO
 from pathlib import Path
 from typing import Any, Optional
@@ -77,6 +77,13 @@ REPORT_SHRINK_RATIO = 0.2
 #: is a stable public address even when its content is not openly licensed. See
 #: the note at the ``full_text_url`` assignment.
 PUBLIC_URL_ACCESS_TYPES = frozenset({None, "open", PUBLISHER_FREE_ACCESS})
+
+#: ``content_type`` (and ``full_text_provider``) of text read from a file mapped
+#: by ``local_full_text`` or ``local_full_text_dir``. Never written to a cache.
+LOCAL_FULL_TEXT_CONTENT_TYPE = "local_full_text"
+
+#: Suffixes tried, in order, for a file in ``local_full_text_dir``.
+LOCAL_FULL_TEXT_SUFFIXES = (".md", ".txt")
 
 
 NEEDS_FULL_TEXT_TYPES = {
@@ -479,7 +486,10 @@ class ReferenceFetcher:
         return self.fetch_with_provenance(reference_id, force_refresh).content
 
     def fetch_with_provenance(
-        self, reference_id: str, force_refresh: bool = False
+        self,
+        reference_id: str,
+        force_refresh: bool = False,
+        use_local_full_text: bool = True,
     ) -> FetchOutcome:
         """Fetch a reference, reporting whether only an out-of-date entry was served.
 
@@ -491,9 +501,16 @@ class ReferenceFetcher:
         equally true of a cache hit that needed no download, but because the
         entry that is there is the one this version was meant to replace.
 
+        When ``local_full_text`` or ``local_full_text_dir`` maps the reference
+        to a file that exists, the returned content is that file's text (see
+        :meth:`_with_local_full_text`); everything cached is still only what the
+        source returned.
+
         Args:
             reference_id: The reference identifier
             force_refresh: If True, bypass cache and fetch fresh
+            use_local_full_text: If False, ignore any local full-text mapping
+                and return what the source or cache holds
 
         Returns:
             A :class:`FetchOutcome` wrapping the content, if any
@@ -506,14 +523,92 @@ class ReferenceFetcher:
             >>> # outcome.served_stale
         """
         normalized_reference_id = self.normalize_reference_id(reference_id)
+        outcome = self._fetch_normalized(normalized_reference_id, force_refresh)
+        if not use_local_full_text:
+            return outcome
+        return self._with_local_full_text(normalized_reference_id, outcome)
+
+    def local_full_text_path(self, reference_id: str) -> Optional[Path]:
+        """The local full-text file mapped to ``reference_id``, if it exists.
+
+        ``local_full_text`` is checked first (keys normalized like any reference
+        ID, DOIs compared ignoring case), then ``local_full_text_dir`` for a file
+        named by the reference's cache filename stem with a ``.md`` or ``.txt``
+        suffix. A mapped file that does not exist is ignored, which is the normal
+        case anywhere but the curator's machine.
+
+        Examples:
+            >>> fetcher = ReferenceFetcher(ReferenceValidationConfig())
+            >>> fetcher.local_full_text_path("DOI:10.1/x") is None
+            True
+        """
+        normalized = self.normalize_reference_id(reference_id)
+        for key, mapped in self.config.local_full_text.items():
+            if _same_reference_id(self.normalize_reference_id(key), normalized):
+                path = FileSource.resolve_path(str(Path(mapped).expanduser()), self.config)
+                if path.is_file():
+                    return path
+                logger.info("Local full text for %s not found: %s", normalized, path)
+        directory = self.config.local_full_text_dir
+        if directory is None:
+            return None
+        for filename in (cache_filename(normalized), disambiguated_cache_filename(normalized)):
+            stem = Path(filename).stem
+            for suffix in LOCAL_FULL_TEXT_SUFFIXES:
+                candidate = Path(directory).expanduser() / f"{stem}{suffix}"
+                if candidate.is_file():
+                    return candidate
+        return None
+
+    def _with_local_full_text(
+        self, normalized_reference_id: str, outcome: FetchOutcome
+    ) -> FetchOutcome:
+        """Replace the outcome's text with the mapped local full text, if any.
+
+        The local file wins over fetched text, open access or not: the mapping
+        is an explicit statement of which text the quotes were taken from. The
+        merged content is built fresh on every call and never saved or kept in
+        the memory cache, so an edit to the file is seen and its text cannot
+        reach ``cache_dir`` (#173, #174). Metadata such as the title comes from
+        the usual fetch; if that found nothing, the file stands alone.
+        """
+        path = self.local_full_text_path(normalized_reference_id)
+        if path is None:
+            return outcome
+        local = FileSource().fetch(str(path), self.config)
+        if local is None or not local.content:
+            logger.warning("Local full text for %s is empty: %s", normalized_reference_id, path)
+            return outcome
+        content_type = (
+            local.content_type
+            if local.content_type in FIGURE_CONTENT_TYPES.values()
+            else LOCAL_FULL_TEXT_CONTENT_TYPE
+        )
+        logger.info("Matching %s against local full text %s", normalized_reference_id, path)
+        base = outcome.content or ReferenceContent(
+            reference_id=normalized_reference_id, title=local.title
+        )
+        merged = replace(
+            base,
+            content=local.content,
+            content_type=content_type,
+            full_text_provider=LOCAL_FULL_TEXT_CONTENT_TYPE,
+        )
+        return FetchOutcome(content=merged, served_stale=outcome.served_stale)
+
+    def _fetch_normalized(
+        self, normalized_reference_id: str, force_refresh: bool
+    ) -> FetchOutcome:
+        """Fetch an already normalized reference ID; see :meth:`fetch_with_provenance`."""
         # A local file is cheap to read and can change at any time, and nothing
         # records which version a cache entry was read from. So it is always
         # read from the file: neither cache is consulted, and a file that has
-        # gone is not found, rather than served from an old copy (#135). The
-        # entry is still written, for the cache commands and export, when it
-        # differs from what this fetcher last wrote. Skipping the read on an
-        # unchanged mtime and size would be cheaper, but a timestamp is too
-        # coarse to catch a same-size edit made just after the last read.
+        # gone is not found, rather than served from an old copy (#135). With
+        # cache_local_files set, the entry is still written, for the cache
+        # commands and export, when it differs from what this fetcher last
+        # wrote. Skipping the read on an unchanged mtime and size would be
+        # cheaper, but a timestamp is too coarse to catch a same-size edit made
+        # just after the last read.
         live = normalized_reference_id.startswith("file:")
 
         # Check memory cache
@@ -584,7 +679,13 @@ class ReferenceFetcher:
             return self._stale_fallback(normalized_reference_id, force_refresh or live)
 
         if live:
-            if self._saved_files.get(normalized_reference_id) != content:
+            # The text is not cached unless asked for: validation never reads it
+            # back, and the file may be a paper the project cannot redistribute
+            # into a committed cache_dir (#173).
+            if (
+                self.config.cache_local_files
+                and self._saved_files.get(normalized_reference_id) != content
+            ):
                 self._save_by_access(content)
                 self._saved_files[normalized_reference_id] = content
             return FetchOutcome(content=content)
@@ -1289,7 +1390,9 @@ class ReferenceFetcher:
         if prefix == "UNKNOWN":
             return reference_id.strip()
         if prefix == "file":
-            return f"file:{FileSource.resolve_path(identifier, self.config)}"
+            return FileSource.reference_id_for(
+                FileSource.resolve_path(identifier, self.config), self.config
+            )
         return self._canonical_wikipedia_id(f"{prefix}:{identifier}")
 
     @staticmethod
@@ -1423,7 +1526,9 @@ class ReferenceFetcher:
         if prefix in ("clinicaltrials", "WIKIPEDIA"):
             reference_id = f"{prefix}:{identifier}"
         if prefix == "file":
-            reference_id = f"file:{FileSource.resolve_path(identifier, self.config)}"
+            reference_id = FileSource.reference_id_for(
+                FileSource.resolve_path(identifier, self.config), self.config
+            )
         reference_id = self._canonical_wikipedia_id(reference_id)
         # Other IDs already arrive normalized from fetch(). Reapplying arbitrary
         # prefix maps here could follow a second alias and change the cache key.

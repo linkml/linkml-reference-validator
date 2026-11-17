@@ -113,7 +113,9 @@ def test_file_paths_that_sanitize_alike_get_their_own_entries(tmp_path):
     nested.write_text("Nested file text.", encoding="utf-8")
     flat.write_text("Flat file text.", encoding="utf-8")
     cache = tmp_path / "cache"
-    first, second = _fetcher(cache).fetch(f"file:{nested}"), _fetcher(cache).fetch(f"file:{flat}")
+    config = ReferenceValidationConfig(cache_dir=cache, cache_local_files=True)
+    first = ReferenceFetcher(config).fetch(f"file:{nested}")
+    second = ReferenceFetcher(config).fetch(f"file:{flat}")
     assert first is not None and second is not None
     assert "Nested file text." in (first.content or "")
     assert "Flat file text." in (second.content or "")

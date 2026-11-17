@@ -274,10 +274,15 @@ def test_empty_directory_is_an_empty_scan(tmp_path):
 
 
 def test_consumer_extension_survives_stale_refetch(tmp_path):
-    """A real local-file fetch refreshes content without erasing local policy."""
+    """A real local-file fetch refreshes content without erasing local policy.
+
+    Local files are only written with ``cache_local_files`` on (#173).
+    """
     source = tmp_path / "source.txt"
     source.write_text("Fresh evidence.", encoding="utf-8")
-    fetcher = ReferenceFetcher(ReferenceValidationConfig(cache_dir=tmp_path / "cache"))
+    fetcher = ReferenceFetcher(
+        ReferenceValidationConfig(cache_dir=tmp_path / "cache", cache_local_files=True)
+    )
     reference_id = f"file:{source}"
     path = fetcher.get_cache_path(reference_id)
     write_cache(

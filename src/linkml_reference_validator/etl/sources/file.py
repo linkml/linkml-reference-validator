@@ -92,19 +92,21 @@ class FileSource(ReferenceSource):
 
         figure_format = resolve_format(None, file_path.name, None)
         if figure_format in FIGURE_CONTENT_TYPES:
-            return self._fetch_figure(file_path, figure_format)
+            return self._fetch_figure(file_path, figure_format, config)
 
         content = file_path.read_text(encoding="utf-8")
         title = self._extract_title(content, file_path)
 
         return ReferenceContent(
-            reference_id=f"file:{file_path}",
+            reference_id=self.reference_id_for(file_path, config),
             title=title,
             content=content,
             content_type="local_file",
         )
 
-    def _fetch_figure(self, file_path: Path, figure_format: str) -> ReferenceContent:
+    def _fetch_figure(
+        self, file_path: Path, figure_format: str, config: ReferenceValidationConfig
+    ) -> ReferenceContent:
         """Read an SVG or drawio figure as the labels it draws.
 
         Examples:
@@ -114,7 +116,8 @@ class FileSource(ReferenceSource):
             ...     _ = figure.write_text(
             ...         '<svg xmlns="http://www.w3.org/2000/svg">'
             ...         '<desc>Hidden</desc><text>PTEN</text></svg>')
-            ...     ref = FileSource()._fetch_figure(figure, "svg")
+            ...     config = ReferenceValidationConfig(reference_base_dir=Path(d))
+            ...     ref = FileSource()._fetch_figure(figure, "svg", config)
             >>> (ref.content, ref.content_type, ref.title)
             ('PTEN', 'local_svg', 'fig.svg')
         """
@@ -124,7 +127,7 @@ class FileSource(ReferenceSource):
             raise LookupError(f"no extractor is registered for {figure_format}")
         text = extractor.extract(file_path.read_bytes())
         return ReferenceContent(
-            reference_id=f"file:{file_path}",
+            reference_id=self.reference_id_for(file_path, config),
             title=file_path.name,
             content=text,
             content_type=FIGURE_CONTENT_TYPES[figure_format] if text else "unavailable",
@@ -168,6 +171,33 @@ class FileSource(ReferenceSource):
             base_dir = config.reference_base_dir
             path = Path(base_dir) / path if base_dir is not None else Path.cwd() / path
         return Path(os.path.abspath(path))
+
+    @classmethod
+    def reference_id_for(cls, path: Path, config: ReferenceValidationConfig) -> str:
+        """Spell a resolved file as the ``file:`` reference ID reports and caches use.
+
+        A file under ``reference_base_dir`` (or, with none set, the working
+        directory) is named relative to it, so the ID carries no home directory
+        or username and reads the same on every curator's machine (#173). A
+        file elsewhere keeps its absolute path, since nothing shorter names it.
+        Either spelling resolves back to the same file with :meth:`resolve_path`.
+
+        Examples:
+            >>> import tempfile
+            >>> from linkml_reference_validator.models import ReferenceValidationConfig
+            >>> with tempfile.TemporaryDirectory() as d:
+            ...     config = ReferenceValidationConfig(reference_base_dir=Path(d))
+            ...     inside = FileSource.resolve_path("papers/a.md", config)
+            ...     print(FileSource.reference_id_for(inside, config))
+            file:papers/a.md
+            >>> FileSource.reference_id_for(Path("/elsewhere/a.md"), config)
+            'file:/elsewhere/a.md'
+        """
+        base = config.reference_base_dir
+        root = Path(os.path.abspath(base if base is not None else Path.cwd()))
+        if path.is_relative_to(root):
+            return f"file:{path.relative_to(root).as_posix()}"
+        return f"file:{path}"
 
     def _extract_title(self, content: str, file_path: Path) -> str:
         """Extract title from content or use filename.

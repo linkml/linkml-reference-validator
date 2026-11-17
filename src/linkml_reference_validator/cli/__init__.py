@@ -38,7 +38,7 @@ app.add_typer(
 app.add_typer(
     excerpts_app,
     name="excerpts",
-    help="Manage signed excerpts synced from a private full-text store",
+    help="Sign excerpts against local full text, or sync them from a private store",
 )
 
 # Register top-level lookup command

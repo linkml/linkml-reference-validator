@@ -31,8 +31,33 @@ file:/Users/me/research/notes.md
 1. If `reference_base_dir` is configured, paths resolve relative to it
 2. Otherwise, paths resolve relative to the current working directory
 
-Note: cached references use the resolved absolute path in the reference ID, so
-the cache file name reflects the full path.
+A file under `reference_base_dir` (or, if that is unset, the working directory)
+is named relative to it in reports, so `file:/home/me/repo/papers/a.md` is
+reported as `file:papers/a.md`. A file outside it keeps its absolute path.
+
+### Local files are not cached
+
+A `file:` reference is always read straight from the file, and its text is
+**not** written to `cache_dir` or any other cache. The file is often a paper the
+project may not redistribute, and `cache_dir` is usually committed.
+
+To cache your own notes anyway, for the cache commands or export, set:
+
+```yaml
+validation:
+  cache_local_files: true
+```
+
+Earlier versions (up to and including 0.6.0) wrote every `file:` reference to
+`cache_dir`. If you validated against a closed paper with one of them, check the committed
+cache for entries with `content_type: local_file` and remove them:
+
+```bash
+grep -l "content_type: local_file" references_cache/*.md
+```
+
+To cite such a paper by its real identifier instead of a path, see
+[Using Signed Excerpts](use-signed-excerpts.md#signing-excerpts-from-local-full-text).
 
 ### Configuring a Base Directory
 

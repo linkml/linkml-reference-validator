@@ -78,6 +78,7 @@ if _LINKML_AVAILABLE:
         ValidationContext,
     )
     from linkml_runtime.utils.schemaview import SchemaView  # type: ignore  # noqa: E402
+    from linkml_runtime.linkml_model.meta import SlotDefinition  # type: ignore  # noqa: E402
 
     class ReferenceValidationPlugin(ValidationPlugin):
         """LinkML validation plugin for supporting text and title validation.
@@ -241,7 +242,13 @@ if _LINKML_AVAILABLE:
             # A declared range (often abstract) may be narrowed by the object's
             # type designator; resolving here covers the top-level target
             # class and every recursion site, keyed mappings included (#170).
-            class_name = self._resolve_concrete_class(instance, class_name)
+            concrete_class = self._resolve_concrete_class(instance, class_name)
+            if concrete_class is None:
+                # Falling back silently would hide a typo behind a passing
+                # run that checked none of the subclass's slots.
+                yield self._unresolved_type_warning(instance, class_name, path)
+            else:
+                class_name = concrete_class
 
             reference_fields = self._find_reference_fields(class_name)
             excerpt_fields = self._find_excerpt_fields(class_name)
@@ -583,16 +590,48 @@ if _LINKML_AVAILABLE:
                 source="ReferenceValidationPlugin",
             )
 
-        def _resolve_concrete_class(self, instance: dict[str, Any], class_name: str) -> str:
+        def _type_designator(self, class_name: str) -> Optional[SlotDefinition]:
+            """The ``designates_type`` slot of ``class_name``, own or inherited."""
+            if not self.schema_view:
+                return None
+            return next(
+                (
+                    slot
+                    for slot in self.schema_view.class_induced_slots(class_name)
+                    if slot.designates_type
+                ),
+                None,
+            )
+
+        def _designator_value(
+            self, instance: dict[str, Any], designator: SlotDefinition
+        ) -> Any:
+            """The value ``instance`` gives its type designator, by name or alias."""
+            value = instance.get(designator.name)
+            if value is None and designator.alias:
+                value = instance.get(designator.alias)
+            return value
+
+        def _resolve_concrete_class(
+            self, instance: dict[str, Any], class_name: str
+        ) -> Optional[str]:
             """The class an instance names through its ``designates_type`` slot.
 
             If ``class_name`` has a type designator slot (its own or inherited)
             and the instance sets it, the value is matched against class names
             and then against each class's URI, so a name, a CURIE or a full URI
-            all resolve. The named class is used only when it is
-            ``class_name`` or a descendant of it; anything else (an unknown
-            name, an unrelated class, a value that is not text) falls back to
-            ``class_name``, since the data cannot widen its declared range.
+            all resolve. All three forms are accepted whatever the designator's
+            range is (LinkML ties ``string`` to names, ``uriorcurie`` to CURIEs
+            and ``uri`` to URIs): enforcing the exact form is the core LinkML
+            validator's job, and this plugin only needs the class, so the
+            leniency is deliberate.
+
+            The named class is used only when it is ``class_name`` or a
+            descendant of it, since the data cannot widen its declared range.
+            With no designator, or no value set, the answer is ``class_name``.
+            A value that is set but names no such class (an unknown name, an
+            unrelated class, a value that is not text) gives ``None``, so the
+            caller can report it rather than fall back silently.
 
             Examples:
                 >>> from linkml_runtime.utils.schemaview import SchemaView
@@ -620,29 +659,22 @@ if _LINKML_AVAILABLE:
                 >>> plugin._resolve_concrete_class(
                 ...     {"type": "https://example.org/s/Organoid"}, "Model")
                 'Organoid'
-                >>> plugin._resolve_concrete_class({"type": "Other"}, "Model")
-                'Model'
                 >>> plugin._resolve_concrete_class({}, "Model")
                 'Model'
+                >>> plugin._resolve_concrete_class({"type": "Other"}, "Model") is None
+                True
             """
             if not self.schema_view:
                 return class_name
             sv = self.schema_view
-            designator = next(
-                (
-                    slot
-                    for slot in sv.class_induced_slots(class_name)
-                    if slot.designates_type
-                ),
-                None,
-            )
+            designator = self._type_designator(class_name)
             if designator is None:
                 return class_name
-            value = instance.get(designator.name)
-            if value is None and designator.alias:
-                value = instance.get(designator.alias)
-            if not isinstance(value, str) or not value:
+            value = self._designator_value(instance, designator)
+            if value is None:
                 return class_name
+            if not isinstance(value, str) or not value:
+                return None
 
             candidates = [class_name, *sv.class_descendants(class_name, reflexive=False)]
             if value in candidates:
@@ -654,13 +686,34 @@ if _LINKML_AVAILABLE:
                     sv.expand_curie(sv.get_uri(candidate)),
                 ):
                     return candidate
-            logger.debug(
-                "Type designator %r on %s names no descendant; validating as %s",
-                value,
-                class_name,
-                class_name,
+            return None
+
+        def _unresolved_type_warning(
+            self, instance: dict[str, Any], class_name: str, path: str
+        ) -> LinkMLValidationResult:
+            """A warning that an object's type designator names no usable class.
+
+            The object is still validated as ``class_name``, but any slots its
+            intended subclass defines go unchecked, so the run must not pass
+            in silence (#170).
+            """
+            designator = self._type_designator(class_name)
+            assert designator is not None  # only called after a designator was found
+            value = self._designator_value(instance, designator)
+            return LinkMLValidationResult(
+                type="reference_validation",
+                severity=Severity.WARN,
+                message=(
+                    f"Type designator '{designator.name}' value {value!r} names "
+                    f"neither {class_name} nor a subclass of it; validated as "
+                    f"{class_name}, so slots defined only on subclasses were not "
+                    f"checked"
+                ),
+                instance={designator.name: value},
+                instantiates=path,
+                context=[path] if path else [],
+                source="ReferenceValidationPlugin",
             )
-            return class_name
 
         def _is_keyed_mapping(self, value: dict[str, Any], class_name: str) -> bool:
             """Whether a dict in a multivalued slot maps keys to objects of ``class_name``.

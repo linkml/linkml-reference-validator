@@ -9,6 +9,7 @@ having checked nothing.
 
 import pytest
 from linkml.validator import Validator  # type: ignore[import-untyped]
+from linkml.validator.report import Severity  # type: ignore[import-untyped]
 from typer.testing import CliRunner
 
 from linkml_reference_validator.cli import app
@@ -202,15 +203,42 @@ def test_type_given_as_curie_or_uri(setup, type_value):
     assert len(report.results) == 1
 
 
-@pytest.mark.parametrize("type_value", ["NoSuchClass", "Unrelated", "Reference", 42])
-def test_unknown_or_unrelated_type_falls_back_to_range(setup, type_value):
-    """A type that is not the range or a descendant of it is not trusted."""
+@pytest.mark.parametrize(
+    "type_value", ["Organiod", "NoSuchClass", "Unrelated", "Reference", 42, ""]
+)
+def test_unknown_or_unrelated_type_falls_back_to_range_with_a_warning(setup, type_value):
+    """A type that is not the range or a descendant of it is not trusted.
+
+    The object is validated as the declared range, but the fallback is
+    reported: silently ignoring a typo would bring back the #170 symptom of
+    a passing run that checked nothing.
+    """
     _, _, plugin, validator = setup
     report = validator.validate(
         {"model": {"id": "m1", "type": type_value, "references": _wrong_reference()}},
         "Container",
     )
     assert plugin.titles_checked == 0
+    assert len(report.results) == 1
+    result = report.results[0]
+    assert result.severity == Severity.WARN
+    assert result.instantiates == "model"
+    assert repr(type_value) in result.message
+    assert "Model" in result.message
+
+
+def test_absent_type_is_not_reported(setup):
+    """No designator value at all is ordinary: no warning."""
+    _, _, plugin, validator = setup
+    report = validator.validate(
+        {"model": {"id": "m1", "references": _wrong_reference()}}, "Container"
+    )
+    assert report.results == []
+
+
+def test_type_equal_to_the_range_is_not_reported(setup):
+    _, _, plugin, validator = setup
+    report = validator.validate({"model": {"id": "m1", "type": "Model"}}, "Container")
     assert report.results == []
 
 
@@ -234,7 +262,9 @@ def test_resolve_concrete_class(setup):
     assert resolve({"type": "ex:BrainOrganoid"}, "Model") == "BrainOrganoid"
     assert resolve({"type": "Model"}, "Model") == "Model"
     assert resolve({}, "Model") == "Model"
-    assert resolve({"type": "Unrelated"}, "Model") == "Model"
+    # Set but naming no acceptable class: None, so the caller can report it.
+    assert resolve({"type": "Unrelated"}, "Model") is None
+    assert resolve({"type": 42}, "Model") is None
     # Container has no designator, so the value is never consulted.
     assert resolve({"type": "Organoid"}, "Container") == "Container"
 
@@ -268,3 +298,28 @@ def test_cli_reproduction(setup, tmp_path):
     )
     assert result.exit_code == 1, result.output
     assert "Titles checked: 1" in result.output
+
+
+def test_cli_reports_a_misspelled_type(setup, tmp_path):
+    """A typo in the type designator fails the run instead of passing it."""
+    schema, cache, _, _ = setup
+    data = tmp_path / "typo.yaml"
+    data.write_text("model:\n  id: m1\n  type: Organiod\n")
+    result = CliRunner().invoke(
+        app,
+        [
+            "validate",
+            "data",
+            str(data),
+            "-s",
+            str(schema),
+            "-c",
+            str(cache),
+            "--no-full-text",
+            "--target-class",
+            "Container",
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert "[WARN]" in result.output
+    assert "Organiod" in result.output

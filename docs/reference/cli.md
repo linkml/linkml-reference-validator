@@ -706,8 +706,10 @@ the `signed_excerpts_sync` section of the config.
 ### Exit Codes
 
 - `0` - Synced (or, with `--check`, already up to date)
-- `1` - With `--check`, out of date; or the source directory does not exist
-- `2` - No source or destination configured
+- `1` - With `--check`, out of date
+- `2` - Configuration or input error: no source or destination, source directory
+  missing, a malformed bundle, a `--referenced-in` glob that is absolute or matches
+  no files, or `--prune` with nothing selected
 
 ---
 

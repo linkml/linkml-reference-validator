@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
+from ruamel.yaml import YAMLError  # type: ignore
 from typing_extensions import Annotated
 
 from linkml_reference_validator.signed_excerpts import sync_signed_excerpts
@@ -91,22 +92,25 @@ def sync_command(
             err=True,
         )
         raise typer.Exit(2)
-    if not source_dir.is_dir():
-        typer.echo(
-            f"Signed excerpts source not found: {source_dir} "
-            "(is the private store cloned there?)",
-            err=True,
+    # Problems with the private store or the selection are user errors, so
+    # report them as such (exit 2) rather than as a traceback; exit 1 is
+    # reserved for --check finding drift.
+    try:
+        report = sync_signed_excerpts(
+            source_dir,
+            dest_dir,
+            target_repo=(target_repo if target_repo is not None else settings.target_repo)
+            or None,
+            referenced_in=referenced_in or settings.referenced_in,
+            prune=prune if prune is not None else settings.prune,
+            dry_run=check,
         )
-        raise typer.Exit(1)
-
-    report = sync_signed_excerpts(
-        source_dir,
-        dest_dir,
-        target_repo=target_repo if target_repo is not None else settings.target_repo,
-        referenced_in=referenced_in or settings.referenced_in,
-        prune=prune if prune is not None else settings.prune,
-        dry_run=check,
-    )
+    except FileNotFoundError as e:
+        typer.echo(f"{e} (is the private store cloned there?)", err=True)
+        raise typer.Exit(2)
+    except (ValueError, YAMLError) as e:
+        typer.echo(str(e), err=True)
+        raise typer.Exit(2)
 
     verb = "would be " if check else ""
     for label, names in [

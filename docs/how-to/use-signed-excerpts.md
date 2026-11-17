@@ -65,13 +65,23 @@ passes EITHER filter:
   is `NAME` or starts with `NAME:`.
 - `--referenced-in GLOB` (repeatable) selects bundles whose `reference_id` is
   cited in a file matching the glob. This catches excerpts that were never
-  tagged with a `target_repo`.
+  tagged with a `target_repo`. Globs are relative to the working directory,
+  and a glob that matches no files is an error. The `reference_id` is matched
+  as written in the bundle (ignoring case), without the prefix normalization
+  that validation applies, so bundles should use the same CURIE form as the
+  citing data.
+
+List every directory whose files are validated against `signed_excerpts_dir`.
+With `--prune`, a bundle cited only from a directory left out of the list is
+deleted.
 
 Other options:
 
 - `--prune` deletes bundles in the destination that are no longer selected.
-  Files that are not YAML, such as a README, are left alone.
-- `--check` writes nothing and exits 1 if the destination is out of date.
+  Files that are not YAML, such as a README, are left alone. Pruning is refused
+  if nothing is selected, so a wrong source cannot empty the destination.
+- `--check` writes nothing and exits 1 if the destination is out of date. Other
+  errors (missing source, malformed bundle, bad glob) exit 2.
 - `--signed-excerpts-dir DIR` overrides the destination from the config.
 
 ### Configuring a repository
@@ -88,7 +98,8 @@ validation:
     target_repo: dismech
     referenced_in:
       - kb/disorders/*.yaml
-    prune: false
+      - kb/modules/*.yaml
+    prune: true
 ```
 
 Options given on the command line override the config.

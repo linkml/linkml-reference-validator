@@ -224,10 +224,126 @@ def test_cli_sync_without_source_explains(configured_downstream, monkeypatch):
 
 
 def test_cli_sync_missing_source_dir(tmp_path, configured_downstream, monkeypatch):
-    """A source path that does not exist (e.g. private repo not cloned) fails cleanly."""
+    """A missing source (e.g. private repo not cloned) exits 2, distinct from --check drift (1)."""
     monkeypatch.chdir(configured_downstream)
     result = runner.invoke(
         app, ["excerpts", "sync", "--source", str(tmp_path / "nope")]
     )
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "not found" in result.output
+
+
+# ---------------------------------------------------------------------------
+# Robustness (review of #172)
+# ---------------------------------------------------------------------------
+
+
+def test_boundary_rejects_id_continued_after_a_dot(tmp_path):
+    """A trailing sentence period ends an ID, but `.5` continues it."""
+    f = tmp_path / "a.yaml"
+    f.write_text("see DOI:10.1/x.5 and PMID:7.")
+    assert find_cited_reference_ids(["DOI:10.1/x", "PMID:7"], [f]) == {"PMID:7"}
+
+
+def test_scan_tolerates_non_utf8_files(tmp_path):
+    """Binary or mis-encoded files picked up by a broad glob do not crash the scan."""
+    f = tmp_path / "blob.bin"
+    f.write_bytes(b"\xff\xfe PMID:7 \x80")
+    assert find_cited_reference_ids(["PMID:7"], [f]) == {"PMID:7"}
+
+
+@pytest.mark.parametrize(
+    "content,message",
+    [
+        ("reference_id: [unclosed\n", "PMID_bad.yaml"),
+        ("- just\n- a list\n", "PMID_bad.yaml"),
+    ],
+)
+def test_malformed_bundle_fails_naming_the_file(store, tmp_path, content, message):
+    """A bundle that is not valid YAML or not a mapping fails with the file named."""
+    (store / "PMID_bad.yaml").write_text(content)
+    with pytest.raises(Exception, match=message):
+        sync_signed_excerpts(store, tmp_path / "out", target_repo="dismech")
+
+
+def test_unmatched_referenced_in_glob_is_an_error(store, downstream):
+    """A glob matching no files (typo, wrong cwd) must not silently shrink the selection."""
+    with pytest.raises(ValueError, match="kb/disorderz"):
+        sync_signed_excerpts(
+            store,
+            downstream / "signed_excerpts",
+            referenced_in=["kb/disorderz/*.yaml"],
+            base_dir=downstream,
+        )
+
+
+def test_absolute_referenced_in_glob_is_an_error(store, downstream):
+    """referenced_in patterns are relative to the working directory."""
+    with pytest.raises(ValueError, match="relative"):
+        sync_signed_excerpts(
+            store,
+            downstream / "signed_excerpts",
+            referenced_in=[str(downstream / "kb" / "disorders" / "*.yaml")],
+            base_dir=downstream,
+        )
+
+
+def test_prune_refuses_empty_selection(store, tmp_path):
+    """Pruning with nothing selected would delete every bundle, so it is refused."""
+    dest = tmp_path / "out"
+    sync_signed_excerpts(store, dest)
+    with pytest.raises(ValueError, match="no bundles"):
+        sync_signed_excerpts(store, dest, target_repo="nobody", prune=True)
+    assert _names(dest) == set(BUNDLES)
+
+
+def test_yml_bundles_are_synced_and_pruned(store, tmp_path):
+    """`.yml` bundles are treated like `.yaml` ones."""
+    (store / "PMID_333.yml").write_text("reference_id: PMID:333\nexcerpts: []\n")
+    dest = tmp_path / "out"
+    dest.mkdir()
+    (dest / "PMID_444.yml").write_text("reference_id: PMID:444\nexcerpts: []\n")
+    report = sync_signed_excerpts(store, dest, prune=True)
+    assert "PMID_333.yml" in report.added
+    assert report.removed == ["PMID_444.yml"]
+
+
+def test_cli_options_override_config(store, configured_downstream, monkeypatch):
+    """--target-repo and --referenced-in replace config values; --no-prune beats prune: true."""
+    dest = configured_downstream / "signed_excerpts"
+    dest.mkdir()
+    (dest / "PMID_999.yaml").write_text("reference_id: PMID:999\nexcerpts: []\n")
+    monkeypatch.chdir(configured_downstream)
+    result = runner.invoke(
+        app,
+        [
+            "excerpts", "sync", "--source", str(store),
+            "--target-repo", "ai-gene-review",
+            "--referenced-in", "kb/disorders/B.yaml",
+            "--no-prune",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _names(dest) == {"PMID_222.yaml", "DOI_10.1000_abc.yaml", "PMID_999.yaml"}
+
+
+def test_cli_check_reports_prune_only_drift(store, configured_downstream, monkeypatch):
+    """A stale bundle that prune would remove makes --check fail."""
+    monkeypatch.chdir(configured_downstream)
+    runner.invoke(app, ["excerpts", "sync", "--source", str(store)])
+    stale = configured_downstream / "signed_excerpts" / "PMID_999.yaml"
+    stale.write_text("reference_id: PMID:999\nexcerpts: []\n")
+    result = runner.invoke(app, ["excerpts", "sync", "--source", str(store), "--check"])
+    assert result.exit_code == 1
+    assert "removed: PMID_999.yaml" in result.output
+    assert stale.exists()
+
+
+def test_cli_unmatched_glob_exits_2(store, configured_downstream, monkeypatch):
+    """Selection errors are reported as configuration errors (exit 2), not tracebacks."""
+    monkeypatch.chdir(configured_downstream)
+    result = runner.invoke(
+        app, ["excerpts", "sync", "--source", str(store), "--referenced-in", "nope/*.yaml"]
+    )
+    assert result.exit_code == 2
+    assert "nope/*.yaml" in result.output

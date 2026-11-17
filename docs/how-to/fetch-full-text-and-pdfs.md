@@ -367,6 +367,18 @@ full_text_providers:
   - openalex
 ```
 
+Custom provider definitions are read from three places. If the same provider
+name is defined in more than one, the most specific definition wins (highest
+precedence first):
+
+1. The file named by `full_text_providers_file`
+2. `.linkml-reference-validator-fulltext.yaml` in the current directory
+   (project-level)
+3. `~/.config/linkml-reference-validator/fulltext/*.yaml` (user-level; files
+   are read in alphabetical order and a later file overrides an earlier one)
+
+Names defined in only one place are always available.
+
 ## Provenance fields
 
 When a reference is enriched with full text, the cached reference records where

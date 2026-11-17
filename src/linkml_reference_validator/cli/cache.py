@@ -151,7 +151,10 @@ def reference_command(
 
     typer.echo(f"Fetching {reference_id}...")
 
-    outcome = fetcher.fetch_with_provenance(reference_id, force_refresh=force)
+    # Report what the cache holds, not a local full text overlaid on it.
+    outcome = fetcher.fetch_with_provenance(
+        reference_id, force_refresh=force, use_local_full_text=False
+    )
 
     # What this command promises is that the cache holds a current entry
     # afterwards - not that it downloaded one, since an entry the current
@@ -177,6 +180,12 @@ def reference_command(
 
     reference = outcome.content
 
+    if reference and reference.reference_id.startswith("file:") and not config.cache_local_files:
+        typer.echo(
+            f"Read {reference_id}, but did not cache it: file: references are "
+            "not cached unless cache_local_files is set."
+        )
+        raise typer.Exit(0)
     if reference:
         typer.echo(f"Successfully cached {reference_id}")
         typer.echo(f"  Title: {reference.title}")

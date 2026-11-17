@@ -45,6 +45,23 @@ NO_QUOTED_TEXT_MESSAGE = (
 )
 
 
+def _is_verified(excerpt: object) -> bool:
+    """Whether a signed-excerpt entry records the source text it was verified against.
+
+    Examples:
+        >>> _is_verified({"text": "x", "verification": {"source_sha256": "ab12"}})
+        True
+        >>> _is_verified({"text": "x"})
+        False
+        >>> _is_verified("x")
+        False
+    """
+    if not isinstance(excerpt, dict):
+        return False
+    verification = excerpt.get("verification")
+    return isinstance(verification, dict) and bool(verification.get("source_sha256"))
+
+
 def is_blank_text(value: object) -> bool:
     """Report whether a value is a string with no non-whitespace characters.
 
@@ -639,7 +656,10 @@ class SupportingTextValidator:
         """Return a match if ``supporting_text`` exact-matches an entry in ``signed_record``.
 
         Exact match (after folding whitespace runs) is required so any deviation
-        from the verified excerpt in the private store is flagged.
+        from the verified excerpt in the private store is flagged. With
+        ``signed_excerpts_require_verification``, only entries carrying a
+        ``verification`` record (see :mod:`~linkml_reference_validator.excerpt_signing`)
+        are considered.
         """
         if not signed_record:
             return None
@@ -661,6 +681,8 @@ class SupportingTextValidator:
                 )
                 candidate = raw if isinstance(raw, str) else ""
             else:
+                continue
+            if self.config.signed_excerpts_require_verification and not _is_verified(item):
                 continue
             if candidate and self._collapse_whitespace(candidate) == target:
                 return SupportingTextMatch(

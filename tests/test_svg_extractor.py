@@ -998,6 +998,7 @@ def test_other_file_entries_need_no_svg_stamp():
 
 
 def test_fresh_svg_fetch_is_stamped_and_reloads(tmp_path, config):
+    config.cache_local_files = True  # the entry is what is under test (#173)
     figure = tmp_path / "fig.svg"
     figure.write_bytes(svg("<text>stamped claim</text>"))
     fetcher = ReferenceFetcher(config)
@@ -1024,6 +1025,7 @@ def _write_raw_markup_entry(fetcher: ReferenceFetcher, figure) -> None:
 
 
 def test_raw_markup_entry_is_not_preserved_when_refresh_finds_no_text(tmp_path, config):
+    config.cache_local_files = True  # the entry is what is under test (#173)
     figure = tmp_path / "fig.svg"
     figure.write_bytes(svg("<script>x()</script><text>shown</text>"))
     fetcher = ReferenceFetcher(config)

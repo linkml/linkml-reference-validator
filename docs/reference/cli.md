@@ -18,7 +18,7 @@ linkml-reference-validator [OPTIONS] COMMAND [ARGS]...
 - `validate` - Validate supporting text against references
 - `repair` - Repair supporting text validation errors
 - `cache` - Manage reference cache
-- `excerpts` - Manage signed excerpts synced from a private full-text store
+- `excerpts` - Sign excerpts against local full text, or sync them from a private store
 
 ---
 
@@ -710,6 +710,37 @@ the `signed_excerpts_sync` section of the config.
 - `2` - Configuration or input error: no source or destination, source directory
   missing, a malformed bundle, a `--referenced-in` glob that is absolute or matches
   no files, or `--prune` with nothing selected
+
+---
+
+## excerpts sign
+
+Verify quotes in data files against local full text mapped with
+`local_full_text` or `local_full_text_dir`, and write the quotes that pass to
+snippet-only bundles in `signed_excerpts_dir`. See
+[Signing excerpts from local full text](../how-to/use-signed-excerpts.md#signing-excerpts-from-local-full-text).
+
+### Usage
+
+```bash
+linkml-reference-validator excerpts sign [OPTIONS] DATA_FILES...
+```
+
+### Options
+
+- `--reference, -r ID` - Only sign quotes citing this reference (repeatable)
+- `--signed-excerpts-dir PATH` - Destination (default: `signed_excerpts_dir` from config)
+- `--check` - Write nothing; exit 1 if any bundle is out of date
+- `--prune` - Remove excerpts this command signed earlier that are no longer cited
+- `--config PATH` - Configuration file
+
+### Exit Codes
+
+- `0` - Signed (or, with `--check`, already up to date)
+- `1` - A quote failed to verify, a bundle would exceed a fair-use cap, the
+  source changed during the run, a requested reference has no local text, or
+  (with `--check`) a bundle is out of date
+- `2` - No destination configured, or a data file is missing
 
 ---
 

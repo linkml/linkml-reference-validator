@@ -13,9 +13,15 @@ def svg(label: str) -> str:
 
 @pytest.fixture
 def config(tmp_path):
-    """A config with its own cache, resolving relative paths against ``refs``."""
+    """A config with its own cache, resolving relative paths against ``refs``.
+
+    ``cache_local_files`` is on: these tests are about the entries written for
+    the cache commands, which are off by default (#173).
+    """
     return ReferenceValidationConfig(
-        cache_dir=tmp_path / "cache", reference_base_dir=tmp_path / "refs"
+        cache_dir=tmp_path / "cache",
+        reference_base_dir=tmp_path / "refs",
+        cache_local_files=True,
     )
 
 
@@ -61,7 +67,7 @@ def test_relative_and_absolute_ids_share_one_entry(config, notes):
     relative = fetcher.fetch("file:notes.md")
     absolute = fetcher.fetch(f"file:{notes}")
     assert relative.content == absolute.content == "version one"
-    assert relative.reference_id == absolute.reference_id == f"file:{notes}"
+    assert relative.reference_id == absolute.reference_id == "file:notes.md"
     assert fetcher.get_cache_path("file:notes.md") == fetcher.get_cache_path(f"file:{notes}")
     assert fetcher.get_cache_path("file:./notes.md") == fetcher.get_cache_path(f"file:{notes}")
     assert [p.name for p in config.cache_dir.glob("*.md")] == [
@@ -69,10 +75,11 @@ def test_relative_and_absolute_ids_share_one_entry(config, notes):
     ]
 
 
-def test_relative_id_normalizes_to_the_absolute_path(config, notes):
+def test_ids_normalize_to_the_path_under_the_base_dir(config, notes):
     fetcher = ReferenceFetcher(config)
-    assert fetcher.normalize_reference_id("file:./notes.md") == f"file:{notes}"
-    assert fetcher.normalize_reference_id("file:sub/../notes.md") == f"file:{notes}"
+    assert fetcher.normalize_reference_id("file:./notes.md") == "file:notes.md"
+    assert fetcher.normalize_reference_id("file:sub/../notes.md") == "file:notes.md"
+    assert fetcher.normalize_reference_id(f"file:{notes}") == "file:notes.md"
 
 
 def test_relative_fetch_sees_an_edit(config, notes):
@@ -113,7 +120,7 @@ def test_symlink_keeps_the_path_as_written(config, notes):
     fetcher = ReferenceFetcher(config)
     ref = fetcher.fetch("file:current.md")
     assert ref.content == "version one"
-    assert ref.reference_id == f"file:{current}"
+    assert ref.reference_id == "file:current.md"
     other = config.reference_base_dir / "other.md"
     other.write_text("other version", encoding="utf-8")
     current.unlink()

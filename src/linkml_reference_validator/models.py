@@ -521,6 +521,17 @@ class ReferenceValidationConfig(BaseModel):
             "excerpt recorded for that reference in signed_excerpts_dir."
         ),
     )
+    signed_excerpts_require_verification: bool = Field(
+        default=False,
+        description=(
+            "Accept a signed excerpt only if it carries a verification record "
+            "with a source_sha256, as written by `excerpts sign`. Off by default "
+            "so bundles written before that command keep working. The record is "
+            "an attestation, not a cryptographic signature: it distinguishes "
+            "signed entries from hand-typed ones, but whoever can edit a bundle "
+            "can edit the record too."
+        ),
+    )
     signed_excerpts_sync: SignedExcerptsSyncConfig = Field(
         default_factory=SignedExcerptsSyncConfig,
         description=(
@@ -543,6 +554,39 @@ class ReferenceValidationConfig(BaseModel):
     reference_base_dir: Optional[Path] = Field(
         default=None,
         description="Base directory for resolving relative file: references. If None, uses CWD.",
+    )
+    local_full_text: dict[str, Path] = Field(
+        default_factory=dict,
+        description=(
+            "Map reference IDs to local full-text files the curator may read but "
+            "not redistribute, e.g. {'DOI:10.1016/j.x.2025.11.017': "
+            "'papers/x.md'}. While the file exists, quotes citing that ID are "
+            "matched against it instead of any fetched text. Its text is never "
+            "written to a cache; metadata is fetched and cached as usual. Relative "
+            "paths resolve like file: references, against reference_base_dir or "
+            "the working directory. An absent file is ignored, so CI without the "
+            "file validates as before (use signed_excerpts_dir there)."
+        ),
+    )
+    local_full_text_dir: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Directory of local full-text files named by cache filename stem, "
+            "e.g. DOI_10.1016_j.x.2025.11.017.md (or .txt). Consulted after "
+            "local_full_text; same rules otherwise, including resolving a "
+            "relative directory against reference_base_dir."
+        ),
+    )
+    cache_local_files: bool = Field(
+        default=False,
+        description=(
+            "Write the text of file: references to cache_dir. Off by default: "
+            "validation always reads a local file directly and never reads these "
+            "entries back, and the file is often a paper the project may not "
+            "redistribute, while cache_dir is usually committed (#173). Turn it "
+            "on only for your own notes, if the cache commands or export should "
+            "include them."
+        ),
     )
     rate_limit_delay: float = Field(
         default=0.5,

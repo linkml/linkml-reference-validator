@@ -897,6 +897,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#signing-excerpts-from-local-full-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing excerpts from local full text
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Signing excerpts from local full text">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-map-the-reference-to-the-local-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Map the reference to the local file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sign-the-quotes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Sign the quotes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-commit-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Commit the bundle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-signed-means-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What "signed" means here
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#syncing-bundles-with-excerpts-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1431,6 +1492,67 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#signing-excerpts-from-local-full-text" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signing excerpts from local full text
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Signing excerpts from local full text">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-map-the-reference-to-the-local-file" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Map the reference to the local file
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-sign-the-quotes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Sign the quotes
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-commit-the-bundle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Commit the bundle
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-signed-means-here" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What "signed" means here
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#syncing-bundles-with-excerpts-sync" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1526,6 +1648,115 @@ excerpts:
 </code></pre>
 <p>Only <code>reference_id</code> and each excerpt's <code>text</code> are used by validation. Other
 fields (claims, NER annotations, checksums) are carried along unchanged.</p>
+<h2 id="signing-excerpts-from-local-full-text">Signing excerpts from local full text</h2>
+<p>You may not need a separate private store. If you hold a closed paper's full
+text on your own machine, licensed for your use but not for redistribution,
+the validator can check quotes against it and write the bundle itself.</p>
+<h3 id="1-map-the-reference-to-the-local-file">1. Map the reference to the local file</h3>
+<p>Cite the paper by its real identifier in the data:</p>
+<pre><code class="language-yaml">evidence:
+  - reference: DOI:10.1016/j.ajodo.2025.11.017
+    supporting_text: &quot;The T-appliance is a removable activator supported by both the maxilla and the mandible.&quot;
+</code></pre>
+<p>Then tell the validator where the text is, either one reference at a time:</p>
+<pre><code class="language-yaml">validation:
+  signed_excerpts_dir: signed_excerpts
+  local_full_text:
+    DOI:10.1016/j.ajodo.2025.11.017: papers/10.1016_j.ajodo.2025.11.017.md
+</code></pre>
+<p>or with a directory of files named like cache files
+(<code>DOI_10.1016_j.ajodo.2025.11.017.md</code> or <code>.txt</code>):</p>
+<pre><code class="language-yaml">validation:
+  local_full_text_dir: ~/private-papers
+</code></pre>
+<p>Relative paths, including a relative <code>local_full_text_dir</code>, resolve against
+<code>reference_base_dir</code>, or the working directory if that is unset. Set
+<code>reference_base_dir</code> so the result does not depend on where you run the
+command. Keep the files out of the repository, or list them in
+<code>.gitignore</code>.</p>
+<p>While a mapped file exists, quotes citing that ID are matched against it, in
+preference to any fetched text. The paper's metadata (title and so on) is
+still fetched and cached as usual, but <strong>the file's text is never written to
+any cache</strong>. Where the file is absent, for example in CI or on another
+curator's machine, validation works exactly as if nothing were mapped.</p>
+<h3 id="2-sign-the-quotes">2. Sign the quotes</h3>
+<pre><code class="language-bash">linkml-reference-validator excerpts sign kb/disorders/*.yaml
+</code></pre>
+<p>For every cited reference that has local text, each quote is validated
+against the file, with the usual matcher and fair-use caps
+(<code>max_excerpt_length</code>, <code>max_total_chars_per_reference</code>,
+<code>max_reference_fraction</code>). Quotes that pass are written to
+<code>signed_excerpts/&lt;REF_ID&gt;.yaml</code>. Quotes that fail are listed, are not signed,
+and make the command exit 1.</p>
+<pre><code class="language-yaml">reference_id: DOI:10.1016/j.ajodo.2025.11.017
+title: ...
+source_char_count: 41230
+excerpts:
+- text: The T-appliance is a removable activator supported by both the maxilla and the mandible.
+  verification:
+    method: local_full_text
+    source_sha256: 3f1c...
+    validator_version: 0.7.0
+    verified_at: '2026-11-17'
+</code></pre>
+<p>The bundle stores each quote as it is written in the data, because CI
+compares quotes against the bundle exactly. <code>source_char_count</code> lets CI
+apply <code>max_reference_fraction</code> without the file.</p>
+<p>Options:</p>
+<ul>
+<li><code>--reference ID</code> (repeatable) signs only those references. A requested
+  reference with no local text is reported and the command exits 1.</li>
+<li><code>--check</code> writes nothing and exits 1 if any bundle is out of date.</li>
+<li><code>--prune</code> removes excerpts this command signed earlier that the data no
+  longer cites, including from bundles for references the data no longer
+  cites at all. Excerpts from anywhere else, such as a private store, are
+  always kept. Pass <strong>every</strong> data file with <code>--prune</code>: a quote cited only in
+  a file you left out counts as no longer cited. A reference with any quote
+  that fails to verify is not pruned in that run, so a wrongly mapped file
+  (a preprint instead of the published paper, say) cannot delete good
+  excerpts. With <code>--reference</code>, only the named references are pruned, and
+  bundles for references the data no longer cites are left alone.
+  Only bundles named as validation reads them (<code>&lt;REF_ID&gt;.yaml</code>, or <code>.yml</code>
+  when there is no <code>.yaml</code>) are pruned; a hand-named file is left alone.
+  A bundle whose excerpts from elsewhere are already over a cap is reported
+  on every <code>--prune</code> run, because pruning never removes them; trim it by hand.
+  Keep only bundles in <code>signed_excerpts_dir</code>: <code>--prune</code> reads every YAML
+  file there, and one that is not a readable bundle is reported and makes the
+  command exit 1.</li>
+<li><code>--signed-excerpts-dir DIR</code> overrides the destination in the config.</li>
+</ul>
+<p>The fair-use caps are checked twice: on each run's quotes, as in validation,
+and on the merged bundle as a whole, because the bundle keeps every quote
+ever signed into it. This is checked for every bundle the command would
+write to, including one that is otherwise unchanged, so <code>--check</code> reports a bundle that a lowered
+cap or a hand edit has pushed over. A bundle that would go over
+<code>max_total_chars_per_reference</code> or <code>max_reference_fraction</code> is not written.
+The same is true if the source file changes while its quotes are being
+checked, since the recorded hash would not match the text that was checked.</p>
+<p>Re-signing is deterministic. An existing bundle keeps its excerpts, their
+order and their other fields (such as <code>target_repo</code>). An excerpt already
+verified against the same file (the same <code>source_sha256</code>) is left as it is,
+so an unchanged run rewrites nothing. New quotes are added in sorted order.
+An existing bundle is never used as evidence when signing, so an entry typed
+by hand cannot be re-signed without matching the file.</p>
+<h3 id="3-commit-the-bundle">3. Commit the bundle</h3>
+<p>Commit <code>signed_excerpts/*.yaml</code> together with the data. CI validates the same
+<code>DOI:</code> citation through the bundle and never needs the paper.</p>
+<h3 id="what-signed-means-here">What "signed" means here</h3>
+<p>The <code>verification</code> record is an <strong>attestation, not a cryptographic
+signature</strong>. It records which text a quote was checked against, with which
+version, and when, so a reviewer can tell signed entries from hand-typed
+ones. It cannot stop someone who can edit the bundle from also editing the
+record. In particular, it does not defend against an agent that writes a
+bundle directly. To require the record, set:</p>
+<pre><code class="language-yaml">validation:
+  signed_excerpts_require_verification: true
+</code></pre>
+<p>Then validation ignores excerpts that have no <code>verification.source_sha256</code>.
+This is off by default so bundles written before <code>excerpts sign</code> existed keep
+working.</p>
+<p>The hash identifies the <em>text file</em> that was matched, not the paper. Two
+extractions of one paper (PDF to text, or JATS XML) have different hashes.</p>
 <h2 id="syncing-bundles-with-excerpts-sync">Syncing bundles with <code>excerpts sync</code></h2>
 <p><code>excerpts sync</code> copies bundles from a local checkout of the private store
 into <code>signed_excerpts_dir</code>. Files are copied byte for byte, so the public copy

@@ -864,6 +864,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#local-files-are-not-cached" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local files are not cached
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#configuring-a-base-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1609,6 +1620,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#local-files-are-not-cached" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Local files are not cached
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#configuring-a-base-directory" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1822,8 +1844,28 @@
 <li>If <code>reference_base_dir</code> is configured, paths resolve relative to it</li>
 <li>Otherwise, paths resolve relative to the current working directory</li>
 </ol>
-<p>Note: cached references use the resolved absolute path in the reference ID, so
-the cache file name reflects the full path.</p>
+<p>A file under <code>reference_base_dir</code> (or, if that is unset, the working directory)
+is named relative to it in reports, so <code>file:/home/me/repo/papers/a.md</code> is
+reported as <code>file:papers/a.md</code>. A file outside it keeps its absolute path.</p>
+<h3 id="local-files-are-not-cached">Local files are not cached</h3>
+<p>A <code>file:</code> reference is always read straight from the file, and its text is
+<strong>not</strong> written to <code>cache_dir</code> or any other cache. The file is often a paper the
+project may not redistribute, and <code>cache_dir</code> is usually committed.</p>
+<p>To cache your own notes anyway, for the cache commands or export, set:</p>
+<pre><code class="language-yaml">validation:
+  cache_local_files: true
+  reference_base_dir: .
+</code></pre>
+<p>Set <code>reference_base_dir</code> too. Without it, entries are named relative to the
+directory you happen to run from, and a file reached through <code>../</code> keeps its
+absolute path, including your home directory.</p>
+<p>Earlier versions (up to and including 0.6.0) wrote every <code>file:</code> reference to
+<code>cache_dir</code>. If you validated against a closed paper with one of them, check the committed
+cache for entries with <code>content_type: local_file</code> and remove them:</p>
+<pre><code class="language-bash">grep -l &quot;content_type: local_file&quot; references_cache/*.md
+</code></pre>
+<p>To cite such a paper by its real identifier instead of a path, see
+<a href="../use-signed-excerpts/#signing-excerpts-from-local-full-text">Using Signed Excerpts</a>.</p>
 <h3 id="configuring-a-base-directory">Configuring a Base Directory</h3>
 <p>Set a base directory for all relative file references:</p>
 <pre><code class="language-python">from linkml_reference_validator.models import ReferenceValidationConfig

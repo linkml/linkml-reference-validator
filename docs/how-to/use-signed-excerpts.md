@@ -128,13 +128,21 @@ Options:
   reference with no local text is reported and the command exits 1.
 - `--check` writes nothing and exits 1 if any bundle is out of date.
 - `--prune` removes excerpts this command signed earlier that the data no
-  longer cites, or that no longer verify. Excerpts from anywhere else, such
-  as a private store, are always kept.
+  longer cites, including from bundles for references the data no longer
+  cites at all. Excerpts from anywhere else, such as a private store, are
+  always kept. Pass **every** data file with `--prune`: a quote cited only in
+  a file you left out counts as no longer cited. A reference with any quote
+  that fails to verify is not pruned in that run, so a wrongly mapped file
+  (a preprint instead of the published paper, say) cannot delete good
+  excerpts. With `--reference`, only the named references are pruned, and
+  bundles for references the data no longer cites are left alone.
 - `--signed-excerpts-dir DIR` overrides the destination in the config.
 
 The fair-use caps are checked twice: on each run's quotes, as in validation,
 and on the merged bundle as a whole, because the bundle keeps every quote
-ever signed into it. A bundle that would go over
+ever signed into it. This is checked for every bundle visited, including
+one that is otherwise unchanged, so `--check` reports a bundle that a lowered
+cap or a hand edit has pushed over. A bundle that would go over
 `max_total_chars_per_reference` or `max_reference_fraction` is not written.
 The same is true if the source file changes while its quotes are being
 checked, since the recorded hash would not match the text that was checked.

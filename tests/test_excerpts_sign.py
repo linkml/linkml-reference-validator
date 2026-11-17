@@ -364,3 +364,74 @@ def test_source_edited_mid_run_is_not_signed(config, data_file, monkeypatch):
     report = sign_excerpts([data_file], config, today=TODAY)
     assert report.written == []
     assert "changed while" in report.failures[0].message
+
+
+# ---------------------------------------------------------------------------
+# Second review follow-ups (#176)
+# ---------------------------------------------------------------------------
+
+
+def test_prune_does_not_touch_a_reference_with_failures(config, data_file):
+    """A wrong local file must not wipe excerpts signed against the right one."""
+    sign_excerpts([data_file], config, today=TODAY)
+    before = (config.signed_excerpts_dir / f"{STEM}.yaml").read_bytes()
+    (config.reference_base_dir / "papers" / "ajodo.md").write_text(
+        "# Preprint\n\nDifferent wording entirely.\n", encoding="utf-8"
+    )
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert len(report.failures) == 2
+    assert (config.signed_excerpts_dir / f"{STEM}.yaml").read_bytes() == before
+
+
+def test_prune_visits_bundles_for_references_no_longer_cited(config, data_file):
+    sign_excerpts([data_file], config, today=TODAY)
+    data_file.write_text(evidence_yaml("other", reference="PMID:999"), encoding="utf-8")
+    report = sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert report.written == [f"{STEM}.yaml"]
+    assert load_bundle(config)["excerpts"] == []
+
+
+def test_prune_leaves_uncited_bundles_from_elsewhere_alone(config, data_file):
+    config.signed_excerpts_dir.mkdir()
+    other = config.signed_excerpts_dir / "PMID_5.yaml"
+    other.write_text("reference_id: PMID:5\nexcerpts:\n- text: From a store.\n", encoding="utf-8")
+    before = other.read_bytes()
+    sign_excerpts([data_file], config, today=TODAY, prune=True)
+    assert other.read_bytes() == before
+
+
+def test_check_reports_an_unchanged_bundle_over_the_cap(config, data_file):
+    sign_excerpts([data_file], config, today=TODAY)
+    config.max_total_chars_per_reference = 50
+    report = sign_excerpts([data_file], config, today=TODAY, dry_run=True)
+    assert any("max_total_chars_per_reference" in f.message for f in report.failures)
+    assert any("--prune" in f.message for f in report.failures)
+
+
+def test_bundle_with_a_non_normalized_reference_id_is_reused(config, data_file):
+    config.signed_excerpts_dir.mkdir()
+    bundle = config.signed_excerpts_dir / f"{STEM}.yaml"
+    bundle.write_text(
+        "reference_id: doi:10.1016/J.AJODO.2025.11.017\nexcerpts:\n- text: Kept.\n",
+        encoding="utf-8",
+    )
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert report.written == [f"{STEM}.yaml"]
+    assert [p.name for p in config.signed_excerpts_dir.iterdir()] == [f"{STEM}.yaml"]
+    assert load_bundle(config)["excerpts"][0]["text"] == "Kept."
+
+
+def test_both_bundle_names_taken_by_other_references_is_a_failure(config, data_file):
+    from linkml_reference_validator.cache import disambiguated_cache_filename
+
+    config.signed_excerpts_dir.mkdir()
+    for name, ref in [
+        (f"{STEM}.yaml", "DOI:10.1016/j_ajodo.2025.11.017"),
+        (disambiguated_cache_filename(DOI).replace(".md", ".yaml"), "DOI:10.9/other"),
+    ]:
+        (config.signed_excerpts_dir / name).write_text(
+            f"reference_id: {ref}\nexcerpts:\n- text: x\n", encoding="utf-8"
+        )
+    report = sign_excerpts([data_file], config, today=TODAY)
+    assert report.written == []
+    assert any("another reference" in f.message for f in report.failures)

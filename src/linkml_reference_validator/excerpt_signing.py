@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Iterable, Optional
 
 from ruamel.yaml import YAML  # type: ignore
 from ruamel.yaml.comments import CommentedMap  # type: ignore
@@ -115,15 +115,20 @@ def _source_text_stats(path: Path, content: str) -> tuple[str, int]:
     return sha, len(re.sub(r"\s", "", content))
 
 
-def _bundle_path(directory: Path, normalized_id: str) -> Path:
+def _bundle_path(
+    directory: Path,
+    normalized_id: str,
+    normalize: Callable[[str], str] = lambda reference_id: reference_id,
+) -> Optional[Path]:
     """The bundle file for ``normalized_id`` in ``directory``.
 
     Tries the same names validation reads, in the same order: the usual cache
     stem, then the disambiguated one, each as ``.yaml`` or ``.yml``. A file
     that records a different ``reference_id`` belongs to the reference whose
     name it shares and is skipped, so its quotes are never merged with ours
-    (#131). With no existing bundle, the usual name is used unless another
-    reference holds it.
+    (#131). Stored IDs are compared after ``normalize``, as validation compares
+    them. With no existing bundle, the usual name is used unless another
+    reference holds it. Returns None if other references hold both names.
 
     Examples:
         >>> import tempfile
@@ -138,18 +143,28 @@ def _bundle_path(directory: Path, normalized_id: str) -> Path:
         Path(cache_filename(normalized_id)).stem,
         Path(disambiguated_cache_filename(normalized_id)).stem,
     ]
-    taken = False
-    for stem in stems:
+    taken = [False, False]
+    for position, stem in enumerate(stems):
         for suffix in BUNDLE_SUFFIXES:
             candidate = directory / f"{stem}{suffix}"
             if not candidate.is_file():
                 continue
-            data = YAML(typ="safe").load(candidate.read_text(encoding="utf-8"))
-            stored = data.get("reference_id") if isinstance(data, dict) else None
-            if stored is None or _same_reference_id(str(stored), normalized_id):
+            stored = _stored_reference_id(candidate)
+            if stored is None or _same_reference_id(normalize(stored), normalized_id):
                 return candidate
-            taken = True
-    return directory / f"{stems[1 if taken else 0]}.yaml"
+            taken[position] = True
+    if not taken[0]:
+        return directory / f"{stems[0]}.yaml"
+    if not taken[1]:
+        return directory / f"{stems[1]}.yaml"
+    return None
+
+
+def _stored_reference_id(path: Path) -> Optional[str]:
+    """The ``reference_id`` a bundle file records, if any."""
+    data = YAML(typ="safe").load(path.read_text(encoding="utf-8"))
+    stored = data.get("reference_id") if isinstance(data, dict) else None
+    return None if stored is None else str(stored)
 
 
 def _round_trip_yaml() -> YAML:
@@ -180,7 +195,7 @@ def _merge(
     verified: list[str],
     verification: dict[str, str],
     title: Optional[str],
-    source_char_count: int,
+    source_char_count: Optional[int],
     prune: bool = False,
 ) -> bool:
     """Merge verified quotes into ``bundle``; return True if it changed.
@@ -196,7 +211,7 @@ def _merge(
     if title and bundle.get("title") != title:
         bundle["title"] = title
         changed = True
-    if bundle.get("source_char_count") != source_char_count:
+    if source_char_count is not None and bundle.get("source_char_count") != source_char_count:
         bundle["source_char_count"] = source_char_count
         changed = True
 
@@ -250,7 +265,7 @@ def _merge(
 def _bundle_cap_problem(
     bundle: CommentedMap,
     validator: SupportingTextValidator,
-    source_char_count: int,
+    source_char_count: Optional[int],
 ) -> Optional[str]:
     """Why the merged bundle as a whole exceeds a fair-use cap, if it does.
 
@@ -264,20 +279,21 @@ def _bundle_cap_problem(
         for text in (_excerpt_text(item) for item in bundle.get("excerpts") or [])
         if text is not None
     )
+    advice = "not written (--prune drops signed excerpts no longer cited)"
     limit = config.max_total_chars_per_reference
     if limit > 0 and total > limit:
         return (
-            f"Bundle would hold {total} non-whitespace characters of quoted text, "
-            f"maximum is {limit} (max_total_chars_per_reference); not written"
+            f"Bundle holds {total} non-whitespace characters of quoted text, "
+            f"maximum is {limit} (max_total_chars_per_reference); {advice}"
         )
     fraction = config.max_reference_fraction
-    if fraction > 0.0 and source_char_count > 0:
+    if fraction > 0.0 and source_char_count:
         allowed = int(source_char_count * fraction)
         if total > allowed:
             return (
-                f"Bundle would hold {total} of {source_char_count} non-whitespace "
+                f"Bundle holds {total} of {source_char_count} non-whitespace "
                 f"characters ({total / source_char_count:.1%}), maximum is "
-                f"{fraction:.1%} (max_reference_fraction); not written"
+                f"{fraction:.1%} (max_reference_fraction); {advice}"
             )
     return None
 
@@ -343,6 +359,7 @@ def sign_excerpts(
             report.no_local_text.append(reference_id)
 
     yaml = _round_trip_yaml()
+    stamp = today or date.today().isoformat()
     for reference_id, texts in quotes.items():
         source = fetcher.local_full_text_path(reference_id)
         if source is None:
@@ -353,11 +370,13 @@ def sign_excerpts(
         sha, char_count = _source_text_stats(source, reference.content)
 
         verified: list[str] = []
+        failed = False
         for text in texts:
             result = validator.validate(text, reference_id)
             if result.is_valid:
                 verified.append(text)
             else:
+                failed = True
                 report.failures.append(SignFailure(reference_id, text, result.message or ""))
         if _source_text_stats(source, reference.content)[0] != sha:
             report.failures.append(
@@ -369,35 +388,94 @@ def sign_excerpts(
                 )
             )
             continue
-        if not verified and not prune:
+        # A failure may mean the wrong file is mapped (a preprint, say), so
+        # pruning against this run could delete excerpts that were right.
+        prune_here = prune and not failed
+        if not verified and not prune_here:
             continue
-
-        path = _bundle_path(directory, reference_id)
-        bundle = (
-            yaml.load(path.read_text(encoding="utf-8")) if path.is_file() else None
-        ) or CommentedMap(reference_id=reference_id)
         verification = {
             "method": SIGN_METHOD,
             "source_sha256": sha,
             "validator_version": __version__,
-            "verified_at": today or date.today().isoformat(),
+            "verified_at": stamp,
         }
-        if not _merge(
-            bundle, verified, verification, reference.title, char_count, prune=prune
-        ):
-            report.unchanged.append(path.name)
-            continue
-        cap_problem = _bundle_cap_problem(bundle, validator, char_count)
-        if cap_problem:
-            report.failures.append(SignFailure(reference_id, "", cap_problem))
-            continue
-        report.written.append(path.name)
-        if dry_run:
-            continue
-        directory.mkdir(parents=True, exist_ok=True)
-        buffer = StringIO()
-        yaml.dump(bundle, buffer)
-        path.write_text(buffer.getvalue(), encoding="utf-8")
-        logger.info("Signed %d excerpt(s) for %s in %s", len(verified), reference_id, path)
+        _update_bundle(
+            report, yaml, directory, reference_id, fetcher.normalize_reference_id,
+            validator, verified, verification, reference.title, char_count,
+            prune_here, dry_run,
+        )
+
+    if prune and not wanted:
+        # References the data no longer cites at all: drop what this command
+        # signed for them. Needs no local text, since nothing is verified.
+        cited = set(quotes)
+        for path in sorted(p for p in directory.glob("*") if p.suffix in BUNDLE_SUFFIXES):
+            stored = _stored_reference_id(path)
+            if stored is None:
+                continue
+            normalized = fetcher.normalize_reference_id(stored)
+            if any(_same_reference_id(normalized, c) for c in cited):
+                continue
+            _update_bundle(
+                report, yaml, directory, normalized, fetcher.normalize_reference_id,
+                validator, [], None, None, None, True, dry_run,
+            )
 
     return report
+
+
+def _update_bundle(
+    report: SignReport,
+    yaml: YAML,
+    directory: Path,
+    reference_id: str,
+    normalize: Callable[[str], str],
+    validator: SupportingTextValidator,
+    verified: list[str],
+    verification: Optional[dict[str, str]],
+    title: Optional[str],
+    source_char_count: Optional[int],
+    prune: bool,
+    dry_run: bool,
+) -> None:
+    """Merge into, cap-check and (unless ``dry_run``) write one reference's bundle.
+
+    The caps are checked whether or not the merge changed anything, so
+    ``--check`` reports a bundle that was over them already.
+    """
+    path = _bundle_path(directory, reference_id, normalize)
+    if path is None:
+        report.failures.append(
+            SignFailure(
+                reference_id,
+                "",
+                "both bundle names for this reference hold another reference's "
+                "bundle; nothing written",
+            )
+        )
+        return
+    bundle = (
+        yaml.load(path.read_text(encoding="utf-8")) if path.is_file() else None
+    ) or CommentedMap(reference_id=reference_id)
+    changed = _merge(
+        bundle, verified, verification or {"source_sha256": ""}, title,
+        source_char_count, prune=prune,
+    )
+    known_count = bundle.get("source_char_count")
+    cap_problem = _bundle_cap_problem(
+        bundle, validator, known_count if isinstance(known_count, int) else None
+    )
+    if cap_problem:
+        report.failures.append(SignFailure(reference_id, "", cap_problem))
+        return
+    if not changed:
+        report.unchanged.append(path.name)
+        return
+    report.written.append(path.name)
+    if dry_run:
+        return
+    directory.mkdir(parents=True, exist_ok=True)
+    buffer = StringIO()
+    yaml.dump(bundle, buffer)
+    path.write_text(buffer.getvalue(), encoding="utf-8")
+    logger.info("Signed %d excerpt(s) for %s in %s", len(verified), reference_id, path)

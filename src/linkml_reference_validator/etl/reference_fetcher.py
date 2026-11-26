@@ -83,7 +83,7 @@ PUBLIC_URL_ACCESS_TYPES = frozenset({None, "open", PUBLISHER_FREE_ACCESS})
 LOCAL_FULL_TEXT_CONTENT_TYPE = "local_full_text"
 
 #: Suffixes tried, in order, for a file in ``local_full_text_dir``.
-LOCAL_FULL_TEXT_SUFFIXES = (".md", ".txt")
+LOCAL_FULL_TEXT_SUFFIXES = (".md", ".txt", ".pdf")
 
 
 NEEDS_FULL_TEXT_TYPES = {
@@ -583,6 +583,15 @@ class ReferenceFetcher:
         if local is None or not local.content:
             logger.warning("Local full text for %s is empty: %s", normalized_reference_id, path)
             return outcome
+        local_text = local.content
+        local_title = local.title
+        if path.suffix.lower() == ".md" and local_text.startswith("---\n"):
+            parsed = self._load_markdown_format(local_text, normalized_reference_id)
+            if parsed is not None:
+                if not parsed.content or self.needs_full_text(parsed):
+                    return outcome
+                local_text = parsed.content
+                local_title = parsed.title or local_title
         content_type = (
             local.content_type
             if local.content_type in FIGURE_CONTENT_TYPES.values()
@@ -590,11 +599,11 @@ class ReferenceFetcher:
         )
         logger.info("Matching %s against local full text %s", normalized_reference_id, path)
         base = outcome.content or ReferenceContent(
-            reference_id=normalized_reference_id, title=local.title
+            reference_id=normalized_reference_id, title=local_title
         )
         merged = replace(
             base,
-            content=local.content,
+            content=local_text,
             content_type=content_type,
             full_text_provider=LOCAL_FULL_TEXT_CONTENT_TYPE,
         )
@@ -1226,9 +1235,18 @@ class ReferenceFetcher:
         structural extraction; a format hint alone does not certify raw HTML.
         """
         if location.text:
+            pdf_bytes: Optional[bytes] = None
+            if (
+                self.config.download_pdfs
+                and location.url
+                and location.url.startswith("file://")
+            ):
+                fetched, _ = self._acquirer.fetch_bytes(location.url, self.config)
+                if fetched and sniff_format(fetched) == "pdf":
+                    pdf_bytes = fetched
             if location.format_hint == "html" and re.search(r"<[A-Za-z][^>]*>", location.text):
-                return HTMLExtractor().extract_full_text(location.text), "html", None, False
-            return location.text, location.format_hint or "text", None, False
+                return HTMLExtractor().extract_full_text(location.text), "html", pdf_bytes, False
+            return location.text, location.format_hint or "text", pdf_bytes, False
 
         if not location.url:
             return None, None, None, False

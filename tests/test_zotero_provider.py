@@ -275,3 +275,81 @@ def test_client_surfaces_disabled_local_api():
 
     with pytest.raises(ZoteroAPIError, match="403"):
         client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/a"))
+
+
+def test_directory_client_reads_sqlite_and_storage_without_http(tmp_path):
+    """ZoteroDirectoryClient indexes zotero.sqlite and reads storage/<KEY> directly."""
+    import sqlite3
+    from linkml_reference_validator.etl.fulltext.zotero import (
+        ZoteroDirectoryClient,
+        ZoteroFullTextProvider,
+    )
+
+    zotero_dir = tmp_path / "Zotero"
+    storage_dir = zotero_dir / "storage" / "ATTKEY1"
+    storage_dir.mkdir(parents=True)
+    pdf_file = storage_dir / "article.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4\n...")
+    (storage_dir / ".zotero-ft-cache").write_text(
+        "indexed sqlite full text " * 30, encoding="utf-8"
+    )
+
+    db_path = zotero_dir / "zotero.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE items (itemID INTEGER PRIMARY KEY, key TEXT);
+        CREATE TABLE itemAttachments (
+            itemID INTEGER PRIMARY KEY,
+            parentItemID INTEGER,
+            contentType TEXT,
+            path TEXT
+        );
+        CREATE TABLE fields (fieldID INTEGER PRIMARY KEY, fieldName TEXT);
+        CREATE TABLE itemDataValues (valueID INTEGER PRIMARY KEY, value TEXT);
+        CREATE TABLE itemData (itemID INTEGER, fieldID INTEGER, valueID INTEGER);
+
+        INSERT INTO items VALUES (1, 'PARENT1'), (2, 'ATTKEY1');
+        INSERT INTO itemAttachments VALUES (2, 1, 'application/pdf', 'storage:article.pdf');
+        INSERT INTO fields VALUES (10, 'DOI'), (11, 'extra');
+        INSERT INTO itemDataValues VALUES (100, '10.1000/SqliteHit'), (101, 'PMID: 987654');
+        INSERT INTO itemData VALUES (1, 10, 100), (1, 11, 101);
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    client = ZoteroDirectoryClient(zotero_dir)
+    assert client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/sqlitehit")) == {
+        "PARENT1"
+    }
+    assert client.find_parent_keys(ReferenceIdentifiers(pmid="987654")) == {"PARENT1"}
+
+    provider = ZoteroFullTextProvider()
+    cfg = ReferenceValidationConfig(
+        cache_dir=tmp_path / "public",
+        private_cache_dir=tmp_path / "private",
+        zotero_dir=zotero_dir,
+        rate_limit_delay=0.0,
+        download_pdfs=True,
+    )
+    loc = provider.locate(ReferenceIdentifiers(doi="10.1000/sqlitehit"), cfg)
+    assert loc is not None
+    assert loc.source_item_id == "ATTKEY1"
+    assert loc.access_type == "user_library"
+    assert "indexed sqlite full text" in (loc.text or "")
+    assert loc.url == pdf_file.as_uri()
+
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.models import ReferenceContent
+
+    fetcher = ReferenceFetcher(cfg)
+    ref = ReferenceContent(
+        reference_id="DOI:10.1000/sqlitehit",
+        doi="10.1000/sqlitehit",
+        title="SQLite Paper",
+        content=None,
+        content_type="unavailable",
+    )
+    assert fetcher.apply_full_text_location(ref, loc, "zotero", private=True)
+    assert (cfg.private_cache_dir / "files" / "DOI_10.1000_sqlitehit.pdf").is_file()

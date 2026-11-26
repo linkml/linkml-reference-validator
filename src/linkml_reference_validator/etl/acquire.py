@@ -196,6 +196,8 @@ class ContentAcquirer:
         redirects_remaining: int,
     ) -> tuple[Optional[bytes], Optional[str]]:
         """Download bytes while handling bounded HTTP and Zotero file redirects."""
+        if urlparse(url).scheme == "file":
+            return self._read_local_file(url, config)
         time.sleep(config.rate_limit_delay)
 
         headers = {

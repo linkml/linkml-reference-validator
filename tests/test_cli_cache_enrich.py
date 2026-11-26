@@ -225,3 +225,53 @@ def test_cache_enrich_fails_fast_after_repeated_provider_errors(tmp_path):
     assert _UnavailableProvider.calls == 3
     assert "Stopping after 3 consecutive provider errors" in result.output
     assert "Scanned: 3" in result.output
+
+
+def test_cache_enrich_filters_by_reference_and_referenced_in(tmp_path, monkeypatch):
+    """--reference and --referenced-in restrict enrichment to the selected references."""
+    monkeypatch.chdir(tmp_path)
+    cache_dir = tmp_path / "cache"
+    cache_dir.mkdir()
+    _write_cached_reference(cache_dir, "DOI:10.1000/hit", "10.1000/hit")
+    _write_cached_reference(cache_dir, "DOI:10.1000/other", "10.1000/other")
+    kb_file = tmp_path / "entry.yaml"
+    kb_file.write_text("reference: DOI:10.1000/hit\n", encoding="utf-8")
+    FullTextProviderRegistry.register(_PrivateHitProvider)
+
+    by_ref = CliRunner().invoke(
+        app,
+        [
+            "cache",
+            "enrich",
+            "--provider",
+            "private_hit",
+            "--cache-dir",
+            str(cache_dir),
+            "--reference",
+            "doi:10.1000/HIT",
+            "--dry-run",
+        ],
+    )
+    assert by_ref.exit_code == 0, by_ref.output
+    assert "Scanned: 1" in by_ref.output
+    assert "Found: 1" in by_ref.output
+    assert "DOI:10.1000/other" not in by_ref.output
+
+    by_glob = CliRunner().invoke(
+        app,
+        [
+            "cache",
+            "enrich",
+            "--provider",
+            "private_hit",
+            "--cache-dir",
+            str(cache_dir),
+            "--referenced-in",
+            "entry.yaml",
+            "--dry-run",
+        ],
+    )
+    assert by_glob.exit_code == 0, by_glob.output
+    assert "Scanned: 1" in by_glob.output
+    assert "Found: 1" in by_glob.output
+    assert "DOI:10.1000/other" not in by_glob.output

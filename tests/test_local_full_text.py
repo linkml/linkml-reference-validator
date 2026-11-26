@@ -192,3 +192,39 @@ def test_cache_reference_reports_the_cached_text_not_the_local_file(config, pape
     assert result.exit_code == 0, result.output
     assert "Content type: unavailable" in result.output
     assert "local_full_text" not in result.output
+
+
+def test_local_full_text_strips_cache_frontmatter_and_header(config, tmp_path):
+    """A cache-formatted .md file in local_full_text_dir exposes only its Content body."""
+    private_dir = tmp_path / "private_cache"
+    private_dir.mkdir()
+    (private_dir / f"{STEM}.md").write_text(
+        "---\n"
+        f"reference_id: {DOI}\n"
+        f"title: {TITLE}\n"
+        "authors:\n"
+        "- Secret Author Name\n"
+        "content_type: full_text_pdf\n"
+        "---\n\n"
+        f"# {TITLE}\n"
+        "**Authors:** Secret Author Name\n\n"
+        "## Content\n\n"
+        f"{QUOTE}\n",
+        encoding="utf-8",
+    )
+    config.local_full_text_dir = private_dir
+    validator = SupportingTextValidator(config)
+    assert validator.validate(QUOTE, DOI).is_valid
+    assert not validator.validate("Secret Author Name", DOI).is_valid
+
+
+def test_local_full_text_extracts_pdf_files(config, tmp_path):
+    """A .pdf file in local_full_text_dir is extracted via PDFExtractor."""
+    from tests.test_extractors import _build_minimal_pdf
+
+    papers = tmp_path / "pdf_papers"
+    papers.mkdir()
+    pdf_bytes = _build_minimal_pdf(QUOTE)
+    (papers / f"{STEM}.pdf").write_bytes(pdf_bytes)
+    config.local_full_text_dir = papers
+    assert SupportingTextValidator(config).validate(QUOTE, DOI).is_valid

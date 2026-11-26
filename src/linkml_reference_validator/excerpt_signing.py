@@ -377,8 +377,19 @@ def sign_excerpts(
     directory = Path(directory)
 
     # Verify against the local text only: an existing bundle must not vouch
-    # for the quotes it is about to be extended with.
-    checking = config.model_copy(update={"signed_excerpts_dir": None})
+    # for the quotes it is about to be extended with. If local_full_text_dir is
+    # unset and private_cache_dir exists (e.g. populated by `cache enrich
+    # --provider zotero --apply`), use private_cache_dir as the local full-text
+    # directory for signing.
+    fallback_dir = config.local_full_text_dir
+    if fallback_dir is None and config.private_cache_dir.expanduser().is_dir():
+        fallback_dir = config.get_private_cache_dir()
+    checking = config.model_copy(
+        update={
+            "signed_excerpts_dir": None,
+            "local_full_text_dir": fallback_dir,
+        }
+    )
     validator = SupportingTextValidator(checking)
     fetcher = validator.fetcher
     report = SignReport()

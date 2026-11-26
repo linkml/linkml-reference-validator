@@ -97,8 +97,10 @@ class FileSource(ReferenceSource):
         if figure_format == "pdf":
             raw_pdf = file_path.read_bytes()
             extractor = PDFExtractor(backend=config.pdf_backend)
-            pdf_text = extractor.extract(raw_pdf)
-            pdf_title = extractor.extract_title(raw_pdf) or file_path.name
+            pdf_text = extractor.extract(raw_pdf, source=str(file_path))
+            pdf_title = (
+                extractor.extract_title(raw_pdf) if pdf_text else None
+            ) or file_path.name
             return ReferenceContent(
                 reference_id=self.reference_id_for(file_path, config),
                 title=pdf_title,

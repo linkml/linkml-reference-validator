@@ -589,6 +589,12 @@ class ReferenceFetcher:
             parsed = self._load_markdown_format(local_text, normalized_reference_id)
             if parsed is not None:
                 if not parsed.content or self.needs_full_text(parsed):
+                    logger.info(
+                        "Skipping local cache file for %s without full text (%s): %s",
+                        normalized_reference_id,
+                        parsed.content_type,
+                        path,
+                    )
                     return outcome
                 local_text = parsed.content
                 local_title = parsed.title or local_title
@@ -1240,8 +1246,12 @@ class ReferenceFetcher:
                 self.config.download_pdfs
                 and location.url
                 and location.url.startswith("file://")
+                and location.provider == "zotero"
+                and self.config.zotero_dir is not None
             ):
-                fetched, _ = self._acquirer.fetch_bytes(location.url, self.config)
+                fetched, _ = self._acquirer.read_zotero_storage_file(
+                    location.url, self.config
+                )
                 if fetched and sniff_format(fetched) == "pdf":
                     pdf_bytes = fetched
             if location.format_hint == "html" and re.search(r"<[A-Za-z][^>]*>", location.text):
@@ -1252,7 +1262,18 @@ class ReferenceFetcher:
             return None, None, None, False
 
         try:  # external system boundary
-            data, content_type = self._acquirer.fetch_bytes(location.url, self.config)
+            if (
+                location.url.startswith("file://")
+                and location.provider == "zotero"
+                and self.config.zotero_dir is not None
+            ):
+                data, content_type = self._acquirer.read_zotero_storage_file(
+                    location.url, self.config
+                )
+            else:
+                data, content_type = self._acquirer.fetch_bytes(
+                    location.url, self.config
+                )
         except Exception as exc:
             logger.warning(f"Download failed for {location.url}: {exc}")
             return None, None, None, True

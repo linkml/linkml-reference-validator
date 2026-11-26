@@ -103,10 +103,14 @@ uv run linkml-reference-validator cache enrich \
 Apply mode leaves `references_cache` unchanged. Private content goes to
 `~/.cache/linkml-reference-validator/private` by default with owner-only
 permissions (or to a private full-text repository such as `claimstore` when
-`--private-cache-dir /path/to/claimstore/references_cache` is passed). Ordinary
-validation never reads `private_cache_dir` directly, but `linkml-reference-validator
-excerpts sign` can verify quotes against it and write fair-use bundles to
-`signed_excerpts/` (see [Using Signed Excerpts](use-signed-excerpts.md)).
+`--private-cache-dir /path/to/claimstore/references_cache` is passed). When
+`download_pdfs: true` is configured, `--zotero-dir` also copies the source PDF
+into `<private_cache_dir>/files/` even when Zotero has already pre-indexed the
+full text (whereas the HTTP API backend only downloads the PDF when Zotero has
+not indexed the text). Ordinary validation never reads `private_cache_dir`
+directly, but `linkml-reference-validator excerpts sign` can verify quotes
+against it and write fair-use bundles to `signed_excerpts/` (see
+[Using Signed Excerpts](use-signed-excerpts.md)).
 
 ## 5. Validate reproducibly
 

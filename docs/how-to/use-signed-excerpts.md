@@ -83,7 +83,8 @@ validation:
 If you used `linkml-reference-validator cache enrich --provider zotero --apply`
 (see [Export a Reference Cache to Zotero](export-cache-to-zotero.md)), its
 output in `private_cache_dir` (`~/.cache/linkml-reference-validator/private`) is
-checked automatically by `excerpts sign` when `local_full_text_dir` is unset.
+checked automatically by `excerpts sign` as a fallback for any reference not
+already mapped in `local_full_text` or `local_full_text_dir`.
 
 Relative paths, including a relative `local_full_text_dir`, resolve against
 `reference_base_dir`, or the working directory if that is unset. Set

@@ -218,11 +218,21 @@ def _hashed_filename(name: str, reference_id: str) -> str:
     return f"{prefix}_{digest}.md"
 
 
-def _same_reference_id(first: str, second: str) -> bool:
-    """Compare stored IDs exactly, except for case-insensitive DOI identity."""
+def same_reference_id(first: str, second: str) -> bool:
+    """Compare stored IDs exactly, except for case-insensitive DOI identity.
+
+    Examples:
+        >>> same_reference_id("DOI:10.1000/ABC", "doi:10.1000/abc")
+        True
+        >>> same_reference_id("PMID:1", "PMID:2")
+        False
+    """
     if first.upper().startswith("DOI:"):
         return first.casefold() == second.casefold()
     return first == second
+
+
+_same_reference_id = same_reference_id
 
 
 def _recover_legacy_scalars(metadata: dict) -> dict:

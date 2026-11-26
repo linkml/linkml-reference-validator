@@ -29,11 +29,32 @@ from linkml_reference_validator.models import (
 
 MIN_ZOTERO_INDEXED_TEXT_CHARS = 500
 _EXTRA_IDENTIFIER_PATTERNS = {
+    "doi": re.compile(r"^DOI\s*:\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE),
     "pmid": re.compile(r"^PMID\s*:\s*(\d+)\s*$", re.IGNORECASE | re.MULTILINE),
     "pmcid": re.compile(
         r"^PMCID\s*:\s*(PMC\d+)\s*$", re.IGNORECASE | re.MULTILINE
     ),
 }
+
+
+def _index_extra_identifiers(
+    extra: str, key: str, index: dict[tuple[str, str], set[str]]
+) -> None:
+    """Extract DOI, PMID, and PMCID lines from a Zotero ``extra`` field into ``index``."""
+    for kind, pattern in _EXTRA_IDENTIFIER_PATTERNS.items():
+        match = pattern.search(extra)
+        if not match:
+            continue
+        raw = match.group(1)
+        if kind == "doi":
+            doi = normalize_doi(raw)
+            if doi:
+                index[("doi", doi)].add(key)
+        elif kind == "pmcid":
+            index[("pmcid", raw.upper())].add(key)
+        else:
+            index[(kind, raw)].add(key)
+
 
 
 class ZoteroAPIError(RuntimeError):
@@ -55,8 +76,8 @@ class ZoteroBackend(Protocol):
         """Return Zotero-indexed attachment text, or None when unavailable."""
         ...
 
-    def attachment_file_url(self, attachment_key: str) -> str:
-        """Return the URL or file URI for downloading the attachment."""
+    def attachment_file_url(self, attachment_key: str) -> Optional[str]:
+        """Return the URL or file URI for downloading the attachment, or None."""
         ...
 
 
@@ -126,13 +147,13 @@ class ZoteroDirectoryClient:
         content = ft_cache.read_text(encoding="utf-8", errors="ignore")
         return content if content.strip() else None
 
-    def attachment_file_url(self, attachment_key: str) -> str:
-        """Return a file:// URI for the attachment PDF."""
+    def attachment_file_url(self, attachment_key: str) -> Optional[str]:
+        """Return a file:// URI for the attachment PDF, or None if not found."""
         self._get_identifier_index()
         pdf_path = self._pdf_paths_by_key.get(attachment_key)
         if pdf_path is not None:
             return pdf_path.resolve().as_uri()
-        return (self.zotero_dir / "storage" / attachment_key).resolve().as_uri()
+        return None
 
     def _get_identifier_index(self) -> dict[tuple[str, str], set[str]]:
         """Load and cache exact identifiers and PDF attachments from a temp copy of zotero.sqlite."""
@@ -143,72 +164,95 @@ class ZoteroDirectoryClient:
         if not db_path.is_file():
             raise ZoteroAPIError(f"Zotero database not found: {db_path}")
 
-        with tempfile.TemporaryDirectory() as tmpdir:
-            db_copy = Path(tmpdir) / "zotero.sqlite"
-            shutil.copy2(db_path, db_copy)
-            conn = sqlite3.connect(f"file:{db_copy}?mode=ro", uri=True)
-            cur = conn.cursor()
-            cur.execute(
-                """
-                SELECT p.itemID, p.key AS parent_key, a.key AS att_key, ia.path
-                FROM itemAttachments ia
-                JOIN items a ON ia.itemID = a.itemID
-                JOIN items p ON ia.parentItemID = p.itemID
-                WHERE ia.contentType = 'application/pdf' AND ia.path LIKE 'storage:%'
-                """
-            )
-            parent_id_to_key: dict[int, str] = {}
-            attachments_by_parent: dict[str, list[dict]] = defaultdict(list)
-            for parent_id, parent_key, att_key, raw_path in cur.fetchall():
-                if not parent_id or not parent_key or not att_key:
-                    continue
-                rel_name = str(raw_path).split("storage:", 1)[1]
-                pdf_path = self.zotero_dir / "storage" / att_key / rel_name
-                if not pdf_path.is_file():
-                    continue
-                parent_id_to_key[parent_id] = parent_key
-                self._pdf_paths_by_key[att_key] = pdf_path
-                attachments_by_parent[parent_key].append(
-                    {
-                        "key": att_key,
-                        "data": {
-                            "key": att_key,
-                            "itemType": "attachment",
-                            "contentType": "application/pdf",
-                            "filename": rel_name,
-                        },
-                    }
-                )
+        storage_root = (self.zotero_dir / "storage").resolve()
+        try:  # external system boundary: sqlite file may be locked or damaged
+            with tempfile.TemporaryDirectory() as tmpdir:
+                db_copy = Path(tmpdir) / "zotero.sqlite"
+                shutil.copy2(db_path, db_copy)
+                for sidecar in ("-wal", "-journal"):
+                    sidecar_path = self.zotero_dir / f"zotero.sqlite{sidecar}"
+                    if sidecar_path.is_file():
+                        shutil.copy2(
+                            sidecar_path, Path(tmpdir) / f"zotero.sqlite{sidecar}"
+                        )
+                conn = sqlite3.connect(f"file:{db_copy}?mode=ro", uri=True)
+                try:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='deletedItems'"
+                    )
+                    has_deleted_items = cur.fetchone() is not None
+                    trash_clause = (
+                        " AND p.itemID NOT IN (SELECT itemID FROM deletedItems)"
+                        " AND a.itemID NOT IN (SELECT itemID FROM deletedItems)"
+                        if has_deleted_items
+                        else ""
+                    )
+                    cur.execute(
+                        f"""
+                        SELECT p.itemID, p.key AS parent_key, a.key AS att_key, ia.path
+                        FROM itemAttachments ia
+                        JOIN items a ON ia.itemID = a.itemID
+                        JOIN items p ON ia.parentItemID = p.itemID
+                        WHERE ia.contentType = 'application/pdf'
+                          AND ia.path LIKE 'storage:%'{trash_clause}
+                        """
+                    )
+                    parent_id_to_key: dict[int, str] = {}
+                    attachments_by_parent: dict[str, list[dict]] = defaultdict(list)
+                    for parent_id, parent_key, att_key, raw_path in cur.fetchall():
+                        if not parent_id or not parent_key or not att_key:
+                            continue
+                        rel_name = str(raw_path).split("storage:", 1)[1]
+                        att_dir = (storage_root / att_key).resolve()
+                        if not att_dir.is_relative_to(storage_root):
+                            continue
+                        pdf_path = (att_dir / rel_name).resolve()
+                        if not pdf_path.is_relative_to(att_dir) or not pdf_path.is_file():
+                            continue
+                        parent_id_to_key[parent_id] = parent_key
+                        self._pdf_paths_by_key[att_key] = pdf_path
+                        attachments_by_parent[parent_key].append(
+                            {
+                                "key": att_key,
+                                "data": {
+                                    "key": att_key,
+                                    "itemType": "attachment",
+                                    "contentType": "application/pdf",
+                                    "filename": rel_name,
+                                },
+                            }
+                        )
 
-            index: dict[tuple[str, str], set[str]] = defaultdict(set)
-            if parent_id_to_key:
-                parent_ids = tuple(parent_id_to_key.keys())
-                cur.execute(
-                    f"""
-                    SELECT id.itemID, f.fieldName, idv.value
-                    FROM itemData id
-                    JOIN fields f ON id.fieldID = f.fieldID
-                    JOIN itemDataValues idv ON id.valueID = idv.valueID
-                    WHERE id.itemID IN ({",".join("?" for _ in parent_ids)})
-                      AND f.fieldName IN ('DOI', 'extra')
-                    """,
-                    parent_ids,
-                )
-                for item_id, field_name, val in cur.fetchall():
-                    parent_key = parent_id_to_key[item_id]
-                    if field_name == "DOI":
-                        doi = normalize_doi(val)
-                        if doi:
-                            index[("doi", doi)].add(parent_key)
-                    elif field_name == "extra" and isinstance(val, str):
-                        for kind, pattern in _EXTRA_IDENTIFIER_PATTERNS.items():
-                            match = pattern.search(val)
-                            if match:
-                                value = match.group(1)
-                                if kind == "pmcid":
-                                    value = value.upper()
-                                index[(kind, value)].add(parent_key)
-            conn.close()
+                    index: dict[tuple[str, str], set[str]] = defaultdict(set)
+                    if parent_id_to_key:
+                        parent_ids = tuple(parent_id_to_key.keys())
+                        cur.execute(
+                            f"""
+                            SELECT id.itemID, f.fieldName, idv.value
+                            FROM itemData id
+                            JOIN fields f ON id.fieldID = f.fieldID
+                            JOIN itemDataValues idv ON id.valueID = idv.valueID
+                            WHERE id.itemID IN ({",".join("?" for _ in parent_ids)})
+                              AND f.fieldName IN ('DOI', 'extra')
+                            """,
+                            parent_ids,
+                        )
+                        for item_id, field_name, val in cur.fetchall():
+                            parent_key = parent_id_to_key[item_id]
+                            if field_name == "DOI":
+                                doi = normalize_doi(val)
+                                if doi:
+                                    index[("doi", doi)].add(parent_key)
+                            elif field_name == "extra" and isinstance(val, str):
+                                _index_extra_identifiers(val, parent_key, index)
+                finally:
+                    conn.close()
+        except (OSError, sqlite3.DatabaseError) as exc:
+            raise ZoteroAPIError(
+                f"Could not read Zotero database {db_path} "
+                f"(if Zotero is open, close it or retry): {exc}"
+            ) from exc
 
         self._attachments_by_parent = dict(attachments_by_parent)
         self._identifier_index = dict(index)
@@ -311,13 +355,7 @@ class ZoteroClient:
 
             extra = data.get("extra", "")
             if isinstance(extra, str):
-                for kind, pattern in _EXTRA_IDENTIFIER_PATTERNS.items():
-                    match = pattern.search(extra)
-                    if match:
-                        value = match.group(1)
-                        if kind == "pmcid":
-                            value = value.upper()
-                        index[(kind, value)].add(key)
+                _index_extra_identifiers(extra, key, index)
 
         self._identifier_index = dict(index)
         return self._identifier_index

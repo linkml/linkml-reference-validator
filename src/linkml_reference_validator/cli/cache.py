@@ -4,13 +4,12 @@ import json
 import logging
 import tarfile
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import requests  # type: ignore
 import typer
 from typing_extensions import Annotated
 
-from linkml_reference_validator.cache import _same_reference_id
 from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
 from linkml_reference_validator.etl.csl_export import (
     export_identity,
@@ -18,8 +17,9 @@ from linkml_reference_validator.etl.csl_export import (
 )
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.bookshelf import LITARCH_URL, download_book
+from linkml_reference_validator.models import ReferenceContent
 from linkml_reference_validator.signed_excerpts import (
-    _expand_globs,
+    expand_globs,
     find_cited_reference_ids,
 )
 from .shared import (
@@ -324,28 +324,36 @@ def enrich_command(
         config.zotero_dir = zotero_dir
     fetcher = ReferenceFetcher(config)
 
-    cached_refs = list(fetcher.iter_cached_references())
+    cached_refs: Iterable[ReferenceContent] = fetcher.iter_cached_references()
     if reference or referenced_in:
-        wanted: set[str] = {
-            fetcher.normalize_reference_id(r) for r in (reference or [])
-        }
+        all_cached = list(cached_refs)
+
+        def _id_key(ref_id: str) -> str:
+            norm = fetcher.normalize_reference_id(ref_id)
+            return norm.casefold() if norm.upper().startswith("DOI:") else norm
+
+        cached_keys = {_id_key(r.reference_id) for r in all_cached}
+        wanted_keys: set[str] = set()
+        for req in reference or []:
+            key = _id_key(req)
+            wanted_keys.add(key)
+            if key not in cached_keys:
+                typer.echo(
+                    f"Warning: requested reference not found in cache: {req}",
+                    err=True,
+                )
         if referenced_in:
             try:
-                paths = _expand_globs(referenced_in, Path("."))
+                paths = expand_globs(referenced_in, Path("."))
             except ValueError as err:
                 typer.echo(str(err), err=True)
                 raise typer.Exit(2)
             cited = find_cited_reference_ids(
-                (r.reference_id for r in cached_refs), paths
+                (r.reference_id for r in all_cached), paths
             )
-            wanted.update(fetcher.normalize_reference_id(r) for r in cited)
+            wanted_keys.update(_id_key(r) for r in cited)
         cached_refs = [
-            r
-            for r in cached_refs
-            if any(
-                _same_reference_id(fetcher.normalize_reference_id(r.reference_id), w)
-                for w in wanted
-            )
+            r for r in all_cached if _id_key(r.reference_id) in wanted_keys
         ]
 
     found = 0

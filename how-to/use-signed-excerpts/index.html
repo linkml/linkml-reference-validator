@@ -1665,10 +1665,15 @@ the validator can check quotes against it and write the bundle itself.</p>
     DOI:10.1016/j.ajodo.2025.11.017: papers/10.1016_j.ajodo.2025.11.017.md
 </code></pre>
 <p>or with a directory of files named like cache files
-(<code>DOI_10.1016_j.ajodo.2025.11.017.md</code> or <code>.txt</code>):</p>
+(<code>DOI_10.1016_j.ajodo.2025.11.017.md</code>, <code>.txt</code>, or <code>.pdf</code>):</p>
 <pre><code class="language-yaml">validation:
-  local_full_text_dir: ~/private-papers
+   local_full_text_dir: ~/private-papers
 </code></pre>
+<p>If you used <code>linkml-reference-validator cache enrich --provider zotero --apply</code>
+(see <a href="../export-cache-to-zotero/">Export a Reference Cache to Zotero</a>), its
+output in <code>private_cache_dir</code> (<code>~/.cache/linkml-reference-validator/private</code>) is
+checked automatically by <code>excerpts sign</code> as a fallback for any reference not
+already mapped in <code>local_full_text</code> or <code>local_full_text_dir</code>.</p>
 <p>Relative paths, including a relative <code>local_full_text_dir</code>, resolve against
 <code>reference_base_dir</code>, or the working directory if that is unset. Set
 <code>reference_base_dir</code> so the result does not depend on where you run the

@@ -1608,16 +1608,28 @@ each attempted item.</p>
 which cached references now have usable Zotero text or PDF attachments. It does
 not invoke <strong>Find Full Text</strong> and does not modify Zotero.</p>
 <p>After reviewing the matches, materialize them into the separate private research
-cache:</p>
+cache (you can also pass <code>--zotero-dir ~/Zotero</code> to read your local Zotero SQLite
+database and <code>storage/</code> folder directly without needing the Zotero desktop HTTP
+API running, and <code>--referenced-in</code> or <code>--reference</code> to scope to specific data
+files):</p>
 <pre><code class="language-bash">uv run linkml-reference-validator cache enrich \
   --provider zotero \
+  --zotero-dir ~/Zotero \
   --cache-dir /Users/cjm/repos/dismech/references_cache \
+  --referenced-in 'kb/disorders/MyDisease.yaml' \
   --apply
 </code></pre>
 <p>Apply mode leaves <code>references_cache</code> unchanged. Private content goes to
 <code>~/.cache/linkml-reference-validator/private</code> by default with owner-only
-permissions. Agents may inspect it for context, but validation cannot use it as
-evidence.</p>
+permissions (or to a private full-text repository such as <code>claimstore</code> when
+<code>--private-cache-dir /path/to/claimstore/references_cache</code> is passed). When
+<code>download_pdfs: true</code> is configured, <code>--zotero-dir</code> also copies the source PDF
+into <code>&lt;private_cache_dir&gt;/files/</code> even when Zotero has already pre-indexed the
+full text (whereas the HTTP API backend only downloads the PDF when Zotero has
+not indexed the text). Ordinary validation never reads <code>private_cache_dir</code>
+directly, but <code>linkml-reference-validator excerpts sign</code> can verify quotes
+against it and write fair-use bundles to <code>signed_excerpts/</code> (see
+<a href="../use-signed-excerpts/">Using Signed Excerpts</a>).</p>
 <h2 id="5-validate-reproducibly">5. Validate reproducibly</h2>
 <p>Run validation normally. Results remain reproducible because the validator
 reads the public project cache and accepts only public full-text provider results.

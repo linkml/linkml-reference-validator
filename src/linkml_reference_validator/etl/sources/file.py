@@ -18,6 +18,7 @@ from typing import Optional
 
 from linkml_reference_validator.etl.acquire import resolve_format
 from linkml_reference_validator.etl.extract import ExtractorRegistry
+from linkml_reference_validator.etl.extract.pdf import PDFExtractor
 from linkml_reference_validator.matching import FIGURE_CONTENT_TYPES
 from linkml_reference_validator.models import ReferenceContent, ReferenceValidationConfig
 from linkml_reference_validator.etl.sources.base import ReferenceSource, ReferenceSourceRegistry
@@ -93,6 +94,19 @@ class FileSource(ReferenceSource):
         figure_format = resolve_format(None, file_path.name, None)
         if figure_format in FIGURE_CONTENT_TYPES:
             return self._fetch_figure(file_path, figure_format, config)
+        if figure_format == "pdf":
+            raw_pdf = file_path.read_bytes()
+            extractor = PDFExtractor(backend=config.pdf_backend)
+            pdf_text = extractor.extract(raw_pdf, source=str(file_path))
+            pdf_title = (
+                extractor.extract_title(raw_pdf) if pdf_text else None
+            ) or file_path.name
+            return ReferenceContent(
+                reference_id=self.reference_id_for(file_path, config),
+                title=pdf_title,
+                content=pdf_text,
+                content_type="full_text_pdf" if pdf_text else "unavailable",
+            )
 
         content = file_path.read_text(encoding="utf-8")
         title = self._extract_title(content, file_path)

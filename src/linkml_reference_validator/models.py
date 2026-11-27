@@ -804,6 +804,15 @@ class ReferenceValidationConfig(BaseModel):
             "Zotero must be running with local API access enabled."
         ),
     )
+    zotero_dir: Optional[Path] = Field(
+        default=None,
+        description=(
+            "Optional local Zotero data directory (e.g. ~/Zotero) containing "
+            "zotero.sqlite and storage/. When set, the zotero provider reads "
+            "a safe copy of zotero.sqlite and storage/<KEY> directly instead "
+            "of querying zotero_base_url over HTTP."
+        ),
+    )
 
     def get_cache_dir(self) -> Path:
         """Create and return the cache directory.

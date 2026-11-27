@@ -290,3 +290,40 @@ class ContentAcquirer:
             )
             return None, content_type
         return path.read_bytes(), content_type
+
+    def read_zotero_storage_file(
+        self, file_url: str, config: ReferenceValidationConfig
+    ) -> tuple[Optional[bytes], Optional[str]]:
+        """Read a local Zotero storage file URI only when inside config.zotero_dir/storage.
+
+        Examples:
+            >>> import tempfile
+            >>> from linkml_reference_validator.models import ReferenceValidationConfig
+            >>> d = Path(tempfile.mkdtemp())
+            >>> (d / "storage" / "K1").mkdir(parents=True)
+            >>> pdf = d / "storage" / "K1" / "p.pdf"
+            >>> _ = pdf.write_bytes(b"%PDF-1.4")
+            >>> outside = d / "outside.pdf"
+            >>> _ = outside.write_bytes(b"%PDF-1.4")
+            >>> cfg = ReferenceValidationConfig(zotero_dir=d)
+            >>> ContentAcquirer().read_zotero_storage_file(pdf.as_uri(), cfg)[0]
+            b'%PDF-1.4'
+            >>> ContentAcquirer().read_zotero_storage_file(outside.as_uri(), cfg)
+            (None, None)
+        """
+        if config.zotero_dir is None:
+            logger.warning("Refusing file URI without zotero_dir configured")
+            return None, None
+        parsed = urlparse(file_url)
+        if parsed.scheme != "file" or parsed.netloc not in {"", "localhost"}:
+            logger.warning("Refusing a non-local file URI")
+            return None, None
+        zotero_storage = (Path(config.zotero_dir).expanduser() / "storage").resolve()
+        resolved_path = Path(url2pathname(parsed.path)).resolve()
+        if not resolved_path.is_relative_to(zotero_storage):
+            logger.warning(
+                f"Refusing file URI outside Zotero storage directory: {resolved_path}"
+            )
+            return None, None
+        return self._read_local_file(file_url, config)
+

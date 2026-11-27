@@ -275,3 +275,237 @@ def test_client_surfaces_disabled_local_api():
 
     with pytest.raises(ZoteroAPIError, match="403"):
         client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/a"))
+
+
+def test_directory_client_reads_sqlite_and_storage_without_http(tmp_path):
+    """ZoteroDirectoryClient indexes zotero.sqlite and reads storage/<KEY> directly."""
+    import sqlite3
+    from linkml_reference_validator.etl.fulltext.zotero import (
+        ZoteroDirectoryClient,
+        ZoteroFullTextProvider,
+    )
+
+    zotero_dir = tmp_path / "Zotero"
+    storage_dir = zotero_dir / "storage" / "ATTKEY1"
+    storage_dir.mkdir(parents=True)
+    pdf_file = storage_dir / "article.pdf"
+    pdf_file.write_bytes(b"%PDF-1.4\n...")
+    (storage_dir / ".zotero-ft-cache").write_text(
+        "indexed sqlite full text " * 30, encoding="utf-8"
+    )
+
+    db_path = zotero_dir / "zotero.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE items (itemID INTEGER PRIMARY KEY, key TEXT);
+        CREATE TABLE itemAttachments (
+            itemID INTEGER PRIMARY KEY,
+            parentItemID INTEGER,
+            contentType TEXT,
+            path TEXT
+        );
+        CREATE TABLE fields (fieldID INTEGER PRIMARY KEY, fieldName TEXT);
+        CREATE TABLE itemDataValues (valueID INTEGER PRIMARY KEY, value TEXT);
+        CREATE TABLE itemData (itemID INTEGER, fieldID INTEGER, valueID INTEGER);
+
+        INSERT INTO items VALUES (1, 'PARENT1'), (2, 'ATTKEY1');
+        INSERT INTO itemAttachments VALUES (2, 1, 'application/pdf', 'storage:article.pdf');
+        INSERT INTO fields VALUES (10, 'DOI'), (11, 'extra');
+        INSERT INTO itemDataValues VALUES (100, '10.1000/SqliteHit'), (101, 'PMID: 987654');
+        INSERT INTO itemData VALUES (1, 10, 100), (1, 11, 101);
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    client = ZoteroDirectoryClient(zotero_dir)
+    assert client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/sqlitehit")) == {
+        "PARENT1"
+    }
+    assert client.find_parent_keys(ReferenceIdentifiers(pmid="987654")) == {"PARENT1"}
+
+    provider = ZoteroFullTextProvider()
+    cfg = ReferenceValidationConfig(
+        cache_dir=tmp_path / "public",
+        private_cache_dir=tmp_path / "private",
+        zotero_dir=zotero_dir,
+        rate_limit_delay=0.0,
+        download_pdfs=True,
+    )
+    loc = provider.locate(ReferenceIdentifiers(doi="10.1000/sqlitehit"), cfg)
+    assert loc is not None
+    assert loc.source_item_id == "ATTKEY1"
+    assert loc.access_type == "user_library"
+    assert "indexed sqlite full text" in (loc.text or "")
+    assert loc.url == pdf_file.as_uri()
+
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.models import ReferenceContent
+
+    fetcher = ReferenceFetcher(cfg)
+    ref = ReferenceContent(
+        reference_id="DOI:10.1000/sqlitehit",
+        doi="10.1000/sqlitehit",
+        title="SQLite Paper",
+        content=None,
+        content_type="unavailable",
+    )
+    assert fetcher.apply_full_text_location(ref, loc, "zotero", private=True)
+    assert (cfg.private_cache_dir / "files" / "DOI_10.1000_sqlitehit.pdf").is_file()
+
+
+def test_url_source_and_generic_providers_reject_file_urls(tmp_path):
+    """URLSource and non-Zotero providers must never read arbitrary file:// URLs."""
+    import requests
+    from linkml_reference_validator.etl.acquire import ContentAcquirer
+    from linkml_reference_validator.etl.reference_fetcher import ReferenceFetcher
+    from linkml_reference_validator.etl.sources.url import URLSource
+    from linkml_reference_validator.models import FullTextLocation
+
+    secret = tmp_path / "secret.txt"
+    secret.write_text("top secret local file contents " * 10, encoding="utf-8")
+    cfg = ReferenceValidationConfig(
+        cache_dir=tmp_path / "public",
+        private_cache_dir=tmp_path / "private",
+        zotero_dir=tmp_path / "Zotero",
+        rate_limit_delay=0.0,
+    )
+
+    assert URLSource().fetch(secret.as_uri(), cfg) is None
+
+    with pytest.raises(requests.RequestException):
+        ContentAcquirer().fetch_bytes(secret.as_uri(), cfg)
+
+    fetcher = ReferenceFetcher(cfg)
+    text, fmt, pdf_bytes, err = fetcher._materialize(
+        FullTextLocation(url=secret.as_uri(), provider="unpaywall")
+    )
+    assert text is None
+    assert pdf_bytes is None
+    assert err is True
+
+    # Even with provider="zotero", a file:// URL outside zotero_dir/storage is rejected
+    text, fmt, pdf_bytes, err = fetcher._materialize(
+        FullTextLocation(url=secret.as_uri(), provider="zotero")
+    )
+    assert text is None
+    assert pdf_bytes is None
+
+
+def test_directory_client_ignores_trashed_items_and_extra_doi(tmp_path):
+    """ZoteroDirectoryClient skips deletedItems rows and indexes DOIs in extra."""
+    import sqlite3
+    from linkml_reference_validator.etl.fulltext.zotero import (
+        ZoteroClient,
+        ZoteroDirectoryClient,
+    )
+
+    zotero_dir = tmp_path / "Zotero"
+    for key in ("ATT_LIVE", "ATT_TRASHED_PARENT", "ATT_TRASHED_ATT", "ATT_EXTRA"):
+        d = zotero_dir / "storage" / key
+        d.mkdir(parents=True)
+        (d / "paper.pdf").write_bytes(b"%PDF-1.4\n...")
+
+    outside = zotero_dir / "outside.pdf"
+    outside.write_bytes(b"%PDF-1.4\n...")
+
+    db_path = zotero_dir / "zotero.sqlite"
+    conn = sqlite3.connect(db_path)
+    conn.executescript(
+        """
+        CREATE TABLE items (itemID INTEGER PRIMARY KEY, key TEXT);
+        CREATE TABLE deletedItems (itemID INTEGER PRIMARY KEY);
+        CREATE TABLE itemAttachments (
+            itemID INTEGER PRIMARY KEY,
+            parentItemID INTEGER,
+            contentType TEXT,
+            path TEXT
+        );
+        CREATE TABLE fields (fieldID INTEGER PRIMARY KEY, fieldName TEXT);
+        CREATE TABLE itemDataValues (valueID INTEGER PRIMARY KEY, value TEXT);
+        CREATE TABLE itemData (itemID INTEGER, fieldID INTEGER, valueID INTEGER);
+
+        INSERT INTO items VALUES
+            (1, 'PARENT_LIVE'), (2, 'ATT_LIVE'),
+            (3, 'PARENT_TRASHED'), (4, 'ATT_TRASHED_PARENT'),
+            (5, 'PARENT_ONLY_TRASHED_ATT'), (6, 'ATT_TRASHED_ATT'),
+            (7, 'PARENT_EXTRA_DOI'), (8, 'ATT_EXTRA'),
+            (9, 'PARENT_TRAVERSAL'), (10, 'ATT_TRAVERSAL');
+        INSERT INTO deletedItems VALUES (3), (6);
+        INSERT INTO itemAttachments VALUES
+            (2, 1, 'application/pdf', 'storage:paper.pdf'),
+            (4, 3, 'application/pdf', 'storage:paper.pdf'),
+            (6, 5, 'application/pdf', 'storage:paper.pdf'),
+            (8, 7, 'application/pdf', 'storage:paper.pdf'),
+            (10, 9, 'application/pdf', 'storage:../../outside.pdf');
+        INSERT INTO fields VALUES (10, 'DOI'), (11, 'extra');
+        INSERT INTO itemDataValues VALUES
+            (100, '10.1000/DupWithTrash'),
+            (101, '10.1000/OnlyTrashedAtt'),
+            (102, 'DOI: 10.1000/ExtraDoi\nPMID: 555'),
+            (103, '10.1000/Traversal');
+        INSERT INTO itemData VALUES
+            (1, 10, 100),
+            (3, 10, 100),
+            (5, 10, 101),
+            (7, 11, 102),
+            (9, 10, 103);
+        """
+    )
+    conn.commit()
+    conn.close()
+
+    client = ZoteroDirectoryClient(zotero_dir)
+    # Trashed duplicate parent (item 3) is ignored, so item 1 is unambiguous:
+    assert client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/dupwithtrash")) == {
+        "PARENT_LIVE"
+    }
+    # Parent whose only PDF attachment is trashed (item 6) is not indexed:
+    assert (
+        client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/onlytrashedatt"))
+        == set()
+    )
+    # DOI in extra is indexed by both ZoteroDirectoryClient and ZoteroClient:
+    assert client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/extradoi")) == {
+        "PARENT_EXTRA_DOI"
+    }
+    session = MagicMock()
+    session.get.return_value = _json_response(
+        [_zotero_item("PARENT_EXTRA_DOI", extra="DOI: 10.1000/ExtraDoi\nPMID: 555")]
+    )
+    http_client = ZoteroClient("http://localhost:23119/api/users/0", session=session)
+    assert http_client.find_parent_keys(
+        ReferenceIdentifiers(doi="10.1000/extradoi")
+    ) == {"PARENT_EXTRA_DOI"}
+
+    # Path traversal attachment (storage:../../outside.pdf) is rejected:
+    assert (
+        client.find_parent_keys(ReferenceIdentifiers(doi="10.1000/traversal")) == set()
+    )
+    # Unknown attachment key returns None instead of a directory URI:
+    assert client.attachment_file_url("UNKNOWN_KEY") is None
+
+
+def test_directory_client_missing_or_corrupt_sqlite_raises_zotero_api_error(tmp_path):
+    """Missing or corrupt zotero.sqlite raises ZoteroAPIError."""
+    from linkml_reference_validator.etl.fulltext.zotero import (
+        ZoteroAPIError,
+        ZoteroDirectoryClient,
+    )
+
+    empty_dir = tmp_path / "EmptyZotero"
+    empty_dir.mkdir()
+    with pytest.raises(ZoteroAPIError, match="Zotero database not found"):
+        ZoteroDirectoryClient(empty_dir).find_parent_keys(
+            ReferenceIdentifiers(doi="10.1000/a")
+        )
+
+    corrupt_dir = tmp_path / "CorruptZotero"
+    corrupt_dir.mkdir()
+    (corrupt_dir / "zotero.sqlite").write_bytes(b"not a valid sqlite database")
+    with pytest.raises(ZoteroAPIError, match="Could not read Zotero database"):
+        ZoteroDirectoryClient(corrupt_dir).find_parent_keys(
+            ReferenceIdentifiers(doi="10.1000/a")
+        )
+

@@ -118,6 +118,74 @@ def test_unverified_snippet_is_reported_and_not_signed(config):
     assert [e["text"] for e in load_bundle(config)["excerpts"]] == [QUOTE]
 
 
+def test_sign_excerpts_falls_back_to_private_cache_dir(tmp_path):
+    """excerpts sign can verify against private_cache_dir written by cache enrich."""
+    base = tmp_path / "repo"
+    base.mkdir()
+    cfg = ReferenceValidationConfig(
+        cache_dir=tmp_path / "cache",
+        private_cache_dir=tmp_path / "private",
+        reference_base_dir=base,
+        signed_excerpts_dir=base / "signed_excerpts",
+        fetch_full_text=False,
+    )
+    fetcher = ReferenceFetcher(cfg)
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id=DOI,
+            title=TITLE,
+            content="Only the abstract.",
+            content_type="abstract_only",
+            full_text_attempted=True,
+        )
+    )
+    fetcher._save_to_disk(
+        ReferenceContent(
+            reference_id=DOI,
+            title=TITLE,
+            content=f"Only the abstract.\n\n{QUOTE}",
+            content_type="full_text_pdf",
+            full_text_provider="zotero",
+            full_text_access_type="user_library",
+            full_text_attempted=True,
+        ),
+        private=True,
+    )
+    # Normal validation before signing must NOT read private_cache_dir
+    assert not SupportingTextValidator(cfg).validate(QUOTE, DOI).is_valid
+
+    data = base / "kb.yaml"
+    data.write_text(evidence_yaml(QUOTE), encoding="utf-8")
+    report = sign_excerpts([data], cfg, today=TODAY)
+    assert report.written == [f"{STEM}.yaml"]
+    assert not report.failures
+
+    # After signing, normal validation succeeds via signed_excerpts_dir
+    res = SupportingTextValidator(cfg).validate(QUOTE, DOI)
+    assert res.is_valid
+    assert res.match_result.match_location == "signed_excerpts"
+
+    # Without signed_excerpts_dir, normal validation still ignores private_cache_dir
+    cfg_no_bundles = cfg.model_copy(update={"signed_excerpts_dir": None})
+    assert not SupportingTextValidator(cfg_no_bundles).validate(QUOTE, DOI).is_valid
+
+    # Even when local_full_text_dir is set to another directory, sign_excerpts
+    # still falls back to private_cache_dir for references not in local_full_text_dir
+    curated_dir = base / "curated"
+    curated_dir.mkdir()
+    cfg_both = cfg.model_copy(
+        update={
+            "local_full_text_dir": curated_dir,
+            "signed_excerpts_dir": base / "signed_excerpts_both",
+        }
+    )
+    report_both = sign_excerpts([data], cfg_both, today=TODAY)
+    assert report_both.written == [f"{STEM}.yaml"]
+    assert not report_both.failures
+
+
+
+
 def test_existing_bundle_does_not_vouch_for_a_snippet(config):
     """A hand-typed bundle entry must not let signing re-sign the same text."""
     config.signed_excerpts_dir.mkdir()

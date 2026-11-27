@@ -4,7 +4,7 @@ import json
 import logging
 import tarfile
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import requests  # type: ignore
 import typer
@@ -17,6 +17,11 @@ from linkml_reference_validator.etl.csl_export import (
 )
 from linkml_reference_validator.etl.fulltext.base import FullTextProviderRegistry
 from linkml_reference_validator.etl.fulltext.bookshelf import LITARCH_URL, download_book
+from linkml_reference_validator.models import ReferenceContent
+from linkml_reference_validator.signed_excerpts import (
+    expand_globs,
+    find_cited_reference_ids,
+)
 from .shared import (
     CacheDirOption,
     VerboseOption,
@@ -260,6 +265,32 @@ def enrich_command(
     config_file: ConfigFileOption = None,
     cache_dir: CacheDirOption = None,
     private_cache_dir: PrivateCacheDirOption = None,
+    zotero_dir: Annotated[
+        Optional[Path],
+        typer.Option(
+            "--zotero-dir",
+            envvar="ZOTERO_DIR",
+            help=(
+                "Local Zotero data directory (e.g. ~/Zotero) containing zotero.sqlite "
+                "and storage/. Reads Zotero directly without needing Zotero's HTTP API."
+            ),
+        ),
+    ] = None,
+    reference: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--reference",
+            "-r",
+            help="Only enrich this reference ID (repeatable)",
+        ),
+    ] = None,
+    referenced_in: Annotated[
+        Optional[list[str]],
+        typer.Option(
+            "--referenced-in",
+            help="Glob of data files; only enrich cached references cited there (repeatable)",
+        ),
+    ] = None,
     dry_run: DryRunOption = True,
     verbose: VerboseOption = False,
 ):
@@ -274,6 +305,9 @@ def enrich_command(
         linkml-reference-validator cache enrich --provider zotero --dry-run
 
         linkml-reference-validator cache enrich --provider zotero --apply
+
+        linkml-reference-validator cache enrich --provider zotero \\
+            --zotero-dir ~/Zotero --referenced-in 'kb/disorders/MyDisease.yaml' --apply
     """
     setup_logging(verbose)
 
@@ -286,24 +320,58 @@ def enrich_command(
         config.cache_dir = cache_dir
     if private_cache_dir:
         config.private_cache_dir = private_cache_dir
+    if zotero_dir:
+        config.zotero_dir = zotero_dir
     fetcher = ReferenceFetcher(config)
+
+    cached_refs: Iterable[ReferenceContent] = fetcher.iter_cached_references()
+    if reference or referenced_in:
+        all_cached = list(cached_refs)
+
+        def _id_key(ref_id: str) -> str:
+            norm = fetcher.normalize_reference_id(ref_id)
+            return norm.casefold() if norm.upper().startswith("DOI:") else norm
+
+        cached_keys = {_id_key(r.reference_id) for r in all_cached}
+        wanted_keys: set[str] = set()
+        for req in reference or []:
+            key = _id_key(req)
+            wanted_keys.add(key)
+            if key not in cached_keys:
+                typer.echo(
+                    f"Warning: requested reference not found in cache: {req}",
+                    err=True,
+                )
+        if referenced_in:
+            try:
+                paths = expand_globs(referenced_in, Path("."))
+            except ValueError as err:
+                typer.echo(str(err), err=True)
+                raise typer.Exit(2)
+            cited = find_cited_reference_ids(
+                (r.reference_id for r in all_cached), paths
+            )
+            wanted_keys.update(_id_key(r) for r in cited)
+        cached_refs = [
+            r for r in all_cached if _id_key(r.reference_id) in wanted_keys
+        ]
 
     found = 0
     applied = 0
     errors = 0
     scanned = 0
     consecutive_errors = 0
-    for reference in fetcher.iter_cached_references():
+    for ref_item in cached_refs:
         scanned += 1
-        if not fetcher.needs_full_text(reference):
-            typer.echo(f"{reference.reference_id}\talready_full_text\t-")
+        if not fetcher.needs_full_text(ref_item):
+            typer.echo(f"{ref_item.reference_id}\talready_full_text\t-")
             continue
         try:  # provider is an external-system boundary
-            location = fetcher.locate_full_text(reference, provider)
+            location = fetcher.locate_full_text(ref_item, provider)
         except Exception as exc:
             errors += 1
             consecutive_errors += 1
-            typer.echo(f"{reference.reference_id}\terror\t{exc}")
+            typer.echo(f"{ref_item.reference_id}\terror\t{exc}")
             if consecutive_errors >= MAX_CONSECUTIVE_PROVIDER_ERRORS:
                 typer.echo(
                     "Stopping after "
@@ -317,7 +385,7 @@ def enrich_command(
         consecutive_errors = 0
 
         if location is None:
-            typer.echo(f"{reference.reference_id}\tnot_found\t-")
+            typer.echo(f"{ref_item.reference_id}\tnot_found\t-")
             continue
 
         if location.declined:
@@ -325,22 +393,22 @@ def enrich_command(
             # A declined location carries no url and no text, so counting it
             # would inflate `Found:` by exactly the references the provider
             # refused -- and this command's whole output is an inventory.
-            typer.echo(f"{reference.reference_id}\tdeclined\t{location.declined}")
+            typer.echo(f"{ref_item.reference_id}\tdeclined\t{location.declined}")
             continue
 
         found += 1
         source = f"{location.provider or provider}:{location.source_item_id or '-'}"
         if dry_run:
-            typer.echo(f"{reference.reference_id}\tfound\t{source}")
+            typer.echo(f"{ref_item.reference_id}\tfound\t{source}")
             continue
 
         if fetcher.apply_full_text_location(
-            reference, location, provider, private=True
+            ref_item, location, provider, private=True
         ):
             applied += 1
-            typer.echo(f"{reference.reference_id}\tapplied\t{source}")
+            typer.echo(f"{ref_item.reference_id}\tapplied\t{source}")
         else:
-            typer.echo(f"{reference.reference_id}\tunusable\t{source}")
+            typer.echo(f"{ref_item.reference_id}\tunusable\t{source}")
 
     typer.echo(f"Scanned: {scanned}")
     typer.echo(f"Found: {found}")

@@ -99,7 +99,7 @@ def find_cited_reference_ids(
     return found
 
 
-def _expand_globs(patterns: Iterable[str], base_dir: Path) -> list[Path]:
+def expand_globs(patterns: Iterable[str], base_dir: Path) -> list[Path]:
     """Expand glob patterns relative to ``base_dir`` into existing files.
 
     Raises:
@@ -118,6 +118,9 @@ def _expand_globs(patterns: Iterable[str], base_dir: Path) -> list[Path]:
             )
         paths.extend(matches)
     return paths
+
+
+_expand_globs = expand_globs
 
 
 def _load_bundle(path: Path) -> dict[str, Any]:

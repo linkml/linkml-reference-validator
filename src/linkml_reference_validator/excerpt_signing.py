@@ -31,9 +31,9 @@ from ruamel.yaml.error import YAMLError  # type: ignore
 
 from linkml_reference_validator import __version__
 from linkml_reference_validator.cache import (
-    _same_reference_id,
     cache_filename,
     disambiguated_cache_filename,
+    same_reference_id,
 )
 from linkml_reference_validator.models import ReferenceValidationConfig
 from linkml_reference_validator.signed_excerpts import BUNDLE_SUFFIXES
@@ -151,7 +151,7 @@ def _bundle_path(
             if not candidate.is_file():
                 continue
             stored = _stored_reference_id(candidate)
-            if stored is None or _same_reference_id(normalize(stored), normalized_id):
+            if stored is None or same_reference_id(normalize(stored), normalized_id):
                 return candidate
             taken[position] = True
     if not taken[0]:
@@ -377,8 +377,24 @@ def sign_excerpts(
     directory = Path(directory)
 
     # Verify against the local text only: an existing bundle must not vouch
-    # for the quotes it is about to be extended with.
-    checking = config.model_copy(update={"signed_excerpts_dir": None})
+    # for the quotes it is about to be extended with. If private_cache_dir
+    # exists (e.g. populated by `cache enrich --provider zotero --apply`),
+    # fall back to it for any reference not already mapped by local_full_text
+    # or local_full_text_dir.
+    private_dir = config.private_cache_dir.expanduser()
+    has_private_dir = private_dir.is_dir()
+    fallback_dir = (
+        config.local_full_text_dir
+        if config.local_full_text_dir is not None
+        else (private_dir if has_private_dir else None)
+    )
+    checking = config.model_copy(
+        update={
+            "signed_excerpts_dir": None,
+            "local_full_text_dir": fallback_dir,
+            "local_full_text": dict(config.local_full_text),
+        }
+    )
     validator = SupportingTextValidator(checking)
     fetcher = validator.fetcher
     report = SignReport()
@@ -387,9 +403,18 @@ def sign_excerpts(
     quotes: dict[str, list[str]] = {}
     for reference_id, text in collect_quotes(data_files):
         normalized = fetcher.normalize_reference_id(reference_id)
-        if wanted and not any(_same_reference_id(w, normalized) for w in wanted):
+        if wanted and not any(same_reference_id(w, normalized) for w in wanted):
             continue
         quotes.setdefault(normalized, []).append(text)
+    if config.local_full_text_dir is not None and has_private_dir:
+        private_fetcher = SupportingTextValidator(
+            checking.model_copy(update={"local_full_text_dir": private_dir})
+        ).fetcher
+        for reference_id in set(quotes) | set(wanted):
+            if fetcher.local_full_text_path(reference_id) is None:
+                priv_path = private_fetcher.local_full_text_path(reference_id)
+                if priv_path is not None:
+                    checking.local_full_text[reference_id] = priv_path
     for reference_id in wanted:
         if fetcher.local_full_text_path(reference_id) is None:
             report.no_local_text.append(reference_id)
@@ -452,7 +477,7 @@ def sign_excerpts(
                 if stored is None:
                     continue
                 normalized = fetcher.normalize_reference_id(stored)
-                if any(_same_reference_id(normalized, c) for c in cited):
+                if any(same_reference_id(normalized, c) for c in cited):
                     continue
                 # Only the file validation would read for this reference: a
                 # hand-named bundle, or the .yml twin of a .yaml, is skipped

@@ -192,3 +192,75 @@ def test_cache_reference_reports_the_cached_text_not_the_local_file(config, pape
     assert result.exit_code == 0, result.output
     assert "Content type: unavailable" in result.output
     assert "local_full_text" not in result.output
+
+
+def test_local_full_text_strips_cache_frontmatter_and_header(config, tmp_path):
+    """A cache-formatted .md file in local_full_text_dir exposes only its Content body."""
+    private_dir = tmp_path / "private_cache"
+    private_dir.mkdir()
+    (private_dir / f"{STEM}.md").write_text(
+        "---\n"
+        f"reference_id: {DOI}\n"
+        f"title: {TITLE}\n"
+        "authors:\n"
+        "- Secret Author Name\n"
+        "content_type: full_text_pdf\n"
+        "---\n\n"
+        f"# {TITLE}\n"
+        "**Authors:** Secret Author Name\n\n"
+        "## Content\n\n"
+        f"{QUOTE}\n",
+        encoding="utf-8",
+    )
+    config.local_full_text_dir = private_dir
+    validator = SupportingTextValidator(config)
+    assert validator.validate(QUOTE, DOI).is_valid
+    assert not validator.validate("Secret Author Name", DOI).is_valid
+
+
+def test_local_full_text_extracts_pdf_files(config, tmp_path):
+    """A .pdf file in local_full_text_dir is extracted via PDFExtractor."""
+    from tests.test_extractors import _build_minimal_pdf
+
+    papers = tmp_path / "pdf_papers"
+    papers.mkdir()
+    pdf_bytes = _build_minimal_pdf(QUOTE)
+    (papers / f"{STEM}.pdf").write_bytes(pdf_bytes)
+    config.local_full_text_dir = papers
+    assert SupportingTextValidator(config).validate(QUOTE, DOI).is_valid
+
+
+def test_local_full_text_skips_abstract_only_cache_markdown(config, tmp_path, caplog):
+    """A cache-formatted .md with content_type: abstract_only in local_full_text_dir is skipped."""
+    import logging
+
+    private_dir = tmp_path / "private_cache"
+    private_dir.mkdir()
+    (private_dir / f"{STEM}.md").write_text(
+        "---\n"
+        f"reference_id: {DOI}\n"
+        f"title: {TITLE}\n"
+        "content_type: abstract_only\n"
+        "---\n\n"
+        f"# {TITLE}\n\n"
+        "## Content\n\n"
+        f"{QUOTE}\n",
+        encoding="utf-8",
+    )
+    config.local_full_text_dir = private_dir
+    validator = SupportingTextValidator(config)
+    with caplog.at_level(logging.INFO):
+        result = validator.validate(QUOTE, DOI)
+    assert not result.is_valid
+    assert any("Skipping local cache file" in rec.message for rec in caplog.records)
+
+
+def test_local_full_text_unreadable_pdf_does_not_raise(config, tmp_path):
+    """A corrupt .pdf in local_full_text_dir logs a warning and does not crash validation."""
+    papers = tmp_path / "corrupt_pdfs"
+    papers.mkdir()
+    (papers / f"{STEM}.pdf").write_bytes(b"%PDF-1.7 truncated corrupt bytes")
+    config.local_full_text_dir = papers
+    result = SupportingTextValidator(config).validate(QUOTE, DOI)
+    assert not result.is_valid
+

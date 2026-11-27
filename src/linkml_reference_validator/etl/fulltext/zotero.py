@@ -7,8 +7,12 @@ attachment's file endpoint for normal PDF extraction.
 """
 
 import re
+import shutil
+import sqlite3
+import tempfile
 from collections import defaultdict
-from typing import Optional
+from pathlib import Path
+from typing import Optional, Protocol
 
 import requests  # type: ignore
 
@@ -25,6 +29,7 @@ from linkml_reference_validator.models import (
 
 MIN_ZOTERO_INDEXED_TEXT_CHARS = 500
 _EXTRA_IDENTIFIER_PATTERNS = {
+    "doi": re.compile(r"^DOI\s*:\s*(\S+)\s*$", re.IGNORECASE | re.MULTILINE),
     "pmid": re.compile(r"^PMID\s*:\s*(\d+)\s*$", re.IGNORECASE | re.MULTILINE),
     "pmcid": re.compile(
         r"^PMCID\s*:\s*(PMC\d+)\s*$", re.IGNORECASE | re.MULTILINE
@@ -32,8 +37,226 @@ _EXTRA_IDENTIFIER_PATTERNS = {
 }
 
 
+def _index_extra_identifiers(
+    extra: str, key: str, index: dict[tuple[str, str], set[str]]
+) -> None:
+    """Extract DOI, PMID, and PMCID lines from a Zotero ``extra`` field into ``index``."""
+    for kind, pattern in _EXTRA_IDENTIFIER_PATTERNS.items():
+        match = pattern.search(extra)
+        if not match:
+            continue
+        raw = match.group(1)
+        if kind == "doi":
+            doi = normalize_doi(raw)
+            if doi:
+                index[("doi", doi)].add(key)
+        elif kind == "pmcid":
+            index[("pmcid", raw.upper())].add(key)
+        else:
+            index[(kind, raw)].add(key)
+
+
+
 class ZoteroAPIError(RuntimeError):
     """Raised when Zotero's API cannot complete a read operation."""
+
+
+class ZoteroBackend(Protocol):
+    """Protocol implemented by both HTTP and local-directory Zotero clients."""
+
+    def find_parent_keys(self, ids: ReferenceIdentifiers) -> set[str]:
+        """Return unambiguous parent item keys matching supplied identifiers."""
+        ...
+
+    def pdf_attachments(self, parent_key: str) -> list[dict]:
+        """Return PDF attachment items belonging to a parent item."""
+        ...
+
+    def indexed_full_text(self, attachment_key: str) -> Optional[str]:
+        """Return Zotero-indexed attachment text, or None when unavailable."""
+        ...
+
+    def attachment_file_url(self, attachment_key: str) -> Optional[str]:
+        """Return the URL or file URI for downloading the attachment, or None."""
+        ...
+
+
+class ZoteroDirectoryClient:
+    """Read-only client backed by a local Zotero data directory (zotero.sqlite + storage/).
+
+    Examples:
+        >>> import tempfile, sqlite3
+        >>> d = Path(tempfile.mkdtemp())
+        >>> (d / "storage" / "K1").mkdir(parents=True)
+        >>> _ = (d / "storage" / "K1" / "p.pdf").write_bytes(b"%PDF-1.4")
+        >>> conn = sqlite3.connect(d / "zotero.sqlite")
+        >>> _ = conn.executescript('''
+        ... CREATE TABLE items (itemID INT, key TEXT);
+        ... CREATE TABLE itemAttachments (itemID INT, parentItemID INT, contentType TEXT, path TEXT);
+        ... CREATE TABLE fields (fieldID INT, fieldName TEXT);
+        ... CREATE TABLE itemDataValues (valueID INT, value TEXT);
+        ... CREATE TABLE itemData (itemID INT, fieldID INT, valueID INT);
+        ... INSERT INTO items VALUES (1, 'P1'), (2, 'K1');
+        ... INSERT INTO itemAttachments VALUES (2, 1, 'application/pdf', 'storage:p.pdf');
+        ... INSERT INTO fields VALUES (1, 'DOI');
+        ... INSERT INTO itemDataValues VALUES (1, '10.1000/abc');
+        ... INSERT INTO itemData VALUES (1, 1, 1);
+        ... ''')
+        >>> conn.commit(); conn.close()
+        >>> ZoteroDirectoryClient(d).find_parent_keys(ReferenceIdentifiers(doi="10.1000/ABC"))
+        {'P1'}
+    """
+
+    def __init__(self, zotero_dir: Path):
+        """Initialize with a Zotero data directory containing zotero.sqlite and storage/."""
+        self.zotero_dir = Path(zotero_dir).expanduser()
+        self._identifier_index: Optional[dict[tuple[str, str], set[str]]] = None
+        self._attachments_by_parent: dict[str, list[dict]] = {}
+        self._pdf_paths_by_key: dict[str, Path] = {}
+
+    def find_parent_keys(self, ids: ReferenceIdentifiers) -> set[str]:
+        """Return unambiguous parent candidates matching supplied identifiers."""
+        index = self._get_identifier_index()
+        requested = {
+            "doi": normalize_doi(ids.doi),
+            "pmid": ids.pmid.strip() if ids.pmid else None,
+            "pmcid": ids.pmcid.strip().upper() if ids.pmcid else None,
+        }
+        matched_sets = [
+            index[(kind, value)]
+            for kind, value in requested.items()
+            if value and index.get((kind, value))
+        ]
+        if not matched_sets:
+            return set()
+        candidates = set(matched_sets[0])
+        for matches in matched_sets[1:]:
+            candidates.intersection_update(matches)
+        return candidates
+
+    def pdf_attachments(self, parent_key: str) -> list[dict]:
+        """Return PDF attachment items belonging to a parent item."""
+        self._get_identifier_index()
+        return list(self._attachments_by_parent.get(parent_key, []))
+
+    def indexed_full_text(self, attachment_key: str) -> Optional[str]:
+        """Return Zotero's cached full-text file (.zotero-ft-cache) if present."""
+        ft_cache = self.zotero_dir / "storage" / attachment_key / ".zotero-ft-cache"
+        if not ft_cache.is_file():
+            return None
+        content = ft_cache.read_text(encoding="utf-8", errors="ignore")
+        return content if content.strip() else None
+
+    def attachment_file_url(self, attachment_key: str) -> Optional[str]:
+        """Return a file:// URI for the attachment PDF, or None if not found."""
+        self._get_identifier_index()
+        pdf_path = self._pdf_paths_by_key.get(attachment_key)
+        if pdf_path is not None:
+            return pdf_path.resolve().as_uri()
+        return None
+
+    def _get_identifier_index(self) -> dict[tuple[str, str], set[str]]:
+        """Load and cache exact identifiers and PDF attachments from a temp copy of zotero.sqlite."""
+        if self._identifier_index is not None:
+            return self._identifier_index
+
+        db_path = self.zotero_dir / "zotero.sqlite"
+        if not db_path.is_file():
+            raise ZoteroAPIError(f"Zotero database not found: {db_path}")
+
+        storage_root = (self.zotero_dir / "storage").resolve()
+        try:  # external system boundary: sqlite file may be locked or damaged
+            with tempfile.TemporaryDirectory() as tmpdir:
+                db_copy = Path(tmpdir) / "zotero.sqlite"
+                shutil.copy2(db_path, db_copy)
+                for sidecar in ("-wal", "-journal"):
+                    sidecar_path = self.zotero_dir / f"zotero.sqlite{sidecar}"
+                    if sidecar_path.is_file():
+                        shutil.copy2(
+                            sidecar_path, Path(tmpdir) / f"zotero.sqlite{sidecar}"
+                        )
+                conn = sqlite3.connect(f"file:{db_copy}?mode=ro", uri=True)
+                try:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='deletedItems'"
+                    )
+                    has_deleted_items = cur.fetchone() is not None
+                    trash_clause = (
+                        " AND p.itemID NOT IN (SELECT itemID FROM deletedItems)"
+                        " AND a.itemID NOT IN (SELECT itemID FROM deletedItems)"
+                        if has_deleted_items
+                        else ""
+                    )
+                    cur.execute(
+                        f"""
+                        SELECT p.itemID, p.key AS parent_key, a.key AS att_key, ia.path
+                        FROM itemAttachments ia
+                        JOIN items a ON ia.itemID = a.itemID
+                        JOIN items p ON ia.parentItemID = p.itemID
+                        WHERE ia.contentType = 'application/pdf'
+                          AND ia.path LIKE 'storage:%'{trash_clause}
+                        """
+                    )
+                    parent_id_to_key: dict[int, str] = {}
+                    attachments_by_parent: dict[str, list[dict]] = defaultdict(list)
+                    for parent_id, parent_key, att_key, raw_path in cur.fetchall():
+                        if not parent_id or not parent_key or not att_key:
+                            continue
+                        rel_name = str(raw_path).split("storage:", 1)[1]
+                        att_dir = (storage_root / att_key).resolve()
+                        if not att_dir.is_relative_to(storage_root):
+                            continue
+                        pdf_path = (att_dir / rel_name).resolve()
+                        if not pdf_path.is_relative_to(att_dir) or not pdf_path.is_file():
+                            continue
+                        parent_id_to_key[parent_id] = parent_key
+                        self._pdf_paths_by_key[att_key] = pdf_path
+                        attachments_by_parent[parent_key].append(
+                            {
+                                "key": att_key,
+                                "data": {
+                                    "key": att_key,
+                                    "itemType": "attachment",
+                                    "contentType": "application/pdf",
+                                    "filename": rel_name,
+                                },
+                            }
+                        )
+
+                    index: dict[tuple[str, str], set[str]] = defaultdict(set)
+                    if parent_id_to_key:
+                        parent_ids = tuple(parent_id_to_key.keys())
+                        cur.execute(
+                            f"""
+                            SELECT id.itemID, f.fieldName, idv.value
+                            FROM itemData id
+                            JOIN fields f ON id.fieldID = f.fieldID
+                            JOIN itemDataValues idv ON id.valueID = idv.valueID
+                            WHERE id.itemID IN ({",".join("?" for _ in parent_ids)})
+                              AND f.fieldName IN ('DOI', 'extra')
+                            """,
+                            parent_ids,
+                        )
+                        for item_id, field_name, val in cur.fetchall():
+                            parent_key = parent_id_to_key[item_id]
+                            if field_name == "DOI":
+                                doi = normalize_doi(val)
+                                if doi:
+                                    index[("doi", doi)].add(parent_key)
+                            elif field_name == "extra" and isinstance(val, str):
+                                _index_extra_identifiers(val, parent_key, index)
+                finally:
+                    conn.close()
+        except (OSError, sqlite3.DatabaseError) as exc:
+            raise ZoteroAPIError(
+                f"Could not read Zotero database {db_path} "
+                f"(if Zotero is open, close it or retry): {exc}"
+            ) from exc
+
+        self._attachments_by_parent = dict(attachments_by_parent)
+        self._identifier_index = dict(index)
+        return self._identifier_index
 
 
 class ZoteroClient:
@@ -132,13 +355,7 @@ class ZoteroClient:
 
             extra = data.get("extra", "")
             if isinstance(extra, str):
-                for kind, pattern in _EXTRA_IDENTIFIER_PATTERNS.items():
-                    match = pattern.search(extra)
-                    if match:
-                        value = match.group(1)
-                        if kind == "pmcid":
-                            value = value.upper()
-                        index[(kind, value)].add(key)
+                _index_extra_identifiers(extra, key, index)
 
         self._identifier_index = dict(index)
         return self._identifier_index
@@ -192,11 +409,16 @@ class ZoteroClient:
 class ZoteroFullTextProvider(FullTextProvider):
     """Find full text in a user's Zotero library by exact identifier."""
 
-    def __init__(self, client: Optional[ZoteroClient] = None):
+    def __init__(self, client: Optional[ZoteroBackend] = None):
         """Initialize with an optional client for testing or custom embedding."""
         self._client = client
         self._client_is_injected = client is not None
-        self._client_base_url = client.base_url if client is not None else None
+        self._client_base_url = (
+            getattr(client, "base_url", None) if client is not None else None
+        )
+        self._client_zotero_dir: Optional[Path] = (
+            getattr(client, "zotero_dir", None) if client is not None else None
+        )
 
     @classmethod
     def name(cls) -> str:
@@ -207,12 +429,20 @@ class ZoteroFullTextProvider(FullTextProvider):
         self, ids: ReferenceIdentifiers, config: ReferenceValidationConfig
     ) -> Optional[FullTextLocation]:
         """Return indexed text or a PDF endpoint for an exact Zotero match."""
-        if self._client is None or (
-            not self._client_is_injected
-            and self._client_base_url != config.zotero_base_url.rstrip("/")
-        ):
-            self._client = ZoteroClient(config.zotero_base_url)
-            self._client_base_url = config.zotero_base_url.rstrip("/")
+        if not self._client_is_injected:
+            if config.zotero_dir is not None:
+                resolved_dir = Path(config.zotero_dir).expanduser()
+                if self._client is None or self._client_zotero_dir != resolved_dir:
+                    self._client = ZoteroDirectoryClient(resolved_dir)
+                    self._client_zotero_dir = resolved_dir
+                    self._client_base_url = None
+            else:
+                base_url = config.zotero_base_url.rstrip("/")
+                if self._client is None or self._client_base_url != base_url:
+                    self._client = ZoteroClient(config.zotero_base_url)
+                    self._client_base_url = base_url
+                    self._client_zotero_dir = None
+        assert self._client is not None
         client = self._client
         parent_keys = client.find_parent_keys(ids)
         if len(parent_keys) != 1:
@@ -237,6 +467,7 @@ class ZoteroFullTextProvider(FullTextProvider):
         if text and len(text.strip()) >= MIN_ZOTERO_INDEXED_TEXT_CHARS:
             return FullTextLocation(
                 text=text,
+                url=client.attachment_file_url(attachment_key),
                 format_hint="text",
                 provider=self.name(),
                 access_type="user_library",
